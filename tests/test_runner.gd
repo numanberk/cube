@@ -235,3 +235,116 @@ func test_pacing_targets() -> void:
 					expected.append(row["id"])
 	if not expected.is_empty():
 		print("  pacing: %d expected failures (see docs/BALANCE.md): %s" % [expected.size(), ", ".join(expected)])
+
+
+# --- Safe saves (task 0.4) ---------------------------------------------------
+
+const TEST_SAVE_DIR := "user://test_saves"
+
+
+func save_game_at(path: String) -> GameState:
+	var g := new_game()
+	g.save_path = path
+	return g
+
+
+func clean_test_saves() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(TEST_SAVE_DIR))
+	for file_name in DirAccess.get_files_at(TEST_SAVE_DIR):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE_DIR.path_join(file_name)))
+
+
+func write_text(path: String, text: String) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+
+
+func test_save_writes_atomically_and_keeps_backup() -> void:
+	clean_test_saves()
+	var path := TEST_SAVE_DIR.path_join("save.json")
+	var g := save_game_at(path)
+	g.cheat_add_solves(10.0)
+	check(g.save_game(), "first save succeeds")
+	check(FileAccess.file_exists(path), "save.json exists")
+	check(not FileAccess.file_exists(path + ".tmp"), "no temp file left behind")
+	check(not FileAccess.file_exists(g.get_backup_path()), "no backup before the second save")
+	check(g.get_backup_path().get_file() == "save.bak", "backup is called save.bak")
+	g.cheat_add_solves(5.0)
+	check(g.save_game(), "second save succeeds")
+	var backup: Variant = JSON.parse_string(FileAccess.get_file_as_string(g.get_backup_path()))
+	check(typeof(backup) == TYPE_DICTIONARY and is_equal_approx(float(backup["solves"]), 10.0), "backup holds the previous save")
+	var loaded := save_game_at(path)
+	loaded.load_game()
+	check_near(loaded.solves, 15.0, "the newest save loads")
+	check(loaded.load_notice == "", "no notice for a healthy save")
+	g.free()
+	loaded.free()
+
+
+func test_corrupt_save_loads_backup() -> void:
+	clean_test_saves()
+	var path := TEST_SAVE_DIR.path_join("save.json")
+	var g := save_game_at(path)
+	g.cheat_add_solves(42.0)
+	g.save_game()
+	g.save_game()  # now save.bak = 42 Solves too
+	write_text(path, "{\"solves\": 9")  # cut off mid-write
+	var loaded := save_game_at(path)
+	loaded.load_game()
+	check_near(loaded.solves, 42.0, "a corrupt save falls back to the backup")
+	check(loaded.load_notice != "", "the player is told the backup was loaded")
+	check(FileAccess.file_exists(loaded.get_corrupt_path()), "the damaged save is kept for recovery")
+	g.free()
+	loaded.free()
+
+
+func test_missing_save_starts_fresh() -> void:
+	clean_test_saves()
+	var path := TEST_SAVE_DIR.path_join("save.json")
+	var g := save_game_at(path)
+	g.load_game()
+	check_near(g.solves, 0.0, "no save = fresh start")
+	check(g.load_notice == "", "no notice on a first launch")
+	g.free()
+
+
+func test_missing_save_with_backup_loads_backup() -> void:
+	# A crash between "save.json -> save.bak" and "tmp -> save.json" leaves only the backup.
+	clean_test_saves()
+	var path := TEST_SAVE_DIR.path_join("save.json")
+	var g := save_game_at(path)
+	g.cheat_add_solves(7.0)
+	g.save_game()
+	DirAccess.rename_absolute(ProjectSettings.globalize_path(path), ProjectSettings.globalize_path(g.get_backup_path()))
+	var loaded := save_game_at(path)
+	loaded.load_game()
+	check_near(loaded.solves, 7.0, "the backup loads when save.json is missing")
+	g.free()
+	loaded.free()
+
+
+func test_corrupt_save_and_backup_start_fresh() -> void:
+	clean_test_saves()
+	var path := TEST_SAVE_DIR.path_join("save.json")
+	write_text(path, "not json")
+	var g := save_game_at(path)
+	write_text(g.get_backup_path(), "[1, 2, 3]")
+	g.load_game()
+	check_near(g.solves, 0.0, "both unreadable = fresh start")
+	check(g.load_notice.contains("started fresh"), "the player is told the game started fresh")
+	check(FileAccess.get_file_as_string(g.get_corrupt_path()) == "not json", "the damaged save is kept")
+	g.free()
+
+
+func test_wipe_removes_save_and_backup() -> void:
+	clean_test_saves()
+	var path := TEST_SAVE_DIR.path_join("save.json")
+	var g := save_game_at(path)
+	g.save_game()
+	g.save_game()
+	g.wipe_save()
+	check(not FileAccess.file_exists(path), "wipe removes save.json")
+	check(not FileAccess.file_exists(g.get_backup_path()), "wipe removes save.bak")
+	g.free()
+	clean_test_saves()

@@ -18,6 +18,9 @@ const COST_GROWTH := 1.15
 
 ## Set to false before the node enters the tree to skip loading/saving (tests do this).
 var persistence_enabled := true
+## Where the save lives. Tests point this somewhere else. The backup is `save.bak` next to it,
+## and a save that can't be read is copied to `save.corrupt.json` before anything overwrites it.
+var save_path := SAVE_PATH
 
 var solves := 0.0          ## Spendable currency.
 var total_solves := 0.0    ## Lifetime Solves earned; never goes down.
@@ -26,6 +29,7 @@ var move_progress := 0.0   ## Moves made toward the current solve.
 var buildings: Dictionary = {}  ## building id -> owned count
 var upgrades: Dictionary = {}   ## upgrade id -> true (owned)
 var offline_report: Dictionary = {}  ## {"seconds", "solves"} after loading, if anything was earned
+var load_notice := ""  ## Set when the save was damaged and a backup (or nothing) was loaded; the UI shows it once.
 
 var _autosave_timer := 0.0
 
@@ -192,22 +196,93 @@ func get_save_data() -> Dictionary:
 	}
 
 
-func save_game() -> void:
-	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+## Saves safely: write `save.json.tmp`, check it reads back, keep the old save as `save.bak`,
+## then rename the temp file into place. A crash at any point leaves a readable save or backup.
+func save_game() -> bool:
+	var text := JSON.stringify(get_save_data(), "\t")
+	var tmp := save_path + ".tmp"
+	var file := FileAccess.open(tmp, FileAccess.WRITE)
 	if file == null:
 		push_warning("Could not write save: %s" % error_string(FileAccess.get_open_error()))
-		return
-	file.store_string(JSON.stringify(get_save_data(), "\t"))
+		return false
+	var written := file.store_string(text)
+	file.close()
+	if not written or _read_save_file(tmp).is_empty():
+		push_warning("Save did not write correctly; keeping the previous save.")
+		_remove(tmp)
+		return false
+	var backup := get_backup_path()
+	if FileAccess.file_exists(save_path):
+		_remove(backup)
+		_rename(save_path, backup)
+	if not _rename(tmp, save_path):
+		push_warning("Could not move the new save into place.")
+		return false
+	return true
 
 
+## Loads the save, or the backup if the save is missing or damaged. Sets `load_notice` when it had to
+## fall back. With neither file present it's a fresh start.
 func load_game() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
+	load_notice = ""
+	var main_exists := FileAccess.file_exists(save_path)
+	var backup_exists := FileAccess.file_exists(get_backup_path())
+	if not main_exists and not backup_exists:
 		return
-	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
-	if typeof(data) != TYPE_DICTIONARY:
-		push_warning("Save file is unreadable; starting fresh.")
+	var data := _read_save_file(save_path) if main_exists else {}
+	if not data.is_empty():
+		apply_save_data(data, Time.get_unix_time_from_system())
 		return
-	apply_save_data(data, Time.get_unix_time_from_system())
+	if main_exists:
+		_keep_corrupt_copy()
+	data = _read_save_file(get_backup_path()) if backup_exists else {}
+	if not data.is_empty():
+		push_warning("Save file is %s; loaded the backup." % ("unreadable" if main_exists else "missing"))
+		apply_save_data(data, Time.get_unix_time_from_system())
+		load_notice = "Your save file was %s, so the backup from a few seconds earlier was loaded." \
+				% ("damaged" if main_exists else "missing")
+		return
+	push_warning("Save file and backup are unreadable; starting fresh.")
+	load_notice = "Your save file was damaged and no backup could be read, so the game started fresh."
+	if main_exists:
+		load_notice += "\nThe damaged file was kept as %s." % get_corrupt_path().get_file()
+
+
+func get_backup_path() -> String:
+	return save_path.get_basename() + ".bak"
+
+
+func get_corrupt_path() -> String:
+	return save_path.get_basename() + ".corrupt.json"
+
+
+## Parsed save data, or {} if the file is missing or isn't a save.
+func _read_save_file(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+	var json := JSON.new()  # parse() reports failure quietly; JSON.parse_string() would log an engine error
+	if json.parse(FileAccess.get_file_as_string(path)) != OK:
+		return {}
+	var data: Variant = json.data
+	if typeof(data) != TYPE_DICTIONARY or not (data as Dictionary).has("version"):
+		return {}
+	return data
+
+
+func _keep_corrupt_copy() -> void:
+	var err := DirAccess.copy_absolute(ProjectSettings.globalize_path(save_path),
+			ProjectSettings.globalize_path(get_corrupt_path()))
+	if err != OK:
+		push_warning("Could not keep a copy of the damaged save: %s" % error_string(err))
+
+
+func _rename(from: String, to: String) -> bool:
+	return DirAccess.rename_absolute(ProjectSettings.globalize_path(from), ProjectSettings.globalize_path(to)) == OK
+
+
+func _remove(path: String) -> void:
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 ## Restores state from save data, then grants offline progress up to `now`.
@@ -247,8 +322,8 @@ func _migrate(data: Dictionary) -> Dictionary:
 
 func wipe_save() -> void:
 	reset_state()
-	if FileAccess.file_exists(SAVE_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+	for path: String in [save_path, save_path + ".tmp", get_backup_path()]:
+		_remove(path)
 	state_reset.emit()
 
 

@@ -132,13 +132,19 @@ func _animate_helper_moves(delta: float) -> void:
 
 
 func _show_offline_report() -> void:
-	if Game.offline_report.is_empty():
+	var parts: PackedStringArray = []
+	if Game.load_notice != "":
+		parts.append(Game.load_notice)
+	if not Game.offline_report.is_empty():
+		parts.append("You were away for %s.\nYour helpers earned %s Solves." % [
+			Num.format_duration(Game.offline_report["seconds"]),
+			Num.format(Game.offline_report["solves"]),
+		])
+	if parts.is_empty():
 		return
-	offline_dialog.dialog_text = "You were away for %s.\nYour helpers earned %s Solves." % [
-		Num.format_duration(Game.offline_report["seconds"]),
-		Num.format(Game.offline_report["solves"]),
-	]
+	offline_dialog.dialog_text = "\n\n".join(parts)
 	offline_dialog.popup_centered()
+	Game.load_notice = ""  # show it once
 
 
 # --- Signals -----------------------------------------------------------------

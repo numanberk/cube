@@ -24,7 +24,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] **0.3 Pacing tests:** `test_runner.gd` checks PLAN §2's pacing table with the simulator.
       Targets the current content can't meet yet are *expected failures* that print but don't fail the run.
       *Done when:* tests pass, and the expected-failure list appears in `docs/BALANCE.md`.
-- [ ] **0.4 Safe saves:** write `save.json.tmp` then rename it; keep `save.bak`; if the save is corrupt, load the backup and warn.
+- [x] **0.4 Safe saves:** write `save.json.tmp` then rename it; keep `save.bak`; if the save is corrupt, load the backup and warn.
       *Done when:* there are tests for a corrupt main save → loads the backup, and a missing save → starts fresh.
 
 ## Phase 1 — 3D cube (D3)

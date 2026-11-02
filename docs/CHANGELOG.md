@@ -2,6 +2,23 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 0.4: safe saves
+- `GameState.save_game()` now writes `save.json.tmp`, checks it reads back as a save, moves the old `save.json` to
+  `save.bak`, then renames the temp file into place. It returns `true`/`false`. A crash at any step leaves a readable save or backup.
+- `load_game()`: if `save.json` is damaged (or missing while `save.bak` exists), it loads `save.bak` and sets
+  `Game.load_notice`. A damaged save is copied to `save.corrupt.json` first, so nothing is lost. If both are unreadable,
+  it starts fresh and says so. "Damaged" = not JSON, not a dictionary, or no `version` key.
+- JSON is parsed with `JSON.new().parse()` (quiet) instead of `JSON.parse_string()` (logs an engine ERROR that
+  `run_tests.sh` would flag).
+- `main.gd` shows `load_notice` once in the existing "Welcome back" dialog, above the offline report if there is one.
+- `wipe_save()` (F10) also removes `save.bak` and any `.tmp`. `save_path` is now a variable so tests use `user://test_saves/`.
+- Tests: atomic write + backup contents, corrupt save → backup, missing save → fresh, missing save + backup → backup,
+  both corrupt → fresh + kept copy, wipe removes both. 224 checks, `All good.` The WARNING lines in the test output are
+  these tests damaging saves on purpose.
+- No save-format change, so SAVE_VERSION stays at 1.
+- **Phase 0 is done.** Next: task 1.1 (TwistyModel + cube shapes). Owner: good moment to pull and check that the game
+  still loads your existing save.
+
 ## 2026-11-02 — Task 0.3: pacing tests
 - New `tools/pacing.gd`: the 12 pacing targets from PLAN §2 as data (first helper ≤ 20 s, first upgrade < 1 min,
   something new every ≤ 3 min in hour 1 and ≤ 10 min after, 3×3/Robot/4×4/5×5/first prestige windows, multi-run targets,

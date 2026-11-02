@@ -85,4 +85,6 @@ SIZE=1920x1080 bash tools/screenshot.sh docs/screenshots/1080p    # another reso
 - **F10**: wipe the save and restart from zero
 
 The save file is `user://save.json`. On Windows that's
-`%APPDATA%\Godot\app_userdata\Cube Idle\save.json`.
+`%APPDATA%\Godot\app_userdata\Cube Idle\save.json`. Next to it: `save.bak` (the previous save),
+and `save.corrupt.json` if a damaged save was ever found. Saves go through `save.json.tmp` + rename (task 0.4),
+so never write the save file directly; call `Game.save_game()`.
