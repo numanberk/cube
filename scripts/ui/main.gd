@@ -7,6 +7,9 @@ const MAX_VISUAL_MOVES_PER_SECOND := 12.0
 const TAP_ACTION := &"tap"  ## Space / Enter (project.godot input map); held keys don't repeat
 const MENU_GRAPHICS_HIGH := 0
 const MENU_GRAPHICS_LOW := 1
+const UPGRADES_TAB := 1
+const ShopCardScene := preload("res://scenes/shop_card.tscn")
+const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 
 @onready var solves_label: Label = %SolvesLabel
 @onready var rate_label: Label = %RateLabel
@@ -19,12 +22,13 @@ const MENU_GRAPHICS_LOW := 1
 @onready var progress_label: Label = %ProgressLabel
 @onready var stats_label: Label = %StatsLabel
 @onready var helper_list: VBoxContainer = %HelperList
-@onready var upgrade_list: VBoxContainer = %UpgradeList
+@onready var upgrade_list: GridContainer = %UpgradeList
+@onready var tabs: TabContainer = %Tabs
 @onready var upgrade_empty: Label = %UpgradeEmpty
 @onready var offline_dialog: AcceptDialog = %OfflineDialog
 
-var _helper_buttons: Dictionary = {}   ## building id -> Button
-var _upgrade_buttons: Dictionary = {}  ## upgrade id -> Button
+var _helper_cards: Dictionary = {}    ## building id -> ShopCard
+var _upgrade_tiles: Dictionary = {}   ## upgrade id -> UpgradeTile
 var _refresh_timer := 0.0
 var _visual_move_timer := 0.0
 
@@ -74,25 +78,16 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _build_shop() -> void:
 	for def: Dictionary in Content.BUILDINGS:
-		var button := _make_shop_button()
-		button.tooltip_text = def["description"]
-		button.pressed.connect(Game.buy_building.bind(def["id"]))
-		helper_list.add_child(button)
-		_helper_buttons[def["id"]] = button
+		var card: ShopCard = ShopCardScene.instantiate()
+		card.tooltip_text = def["description"]
+		card.pressed.connect(Game.buy_building.bind(def["id"]))
+		helper_list.add_child(card)
+		_helper_cards[def["id"]] = card
 	for def: Dictionary in Content.UPGRADES:
-		var button := _make_shop_button()
-		button.pressed.connect(Game.buy_upgrade.bind(def["id"]))
-		upgrade_list.add_child(button)
-		_upgrade_buttons[def["id"]] = button
-
-
-func _make_shop_button() -> Button:
-	var button := Button.new()
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.custom_minimum_size = Vector2(0, 64)
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.focus_mode = Control.FOCUS_NONE  # so Space/Enter always tap instead of pressing a focused button
-	return button
+		var tile: UpgradeTile = UpgradeTileScene.instantiate()
+		tile.pressed.connect(Game.buy_upgrade.bind(def["id"]))
+		upgrade_list.add_child(tile)
+		_upgrade_tiles[def["id"]] = tile
 
 
 # --- Refreshing --------------------------------------------------------------
@@ -117,26 +112,73 @@ func _refresh() -> void:
 		Num.format(Game.total_moves),
 	]
 
+	_refresh_helper_cards()
+	_refresh_upgrade_tiles()
+
+
+## Unlocked helpers show as full cards; the first locked one shows as a "???" card with its requirement
+## (so there's always a visible next target); the rest stay hidden.
+func _refresh_helper_cards() -> void:
+	var shown_locked := false
 	for def: Dictionary in Content.BUILDINGS:
 		var id: String = def["id"]
-		var button: Button = _helper_buttons[id]
-		var cost := Game.get_building_cost(id)
-		button.visible = Game.is_building_unlocked(id)
-		button.disabled = Game.solves < cost
-		button.text = "%s   (owned %d)\n+%s moves/s each  ·  Costs %s Solves" % [
-			def["name"], Game.buildings[id], Num.format(Game.get_building_mps(id)), Num.format(cost),
-		]
+		var card: ShopCard = _helper_cards[id]
+		if Game.is_building_unlocked(id):
+			var owned: int = Game.buildings[id]
+			var each := Game.get_building_mps(id)
+			var cost := Game.get_building_cost(id)
+			var rate := "+%s moves/s each" % Num.format(each)
+			if owned > 0:
+				rate += "  ·  +%s/s total" % Num.format(each * owned)
+			card.visible = true
+			card.set_view({
+				"icon": Content.icon(def["icon"]), "title": def["name"], "line1": def["description"], "line2": rate,
+				"owned": str(owned), "cost": "%s Solves" % Num.format(cost), "affordable": Game.solves >= cost,
+			})
+		elif not shown_locked:
+			shown_locked = true
+			var unlock_at := Game.get_building_unlock_at(id)
+			card.visible = true
+			card.set_view({
+				"icon": Content.icon(Content.LOCKED_ICON), "title": "???",
+				"line1": "A new helper appears at %s lifetime Solves" % Num.format(unlock_at),
+				"line2": "%s / %s" % [Num.format(Game.total_solves), Num.format(unlock_at)],
+				"owned": "", "cost": "", "locked": true,
+			})
+		else:
+			card.visible = false
 
-	var any_upgrade_visible := false
+
+## Upgrades are a grid of icon tiles (details in each tile's tooltip): ones you can buy, then a dimmer "Owned" tile for
+## each one bought. The tab title shows how many are affordable.
+func _refresh_upgrade_tiles() -> void:
+	var any_visible := false
+	var affordable_count := 0
 	for def: Dictionary in Content.UPGRADES:
 		var id: String = def["id"]
-		var button: Button = _upgrade_buttons[id]
+		var tile: UpgradeTile = _upgrade_tiles[id]
 		var cost := float(def["cost"])
-		button.visible = Game.is_upgrade_available(id)
-		button.disabled = Game.solves < cost
-		button.text = "%s   ·   Costs %s Solves\n%s" % [def["name"], Num.format(cost), def["description"]]
-		any_upgrade_visible = any_upgrade_visible or button.visible
-	upgrade_empty.visible = not any_upgrade_visible
+		var owned: bool = Game.upgrades.has(id)
+		tile.visible = owned or Game.is_upgrade_available(id)
+		if not tile.visible:
+			continue
+		any_visible = true
+		var can_buy := not owned and Game.solves >= cost
+		if can_buy:
+			affordable_count += 1
+		tile.set_view({
+			"icon": Content.icon(def["icon"]), "title": def["name"], "description": def["description"],
+			"cost": Num.format(cost), "affordable": can_buy, "owned": owned,
+		})
+	# Buyable upgrades first (in content order), then the owned ones.
+	var index := 0
+	for owned_pass: bool in [false, true]:
+		for def: Dictionary in Content.UPGRADES:
+			if Game.upgrades.has(def["id"]) == owned_pass:
+				upgrade_list.move_child(_upgrade_tiles[def["id"]], index)
+				index += 1
+	upgrade_empty.visible = not any_visible
+	tabs.set_tab_title(UPGRADES_TAB, "Upgrades (%d)" % affordable_count if affordable_count > 0 else "Upgrades")
 
 
 func _next_goal_text(goal: Dictionary) -> String:

@@ -6,6 +6,7 @@
 #   PUZZLE=5x5 bash tools/screenshot.sh /tmp/shots mid     # show another puzzle -> mid_5x5.png
 #   POSE=turn bash tools/screenshot.sh /tmp/shots mid      # freeze a moment: turn | solved -> mid_turn.png
 #   GRAPHICS=low bash tools/screenshot.sh /tmp/shots mid   # Graphics: Low -> mid_low.png
+#   TAB=1 bash tools/screenshot.sh /tmp/shots mid          # open shop tab 1 (Upgrades) -> mid_tab1.png
 #   bash tools/screenshot.sh /tmp/shots bench              # 7×7 at max speed, 600 frames per quality, logs frame times
 #
 # Presets live in tools/screenshot_presets.gd (fresh, mid, late, ...).
@@ -31,6 +32,7 @@ SIZE="${SIZE:-1280x720}"
 PUZZLE="${PUZZLE:-}"
 POSE="${POSE:-}"
 GRAPHICS="${GRAPHICS:-}"
+TAB="${TAB:-}"
 
 if [[ $# -gt 0 ]]; then
   PRESETS=("$@")
@@ -61,10 +63,10 @@ fi
 
 failed=0
 for preset in "${PRESETS[@]}"; do
-  out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}${POSE:+_$POSE}${GRAPHICS:+_$GRAPHICS}.png"
+  out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}${POSE:+_$POSE}${GRAPHICS:+_$GRAPHICS}${TAB:+_tab$TAB}.png"
   rm -f "$out"
   "${RUN[@]}" "$GODOT" --path "$ROOT" --rendering-driver opengl3 --audio-driver Dummy --resolution "$SIZE" \
-    --windowed --position 0,0 res://tools/screenshot.tscn -- --preset "$preset" --out "$out" ${PUZZLE:+--puzzle "$PUZZLE"} ${POSE:+--pose "$POSE"} ${GRAPHICS:+--graphics "$GRAPHICS"} \
+    --windowed --position 0,0 res://tools/screenshot.tscn -- --preset "$preset" --out "$out" ${PUZZLE:+--puzzle "$PUZZLE"} ${POSE:+--pose "$POSE"} ${GRAPHICS:+--graphics "$GRAPHICS"} ${TAB:+--tab "$TAB"} \
     >"$LOG" 2>&1 || true
   if [[ -f "$out" ]] && ! grep -qE "SCRIPT ERROR|Parse Error|ERROR:" "$LOG"; then
     grep "^Bench " "$LOG" || true

@@ -792,3 +792,79 @@ func test_layout_and_keyboard_tap() -> void:
 	check((main.get_node("%NextGoalLabel") as Label).text.begins_with("Next: Cubing Friend"), "the strip shows the next goal")
 	main.free()
 	game.reset_state()
+
+
+# --- Shop cards (task 2.3) ---------------------------------------------------------
+
+func test_content_icons_exist() -> void:
+	for def: Dictionary in Content.BUILDINGS + Content.UPGRADES:
+		check(def.has("icon") and ResourceLoader.exists(Content.ICON_DIR + def["icon"] + ".svg"), "%s has an icon file" % def["id"])
+	check(ResourceLoader.exists(Content.ICON_DIR + Content.LOCKED_ICON + ".svg"), "there's a locked icon")
+	var credits := FileAccess.get_file_as_string("res://assets/CREDITS.md")
+	for file_name in DirAccess.get_files_at(Content.ICON_DIR):
+		if file_name.ends_with(".svg"):
+			check(credits.contains("assets/icons/" + file_name), "%s is credited in assets/CREDITS.md" % file_name)
+
+
+func test_shop_cards() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var cards: Dictionary = main._helper_cards
+	var friend: ShopCard = cards["friend"]
+	var club: ShopCard = cards["club"]
+	check(friend.visible and not friend.affordable and friend.disabled, "fresh: the Friend card shows but isn't affordable")
+	check(club.visible and club.locked and club._title.text == "???", "fresh: the next helper shows as a locked ??? card")
+	var visible_locked := 0
+	for id: String in cards:
+		if (cards[id] as ShopCard).visible and (cards[id] as ShopCard).locked:
+			visible_locked += 1
+	check(visible_locked == 1, "exactly one locked card is shown")
+	game.cheat_add_solves(40.0)
+	main._refresh()
+	check(friend.affordable and not friend.disabled and friend._cost.theme_type_variation == &"CostAffordable",
+			"with enough Solves the card is affordable with a green cost")
+	check(not club.locked and club.visible, "40 lifetime Solves reveals the Club (unlocks at 30)")
+	check(cards["robot"].locked and cards["robot"].visible, "...and the Robot becomes the locked next card")
+	var tabs: TabContainer = main.get_node("%Tabs")
+	check(tabs.get_tab_title(main.UPGRADES_TAB) == "Upgrades (1)", "the Upgrades tab shows a badge for the affordable Lube")
+	friend.pressed.emit()
+	check(game.buildings["friend"] == 1, "clicking an affordable card buys the helper")
+	main.free()
+	game.reset_state()
+
+
+func test_upgrade_tiles_show_owned() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	game.cheat_add_solves(100.0)
+	game.buy_upgrade("lube")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var lube: UpgradeTile = main._upgrade_tiles["lube"]
+	check(lube.visible and lube.owned and lube.disabled and lube._cost.text == "Owned", "a bought upgrade stays as an Owned tile")
+	check(not main._upgrade_tiles["roux"].visible, "upgrades far out of reach stay hidden")
+	main.free()
+	game.reset_state()
+
+
+func test_upgrade_tiles_buyable_first() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	game.cheat_add_solves(5000.0)
+	game.buy_building("friend")
+	game.buy_upgrade("lube")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var first_visible: UpgradeTile = null
+	for child in (main.get_node("%UpgradeList") as GridContainer).get_children():
+		if (child as UpgradeTile).visible:
+			first_visible = child
+			break
+	check(first_visible != null and not first_visible.owned, "the first tile in the grid is a buyable upgrade, not an owned one")
+	main.free()
+	game.reset_state()

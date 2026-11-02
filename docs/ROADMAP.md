@@ -64,7 +64,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       a "Next goal" strip under the stage (cheapest locked thing and how far away it is), and a "Click the cube (Space)"
       hint. The old Turn button is removed.
       *Done when:* it works at 1280×720 and 1920×1080, and there are screenshots.
-- [ ] **2.3 Shop cards:** `scenes/shop_card.tscn` replaces the text Buttons. Each card has an icon, name, short description,
+- [x] **2.3 Shop cards:** `scenes/shop_card.tscn` replaces the text Buttons. Each card has an icon, name, short description,
       a big owned count, the cost (accent when affordable, grey when not), and "+X/s" total. Affordable cards lift on hover.
       Locked helpers show as "???" cards with their requirement. Upgrades become a grid of icon tiles with a tooltip panel,
       and the Upgrades tab shows a badge "(N)" when any are buyable.

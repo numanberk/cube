@@ -134,6 +134,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="Tabs" type="TabContainer" parent="Margin/Rows/Columns/Right"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
@@ -165,10 +166,12 @@ theme_type_variation = &"DimLabel"
 text = "Keep solving. Upgrades appear here as you earn more Solves."
 autowrap_mode = 3
 
-[node name="UpgradeList" type="VBoxContainer" parent="Margin/Rows/Columns/Right/Tabs/Upgrades/UpgradeBox"]
+[node name="UpgradeList" type="GridContainer" parent="Margin/Rows/Columns/Right/Tabs/Upgrades/UpgradeBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"UpgradeGrid"
+columns = 5
 
 [node name="OfflineDialog" type="AcceptDialog" parent="."]
 unique_name_in_owner = true

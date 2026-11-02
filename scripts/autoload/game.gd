@@ -114,10 +114,14 @@ func get_building_cost(id: String) -> float:
 	return ceilf(float(def["base_cost"]) * pow(COST_GROWTH, owned))
 
 
-func is_building_unlocked(id: String) -> bool:
+## Lifetime Solves at which a helper appears in the shop (its "unlock_at", or half its base cost).
+func get_building_unlock_at(id: String) -> float:
 	var def := Content.get_building(id)
-	var unlock_at := float(def.get("unlock_at", float(def["base_cost"]) * 0.5))
-	return int(buildings.get(id, 0)) > 0 or total_solves >= unlock_at
+	return float(def.get("unlock_at", float(def["base_cost"]) * 0.5))
+
+
+func is_building_unlocked(id: String) -> bool:
+	return int(buildings.get(id, 0)) > 0 or total_solves >= get_building_unlock_at(id)
 
 
 func buy_building(id: String) -> bool:

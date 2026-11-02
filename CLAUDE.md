@@ -29,6 +29,8 @@ scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable 
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
+scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only
+scenes/upgrade_tile.tscn   class UpgradeTile (scripts/ui/upgrade_tile.gd): one upgrade icon tile + tooltip panel
 scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle/set_speed,
                            `tapped`; animated turn queue, solve replay, speed mode (see its header comment)
 scripts/cube/twisty_model.gd   class TwistyModel: pure-data puzzle (pieces, layers, moves, WCA notation)
@@ -49,7 +51,8 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
 
 ## Rules of the code
 1. **Game logic lives only in `game.gd`.** UI scripts read state and call public methods.
-2. **Content is data.** A new helper/upgrade = a new entry in `content.gd`, not new code.
+2. **Content is data.** A new helper/upgrade = a new entry in `content.gd`, not new code. Every entry has an `icon`
+   (an SVG in `assets/icons/`, credited in `assets/CREDITS.md`; game-icons.net CC BY 3.0 works well; a test checks both).
    New effect types go in `Content.EFFECT_TYPES` *and* are applied in `GameState`.
 3. **Static typing everywhere** (`var x := 1.0`, `-> void`). Tabs for indentation.
 4. Big numbers are `float`. Format all player-facing numbers with `Num.format()`.
@@ -59,7 +62,8 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
 7. Keep scenes editable in the Godot editor: use `%UniqueName` nodes, no deep `get_node` paths.
 8. **Style lives in `ui/theme.tres`.** No `theme_override_*` in scenes (a test enforces it); give a node a
    `theme_type_variation` instead (TitleLabel, SubtitleLabel, DimLabel, FaintLabel, TickerLabel, HintLabel,
-   PrimaryButton, SubtleButton, PageMargin, ColumnsBox, StackBox, TopBar, GoalStrip), or add a new variation to the theme.
+   PrimaryButton, SubtleButton, PageMargin, ColumnsBox, StackBox, TopBar, GoalStrip, ShopCard, IconTile, CardMargin,
+   TightBox, CardTitle, CardLine, CardOwned, CostAffordable, CostUnaffordable, UpgradeGrid), or add a new variation.
 9. **Taps:** clicking the puzzle or the `tap` input action (Space / Enter, no repeat when held). Shop and other
    buttons use `focus_mode = none`, so Space never presses a focused button by accident.
    One accent colour: green `#3ccf8e` (dim `#2a9d6c`). Every new asset gets a line in `assets/CREDITS.md`.
@@ -88,6 +92,7 @@ SIZE=1920x1080 bash tools/screenshot.sh docs/screenshots/1080p    # another reso
 PUZZLE=7x7 bash tools/screenshot.sh /tmp/shots mid                # another puzzle -> mid_7x7.png
 POSE=turn bash tools/screenshot.sh /tmp/shots mid                 # frozen moment: turn | solved -> mid_turn.png
 GRAPHICS=low bash tools/screenshot.sh /tmp/shots mid              # Graphics: Low -> mid_low.png
+TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 (Upgrades) -> mid_tab1.png
 bash tools/screenshot.sh /tmp/shots bench                         # 7×7 at max speed: logs ms/frame for Low and High
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

@@ -418,6 +418,67 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_normal"]
+bg_color = Color(0.1451, 0.1608, 0.1961, 1.0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.1961, 0.2196, 0.2745, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_hover"]
+bg_color = Color(0.1686, 0.1882, 0.2235, 1.0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2353, 0.8118, 0.5569, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_pressed"]
+bg_color = Color(0.1216, 0.1373, 0.1608, 1.0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.1647, 0.6157, 0.4235, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_disabled"]
+bg_color = Color(0.1020, 0.1137, 0.1333, 1.0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.1373, 0.1529, 0.1843, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon_tile"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+bg_color = Color(0.0863, 0.0941, 0.1137, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_card_focus"]
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -518,3 +579,40 @@ PopupMenu/styles/hover = SubResource("StyleBoxFlat_popup_hover")
 PopupMenu/styles/panel = SubResource("StyleBoxFlat_popup")
 TopBar/base_type = &"PanelContainer"
 TopBar/styles/panel = SubResource("StyleBoxFlat_topbar")
+CardLine/base_type = &"Label"
+CardLine/colors/font_color = Color(0.6667, 0.6902, 0.7412, 1.0)
+CardLine/font_sizes/font_size = 13
+CardMargin/base_type = &"MarginContainer"
+CardMargin/constants/margin_bottom = 8
+CardMargin/constants/margin_left = 10
+CardMargin/constants/margin_right = 16
+CardMargin/constants/margin_top = 8
+CardOwned/base_type = &"Label"
+CardOwned/colors/font_color = Color(0.9255, 0.9333, 0.9490, 1.0)
+CardOwned/font_sizes/font_size = 26
+CardOwned/fonts/font = SubResource("FontVariation_2j8s8")
+CardTitle/base_type = &"Label"
+CardTitle/colors/font_color = Color(0.9255, 0.9333, 0.9490, 1.0)
+CardTitle/font_sizes/font_size = 17
+CardTitle/fonts/font = SubResource("FontVariation_2j8s8")
+CostAffordable/base_type = &"Label"
+CostAffordable/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1.0)
+CostAffordable/font_sizes/font_size = 14
+CostAffordable/fonts/font = SubResource("FontVariation_2j8s8")
+CostUnaffordable/base_type = &"Label"
+CostUnaffordable/colors/font_color = Color(0.4863, 0.5137, 0.5725, 1.0)
+CostUnaffordable/font_sizes/font_size = 14
+IconTile/base_type = &"PanelContainer"
+IconTile/styles/panel = SubResource("StyleBoxFlat_icon_tile")
+ShopCard/base_type = &"Button"
+ShopCard/styles/disabled = SubResource("StyleBoxFlat_card_disabled")
+ShopCard/styles/focus = SubResource("StyleBoxEmpty_card_focus")
+ShopCard/styles/hover = SubResource("StyleBoxFlat_card_hover")
+ShopCard/styles/hover_pressed = SubResource("StyleBoxFlat_card_pressed")
+ShopCard/styles/normal = SubResource("StyleBoxFlat_card_normal")
+ShopCard/styles/pressed = SubResource("StyleBoxFlat_card_pressed")
+TightBox/base_type = &"VBoxContainer"
+TightBox/constants/separation = 0
+UpgradeGrid/base_type = &"GridContainer"
+UpgradeGrid/constants/h_separation = 8
+UpgradeGrid/constants/v_separation = 8

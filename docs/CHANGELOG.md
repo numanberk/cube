@@ -2,6 +2,28 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 2.3: shop cards
+- **Helper cards** (`scenes/shop_card.tscn`, `ShopCard`): a Button with an icon tile, name, description, rate line
+  ("+2 moves/s each · +30/s total"), a big owned count and the cost. **Affordable:** bright, green cost, and it lifts 3 px
+  on hover (a tween on the content; the hover border turns green). **Not affordable:** dimmed to 62 %, grey cost, disabled.
+- **Next locked helper is always visible:** the first helper not unlocked yet shows as a "???" card with a padlock,
+  "A new helper appears at X lifetime Solves" and "current / X". Helpers after it stay hidden.
+  New `GameState.get_building_unlock_at(id)`.
+- **Upgrades** are now a 5-column grid of icon tiles (`scenes/upgrade_tile.tscn`, `UpgradeTile`) with the cost underneath and
+  a custom tooltip panel (name, description, "Costs X Solves"). Bought upgrades stay as dimmer **"Owned"** tiles after
+  the buyable ones, so the grid shows progress. The tab title shows a badge, **"Upgrades (N)"**, when N are affordable.
+- **Icons:** 14 SVGs from game-icons.net by Lorc and Delapouite (**CC BY 3.0**) in `assets/icons/`, with the black
+  background removed so they tint; imported at 128 px (`svg/scale=0.25` in each `.import`). Every one is listed in
+  `assets/CREDITS.md`. Content entries have a new `icon` field; `Content.icon(name)` loads it.
+  **Credit requirement:** CC BY means the in-game Credits screen (9.3) must name game-icons.net, Lorc and Delapouite.
+- `screenshot.sh` takes `TAB=1` to open the Upgrades tab.
+- Tests: every content entry has an icon file and every icon is credited; card states (fresh: Friend unaffordable +
+  Club as the only "???" card; after 40 Solves: affordable green cost, Club revealed, Robot the next "???"); the upgrade badge;
+  clicking a card buys; owned tiles; buyable tiles first. 964 checks, `All good.`
+- Screenshots: [fresh](screenshots/shop/fresh.png), [mid](screenshots/shop/mid.png), [late](screenshots/shop/late.png),
+  [upgrades grid](screenshots/shop/mid_tab1.png).
+- **Next:** task 2.4 (juice), the last task of Phase 2.
+
 ## 2026-11-02 — Task 2.2: layout (and 3.5 keyboard, done early)
 - **New layout** (`main.tscn` rewritten; every unique name the code uses is kept):
   - **Top bar** (`TopBar` panel): Solves (TitleLabel, now 36 px), "+X solves/s · Y moves/s", and a **Settings** menu button on the right.

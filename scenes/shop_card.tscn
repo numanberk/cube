@@ -1,0 +1,88 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/shop_card.gd" id="1_card"]
+
+[node name="ShopCard" type="Button"]
+custom_minimum_size = Vector2(0, 76)
+size_flags_horizontal = 3
+focus_mode = 0
+theme_type_variation = &"ShopCard"
+script = ExtResource("1_card")
+
+[node name="Content" type="MarginContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"CardMargin"
+
+[node name="Row" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="IconTile" type="PanelContainer" parent="Content/Row"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_type_variation = &"IconTile"
+
+[node name="Icon" type="TextureRect" parent="Content/Row/IconTile"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Text" type="VBoxContainer" parent="Content/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_type_variation = &"TightBox"
+alignment = 1
+
+[node name="Title" type="Label" parent="Content/Row/Text"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"CardTitle"
+text = "Helper"
+text_overrun_behavior = 3
+
+[node name="Line1" type="Label" parent="Content/Row/Text"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"CardLine"
+text = "Description"
+text_overrun_behavior = 3
+
+[node name="Line2" type="Label" parent="Content/Row/Text"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"CardLine"
+text = "+1 moves/s each"
+text_overrun_behavior = 3
+
+[node name="Side" type="VBoxContainer" parent="Content/Row"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"TightBox"
+alignment = 1
+
+[node name="Owned" type="Label" parent="Content/Row/Side"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"CardOwned"
+text = "0"
+horizontal_alignment = 2
+
+[node name="Cost" type="Label" parent="Content/Row/Side"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"CostAffordable"
+text = "5 Solves"
+horizontal_alignment = 2

@@ -4,11 +4,11 @@ extends RefCounted
 ## new helpers/upgrades never requires touching game logic.
 ##
 ## Building fields:
-##   id, name, description, base_cost (Solves), mps (moves/sec per unit),
+##   id, icon (file name in assets/icons/, no extension), name, description, base_cost (Solves), mps (moves/sec per unit),
 ##   unlock_at (optional, lifetime Solves needed to show it; default base_cost * 0.5)
 ##
 ## Upgrade fields:
-##   id, name, description, cost (Solves), effect, requires (optional {building_id: count})
+##   id, icon (file name in assets/icons/), name, description, cost (Solves), effect, requires (optional {building_id: count})
 ##   effect.type is one of EFFECT_TYPES below; "building_mult" also needs effect.target.
 
 const EFFECT_TYPES := [
@@ -22,6 +22,7 @@ const EFFECT_TYPES := [
 const BUILDINGS := [
 	{
 		"id": "friend",
+		"icon": "friend",
 		"name": "Cubing Friend",
 		"description": "Practices with you after school.",
 		"base_cost": 5,
@@ -30,6 +31,7 @@ const BUILDINGS := [
 	},
 	{
 		"id": "club",
+		"icon": "club",
 		"name": "Cubing Club",
 		"description": "A room full of people turning cubes.",
 		"base_cost": 60,
@@ -37,6 +39,7 @@ const BUILDINGS := [
 	},
 	{
 		"id": "robot",
+		"icon": "robot",
 		"name": "Solving Robot",
 		"description": "Never gets tired. Never drops a piece.",
 		"base_cost": 700,
@@ -44,6 +47,7 @@ const BUILDINGS := [
 	},
 	{
 		"id": "competition",
+		"icon": "competition",
 		"name": "Local Competition",
 		"description": "Hundreds of solves every weekend.",
 		"base_cost": 9000,
@@ -51,6 +55,7 @@ const BUILDINGS := [
 	},
 	{
 		"id": "factory",
+		"icon": "factory",
 		"name": "Cube Factory",
 		"description": "Mass-produced, pre-lubed, pre-scrambled.",
 		"base_cost": 120000,
@@ -58,6 +63,7 @@ const BUILDINGS := [
 	},
 	{
 		"id": "lab",
+		"icon": "lab",
 		"name": "Speedcubing Lab",
 		"description": "Researching the perfect turn.",
 		"base_cost": 1800000,
@@ -68,6 +74,7 @@ const BUILDINGS := [
 const UPGRADES := [
 	{
 		"id": "lube",
+		"icon": "lube",
 		"name": "Cube Lube",
 		"description": "Smoother turns. Taps make 2x moves.",
 		"cost": 15,
@@ -75,6 +82,7 @@ const UPGRADES := [
 	},
 	{
 		"id": "stackmat",
+		"icon": "stackmat",
 		"name": "Stackmat Timer",
 		"description": "Friends practice 2x faster.",
 		"cost": 50,
@@ -83,6 +91,7 @@ const UPGRADES := [
 	},
 	{
 		"id": "cfop",
+		"icon": "cfop",
 		"name": "Learn CFOP",
 		"description": "Solves take 30% fewer moves.",
 		"cost": 200,
@@ -90,6 +99,7 @@ const UPGRADES := [
 	},
 	{
 		"id": "club_snacks",
+		"icon": "club_snacks",
 		"name": "Club Snacks",
 		"description": "Clubs turn 2x faster.",
 		"cost": 600,
@@ -98,6 +108,7 @@ const UPGRADES := [
 	},
 	{
 		"id": "magnets",
+		"icon": "magnets",
 		"name": "Magnetic Cube",
 		"description": "Every move counts double.",
 		"cost": 1500,
@@ -105,6 +116,7 @@ const UPGRADES := [
 	},
 	{
 		"id": "firmware",
+		"icon": "firmware",
 		"name": "Robot Firmware v2",
 		"description": "Robots turn 2x faster.",
 		"cost": 8000,
@@ -113,12 +125,22 @@ const UPGRADES := [
 	},
 	{
 		"id": "roux",
+		"icon": "roux",
 		"name": "Learn Roux",
 		"description": "Solves take 20% fewer moves.",
 		"cost": 25000,
 		"effect": {"type": "solve_moves_mult", "value": 0.8},
 	},
 ]
+
+
+const ICON_DIR := "res://assets/icons/"
+const LOCKED_ICON := "locked"
+
+
+## The icon texture for a content entry's "icon" field (assets/icons/<name>.svg).
+static func icon(name: String) -> Texture2D:
+	return load(ICON_DIR + name + ".svg")
 
 
 static func get_building(id: String) -> Dictionary:
