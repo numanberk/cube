@@ -33,7 +33,7 @@ active play → polish → release.
 | Platform | Windows PC first (Linux/Mac exports are nearly free later) |
 | Engine | Godot 4.7, GDScript, **GL Compatibility** (the 3D cube must run on old integrated GPUs) |
 | Sessions | Fun in 5-minute check-ins *and* 1-hour active sessions |
-| Total content | ~20–40 hours until the late game runs out |
+| Total content | ~40–100 hours until the late game runs out (our player plays idle games for hundreds of hours; `docs/PLAYER_RESEARCH.md`) |
 | Release | itch.io first (free / pay-what-you-want demo), then Steam |
 
 **What makes it ours:** real cubing culture, shown on a real 3D puzzle. Puzzles go from 2×2 to Megaminx,
@@ -119,7 +119,7 @@ For a specific task, replace the second sentence with e.g. "Do task 4.2."
   and Scramble Challenges use it.
 - Methods (Beginner → CFOP → Roux → ZZ → God's Number) multiply moves per solve by ×0.7 each,
   with a **floor per puzzle** (e.g. 20 on 3×3, "God's Number"), so a puzzle never becomes trivial.
-- *Later idea (Phase 11):* puzzle mastery, where solves on each puzzle give a small permanent bonus.
+- **Puzzle mastery** (task 4.6): solves on each puzzle level up its mastery, which gives permanent perks and survives prestige.
 
 ### 4.2 The 3D cube (D3)
 **Look:** a black plastic body made of rounded cubies, with standard-colour rounded stickers (white/yellow,
@@ -204,6 +204,15 @@ streaks) and snaps occasional turns. The game's numbers never wait for the anima
 - **Prestige — World Championship:** `trophies = floor(sqrt(run_solves / 1e6))` as the starting formula. Each unspent trophy
   gives +2 % all moves. The Trophy shop has permanent perks. 7×7 and Megaminx are only reachable after prestige.
 
+### 4.6 What our player loves (player research)
+The game is made for one player first. Their favourite idle games (Idle Skilling 804 h, The Perfect Tower II 159 h,
+Idle Pins 142 h, Revolution Idle 59 h, Zero IDLE 49 h) are analysed in **`docs/PLAYER_RESEARCH.md`**. In short, they
+stay for: many progress bars that feed each other, collecting and merging, loadouts with typed slots, layered resets
+where later layers automate earlier ones, automation as a reward, achievements as a map, things that finish while
+away, and bosses or challenges that can be failed. Roadmap tasks marked **(PR)** bring each of these in, without
+changing D1 (one active puzzle). They also add rules from the games' weak spots: every system explains its exact
+numbers in-game, no RNG walls (pity on every random drop), and every prestige layer adds something new to do.
+
 ### 4.5 Look and feel
 - One global theme (`ui/theme.tres`) with one OFL font (e.g. Inter). Dark UI with a single accent colour, so the
   colourful puzzle is the brightest thing on screen.
@@ -225,14 +234,14 @@ Each phase ends with something playable. Task details and "Done when" are in the
 | 1 | **3D cube** | The centerpiece (D3). The layout, puzzles, juice and golden cubes all build on it. | 5 |
 | 2 | **Look** | The UI around the cube: theme, layout, shop cards, juice. | 4 |
 | 3 | **Sound and feel** | SFX, the music system (D5), Buy ×N, settings, keyboard, offline panel. | 6 |
-| 4 | **Puzzles** | The main progression axis (D1). Starting on 2×2 fixes the slow start. | 6 |
-| 5 | **Depth** | Fills the first hour so something new arrives every few minutes. | 6 |
-| 6 | **Prestige: World Championship** | Gives the long loop. 7×7, Megaminx and the "Finals" track sit behind it. | 4 |
-| 7 | **Goals** | Gives long-term targets between prestiges: achievements and stats. | 2 |
-| 8 | **Active play** | Rewards being present without making taps mandatory. | 2 |
+| 4 | **Puzzles** | The main progression axis (D1). Starting on 2×2 fixes the slow start. Puzzle Mastery adds a bar per puzzle. | 7 |
+| 5 | **Depth** | Fills the first hour so something new arrives every few minutes. The Algorithm Lab finishes research while you're away. | 8 |
+| 6 | **Prestige: World Championship** | Gives the long loop. 7×7, Megaminx and the "Finals" track sit behind it. A perk tree whose branches unlock systems; auto-buyers. | 5 |
+| 7 | **Goals** | Long-term targets between prestiges: ~100 achievements, stats, the Cube Collection and the Comp Kit loadout. | 4 |
+| 8 | **Active play** | Rewards being present without making taps mandatory: Golden Scramble, Competitions, Challenge runs, Coach rules. | 5 |
 | 9 | **Polish** | Resolution pass, first-time hints, credits screen, final music. | 4 |
 | 10 | **Release** | Windows export, itch.io, Steam (optional), launch checklist. | 4 |
-| 11 | **After launch** | Bug fixes, Pyraminx/Skewb/Square-1, events, puzzle mastery, second prestige layer. | — |
+| 11 | **After launch** | Bug fixes, Pyraminx/Skewb/Square-1, events, the Hall of Fame second prestige layer (unless D12 moves it earlier). | — |
 
 ---
 
@@ -286,6 +295,14 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
 - **D8 Final music source** (needed by 9.4; placeholders are fine until then): (a) the owner picks final CC0/CC-BY lo-fi
   tracks, (b) buys a royalty-free lo-fi pack with a license that allows commercial games, or (c) commissions a lo-fi
   producer for the 7 tracks. *Recommended: (b) or (c)*, so the soundtrack is consistent and can be sold on Steam later.
+- **D9 Parallel play** (needed by 4.6): keep D1 (one active puzzle) and add side tracks (mastery, lab, collection), *or*
+  revisit D1 so several puzzles run at once like Idle Skilling's skills. *Recommended: keep D1 + side tracks.*
+- **D10 Collection randomness** (needed by 7.3): random drops with pity counters, *or* a fixed unlock order.
+  *Recommended: random with pity.*
+- **D11 Automation depth** (needed by 8.5): toggles only, *or* toggles + menu-based Coach rules, *or* a real scripting
+  language like The Perfect Tower II. *Recommended: toggles + Coach rules.*
+- **D12 Second prestige layer** (Hall of Fame): before the 1.0 release, *or* as the first big update after launch.
+  *Recommended: before 1.0.*
 
 ---
 

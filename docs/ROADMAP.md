@@ -3,6 +3,8 @@
 Task checklist for `docs/PLAN.md`. Do the **next unchecked task**, one per session.
 Tick it only when its **Done when** is true and `tools/run_tests.sh` prints `All good.`
 Tasks marked **[D#]** need that owner decision (PLAN §7) first. If it's unanswered, ask, don't guess.
+Tasks marked **(PR)** come from `docs/PLAYER_RESEARCH.md` (what our player loves in their favourite idle games); read
+the matching row there before starting one.
 If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do the first part.
 
 ## Milestone 1 — Playable core ✅
@@ -111,7 +113,11 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [ ] **4.5 More placeholder tracks:** one per remaining puzzle tier plus "Finals" (or candidates listed for the owner).
       *Done when:* every `Content.TRACKS` entry has a file or an explicit "owner to supply" note in CREDITS, and the
       Jukebox shows them correctly locked/unlocked.
-- [ ] **4.6 Rebalance (early game):** tune puzzles and helpers with the simulator.
+- [ ] **4.6 Puzzle Mastery (PR) [D9]:** each puzzle gains mastery XP from solves made on it (levels 1–100, XP curve as data),
+      with milestone perks at 5/10/25/50/100 (e.g. +10 % moves on that puzzle, −1 move per solve, +1 % all moves).
+      Kept through prestige. A mastery bar per puzzle chip. Save change → bump the save version with a migration.
+      *Done when:* tests cover XP gain, level-ups, perk effects and the migration, and mastery shows in a screenshot.
+- [ ] **4.7 Rebalance (early game):** tune puzzles and helpers with the simulator.
       *Done when:* the first helper, first upgrade and 3×3 targets pass as real (not expected-failure) pacing tests.
 
 ## Phase 5 — Depth
@@ -128,7 +134,17 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [ ] **5.5 Six more helpers** past the Lab (e.g. Pro Team, Cubing Federation, Cube Museum, AI Solver, Orbital Cube Station,
       Quantum Solver), so costs reach ~1e15, each with an icon.
       *Done when:* they're in the data, their milestones are generated, and there's a screenshot of the shop.
-- [ ] **5.6 Rebalance (first hour):** ~40 upgrades in total.
+- [ ] **5.6 Algorithm Lab (PR):** real-time research that keeps running offline (Idle Skilling's hatchery / Perfect Tower's lab).
+      One research slot to start (more from the trophy tree). Projects are data: learn OLL, learn PLL, finger tricks,
+      lookahead, and the method chain from 5.1 (buying a method becomes researching it). Each takes minutes to hours.
+      The game logic (timers, completion while offline) lives in `GameState`; there's a Lab tab with progress bars.
+      *Done when:* tests cover a project finishing online, finishing while offline (capped like offline progress), and
+      save/load mid-research, and there's a screenshot of the tab.
+- [ ] **5.7 Helper Promotion (PR, optional):** at 100 owned, a helper can be promoted: its count resets to 0, it gets a
+      permanent ×3 (stacking per promotion), and its milestones start again. Never required. Only do this task if the
+      5.8 sim run shows the first hour still needs more decisions; otherwise move it to Phase 11.
+      *Done when:* tests cover the reset, the multiplier and the cost curve after promotion.
+- [ ] **5.8 Rebalance (first hour):** ~40 upgrades in total.
       *Done when:* the "something new every 1–3 min", Robot, 4×4 and 5×5 pacing tests pass for real.
 
 ## Phase 6 — Prestige: World Championship
@@ -138,18 +154,35 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [ ] **6.2 Reset logic + save v3:** keeps trophies, achievements, unlocked tracks and settings; resets Solves, helpers,
       upgrades, puzzles and methods. 7×7 and Megaminx become unlockable after the first championship.
       *Done when:* tests check what resets and what stays, and there's a v2 → v3 migration test.
-- [ ] **6.3 Trophy shop:** permanent perks as data (start with 3×3, +2 h offline cap, auto-buy Friends, start with 10 Friends, …).
-      *Done when:* each perk has a test.
+- [ ] **6.3 Trophy perk tree (PR):** permanent perks as data, arranged in 4 branches: Practice (start with 3×3, +offline cap),
+      Team (start with 10 Friends, helper boosts), Competition (unlocks Competitions 8.3, medal bonuses) and Automation
+      (unlocks 6.3b). As in Idle Skilling, **the first node of each branch unlocks a system**. Nodes need their parent.
+      *Done when:* each perk has a test, and there's a screenshot of the tree.
+- [ ] **6.3b Auto-buyers and auto-Compete (PR):** toggles bought in the Automation branch: auto-buy the cheapest helper,
+      auto-buy upgrades, auto-unlock the next puzzle, and auto-Compete when the trophy gain reaches a set amount.
+      The logic is in `GameState` (checked once a second); the toggles live in a small Automation panel.
+      *Done when:* tests cover each auto-buyer, auto-Compete's threshold, and that nothing runs before it's bought.
 - [ ] **6.4 Tune prestige (D6: ~90 min):**
       *Done when:* the sim's first prestige lands at 80–100 min, and the second run reaches the same point in ≤ 45 min, as real pacing tests.
 
 ## Phase 7 — Goals
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
-      all moves, with a toast when earned. Save v4. ~40 achievements (first solve, every puzzle, every track heard,
-      1M moves, a solve on every puzzle, …).
+      all moves, with a toast when earned. Save v4. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
+      own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
+      so they work as a map of the game, like Revolution Idle's.
       *Done when:* there are tests for the conditions and the v3 → v4 migration, and a screenshot of the tab and toast.
 - [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
+
+- [ ] **7.3 Cube Collection (PR) [D10]:** ~40 cubes as data (budget, magnetic, stickerless, flagship, world-record cubes…),
+      each with 1–5 stars and a small passive (e.g. +2 % moves on 3×3). Sources: Golden Scramble, Competitions,
+      achievements. Duplicates merge into the next star. Every random drop has a pity counter (guaranteed after N tries).
+      A Collection tab shows owned and "???" cards.
+      *Done when:* tests cover drops with pity, merging, passives and save/load, and there's a screenshot.
+- [ ] **7.4 Comp Kit loadout (PR):** 5 typed slots (Main cube, Backup cube, Timer, Mat, Lube) filled from the collection,
+      with set bonuses for matching brands (Idle Pins formations / Perfect Tower modules). Only the kit's items give
+      their full bonus; the rest of the collection gives a small "owned" bonus.
+      *Done when:* tests cover slot types, set bonuses and swapping, and there's a screenshot.
 
 ## Phase 8 — Active play
 - [ ] **8.1 Golden Scramble:** a small golden 3D cube flies across the stage every 2–5 min for 12 s. Clicking it gives a random buff
@@ -157,6 +190,18 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       *Done when:* tests cover the buff math and expiry, a buff survives save/load, and there's a screenshot.
 - [ ] **8.2 Scramble Challenge:** an optional 10-second burst where taps count ×10, with a result card. Never required.
       *Done when:* there are tests and a screenshot.
+
+- [ ] **8.3 Competitions (PR):** timed events like Idle Skilling's raids: Local → Regional → National → Continental → Worlds.
+      Each asks for a solves/s target held for 60 s with your current kit and puzzle. Medals (bronze/silver/gold) give
+      permanent bonuses and collection drops. You can fail and come back later. Unlocked by the Competition branch (6.3).
+      *Done when:* tests cover pass/fail, medal rewards and the unlock, and there's a screenshot.
+- [ ] **8.4 Challenge runs (PR):** a championship run with a rule: Beginner method only, No helpers, One-handed
+      (taps ×0.5), Big cubes only, No upgrades… Finishing one gives a permanent reward. 6–9 challenges as data.
+      *Done when:* tests cover each rule's restriction and its reward, and there's a screenshot.
+- [ ] **8.5 Coach rules (PR) [D11]:** Perfect Tower-style automation without code: a list of if/then rules picked from
+      menus (If <helper costs < X % of Solves / trophy gain ≥ N / a research slot is free> → <buy / Compete / start
+      research>). Unlocked late in the Automation branch. Every rule shows exactly what it will do.
+      *Done when:* tests cover each condition and action type, and there's a screenshot.
 
 ## Phase 9 — Polish
 - [ ] **9.1 Resolution pass:** 1280×720, 1920×1080 and 2560×1440; final background and layout tweaks.
@@ -179,6 +224,6 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 ## Phase 11 — After launch
 - [ ] Bug fixes from player reports
 - [ ] New puzzles: Pyraminx, Skewb, Square-1 (each a new `PuzzleShapes` entry and a new track)
-- [ ] Puzzle mastery (permanent bonus per puzzle from solves on it)
 - [ ] Seasonal events
-- [ ] Second prestige layer
+- [ ] **Hall of Fame (PR) [D12]:** a second prestige layer that resets championships for Legacy points, with its own
+      perk tree, and automates Compete. If D12 = "before 1.0", this moves in front of Phase 9.

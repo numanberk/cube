@@ -2,6 +2,23 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Player research and plan (docs only)
+- The owner shared the Steam library of the player the game is made for. The idle games are Idle Skilling (804 h),
+  The Perfect Tower II (159 h), Idle Pins (142 h), Revolution Idle (59 h) and Zero IDLE (49 h); tModLoader isn't idle,
+  so it's left out. New **`docs/PLAYER_RESEARCH.md`**: what each game does, the 10 patterns this player keeps coming back to,
+  what to avoid (opaque mechanics, RNG walls, slow first prestige, thin repeat prestiges, low FPS), and how each pattern
+  becomes Cube Idle, with sources. Steam and the wikis are blocked by this container's network, so the research used web
+  search summaries; exact numbers in those games may have changed since.
+- **Roadmap:** new tasks marked **(PR)**, with no change to finished tasks:
+  4.6 Puzzle Mastery [D9] (moved up from Phase 11; the rebalance is now 4.7), 5.6 Algorithm Lab (real-time research
+  that runs offline), 5.7 Helper Promotion (optional; the rebalance is now 5.8), 6.3 Trophy shop → perk tree whose branches
+  unlock systems, 6.3b auto-buyers + auto-Compete (6.4 keeps its number), 7.1 → ~100 tiered achievements,
+  7.3 Cube Collection [D10], 7.4 Comp Kit loadout, 8.3 Competitions, 8.4 Challenge runs, 8.5 Coach rules [D11],
+  Hall of Fame second layer [D12].
+- **PLAN:** content target 40–100 h (was 20–40 h), new §4.6 summarising the research, an updated phase table, and new open
+  decisions **D9–D12** in §7, each with a recommendation. CLAUDE.md lists PLAYER_RESEARCH.md as shared memory.
+- No code changes. **Next:** task 2.1 (theme + font); D9–D12 aren't needed until 4.6 and later.
+
 ## 2026-11-02 — Task 1.5: graphics settings and cleanup (Phase 1 done)
 - **Graphics: High / Low.** `PuzzleView3D.set_graphics("high"|"low")`. High = MSAA 4×, rounded piece bodies (432 triangles
   each), stage glow and contact shadow. Low = no MSAA, bevelled bodies (48 triangles each, 9× fewer), no glow or shadow.

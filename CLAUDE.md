@@ -2,7 +2,7 @@
 
 This project is worked on by **several different Claude sessions/accounts**, one after another.
 You have no memory of earlier sessions: this file, `docs/PLAN.md`, `docs/ROADMAP.md`,
-`docs/CHANGELOG.md` and `docs/FEEDBACK.md` are the shared memory. Read all of them before changing
+`docs/CHANGELOG.md`, `docs/FEEDBACK.md` and `docs/PLAYER_RESEARCH.md` are the shared memory. Read all of them before changing
 anything, and update ROADMAP and CHANGELOG before you finish.
 
 **Do one roadmap task per session** (the next unchecked one, unless the owner names one).
@@ -41,7 +41,8 @@ tools/screenshot.sh        PNGs of the main scene in preset states (see "Screens
 tools/find_godot.sh        Shared by the tools/*.sh scripts: finds or downloads Godot
 tools/simulate.sh          Balance bot (tools/simulator.gd) -> docs/BALANCE.md; run after any balance change
 tools/pacing.gd            PLAN §2 pacing targets as data; tests fail if one is missed (or newly met, see below)
-docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK, DESIGN
+docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK, DESIGN,
+                           PLAYER_RESEARCH (what our player loves; tasks marked (PR) come from it)
 ```
 
 ## Rules of the code
