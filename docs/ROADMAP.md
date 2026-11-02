@@ -27,7 +27,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] **0.4 Safe saves:** write `save.json.tmp` then rename it; keep `save.bak`; if the save is corrupt, load the backup and warn.
       *Done when:* there are tests for a corrupt main save → loads the backup, and a missing save → starts fresh.
 
-## Phase 1 — 3D cube (D3)
+## Phase 1 — 3D cube (D3) ✅
 - [x] **1.1 TwistyModel + cube shapes:** `scripts/cube/twisty_model.gd` (`TwistyModel`) and `scripts/cube/puzzle_shapes.gd`
       (`PuzzleShapes.cube(n)` for n = 2–7). Pure data: pieces, axes, layers, `apply`, `inverse`, `random_move`,
       `is_solved`, and WCA `notation` (`R`, `U'`, `F2`, `Rw`, `3Rw` on big cubes). No nodes.
@@ -47,7 +47,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] **1.4 Stage and camera:** drag rotates the view and springs back (a drag doesn't tap), idle sway, vignette stage
       background, soft contact shadow, and a move ticker under the puzzle (last ~8 moves in notation).
       *Done when:* there's a screenshot, and a test or smoke check that a drag of > 6 px doesn't count as a tap.
-- [ ] **1.5 Graphics settings and cleanup:** `Graphics: High / Low` (MSAA, shadow, stage effects; stored for now in a small
+- [x] **1.5 Graphics settings and cleanup:** `Graphics: High / Low` (MSAA, shadow, stage effects; stored for now in a small
       config the Phase 3 Settings autoload will take over). Delete the 2D `scripts/ui/cube_view.gd`.
       Add a `bench` preset to `tools/screenshot.sh` (7×7 at max speed, 600 frames, logs average frame time).
       *Done when:* bench runs without errors (and the frame time is noted in the CHANGELOG; xvfb is software-rendered,

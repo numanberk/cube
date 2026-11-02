@@ -1,18 +1,27 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
-## Run through tools/screenshot.sh, which passes:  -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved]
+## Run through tools/screenshot.sh, which passes:
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low]
+## Preset "bench" is special: the late-game state on a 7×7 with the economy running (speed mode, a solve every
+## frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame time.
 ## Not part of the game: never reference this from scenes/ or scripts/.
 
 const Presets := preload("res://tools/screenshot_presets.gd")
 const MAIN_SCENE := preload("res://scenes/main.tscn")
 const SETTLE_FRAMES := 30  ## lets layout, the cube's punch animation and the UI refresh settle
 const RANDOM_SEED := 1     ## same cube colours every run, so before/after shots compare
+const BENCH_FRAMES := 600
+const BENCH_WARMUP := 60
 
 
 func _ready() -> void:
 	var args := _parse_args(OS.get_cmdline_user_args())
 	var preset: String = args.get("preset", "fresh")
 	var out: String = args.get("out", "")
+	var bench := preset == "bench"
+	if bench:
+		preset = "late"
+		args["puzzle"] = "7x7"
 	if out == "" or not Presets.PRESETS.has(preset):
 		push_error("Usage: -- --preset <%s> --out <file.png>" % "|".join(Presets.PRESETS.keys()))
 		get_tree().quit(2)
@@ -20,7 +29,7 @@ func _ready() -> void:
 
 	Game.persistence_enabled = false  # never write a save from here
 	Game.apply_save_data(Presets.PRESETS[preset], Time.get_unix_time_from_system())
-	Game.set_process(false)  # freeze the economy so the numbers match the preset exactly
+	Game.set_process(bench)  # freeze the economy so the numbers match the preset (the bench keeps it running)
 	seed(RANDOM_SEED)
 	var main := MAIN_SCENE.instantiate()
 	add_child(main)
@@ -28,6 +37,12 @@ func _ready() -> void:
 	var view: PuzzleView3D = main.get_node("%PuzzleView")
 	if puzzle != "":
 		view.set_puzzle(puzzle)
+	var graphics: String = args.get("graphics", "")
+	if graphics != "":
+		view.set_graphics(graphics)
+	if bench:
+		for quality: String in ["low", "high"]:  # high last, so the saved PNG shows it
+			await _bench(view, quality)
 	var pose: String = args.get("pose", "")
 	if pose != "":
 		for i in SETTLE_FRAMES:  # let the starting animations finish first
@@ -44,8 +59,27 @@ func _ready() -> void:
 		push_error("Could not write %s: %s" % [out, error_string(err)])
 		get_tree().quit(1)
 		return
-	print("Saved %s (%dx%d, preset '%s')" % [out, image.get_width(), image.get_height(), preset])
+	print("Saved %s (%dx%d, preset '%s')" % [out, image.get_width(), image.get_height(), "bench" if bench else preset])
 	get_tree().quit(0)
+
+
+func _bench(view: PuzzleView3D, quality: String) -> void:
+	view.set_graphics(quality)
+	for i in BENCH_WARMUP:
+		await get_tree().process_frame
+	var started := Time.get_ticks_usec()
+	var previous := started
+	var worst := 0
+	for i in BENCH_FRAMES:
+		await get_tree().process_frame
+		var now := Time.get_ticks_usec()
+		worst = maxi(worst, now - previous)
+		previous = now
+	var average_ms := (previous - started) / 1000.0 / BENCH_FRAMES
+	print("Bench %s: %.2f ms/frame average (%.0f fps), worst %.2f ms, %d frames, %s, %s pieces x %d triangles, speed mode %s" % [
+		quality, average_ms, 1000.0 / average_ms, worst / 1000.0, BENCH_FRAMES, view.puzzle_id,
+		view.model.piece_count(), view.body_triangles(), "on" if view.speed_mode else "off",
+	])
 
 
 func _parse_args(user_args: PackedStringArray) -> Dictionary:

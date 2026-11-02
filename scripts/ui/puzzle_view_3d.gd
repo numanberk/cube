@@ -1,8 +1,8 @@
 class_name PuzzleView3D
 extends SubViewportContainer
 ## The 3D puzzle on screen, drawn from a TwistyModel.
-## Same API as the old 2D CubeView: scramble_step() for each visible move, show_solved() on a solve,
-## plus set_puzzle(id) ("2x2" ... "7x7") and set_speed(moves_per_second).
+## API: scramble_step() for each visible move, show_solved() on a solve, set_puzzle(id) ("2x2" ... "7x7"),
+## set_speed(moves_per_second) and set_graphics("high" | "low").
 ## Clicking it emits `tapped`; main.gd turns that into Game.tap().
 ##
 ## All piece bodies are one MultiMesh and all stickers another, so even a 7×7 is two draw calls.
@@ -17,6 +17,8 @@ extends SubViewportContainer
 ## Stage (task 1.4): a radial backdrop (child of the camera) and a soft contact shadow under the puzzle, both
 ## unshaded quads with tiny shaders in scripts/ui/shaders/. Dragging turns the view and it springs back; it also
 ## sways gently when idle. The last few moves are kept for a ticker (ticker_text()).
+## Graphics (task 1.5): "high" = MSAA 4×, rounded pieces, glow and shadow; "low" = no MSAA, bevelled pieces
+## (about 5× fewer triangles), no glow or shadow. main.gd applies the player's choice from GraphicsConfig.
 ## Visual state only: nothing here affects game numbers.
 
 signal tapped
@@ -57,11 +59,14 @@ const DRAG_SPRING := 2.5        ## how fast a released drag returns (higher = fa
 const SWAY_YAW := 0.06          ## idle sway, radians
 const SWAY_PITCH := 0.025
 const TICKER_LENGTH := 8        ## moves shown under the puzzle
+const BODY_STEPS_HIGH := 3      ## segments per rounded edge of a piece body
+const BODY_STEPS_LOW := 1       ## one segment = a simple bevel
 const STAGE_GLOW_COLOR := Color(0.25, 0.28, 0.36)
 const CAMERA_DROP := 0.1        ## camera sits this × size below centre, so the puzzle rides higher (room for the shadow)
 const BackdropShader := preload("res://scripts/ui/shaders/stage_backdrop.gdshader")
 const ShadowShader := preload("res://scripts/ui/shaders/contact_shadow.gdshader")
 
+@onready var _viewport: SubViewport = %Viewport
 @onready var _camera: Camera3D = %Camera
 @onready var _puzzle: Node3D = %Puzzle
 @onready var _turntable: Node3D = %Turntable
@@ -76,6 +81,7 @@ var speed_mode := false         ## true while moves snap instead of animating
 var recorded_moves: Array[Dictionary] = []  ## when record_moves is on: every move applied, in order (tests)
 var record_moves := false
 var sway_enabled := true        ## idle sway; "Reduce motion" (3.4) turns it off
+var graphics_quality := "high"  ## see set_graphics()
 
 var _rng := RandomNumberGenerator.new()
 var _last_move := {}             ## last move generated (so the next one uses another face)
@@ -122,8 +128,7 @@ func _ready() -> void:
 	_rng.seed = randi()  # follows the global seed, so screenshots are repeatable
 	_base_turntable = _turntable.basis
 	_base_puzzle = _puzzle.basis
-	_body_mesh = PuzzleMeshes.rounded_box(CUBIE_HALF, CUBIE_RADIUS)
-	_body_mesh.surface_set_material(0, _make_body_material())
+	_body_mesh = _make_body_mesh(BODY_STEPS_HIGH)
 	_sticker_material = _make_sticker_material()
 	_sticker_mesh = PuzzleMeshes.rounded_rect(STICKER_HALF, STICKER_RADIUS)
 	_sticker_mesh.surface_set_material(0, _sticker_material)
@@ -177,6 +182,26 @@ func set_puzzle(id: String) -> void:
 		model.apply(_last_move)
 		_remember(_last_move)
 	_refresh_all()
+
+
+## "high" or "low" (see the header). Safe to call at any time; the puzzle keeps its state.
+func set_graphics(quality: String) -> void:
+	if not quality in GraphicsConfig.QUALITIES:
+		push_warning("Unknown graphics quality '%s'" % quality)
+		return
+	graphics_quality = quality
+	var high := quality == "high"
+	_viewport.msaa_3d = Viewport.MSAA_4X if high else Viewport.MSAA_DISABLED
+	_backdrop.visible = high
+	_shadow.visible = high
+	_body_mesh = _make_body_mesh(BODY_STEPS_HIGH if high else BODY_STEPS_LOW)
+	if _bodies.multimesh != null:
+		_bodies.multimesh.mesh = _body_mesh
+
+
+## Triangles in one piece body at the current quality (tests and the bench use this).
+func body_triangles() -> int:
+	return _body_mesh.surface_get_array_len(0) / 3
 
 
 ## Tells the view how fast moves are really happening, to pick animated turns or speed mode.
@@ -550,6 +575,12 @@ func _frame_camera() -> void:
 	var width := model.size * 1.5
 	(_shadow.mesh as QuadMesh).size = Vector2(width, width * 0.2)
 	_shadow.position = Vector3(0.0, lowest - model.size * 0.04, -model.size * 0.3)
+
+
+func _make_body_mesh(steps: int) -> ArrayMesh:
+	var mesh := PuzzleMeshes.rounded_box(CUBIE_HALF, CUBIE_RADIUS, steps)
+	mesh.surface_set_material(0, _make_body_material())
+	return mesh
 
 
 func _make_body_material() -> StandardMaterial3D:

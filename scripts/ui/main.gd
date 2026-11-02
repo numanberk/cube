@@ -9,6 +9,7 @@ const MAX_VISUAL_MOVES_PER_SECOND := 12.0
 @onready var rate_label: Label = %RateLabel
 @onready var puzzle_view: PuzzleView3D = %PuzzleView
 @onready var move_ticker: Label = %MoveTicker
+@onready var graphics_button: Button = %GraphicsButton
 @onready var solve_progress: ProgressBar = %SolveProgress
 @onready var progress_label: Label = %ProgressLabel
 @onready var tap_button: Button = %TapButton
@@ -27,6 +28,8 @@ var _visual_move_timer := 0.0
 func _ready() -> void:
 	tap_button.pressed.connect(_on_tap_pressed)
 	puzzle_view.tapped.connect(_on_tap_pressed)
+	graphics_button.pressed.connect(_on_graphics_pressed)
+	_apply_graphics(GraphicsConfig.load_quality())
 	Game.solved.connect(_on_solved)
 	Game.purchased.connect(_on_purchased)
 	Game.state_reset.connect(_refresh)
@@ -165,3 +168,16 @@ func _on_solved(_count: int) -> void:
 
 func _on_purchased(_kind: String, _id: String) -> void:
 	_refresh()
+
+
+## Temporary home for Graphics: High / Low until the Settings tab (task 3.4).
+func _on_graphics_pressed() -> void:
+	var quality := "low" if puzzle_view.graphics_quality == "high" else "high"
+	GraphicsConfig.save_quality(quality)
+	_apply_graphics(quality)
+
+
+func _apply_graphics(quality: String) -> void:
+	puzzle_view.set_graphics(quality)
+	graphics_button.text = "Graphics: %s" % quality.capitalize()
+	graphics_button.tooltip_text = "High: smooth edges, rounded pieces, stage glow and shadow.\nLow: faster on older PCs."

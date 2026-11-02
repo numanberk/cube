@@ -651,3 +651,65 @@ func test_view_ticker() -> void:
 	view.finish_animations()
 	check(view.ticker_text() == "", "the ticker clears on a solve")
 	view.free()
+
+
+# --- Graphics settings (task 1.5) --------------------------------------------
+
+func test_graphics_config() -> void:
+	clean_test_saves()
+	var old_path := GraphicsConfig.path
+	GraphicsConfig.path = TEST_SAVE_DIR.path_join("settings.cfg")
+	check(GraphicsConfig.load_quality() == "high", "no settings file = High")
+	GraphicsConfig.save_quality("low")
+	check(GraphicsConfig.load_quality() == "low", "Low survives a restart")
+	var config := ConfigFile.new()
+	config.load(GraphicsConfig.path)
+	config.set_value("audio", "music", 0.5)
+	config.set_value("graphics", "quality", "ultra")
+	config.save(GraphicsConfig.path)
+	check(GraphicsConfig.load_quality() == "high", "an unknown quality falls back to High")
+	GraphicsConfig.save_quality("low")
+	config.load(GraphicsConfig.path)
+	check(is_equal_approx(float(config.get_value("audio", "music", 0.0)), 0.5), "saving graphics keeps other settings")
+	GraphicsConfig.path = old_path
+	clean_test_saves()
+
+
+func test_view_graphics_quality() -> void:
+	var view := new_view()
+	view.set_puzzle("7x7")
+	var high_triangles := view.body_triangles()
+	view.set_speed(5.0)
+	for i in 10:
+		view.scramble_step()
+	view._process(0.05)
+	view.set_graphics("low")
+	check(view._viewport.msaa_3d == Viewport.MSAA_DISABLED, "Low turns MSAA off")
+	check(not view._backdrop.visible and not view._shadow.visible, "Low hides the stage glow and shadow")
+	check(view.body_triangles() * 4 < high_triangles, "Low pieces use far fewer triangles")
+	check(view._bodies.multimesh.mesh == view._body_mesh, "the pieces switch to the Low mesh")
+	view.finish_animations()
+	check(sticker_mismatches(view) == 0, "switching quality keeps the puzzle's state")
+	view.set_graphics("high")
+	check(view._viewport.msaa_3d == Viewport.MSAA_4X and view._backdrop.visible, "High turns them back on")
+	check(view.body_triangles() == high_triangles, "High restores rounded pieces")
+	view.free()
+
+
+func test_graphics_button_toggles_and_saves() -> void:
+	clean_test_saves()
+	var old_path := GraphicsConfig.path
+	GraphicsConfig.path = TEST_SAVE_DIR.path_join("settings.cfg")
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var view: PuzzleView3D = main.get_node("%PuzzleView")
+	var button: Button = main.get_node("%GraphicsButton")
+	check(view.graphics_quality == "high" and button.text == "Graphics: High", "starts on High")
+	button.pressed.emit()
+	check(view.graphics_quality == "low" and button.text == "Graphics: Low", "the button switches to Low")
+	check(GraphicsConfig.load_quality() == "low", "the choice is saved")
+	main.free()
+	GraphicsConfig.path = old_path
+	clean_test_saves()

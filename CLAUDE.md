@@ -29,12 +29,12 @@ scripts/data/content.gd    class Content: helpers + upgrades as plain data (bala
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
 scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle/set_speed,
                            `tapped`; animated turn queue, solve replay, speed mode (see its header comment)
-scripts/ui/cube_view.gd    class CubeView: old 2D face, unused since 1.2 (deleted in 1.5)
 scripts/cube/twisty_model.gd   class TwistyModel: pure-data puzzle (pieces, layers, moves, WCA notation)
 scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (from_id("3x3"), cube(2..7); megaminx() in 4.4), colours
 scripts/cube/puzzle_meshes.gd  class PuzzleMeshes: rounded box + rounded sticker meshes (SurfaceTool)
 scripts/ui/shaders/        stage_backdrop (radial glow) + contact_shadow .gdshader, used by PuzzleView3D
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
+scripts/util/graphics_config.gd  class GraphicsConfig: Graphics High/Low in user://settings.cfg (3.4 takes over)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
 tools/screenshot.sh        PNGs of the main scene in preset states (see "Screenshots" below)
@@ -78,6 +78,8 @@ bash tools/screenshot.sh /tmp/shots mid late                      # only some pr
 SIZE=1920x1080 bash tools/screenshot.sh docs/screenshots/1080p    # another resolution
 PUZZLE=7x7 bash tools/screenshot.sh /tmp/shots mid                # another puzzle -> mid_7x7.png
 POSE=turn bash tools/screenshot.sh /tmp/shots mid                 # frozen moment: turn | solved -> mid_turn.png
+GRAPHICS=low bash tools/screenshot.sh /tmp/shots mid              # Graphics: Low -> mid_low.png
+bash tools/screenshot.sh /tmp/shots bench                         # 7×7 at max speed: logs ms/frame for Low and High
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
 - It runs under `xvfb-run` with the real OpenGL 3 renderer (software Mesa, so it's slow but correct) and

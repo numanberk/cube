@@ -2,6 +2,32 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 1.5: graphics settings and cleanup (Phase 1 done)
+- **Graphics: High / Low.** `PuzzleView3D.set_graphics("high"|"low")`. High = MSAA 4×, rounded piece bodies (432 triangles
+  each), stage glow and contact shadow. Low = no MSAA, bevelled bodies (48 triangles each, 9× fewer), no glow or shadow.
+  Switching keeps the puzzle's state and works mid-turn.
+- **Where it's stored:** `GraphicsConfig` (`scripts/util/graphics_config.gd`) reads and writes `user://settings.cfg`, section
+  `[graphics]`, key `quality`. It's separate from the save, so F10/reset doesn't touch it, and saving keeps other sections.
+  **Task 3.4's Settings autoload should take over this exact file/section/key** and then delete `GraphicsConfig`.
+- **Temporary UI:** a small flat "Graphics: High" button under the lifetime stats toggles it (and saves). It moves into
+  the Settings panel in 3.4. `focus_mode` is none, so Space/Enter still go to the Turn button.
+- **Deleted** `scripts/ui/cube_view.gd` (the 2D face); no code references `CubeView` any more.
+- **Bench:** `bash tools/screenshot.sh <dir> bench` = the late preset on a 7×7 with the economy running (speed mode,
+  369K moves/s, solves every frame), 60 warm-up frames + 600 measured frames at Low, then at High, then `bench.png`.
+  Results in this container (xvfb + **software** Mesa llvmpipe, 1280×720, so it's not representative of a GPU):
+  - Low: **30.6 ms/frame** (33 fps), worst 57 ms
+  - High: **76.8 ms/frame** (13 fps), worst 121 ms
+  - The view's own script work is only **0.47 ms/frame** (speed mode, 7×7) and 0.24 ms for animated turns (timed
+    headless), so nearly all of that is the software rasteriser. **Owner: please check real fps on your PC**, especially an
+    integrated-GPU laptop on High; if High struggles there, the next lever is fewer sticker segments or a lower MSAA.
+  - The bench needs a renderer: run headless, it waits forever for a frame to be drawn. Always run it through `screenshot.sh`.
+- `screenshot.sh` takes `GRAPHICS=low` (adds `_low` to the file name). Screenshots: [High](screenshots/graphics/mid_7x7.png) vs
+  [Low](screenshots/graphics/mid_7x7_low.png).
+- Tests: config defaults/round-trip/unknown value/keeps other sections; Low switches MSAA, stage and mesh and keeps the state;
+  High restores them; the main-scene button toggles and saves (to a test path). 879 checks, `All good.`
+- **Phase 1 is complete.** Owner: a good time to pull `main`, play, and write FEEDBACK.md (the plan says playtest after each phase).
+- **Next:** task 2.1 (theme + font).
+
 ## 2026-11-02 — Task 1.4: stage and camera
 - **Drag to rotate:** pressing the puzzle and moving more than 6 px becomes a drag. It turns the view (0.01 rad/px; yaw wraps,
   pitch is clamped to ±0.7) and never taps, even if the mouse returns to the start. On release it springs back
