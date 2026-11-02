@@ -55,7 +55,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       *Done when:* bench runs without errors (and the frame time is noted in the CHANGELOG; xvfb is software-rendered,
       so the owner confirms real fps on their PC), and there are no references to `CubeView` left.
 
-## Phase 2 — Look
+## Phase 2 — Look ✅
 - [x] **2.1 Theme:** `ui/theme.tres` set as the project theme. One OFL font (e.g. Inter) in `assets/fonts/`, plus
       `assets/CREDITS.md`. Button states (normal/hover/pressed/disabled/focus), panels, tabs, progress bar, one accent colour.
       Remove per-node overrides from `main.tscn`.
@@ -69,7 +69,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       Locked helpers show as "???" cards with their requirement. Upgrades become a grid of icon tiles with a tooltip panel,
       and the Upgrades tab shows a badge "(N)" when any are buyable.
       *Done when:* you can tell affordable from not at a glance in screenshots, and the next locked item is always visible.
-- [ ] **2.4 Juice:** floating "+N" at the cursor on tap, a rising "+X Solves" plus a particle burst on each solve
+- [x] **2.4 Juice:** floating "+N" at the cursor on tap, a rising "+X Solves" plus a particle burst on each solve
       (pooled, ≤ 20 on screen), the Solves counter tweens up, the puzzle squashes slightly on tap.
       *Done when:* the smoke run at 1,000 moves/s is clean, and there's a screenshot.
 

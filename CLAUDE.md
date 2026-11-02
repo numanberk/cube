@@ -31,6 +31,7 @@ scripts/data/content.gd    class Content: helpers + upgrades as plain data (bala
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
 scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only
 scenes/upgrade_tile.tscn   class UpgradeTile (scripts/ui/upgrade_tile.gd): one upgrade icon tile + tooltip panel
+scripts/ui/fx_layer.gd     class FxLayer (%FxLayer in main.tscn): pooled floating "+N" texts (max 20) + solve particle burst
 scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle/set_speed,
                            `tapped`; animated turn queue, solve replay, speed mode (see its header comment)
 scripts/cube/twisty_model.gd   class TwistyModel: pure-data puzzle (pieces, layers, moves, WCA notation)
@@ -93,6 +94,7 @@ PUZZLE=7x7 bash tools/screenshot.sh /tmp/shots mid                # another puzz
 POSE=turn bash tools/screenshot.sh /tmp/shots mid                 # frozen moment: turn | solved -> mid_turn.png
 GRAPHICS=low bash tools/screenshot.sh /tmp/shots mid              # Graphics: Low -> mid_low.png
 TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 (Upgrades) -> mid_tab1.png
+JUICE=1 bash tools/screenshot.sh /tmp/shots mid                   # taps + solve pop mid-animation -> mid_juice.png
 bash tools/screenshot.sh /tmp/shots bench                         # 7×7 at max speed: logs ms/frame for Low and High
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

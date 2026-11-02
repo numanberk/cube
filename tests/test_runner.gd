@@ -15,7 +15,7 @@ func _initialize() -> void:
 		var method_name: String = method["name"]
 		if method_name.begins_with("test_"):
 			_current = method_name
-			call(method_name)
+			await call(method_name)  # tests may await frames
 	print("\n%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -468,7 +468,7 @@ func test_puzzle_view_click_and_drag() -> void:
 	root.add_child(view)
 	check(view.puzzle_id == PuzzleView3D.DEFAULT_PUZZLE and view.model != null, "the view starts on the default puzzle")
 	var taps := [0]
-	view.tapped.connect(func() -> void: taps[0] += 1)
+	view.tapped.connect(func(_at: Vector2) -> void: taps[0] += 1)
 	view._gui_input(mouse_button(true, Vector2(100, 100)))
 	view._gui_input(mouse_button(false, Vector2(103, 102)))
 	check(taps[0] == 1, "a click (moving < 6 px) taps")
@@ -608,7 +608,7 @@ func mouse_motion(position: Vector2, relative: Vector2) -> InputEventMouseMotion
 func test_view_drag_rotates_and_never_taps() -> void:
 	var view := new_view()
 	var taps := [0]
-	view.tapped.connect(func() -> void: taps[0] += 1)
+	view.tapped.connect(func(_at: Vector2) -> void: taps[0] += 1)
 	view._gui_input(mouse_button(true, Vector2(100, 100)))
 	view._gui_input(mouse_motion(Vector2(110, 103), Vector2(10, 3)))
 	view._gui_input(mouse_motion(Vector2(130, 110), Vector2(20, 7)))
@@ -866,5 +866,71 @@ func test_upgrade_tiles_buyable_first() -> void:
 			first_visible = child
 			break
 	check(first_visible != null and not first_visible.owned, "the first tile in the grid is a buyable upgrade, not an owned one")
+	main.free()
+	game.reset_state()
+
+
+# --- Juice (task 2.4) --------------------------------------------------------------
+
+func test_juice_pool_and_counter() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var fx: FxLayer = main.get_node("%FxLayer")
+	for i in 1000:
+		main._on_tap_pressed(Vector2(200, 200))
+	check(fx.active_count() <= FxLayer.POOL_SIZE, "1,000 taps in one frame never show more than 20 floating texts")
+	check(fx.active_count() > 0, "taps do show floating texts")
+	for i in 120:
+		fx._process(1.0 / 60.0)
+	check(fx.active_count() == 0, "floating texts fade out")
+	# Counter eases up, snaps down.
+	main._animate_counter(1.0)
+	game.cheat_add_solves(10000.0)
+	main._animate_counter(1.0 / 60.0)
+	var label: Label = main.get_node("%SolvesLabel")
+	check(main._shown_solves > 0.0 and main._shown_solves < game.solves, "the counter counts up instead of jumping")
+	for i in 120:
+		main._animate_counter(1.0 / 60.0)
+	check_near(main._shown_solves, game.solves, "the counter reaches the real value")
+	check(label.text == "%s Solves" % Num.format(game.solves), "the label shows the real value at the end")
+	game.solves = 10.0
+	main._animate_counter(1.0 / 60.0)
+	check_near(main._shown_solves, 10.0, "spending snaps the counter down at once")
+	main.free()
+	game.reset_state()
+	# Squash on tap (a fresh view, so no solve bounce from the taps above is still running).
+	var view := new_view()
+	view.squash()
+	view._process(1.0 / 60.0)
+	check(view._puzzle.scale.y < 0.99 and view._puzzle.scale.x > view._puzzle.scale.y, "a tap squashes the puzzle")
+	for i in 60:
+		view._process(1.0 / 60.0)
+	check(absf(view._puzzle.scale.y - 1.0) < 0.01, "the squash springs back")
+	view.free()
+
+
+func test_juice_at_high_speed() -> void:
+	# A real run of the main scene at late-game speed (~369K moves/s, solves every frame): stays within the pool,
+	# pops solves at a limited rate, and logs no errors (run_tests.sh fails on any ERROR line).
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	var presets: Dictionary = load("res://tools/screenshot_presets.gd").PRESETS
+	game.apply_save_data(presets["late"].duplicate(true), Time.get_unix_time_from_system())
+	check(game.get_moves_per_second() > 1000.0, "the late preset runs at over 1,000 moves/s")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var fx: FxLayer = main.get_node("%FxLayer")
+	var most := 0
+	var solves_before := game.total_solves
+	for i in 120:
+		await process_frame
+		most = maxi(most, fx.active_count())
+	check(game.total_solves > solves_before, "the game kept solving during the run")
+	check(most <= FxLayer.POOL_SIZE, "never more than 20 floating texts at high speed")
+	check(most >= 1, "solves show a floating +X Solves")
+	check((main.get_node("%PuzzleView") as PuzzleView3D).speed_mode, "the puzzle is in speed mode")
 	main.free()
 	game.reset_state()

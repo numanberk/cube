@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1]
 ## Preset "bench" is special: the late-game state on a 7×7 with the economy running (speed mode, a solve every
 ## frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame time.
 ## Not part of the game: never reference this from scenes/ or scripts/.
@@ -53,6 +53,14 @@ func _ready() -> void:
 
 	for i in SETTLE_FRAMES:
 		await get_tree().process_frame
+	if args.has("juice"):  # a few taps and a solve, caught mid-animation
+		var center := view.get_global_rect().get_center()
+		for offset: Vector2 in [Vector2(-60, -20), Vector2(40, 30), Vector2(90, -50)]:
+			main._on_tap_pressed(center + offset)
+		main._pending_solve_value = 5.0
+		main._pop_solves(0.0)
+		for i in 8:
+			await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 
 	var image := get_viewport().get_texture().get_image()

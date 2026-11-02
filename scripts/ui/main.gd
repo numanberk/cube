@@ -8,6 +8,9 @@ const TAP_ACTION := &"tap"  ## Space / Enter (project.godot input map); held key
 const MENU_GRAPHICS_HIGH := 0
 const MENU_GRAPHICS_LOW := 1
 const UPGRADES_TAB := 1
+const SOLVE_POP_INTERVAL := 0.25   ## at most ~4 "+X Solves" pops a second, however many solves happen
+const BURST_INTERVAL := 0.5
+const COUNTER_EASE := 12.0         ## how fast the Solves counter catches up (higher = faster)
 const ShopCardScene := preload("res://scenes/shop_card.tscn")
 const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 
@@ -24,6 +27,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var helper_list: VBoxContainer = %HelperList
 @onready var upgrade_list: GridContainer = %UpgradeList
 @onready var tabs: TabContainer = %Tabs
+@onready var fx: FxLayer = %FxLayer
 @onready var upgrade_empty: Label = %UpgradeEmpty
 @onready var offline_dialog: AcceptDialog = %OfflineDialog
 
@@ -31,6 +35,10 @@ var _helper_cards: Dictionary = {}    ## building id -> ShopCard
 var _upgrade_tiles: Dictionary = {}   ## upgrade id -> UpgradeTile
 var _refresh_timer := 0.0
 var _visual_move_timer := 0.0
+var _shown_solves := 0.0          ## what the counter shows; eases towards Game.solves
+var _pending_solve_value := 0.0   ## Solves earned since the last "+X Solves" pop
+var _solve_pop_timer := 0.0
+var _burst_timer := 0.0
 
 
 func _ready() -> void:
@@ -39,7 +47,8 @@ func _ready() -> void:
 	_apply_graphics(GraphicsConfig.load_quality())
 	Game.solved.connect(_on_solved)
 	Game.purchased.connect(_on_purchased)
-	Game.state_reset.connect(_refresh)
+	Game.state_reset.connect(_on_state_reset)
+	_shown_solves = Game.solves
 	_build_shop()
 	_refresh()
 	_show_offline_report()
@@ -50,6 +59,8 @@ func _process(delta: float) -> void:
 	var ticker := puzzle_view.ticker_text()
 	move_ticker.text = ticker if ticker != "" else " "  # keep the line's height when empty
 	_animate_helper_moves(delta)
+	_animate_counter(delta)
+	_pop_solves(delta)
 	_refresh_timer += delta
 	if _refresh_timer >= UI_REFRESH_INTERVAL:
 		_refresh_timer = 0.0
@@ -93,7 +104,6 @@ func _build_shop() -> void:
 # --- Refreshing --------------------------------------------------------------
 
 func _refresh() -> void:
-	solves_label.text = "%s Solves" % Num.format(Game.solves)
 	rate_label.text = "+%s solves/s   ·   %s moves/s" % [
 		Num.format(Game.get_solves_per_second()),
 		Num.format(Game.get_moves_per_second()),
@@ -181,6 +191,31 @@ func _refresh_upgrade_tiles() -> void:
 	tabs.set_tab_title(UPGRADES_TAB, "Upgrades (%d)" % affordable_count if affordable_count > 0 else "Upgrades")
 
 
+## The Solves counter counts up smoothly instead of jumping; spending snaps it down at once.
+func _animate_counter(delta: float) -> void:
+	var target := Game.solves
+	if target <= _shown_solves or absf(target - _shown_solves) <= maxf(0.5, target * 0.002):
+		_shown_solves = target
+	else:
+		_shown_solves = lerpf(_shown_solves, target, 1.0 - exp(-delta * COUNTER_EASE))
+	solves_label.text = "%s Solves" % Num.format(floorf(_shown_solves) if _shown_solves < target else _shown_solves)
+
+
+## "+X Solves" rising from the puzzle plus a particle burst, rate-limited so fast play stays readable.
+func _pop_solves(delta: float) -> void:
+	_solve_pop_timer -= delta
+	_burst_timer -= delta
+	if _pending_solve_value <= 0.0 or _solve_pop_timer > 0.0:
+		return
+	var center := puzzle_view.get_global_rect().get_center()
+	fx.pop("+%s Solves" % Num.format(_pending_solve_value), center - Vector2(0.0, puzzle_view.size.y * 0.25), &"PopSolve")
+	_pending_solve_value = 0.0
+	_solve_pop_timer = SOLVE_POP_INTERVAL
+	if _burst_timer <= 0.0:
+		fx.burst(center)
+		_burst_timer = BURST_INTERVAL
+
+
 func _next_goal_text(goal: Dictionary) -> String:
 	if goal.is_empty():
 		return "Next: keep solving"
@@ -220,13 +255,24 @@ func _show_offline_report() -> void:
 
 # --- Signals -----------------------------------------------------------------
 
-func _on_tap_pressed() -> void:
+## A tap from a click (`at` = where, global) or the keyboard (no position: the puzzle's centre).
+func _on_tap_pressed(at: Vector2 = Vector2.INF) -> void:
 	Game.tap()
 	puzzle_view.scramble_step()
+	puzzle_view.squash()
+	if at == Vector2.INF:
+		at = puzzle_view.get_global_rect().get_center()
+	fx.pop("+%s" % Num.format(Game.get_tap_moves()), at)
 
 
-func _on_solved(_count: int) -> void:
+func _on_solved(count: int) -> void:
 	puzzle_view.show_solved()
+	_pending_solve_value += count * Game.get_solve_value()
+
+
+func _on_state_reset() -> void:
+	_shown_solves = Game.solves
+	_refresh()
 
 
 func _on_purchased(_kind: String, _id: String) -> void:

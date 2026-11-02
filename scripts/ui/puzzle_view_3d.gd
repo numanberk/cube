@@ -21,7 +21,7 @@ extends SubViewportContainer
 ## (about 5× fewer triangles), no glow or shadow. main.gd applies the player's choice from GraphicsConfig.
 ## Visual state only: nothing here affects game numbers.
 
-signal tapped
+signal tapped(at: Vector2)  ## global position of the click
 
 const DEFAULT_PUZZLE := "3x3"
 const BODY_COLOR := Color("#14161b")
@@ -53,6 +53,9 @@ const PUNCH_SCALE := 0.03
 const PUNCH_DECAY := 7.0
 const BOUNCE_SCALE := 0.08
 const BOUNCE_TIME := 0.45
+const SQUASH_DOWN := 0.07       ## a tap squashes the puzzle this much vertically...
+const SQUASH_OUT := 0.04        ## ...and bulges it this much sideways
+const SQUASH_DECAY := 9.0
 const DRAG_SPEED := 0.01        ## radians per pixel dragged
 const DRAG_MAX_PITCH := 0.7
 const DRAG_SPRING := 2.5        ## how fast a released drag returns (higher = faster)
@@ -104,6 +107,7 @@ var _last_flash_at := -INF
 var _last_speed_solve_at := -INF
 var _punch := 0.0
 var _bounce := 0.0               ## counts down from BOUNCE_TIME
+var _squash := 0.0               ## 1 right after a tap, decays to 0
 var _base_turntable := Basis.IDENTITY
 var _base_puzzle := Basis.IDENTITY
 
@@ -213,6 +217,11 @@ func set_speed(moves_per_second: float) -> void:
 	elif not speed_mode and moves_per_second > SPEED_MODE_ON:
 		speed_mode = true
 		_flush()
+
+
+## A tap's squash-and-stretch (bigger than the punch every move gets). "Reduce motion" (3.4) should skip it.
+func squash() -> void:
+	_squash = 1.0
 
 
 ## One visible move: a random scramble-style turn.
@@ -507,7 +516,12 @@ func _animate_effects(delta: float) -> void:
 		_bounce = maxf(0.0, _bounce - delta)
 		var t := 1.0 - _bounce / BOUNCE_TIME
 		scale_value += BOUNCE_SCALE * sin(t * PI) * (1.0 - t)  # a quick swell that settles
-	_puzzle.scale = Vector3.ONE * scale_value
+	_squash = maxf(0.0, _squash - delta * SQUASH_DECAY)
+	var squash_amount := sin(_squash * PI * 0.5)  # eases out of the squash
+	_puzzle.scale = Vector3(
+		scale_value * (1.0 + SQUASH_OUT * squash_amount),
+		scale_value * (1.0 - SQUASH_DOWN * squash_amount),
+		scale_value * (1.0 + SQUASH_OUT * squash_amount))
 
 
 # --- Input -----------------------------------------------------------------------
@@ -535,7 +549,7 @@ func _gui_input(event: InputEvent) -> void:
 	elif _pressing:
 		_pressing = false
 		if not _dragging and button.position.distance_to(_press_position) <= TAP_SLOP:
-			tapped.emit()
+			tapped.emit(get_global_transform() * button.position)
 		_dragging = false
 	accept_event()
 

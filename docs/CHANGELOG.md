@@ -2,6 +2,27 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 2.4: juice (Phase 2 done)
+- **Floating "+N" on every tap**, at the cursor (the view's `tapped` signal now carries the global click position) or at
+  the puzzle's centre for Space/Enter. White bold text with a dark outline (theme variation `PopTap`), rising 70 px and
+  fading over 0.9 s, with a little sideways jitter.
+- **"+X Solves" + particle burst on solves:** green `PopSolve` text from the top of the puzzle and a one-shot
+  `CPUParticles2D` of 28 squares in the six sticker colours. **Rate-limited:** solves are summed and popped at most every
+  0.25 s, and the burst runs at most every 0.5 s, so a solve every frame stays readable.
+- **Pooled:** `FxLayer` (`scripts/ui/fx_layer.gd`, `%FxLayer` drawn over the whole screen, ignores the mouse) keeps
+  20 labels and reuses the oldest when all are busy, so it never allocates during play.
+- **The Solves counter counts up:** it eases towards the real value (rate 12/s, snapping when within 0.2 %) and
+  snaps down at once when you spend.
+- **Squash on tap:** `PuzzleView3D.squash()`, 7 % down and 4 % out, easing back in about 0.1 s, on top of the per-move punch.
+- **Reduce motion (3.4)** should set `FxLayer.enabled = false` and skip `squash()`; both are single switches.
+- Test runner: tests may now `await` frames (the runner awaits each `test_*`).
+- Tests: 1,000 taps in a frame keep ≤ 20 texts and they fade out; the counter eases up, reaches the value and snaps down;
+  squash and spring-back; and **a real 120-frame run of the main scene at the late preset's ~369K moves/s** (speed mode,
+  solves every frame): ≤ 20 texts, solve pops shown, no errors. 978 checks, `All good.`
+- `screenshot.sh` takes `JUICE=1` (three taps and a solve, captured 8 frames later). Screenshot: [mid_juice](screenshots/juice/mid_juice.png).
+- **Phase 2 is complete.** Owner: a good time to play and write FEEDBACK.md (look, shop cards, juice).
+- **Next:** Phase 3. Task 3.1 (Audio autoload + SFX); 3.5 is already done.
+
 ## 2026-11-02 — Task 2.3: shop cards
 - **Helper cards** (`scenes/shop_card.tscn`, `ShopCard`): a Button with an icon tile, name, description, rate line
   ("+2 moves/s each · +30/s total"), a big owned count and the cost. **Affordable:** bright, green cost, and it lifts 3 px
