@@ -26,7 +26,9 @@ scenes/main.tscn           The one screen (UI layout)
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
-scripts/ui/cube_view.gd    class CubeView: draws the cube face
+scripts/ui/cube_view.gd    class CubeView: draws the cube face (2D; replaced by the 3D view in Phase 1)
+scripts/cube/twisty_model.gd   class TwistyModel: pure-data puzzle (pieces, layers, moves, WCA notation)
+scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (cube(2..7); megaminx() in 4.4), colours
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene

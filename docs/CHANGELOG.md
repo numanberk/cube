@@ -2,6 +2,25 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 1.1: TwistyModel + cube shapes
+- New `scripts/cube/twisty_model.gd` (`TwistyModel`, pure data, no nodes) and `scripts/cube/puzzle_shapes.gd`
+  (`PuzzleShapes.cube(n)`, n = 2–7, standard colours: white U, yellow D, green F, blue B, red R, orange L).
+- **How it works:** each piece has a home position + stickers, and its state is one int, an index into the
+  puzzle's rotation group (24 for cubes, built by BFS from the face turns; the Megaminx will get 60).
+  A move multiplies the orientation of the pieces in its layers via a precomputed table, so it's exact and never drifts.
+  `piece_basis(i)` / `piece_position(i)` give the transform the 3D view needs, and `color_at(position, face)` reads a sticker.
+- Moves are `{face, turns, width, depth}`. `notation()` gives WCA (`R`, `U'`, `F2`, `Rw`, `3Rw`, `3Uw2`; inner slices
+  in SiGN, e.g. `2R`), and `parse()` / `parse_sequence()` read them back. `random_move()` makes scramble-style moves
+  (outer blocks of width 1..⌊n/2⌋, never the same face twice in a row). There are also `scramble()`, `inverse()` and `inverse_sequence()`.
+- `is_solved()` = every face shows one colour, so identical big-cube centres count as solved.
+- Coordinates: +x = R, +y = U, +z = F (towards the camera), one unit per cubie, centred on the origin.
+- Tests for every n: piece count n³ − (n−2)³, 6n² stickers, every face/width ×4 = solved (and not before),
+  (R U R' U')×6 = solved, 50-move scramble not solved + inverse = solved, turn direction checked on real stickers
+  (U brings red onto F, R brings green onto U, Rw on 5×5), notation strings and parse round-trips. 805 checks, `All good.`
+- Speed: 1,000 moves take ~22 ms on 3×3 and ~143 ms on 7×7 (headless, this container), so ~0.15 ms per visual turn.
+- Not used by the game yet; 1.2 builds the 3D view on it. `CubeView` (2D) stays until 1.5.
+- **Next:** task 1.2 (PuzzleView3D, static).
+
 ## 2026-11-02 — Task 0.4: safe saves
 - `GameState.save_game()` now writes `save.json.tmp`, checks it reads back as a save, moves the old `save.json` to
   `save.bak`, then renames the temp file into place. It returns `true`/`false`. A crash at any step leaves a readable save or backup.

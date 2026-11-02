@@ -348,3 +348,96 @@ func test_wipe_removes_save_and_backup() -> void:
 	check(not FileAccess.file_exists(g.get_backup_path()), "wipe removes save.bak")
 	g.free()
 	clean_test_saves()
+
+
+# --- Twisty model (task 1.1) -------------------------------------------------
+
+func seeded_rng(value: int) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = value
+	return rng
+
+
+func test_cube_shapes() -> void:
+	for n in range(PuzzleShapes.MIN_CUBE, PuzzleShapes.MAX_CUBE + 1):
+		var cube := PuzzleShapes.cube(n)
+		check(cube.piece_count() == n * n * n - (n - 2) * (n - 2) * (n - 2), "%dx%d has n³ − (n−2)³ pieces" % [n, n])
+		check(cube.is_solved(), "%dx%d starts solved" % [n, n])
+		var stickers := 0
+		for normals in cube.sticker_normals:
+			stickers += normals.size()
+		check(stickers == 6 * n * n, "%dx%d has 6n² stickers" % [n, n])
+		check(cube.scramble_widths == maxi(1, n / 2), "%dx%d scrambles with widths up to %d" % [n, n, maxi(1, n / 2)])
+
+
+func test_cube_moves_return_to_solved() -> void:
+	for n in range(PuzzleShapes.MIN_CUBE, PuzzleShapes.MAX_CUBE + 1):
+		var cube := PuzzleShapes.cube(n)
+		for face in cube.face_names.size():
+			for width in range(1, n):
+				var move := cube.make_move(face, 1, width)
+				for i in 4:
+					cube.apply(move)
+					check(cube.is_solved() == (i == 3), "%dx%d %s applied %d× solved = %s" % [n, n, cube.notation(move), i + 1, i == 3])
+		var sexy := cube.parse_sequence("R U R' U'")
+		for i in 6:
+			cube.apply_all(sexy)
+		check(cube.is_solved(), "%dx%d (R U R' U')×6 = solved" % [n, n])
+
+
+func test_cube_scramble_and_inverse() -> void:
+	for n in range(PuzzleShapes.MIN_CUBE, PuzzleShapes.MAX_CUBE + 1):
+		var cube := PuzzleShapes.cube(n)
+		var moves := cube.scramble(50, seeded_rng(n))
+		check(moves.size() == 50, "%dx%d scramble has 50 moves" % [n, n])
+		check(not cube.is_solved(), "%dx%d is not solved after a 50-move scramble" % [n, n])
+		var no_repeats := true
+		for i in range(1, moves.size()):
+			no_repeats = no_repeats and moves[i]["face"] != moves[i - 1]["face"]
+		check(no_repeats, "%dx%d scramble never turns the same face twice in a row" % [n, n])
+		cube.apply_all(cube.inverse_sequence(moves))
+		check(cube.is_solved(), "%dx%d scramble + inverse = solved" % [n, n])
+
+
+func test_cube_turn_direction() -> void:
+	var cube := PuzzleShapes.cube(3)
+	var f := cube.face_names.find("F")
+	var u := cube.face_names.find("U")
+	cube.apply(cube.parse("U"))
+	check(cube.color_at(Vector3(0, 1, 1), f) == PuzzleShapes.COLOR_RED, "U moves the R face's stickers onto F")
+	cube.reset()
+	cube.apply(cube.parse("R"))
+	check(cube.color_at(Vector3(1, 1, 0), u) == PuzzleShapes.COLOR_GREEN, "R moves the F face's stickers onto U")
+	check(cube.color_at(Vector3(-1, 1, 0), u) == PuzzleShapes.COLOR_WHITE, "R leaves the L side of U alone")
+	cube.reset()
+	var big := PuzzleShapes.cube(5)
+	var fu := big.face_names.find("U")
+	big.apply(big.parse("Rw"))
+	check(big.color_at(Vector3(1, 2, 0), fu) == PuzzleShapes.COLOR_GREEN, "Rw turns the second layer too")
+	check(big.color_at(Vector3(0, 2, 0), fu) == PuzzleShapes.COLOR_WHITE, "Rw leaves the middle layer alone")
+
+
+func test_cube_notation() -> void:
+	var cube := PuzzleShapes.cube(7)
+	var r := cube.face_names.find("R")
+	var u := cube.face_names.find("U")
+	check(cube.notation(cube.make_move(r, 1)) == "R", "R")
+	check(cube.notation(cube.make_move(r, -1)) == "R'", "R'")
+	check(cube.notation(cube.make_move(r, 3)) == "R'", "3 quarter turns = R'")
+	check(cube.notation(cube.make_move(r, 2)) == "R2", "R2")
+	check(cube.notation(cube.make_move(r, 1, 2)) == "Rw", "Rw")
+	check(cube.notation(cube.make_move(u, -1, 2)) == "Uw'", "Uw'")
+	check(cube.notation(cube.make_move(r, 1, 3)) == "3Rw", "3Rw")
+	check(cube.notation(cube.make_move(u, 2, 3)) == "3Uw2", "3Uw2")
+	check(cube.notation(cube.make_move(r, 1, 1, 1)) == "2R", "SiGN inner slice 2R")
+	check(cube.notation_sequence(cube.parse_sequence("R U R' U'")) == "R U R' U'", "sequence round trip")
+	check(cube.parse("X").is_empty(), "unknown face is rejected")
+	check(PuzzleShapes.cube(3).parse("3Rw").is_empty(), "3Rw doesn't exist on a 3x3")
+	for n in range(PuzzleShapes.MIN_CUBE, PuzzleShapes.MAX_CUBE + 1):
+		var model := PuzzleShapes.cube(n)
+		var rng := seeded_rng(100 + n)
+		var all_round_trip := true
+		for i in 40:
+			var move := model.random_move(rng)
+			all_round_trip = all_round_trip and model.parse(model.notation(move)) == move
+		check(all_round_trip, "%dx%d notation -> parse round-trips random moves" % [n, n])
