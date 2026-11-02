@@ -2,6 +2,17 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Merged development plan (docs only)
+- Added `docs/PLAN.md`, which merges the owner-supplied phase plan with the review earlier today.
+  - Kept from the owner's plan: session loop + prompt, one task per session, "Done when" per task,
+    FEEDBACK.md, open decisions D1–D5, save-version schedule, architecture rules, release steps.
+  - Kept from the review: measured problems, pacing targets, and putting tools/simulator and the visual
+    overhaul *first* (Phase 0–1) instead of last; puzzles start on a 2×2, which fixes the slow start.
+  - New: decision D6 (first-prestige timing), safe saves moved early (0.4), screenshots in `docs/screenshots/`.
+- Rewrote `docs/ROADMAP.md` as numbered tasks (0.1 … 9.4), each with a "Done when". Added `docs/FEEDBACK.md`.
+  Updated CLAUDE.md to read PLAN and FEEDBACK and do one task per session.
+- **Next:** task 0.1 (screenshot script). Owner: please answer D1, D3 and D5 in PLAN §7 before Phase 2–3.
+
 ## 2026-11-02 — Review and new plan (no code changes)
 - Owner said the game looks bad and has no progression. Took screenshots (xvfb + opengl3
   works in the cloud container) and simulated the economy with a greedy bot.

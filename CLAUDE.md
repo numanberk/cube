@@ -1,8 +1,12 @@
 # Cube Idle — guide for Claude sessions
 
 This project is worked on by **several different Claude sessions/accounts**, one after another.
-You have no memory of earlier sessions: this file, `docs/ROADMAP.md` and `docs/CHANGELOG.md`
-are the shared memory. Read all three before changing anything, and update them before you finish.
+You have no memory of earlier sessions: this file, `docs/PLAN.md`, `docs/ROADMAP.md`,
+`docs/CHANGELOG.md` and `docs/FEEDBACK.md` are the shared memory. Read all of them before changing
+anything, and update ROADMAP and CHANGELOG before you finish.
+
+**Do one roadmap task per session** (the next unchecked one, unless the owner names one).
+Handle open items in `docs/FEEDBACK.md` first. Never guess an open owner decision (PLAN §7): ask.
 
 ## What the game is
 An idle/incremental game about Rubik's cubes, for PC (Windows first).
@@ -26,7 +30,7 @@ scripts/ui/cube_view.gd    class CubeView: draws the cube face
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
-docs/                      DESIGN, ROADMAP, CHANGELOG
+docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK, DESIGN
 ```
 
 ## Rules of the code
@@ -44,7 +48,8 @@ docs/                      DESIGN, ROADMAP, CHANGELOG
 1. Run `bash tools/run_tests.sh` and make sure it prints `All good.`
    (On Linux it downloads Godot automatically. Elsewhere set `GODOT=/path/to/godot`.)
    Add or adjust tests in `tests/test_runner.gd` for any rule you changed.
-2. Tick off or add items in `docs/ROADMAP.md`.
+2. Tick off the task in `docs/ROADMAP.md`, but only if its "Done when" is true.
+   Visual changes: add a screenshot to `docs/screenshots/` (see task 0.1).
 3. Add a dated entry at the top of `docs/CHANGELOG.md`: what changed, what's half-done,
    anything the next session should know.
 4. Commit with a clear message. Pull before you start and push when you're done,

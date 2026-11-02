@@ -27,6 +27,8 @@
 | Speedcubing Lab | 1,800,000 | 18,000 |
 
 ## Planned systems
+The build order and pacing targets are in `docs/PLAN.md`. Numbers above are the current (v1) game.
+
 - **Puzzles:** 2×2 → 3×3 → 4×4 → 5×5 → 7×7 → Megaminx. Each pays more Solves per solve and needs more moves.
 - **Methods:** Beginner → CFOP → Roux → ZZ → "God's Number" (20 moves).
 - **Prestige — World Championship:** reset Solves/helpers for **Trophies** (permanent multiplier).
