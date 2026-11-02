@@ -2,11 +2,18 @@ class_name PuzzleView3D
 extends SubViewportContainer
 ## The 3D puzzle on screen, drawn from a TwistyModel.
 ## Same API as the old 2D CubeView: scramble_step() for each visible move, show_solved() on a solve,
-## plus set_puzzle(id) ("2x2" ... "7x7"). Clicking it emits `tapped`; main.gd turns that into Game.tap().
+## plus set_puzzle(id) ("2x2" ... "7x7") and set_speed(moves_per_second).
+## Clicking it emits `tapped`; main.gd turns that into Game.tap().
 ##
 ## All piece bodies are one MultiMesh and all stickers another, so even a 7×7 is two draw calls.
 ## Scene: Viewport > Puzzle (tilts the top towards the camera, 28°) > Turntable (turns F/R into view, −38°)
-## > Bodies + Stickers. Rotate Turntable for spins and drags; Puzzle is scaled for the tap "punch".
+## > Bodies + Stickers. Puzzle is scaled for the punch/bounce; Turntable wobbles in speed mode.
+##
+## Turns: scramble_step() queues a move. The front of the queue animates (the turning layer's transforms are
+## rotated around the face axis) and is applied to the model when it finishes, so the model always matches
+## what's on screen once the animation ends. Turns get shorter as the queue grows; past MAX_QUEUE the backlog
+## is applied instantly. Above SPEED_MODE_ON moves/s (set_speed) moves snap without animation and the
+## puzzle wobbles. show_solved() plays the recent moves backwards, then flashes and bounces.
 ## Visual state only: nothing here affects game numbers.
 
 signal tapped
@@ -18,51 +25,104 @@ const CUBIE_RADIUS := 0.1
 const STICKER_HALF := 0.4
 const STICKER_RADIUS := 0.1
 const STICKER_LIFT := 0.004     ## keeps stickers just above the body surface
-const SOLVED_HOLD := 0.35       ## seconds a solved puzzle stays solved before moves scramble it again
-const PUNCH_DECAY := 7.0
-const PUNCH_SCALE := 0.03
 const START_MOVES_PER_SIZE := 4 ## a new puzzle starts with size × this many scramble moves
 const CAMERA_FOV := 30.0
 const FRAME_DISTANCE := 0.92    ## 1.0 = the bounding sphere just touches the view edges; smaller zooms in
 const TAP_SLOP := 6.0           ## pixels the mouse may move between press and release and still tap
 
+const TURN_TIME := 0.12         ## seconds for a quarter turn with an empty queue
+const HALF_TURN_FACTOR := 1.4   ## a 180° turn takes this much longer
+const QUEUE_SPEEDUP := 0.6      ## each queued move makes turns this much (×) faster: time / (1 + q × this)
+const MAX_QUEUE := 6            ## more than this and the backlog is applied instantly
+const SPEED_MODE_ON := 12.0     ## moves/s above which turns stop animating
+const SPEED_MODE_OFF := 9.0     ## ...and below which they animate again
+const WOBBLE_YAW := 0.07        ## radians
+const WOBBLE_TILT := 0.04
+const REWIND_TIME := 0.9        ## a solve's backwards replay takes at most this long
+const REWIND_MAX_MOVES := 30    ## only the last this-many moves are replayed; the rest snap at the end
+const SOLVED_HOLD := 0.35       ## seconds the solved puzzle stays solved before moves scramble it again
+const FLASH_ENERGY := 0.45
+const FLASH_DECAY := 3.5
+const FLASH_MIN_INTERVAL := 0.6 ## never flash more often than this (fast solves just pulse)
+const PUNCH_SCALE := 0.03
+const PUNCH_DECAY := 7.0
+const BOUNCE_SCALE := 0.08
+const BOUNCE_TIME := 0.45
+
 @onready var _camera: Camera3D = %Camera
 @onready var _puzzle: Node3D = %Puzzle
+@onready var _turntable: Node3D = %Turntable
 @onready var _bodies: MultiMeshInstance3D = %Bodies
 @onready var _stickers: MultiMeshInstance3D = %Stickers
 
 var model: TwistyModel
 var puzzle_id := ""
+var speed_mode := false         ## true while moves snap instead of animating
+var recorded_moves: Array[Dictionary] = []  ## when record_moves is on: every move applied, in order (tests)
+var record_moves := false
 
 var _rng := RandomNumberGenerator.new()
-var _last_move := {}
+var _last_move := {}             ## last move generated (so the next one uses another face)
+var _queue: Array[Dictionary] = []
+var _current := {}               ## the move being animated, or {}
+var _current_pieces := PackedInt32Array()
+var _current_turn := Transform3D.IDENTITY  ## partial rotation drawn for the current turn
+var _current_time := 0.0
+var _current_duration := TURN_TIME
+var _history: Array[Dictionary] = []  ## moves applied since the last solve (newest last, capped)
+var _rewinding := false
+var _rewind_turn_time := TURN_TIME  ## per-move time during a replay, so it all fits in REWIND_TIME
 var _solved_timer := 0.0
+var _dirty := false              ## transforms need a full refresh this frame
+var _frozen := false             ## set by pose(): stop all animation (screenshots)
+var _clock := 0.0
+var _wobble := 0.0               ## 0..1, eases in and out with speed mode
+var _flash := 0.0
+var _last_flash_at := -INF
+var _last_speed_solve_at := -INF
 var _punch := 0.0
-var _sticker_piece := PackedInt32Array()       ## sticker instance -> piece index
-var _sticker_local: Array[Transform3D] = []    ## sticker instance -> transform in its piece's home frame
+var _bounce := 0.0               ## counts down from BOUNCE_TIME
+var _base_turntable := Basis.IDENTITY
+var _base_puzzle := Basis.IDENTITY
+
+var _piece_transforms: Array[Transform3D] = []  ## baked transform of each piece (matches the model)
+var _piece_stickers: Array[PackedInt32Array] = []  ## piece -> its sticker instance indices
+var _sticker_piece := PackedInt32Array()        ## sticker instance -> piece index
+var _sticker_local: Array[Transform3D] = []     ## sticker instance -> transform in its piece's home frame
+var _sticker_drawn: Array[Transform3D] = []     ## sticker instance -> transform last sent to the MultiMesh
+var _sticker_colors: Array[Color] = []          ## sticker instance -> colour sent to the MultiMesh
 var _body_mesh: ArrayMesh
 var _sticker_mesh: ArrayMesh
+var _sticker_material: StandardMaterial3D
 var _press_position := Vector2.ZERO
 var _pressing := false
 
 
 func _ready() -> void:
 	_rng.seed = randi()  # follows the global seed, so screenshots are repeatable
+	_base_turntable = _turntable.basis
+	_base_puzzle = _puzzle.basis
 	_body_mesh = PuzzleMeshes.rounded_box(CUBIE_HALF, CUBIE_RADIUS)
 	_body_mesh.surface_set_material(0, _make_body_material())
+	_sticker_material = _make_sticker_material()
 	_sticker_mesh = PuzzleMeshes.rounded_rect(STICKER_HALF, STICKER_RADIUS)
-	_sticker_mesh.surface_set_material(0, _make_sticker_material())
+	_sticker_mesh.surface_set_material(0, _sticker_material)
 	_camera.fov = CAMERA_FOV
 	resized.connect(_frame_camera)
 	set_puzzle(DEFAULT_PUZZLE)
 
 
 func _process(delta: float) -> void:
+	if _frozen or model == null:
+		return
+	_clock += delta
 	if _solved_timer > 0.0:
 		_solved_timer -= delta
-	if _punch > 0.0:
-		_punch = maxf(0.0, _punch - delta * PUNCH_DECAY)
-		_puzzle.scale = Vector3.ONE * (1.0 - PUNCH_SCALE * _punch)
+	_advance_turns(delta)
+	if _dirty:
+		_dirty = false
+		_refresh_all()
+	_animate_effects(delta)
 
 
 # --- Public API ----------------------------------------------------------------
@@ -75,32 +135,309 @@ func set_puzzle(id: String) -> void:
 		return
 	model = new_model
 	puzzle_id = id
+	_queue.clear()
+	_current = {}
+	_history.clear()
+	_rewinding = false
+	_solved_timer = 0.0
 	_build_instances()
 	_frame_camera()
-	var moves := model.scramble(model.size * START_MOVES_PER_SIZE, _rng)
-	_last_move = moves.back() if not moves.is_empty() else {}
-	_update_transforms()
+	for i in model.size * START_MOVES_PER_SIZE:
+		_last_move = model.random_move(_rng, _last_move)
+		model.apply(_last_move)
+		_remember(_last_move)
+	_refresh_all()
+
+
+## Tells the view how fast moves are really happening, to pick animated turns or speed mode.
+func set_speed(moves_per_second: float) -> void:
+	if _frozen:
+		return
+	if speed_mode and moves_per_second < SPEED_MODE_OFF:
+		speed_mode = false
+	elif not speed_mode and moves_per_second > SPEED_MODE_ON:
+		speed_mode = true
+		_flush()
 
 
 ## One visible move: a random scramble-style turn.
 func scramble_step() -> void:
+	if _frozen:
+		return
 	_punch = 1.0
-	if model == null or _solved_timer > 0.0:
+	if model == null or _rewinding or _solved_timer > 0.0:
 		return
 	_last_move = model.random_move(_rng, _last_move)
-	model.apply(_last_move)
-	_update_transforms()
-
-
-## A solve just completed: show the puzzle solved for a moment.
-func show_solved() -> void:
-	if model == null:
+	if speed_mode:
+		_flush()
+		_bake(_last_move)
 		return
+	if _queue.size() >= MAX_QUEUE:
+		_flush()
+	_queue.append(_last_move)
+
+
+## A solve just completed: replay the recent moves backwards, then flash and bounce.
+## In speed mode (or if it's already replaying) it just snaps to solved with a small pulse.
+func show_solved() -> void:
+	if model == null or _rewinding or _frozen:
+		return
+	if speed_mode:
+		# Solves can come every frame here. Show one now and then, and never hold, so the snapping turns stay visible.
+		if _clock - _last_speed_solve_at < FLASH_MIN_INTERVAL:
+			return
+		_last_speed_solve_at = _clock
+		_flush()
+		_finish_solve()
+		_solved_timer = 0.0
+		return
+	_flush()
+	if _history.is_empty():
+		_finish_solve()
+		return
+	_rewinding = true
+	var count := mini(_history.size(), REWIND_MAX_MOVES)
+	_rewind_turn_time = minf(TURN_TIME, REWIND_TIME / count)
+	for i in count:
+		_queue.append(model.inverse(_history[_history.size() - 1 - i]))
+	_history.clear()
+
+
+## Number of moves waiting to animate (not counting the one in progress).
+func queued_moves() -> int:
+	return _queue.size()
+
+
+## True when nothing is animating or waiting.
+func is_idle() -> bool:
+	return _current.is_empty() and _queue.is_empty()
+
+
+## Applies everything queued right away (no animation).
+func finish_animations() -> void:
+	_flush()
+	if _rewinding:
+		_rewinding = false
+		_finish_solve()
+	_refresh_all()
+
+
+## Freezes a staged moment for screenshots: "turn" (a quarter turn half done) or "solved" (flash at its peak).
+func pose(name: String) -> void:
+	finish_animations()
+	match name:
+		"turn":
+			_queue.append(model.make_move(model.face_names.find("R"), 1))
+			_advance_turns(0.0)
+			_current_time = _current_duration * 0.5
+			_draw_current()
+		"solved":
+			_finish_solve()
+			_flash = FLASH_ENERGY
+			_sticker_material.emission_energy_multiplier = _flash
+			_puzzle.scale = Vector3.ONE * (1.0 + BOUNCE_SCALE * 0.6)
+		_:
+			push_warning("Unknown pose '%s'" % name)
+	_frozen = true
+
+
+## The colour of every sticker as drawn: [{position, normal, color}] in model space.
+## Tests compare this with the model, so view and model can't silently disagree. It reads a CPU-side copy
+## of what was sent to the MultiMesh, because the headless (dummy) renderer doesn't keep that data.
+## With `unturn`, the half-done current turn is rotated back out, so it should match the model exactly.
+func drawn_stickers(unturn: bool = false) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var turning := {}
+	if unturn and not _current.is_empty():
+		for piece in _current_pieces:
+			turning[piece] = true
+	var back := _current_turn.affine_inverse()
+	for i in _sticker_drawn.size():
+		var t := _sticker_drawn[i]
+		if turning.has(_sticker_piece[i]):
+			t = back * t
+		var normal := t.basis.z.normalized()
+		result.append({
+			"position": t.origin - normal * (CUBIE_HALF + STICKER_LIFT),
+			"normal": normal,
+			"color": _sticker_colors[i],
+		})
+	return result
+
+
+# --- Turning -------------------------------------------------------------------
+
+func _advance_turns(delta: float) -> void:
+	var remaining := delta
+	while true:
+		if _current.is_empty():
+			if _queue.is_empty():
+				if _rewinding:
+					_rewinding = false
+					_finish_solve()
+				return
+			_start(_queue.pop_front())
+		_current_time += remaining
+		if _current_time < _current_duration:
+			_draw_current()
+			return
+		remaining = _current_time - _current_duration
+		var move := _current
+		_current = {}
+		_bake(move)
+		if remaining <= 0.0:
+			return
+
+
+func _start(move: Dictionary) -> void:
+	_current = move
+	_current_time = 0.0
+	_current_turn = Transform3D.IDENTITY
+	if _dirty:  # the previous turn was just applied; start from up-to-date transforms
+		_dirty = false
+		_refresh_all()
+	if _rewinding:
+		_current_duration = _rewind_turn_time
+	else:
+		var duration := TURN_TIME * (HALF_TURN_FACTOR if absi(int(move["turns"])) >= 2 else 1.0)
+		_current_duration = duration / (1.0 + _queue.size() * QUEUE_SPEEDUP)
+	_current_pieces.clear()
+	var first := int(move.get("depth", 0))
+	var last := first + int(move.get("width", 1)) - 1
+	for piece in model.piece_count():
+		var layer := model.layer_of(piece, int(move["face"]))
+		if layer >= first and layer <= last:
+			_current_pieces.append(piece)
+
+
+## Applies a move to the model and marks the drawing for a refresh.
+func _bake(move: Dictionary) -> void:
+	model.apply(move)
+	if record_moves:
+		recorded_moves.append(move)
+	if not _rewinding:
+		_remember(move)
+	_dirty = true
+
+
+func _remember(move: Dictionary) -> void:
+	_history.append(move)
+	if _history.size() > REWIND_MAX_MOVES:
+		_history.pop_front()
+
+
+## Finishes the current turn and applies every queued move instantly.
+func _flush() -> void:
+	if not _current.is_empty():
+		var move := _current
+		_current = {}
+		_bake(move)
+	while not _queue.is_empty():
+		_bake(_queue.pop_front())
+
+
+func _finish_solve() -> void:
 	model.reset()
+	_history.clear()
 	_last_move = {}
 	_solved_timer = SOLVED_HOLD
-	_punch = 1.0
-	_update_transforms()
+	_dirty = false
+	_refresh_all()
+	if _clock - _last_flash_at >= FLASH_MIN_INTERVAL and not speed_mode:
+		_last_flash_at = _clock
+		_flash = FLASH_ENERGY
+		_bounce = BOUNCE_TIME
+	else:
+		_punch = 1.0
+
+
+# --- Drawing -------------------------------------------------------------------
+
+func _build_instances() -> void:
+	var piece_count := model.piece_count()
+	var bodies := MultiMesh.new()
+	bodies.transform_format = MultiMesh.TRANSFORM_3D
+	bodies.mesh = _body_mesh
+	bodies.instance_count = piece_count
+	_bodies.multimesh = bodies
+
+	_sticker_piece.clear()
+	_sticker_local.clear()
+	_piece_stickers.clear()
+	_piece_transforms.clear()
+	_piece_transforms.resize(piece_count)
+	var colors := _sticker_colors
+	colors.clear()
+	for piece in piece_count:
+		var normals := model.sticker_normals[piece]
+		var own := PackedInt32Array()
+		for s in normals.size():
+			var normal := normals[s]
+			var up := Vector3.UP if absf(normal.y) < 0.9 else Vector3.BACK
+			# Sticker meshes face +Z; looking_at points -Z at the target, so look away from the normal.
+			var local := Transform3D(Basis.looking_at(-normal, up), normal * (CUBIE_HALF + STICKER_LIFT))
+			own.append(_sticker_piece.size())
+			_sticker_piece.append(piece)
+			_sticker_local.append(local)
+			colors.append(PuzzleShapes.CUBE_COLORS[model.sticker_colors[piece][s]])
+		_piece_stickers.append(own)
+	var stickers := MultiMesh.new()
+	stickers.transform_format = MultiMesh.TRANSFORM_3D
+	stickers.use_colors = true
+	stickers.mesh = _sticker_mesh
+	stickers.instance_count = _sticker_piece.size()
+	_sticker_drawn.resize(_sticker_piece.size())
+	for i in colors.size():
+		stickers.set_instance_color(i, colors[i])
+	_stickers.multimesh = stickers
+
+
+## Redraws every piece from the model.
+func _refresh_all() -> void:
+	for piece in model.piece_count():
+		_piece_transforms[piece] = Transform3D(model.piece_basis(piece), model.piece_position(piece))
+		_draw_piece(piece, _piece_transforms[piece])
+
+
+## Redraws only the turning layer, part-way through its turn.
+func _draw_current() -> void:
+	var progress := clampf(_current_time / _current_duration, 0.0, 1.0)
+	var eased := 1.0 - pow(1.0 - progress, 3.0)  # ease-out cubic: snappy start, soft landing
+	var face := int(_current["face"])
+	var angle := -model.step_angle * int(_current["turns"]) * eased
+	_current_turn = Transform3D(Basis(model.face_normals[face], angle), Vector3.ZERO)
+	for piece in _current_pieces:
+		_draw_piece(piece, _current_turn * _piece_transforms[piece])
+
+
+func _draw_piece(piece: int, t: Transform3D) -> void:
+	_bodies.multimesh.set_instance_transform(piece, t)
+	for sticker in _piece_stickers[piece]:
+		var sticker_transform := t * _sticker_local[sticker]
+		_sticker_drawn[sticker] = sticker_transform
+		_stickers.multimesh.set_instance_transform(sticker, sticker_transform)
+
+
+func _animate_effects(delta: float) -> void:
+	var target_wobble := 1.0 if speed_mode else 0.0
+	_wobble = move_toward(_wobble, target_wobble, delta * 3.0)
+	if _wobble > 0.0:
+		_turntable.basis = _base_turntable.rotated(Vector3.UP, sin(_clock * 7.0) * WOBBLE_YAW * _wobble)
+		_puzzle.basis = _base_puzzle.rotated(Vector3.RIGHT, sin(_clock * 5.3) * WOBBLE_TILT * _wobble)
+	else:
+		_turntable.basis = _base_turntable
+		_puzzle.basis = _base_puzzle
+
+	if _flash > 0.0:
+		_flash = maxf(0.0, _flash - delta * FLASH_DECAY)
+		_sticker_material.emission_energy_multiplier = _flash
+	_punch = maxf(0.0, _punch - delta * PUNCH_DECAY)
+	var scale_value := 1.0 - PUNCH_SCALE * _punch
+	if _bounce > 0.0:
+		_bounce = maxf(0.0, _bounce - delta)
+		var t := 1.0 - _bounce / BOUNCE_TIME
+		scale_value += BOUNCE_SCALE * sin(t * PI) * (1.0 - t)  # a quick swell that settles
+	_puzzle.scale = Vector3.ONE * scale_value
 
 
 # --- Input -----------------------------------------------------------------------
@@ -119,48 +456,7 @@ func _gui_input(event: InputEvent) -> void:
 	accept_event()
 
 
-# --- Building and drawing --------------------------------------------------------
-
-func _build_instances() -> void:
-	var piece_count := model.piece_count()
-	var bodies := MultiMesh.new()
-	bodies.transform_format = MultiMesh.TRANSFORM_3D
-	bodies.mesh = _body_mesh
-	bodies.instance_count = piece_count
-	_bodies.multimesh = bodies
-
-	_sticker_piece.clear()
-	_sticker_local.clear()
-	var colors: Array[Color] = []
-	for piece in piece_count:
-		var normals := model.sticker_normals[piece]
-		for s in normals.size():
-			var normal := normals[s]
-			var up := Vector3.UP if absf(normal.y) < 0.9 else Vector3.BACK
-			# Sticker meshes face +Z; looking_at points -Z at the target, so look away from the normal.
-			var local := Transform3D(Basis.looking_at(-normal, up), normal * (CUBIE_HALF + STICKER_LIFT))
-			_sticker_piece.append(piece)
-			_sticker_local.append(local)
-			colors.append(PuzzleShapes.CUBE_COLORS[model.sticker_colors[piece][s]])
-	var stickers := MultiMesh.new()
-	stickers.transform_format = MultiMesh.TRANSFORM_3D
-	stickers.use_colors = true
-	stickers.mesh = _sticker_mesh
-	stickers.instance_count = _sticker_piece.size()
-	for i in colors.size():
-		stickers.set_instance_color(i, colors[i])
-	_stickers.multimesh = stickers
-
-
-func _update_transforms() -> void:
-	var piece_transforms: Array[Transform3D] = []
-	for piece in model.piece_count():
-		var t := Transform3D(model.piece_basis(piece), model.piece_position(piece))
-		piece_transforms.append(t)
-		_bodies.multimesh.set_instance_transform(piece, t)
-	for i in _sticker_piece.size():
-		_stickers.multimesh.set_instance_transform(i, piece_transforms[_sticker_piece[i]] * _sticker_local[i])
-
+# --- Setup helpers ---------------------------------------------------------------
 
 ## Moves the camera back far enough for the whole puzzle to fit, whatever its size.
 func _frame_camera() -> void:
@@ -187,4 +483,7 @@ func _make_sticker_material() -> StandardMaterial3D:
 	material.vertex_color_use_as_albedo = true  # MultiMesh instance colours arrive as vertex colour
 	material.vertex_color_is_srgb = true
 	material.roughness = 0.3
+	material.emission_enabled = true            # the solve flash brightens every sticker
+	material.emission = Color.WHITE
+	material.emission_energy_multiplier = 0.0
 	return material

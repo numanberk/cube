@@ -27,7 +27,8 @@ scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable 
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
-scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle, `tapped`
+scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle/set_speed,
+                           `tapped`; animated turn queue, solve replay, speed mode (see its header comment)
 scripts/ui/cube_view.gd    class CubeView: old 2D face, unused since 1.2 (deleted in 1.5)
 scripts/cube/twisty_model.gd   class TwistyModel: pure-data puzzle (pieces, layers, moves, WCA notation)
 scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (from_id("3x3"), cube(2..7); megaminx() in 4.4), colours
@@ -75,6 +76,7 @@ bash tools/screenshot.sh docs/screenshots/<task-name>             # every preset
 bash tools/screenshot.sh /tmp/shots mid late                      # only some presets
 SIZE=1920x1080 bash tools/screenshot.sh docs/screenshots/1080p    # another resolution
 PUZZLE=7x7 bash tools/screenshot.sh /tmp/shots mid                # another puzzle -> mid_7x7.png
+POSE=turn bash tools/screenshot.sh /tmp/shots mid                 # frozen moment: turn | solved -> mid_turn.png
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
 - It runs under `xvfb-run` with the real OpenGL 3 renderer (software Mesa, so it's slow but correct) and

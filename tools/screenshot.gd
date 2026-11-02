@@ -1,6 +1,6 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
-## Run through tools/screenshot.sh, which passes:  -- --preset <name> --out <file.png> [--puzzle 5x5]
+## Run through tools/screenshot.sh, which passes:  -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved]
 ## Not part of the game: never reference this from scenes/ or scripts/.
 
 const Presets := preload("res://tools/screenshot_presets.gd")
@@ -25,8 +25,14 @@ func _ready() -> void:
 	var main := MAIN_SCENE.instantiate()
 	add_child(main)
 	var puzzle: String = args.get("puzzle", "")
+	var view: PuzzleView3D = main.get_node("%PuzzleView")
 	if puzzle != "":
-		main.get_node("%PuzzleView").set_puzzle(puzzle)
+		view.set_puzzle(puzzle)
+	var pose: String = args.get("pose", "")
+	if pose != "":
+		for i in SETTLE_FRAMES:  # let the starting animations finish first
+			await get_tree().process_frame
+		view.pose(pose)
 
 	for i in SETTLE_FRAMES:
 		await get_tree().process_frame

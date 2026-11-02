@@ -124,6 +124,7 @@ func _refresh() -> void:
 
 func _animate_helper_moves(delta: float) -> void:
 	var mps := Game.get_moves_per_second()
+	puzzle_view.set_speed(mps)
 	if mps <= 0.0:
 		return
 	_visual_move_timer += delta * minf(mps, MAX_VISUAL_MOVES_PER_SECOND)

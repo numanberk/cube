@@ -2,6 +2,34 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 1.3: animated turns
+- `PuzzleView3D` now animates real layer turns. `scramble_step()` queues a move. The front of the queue rotates its layer's
+  MultiMesh transforms around the face axis (0.12 s per quarter turn, ease-out cubic, half turns ×1.4) and is applied to
+  the model only when it finishes. Turns get faster as the queue grows (time ÷ (1 + 0.6 × queued)); past
+  `MAX_QUEUE` (6) the backlog is applied instantly, so the queue can't grow.
+- **Speed mode:** `main.gd` now passes the real moves/s each frame (`set_speed`). Above 12 moves/s (off again below 9),
+  moves snap without animation and the puzzle wobbles (turntable yaw ±0.07 rad, tilt ±0.04 rad). A solve there snaps to
+  solved with a small pulse at most every 0.6 s, with no hold. **This fixes the late-game "stuck on solved" cube** noted in 0.1.
+- **Solves:** `show_solved()` replays the last ≤ 30 moves backwards (all within 0.9 s), then snaps to solved, flashes
+  (sticker emission 0.45, fading) and bounces (+8 % swell). The flash is rate-limited to once per 0.6 s; quicker solves just pulse.
+  New moves are ignored during the replay and the 0.35 s hold.
+- New view API: `set_speed()`, `queued_moves()`, `is_idle()`, `finish_animations()`, `pose("turn"|"solved")` (freezes a
+  moment for screenshots), `drawn_stickers(unturn)`, `record_moves`/`recorded_moves` (tests).
+  `screenshot.sh` takes `POSE=turn|solved`.
+- **Headless gotcha:** the dummy renderer doesn't keep MultiMesh data (reads back identity/black), so the view keeps a
+  CPU-side copy of every sticker transform and colour it sends; `drawn_stickers()` reads that copy.
+- Tests (3×3, 4×4, 7×7): after 1,000 moves with partial frames, every drawn sticker matches the model. Mid-turn, the drawing
+  equals the model plus the half-done rotation. Replaying the recorded moves on a separate model gives the same state, and
+  all 1,000 moves were applied. Also: 1,000 moves in one frame never queue more than 6, speed mode doesn't queue, the
+  thresholds have hysteresis, a solve replay ends solved within 0.9 s, and speed-mode solves don't hold or repeat every frame.
+  I checked the tests can fail by removing the transform refresh at the start of a turn: the mid-turn check caught it.
+  855 checks, `All good.`
+- Screenshots: [3×3 mid-turn](screenshots/cube/mid_turn.png), [5×5 mid-turn](screenshots/cube/mid_5x5_turn.png),
+  [solved flash](screenshots/cube/mid_solved.png).
+- **Not done here:** the moves are random, not a real solve, so the replay is the scramble undone. That's intended
+  (PLAN §4.2). "Reduce motion" (3.4) should turn off wobble, bounce and flash. The constants are at the top of `puzzle_view_3d.gd`.
+- **Next:** task 1.4 (stage and camera: drag to rotate, idle sway, vignette, shadow, move ticker).
+
 ## 2026-11-02 — Task 1.2: PuzzleView3D (static)
 - New `scenes/puzzle_view_3d.tscn` + `scripts/ui/puzzle_view_3d.gd` (`PuzzleView3D`) replace the 2D `CubeView` in
   `main.tscn` (node `%PuzzleView`, 300×300). Same API, `scramble_step()` and `show_solved()`, plus `set_puzzle(id)` for

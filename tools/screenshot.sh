@@ -4,6 +4,7 @@
 #   bash tools/screenshot.sh <out_dir> [preset ...]      # default: every preset
 #   SIZE=1920x1080 bash tools/screenshot.sh docs/screenshots/1080p
 #   PUZZLE=5x5 bash tools/screenshot.sh /tmp/shots mid     # show another puzzle -> mid_5x5.png
+#   POSE=turn bash tools/screenshot.sh /tmp/shots mid      # freeze a moment: turn | solved -> mid_turn.png
 #
 # Presets live in tools/screenshot_presets.gd (fresh, mid, late, ...).
 # Output: <out_dir>/<preset>.png at $SIZE (default 1280x720).
@@ -26,6 +27,7 @@ mkdir -p "$OUT_DIR"
 OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 SIZE="${SIZE:-1280x720}"
 PUZZLE="${PUZZLE:-}"
+POSE="${POSE:-}"
 
 if [[ $# -gt 0 ]]; then
   PRESETS=("$@")
@@ -56,10 +58,10 @@ fi
 
 failed=0
 for preset in "${PRESETS[@]}"; do
-  out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}.png"
+  out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}${POSE:+_$POSE}.png"
   rm -f "$out"
   "${RUN[@]}" "$GODOT" --path "$ROOT" --rendering-driver opengl3 --audio-driver Dummy --resolution "$SIZE" \
-    --windowed --position 0,0 res://tools/screenshot.tscn -- --preset "$preset" --out "$out" ${PUZZLE:+--puzzle "$PUZZLE"} \
+    --windowed --position 0,0 res://tools/screenshot.tscn -- --preset "$preset" --out "$out" ${PUZZLE:+--puzzle "$PUZZLE"} ${POSE:+--pose "$POSE"} \
     >"$LOG" 2>&1 || true
   if [[ -f "$out" ]] && ! grep -qE "SCRIPT ERROR|Parse Error|ERROR:" "$LOG"; then
     grep "^Saved " "$LOG" || echo "Saved $out"

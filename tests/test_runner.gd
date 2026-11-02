@@ -480,7 +480,8 @@ func test_puzzle_view_click_and_drag() -> void:
 	check(view._bodies.multimesh.instance_count == 98, "5x5 draws 98 pieces")
 	check(view._stickers.multimesh.instance_count == 150, "5x5 draws 150 stickers")
 	view.show_solved()
-	check(view.model.is_solved(), "show_solved shows a solved puzzle")
+	view.finish_animations()
+	check(view.model.is_solved(), "show_solved ends on a solved puzzle")
 	view.free()
 
 
@@ -496,3 +497,99 @@ func test_clicking_the_puzzle_taps() -> void:
 	check_near(game.total_moves, game.get_tap_moves(), "clicking the puzzle calls Game.tap()")
 	main.free()
 	game.reset_state()
+
+
+# --- Animated turns (task 1.3) -----------------------------------------------
+
+func new_view() -> PuzzleView3D:
+	var view: PuzzleView3D = load("res://scenes/puzzle_view_3d.tscn").instantiate()
+	root.add_child(view)
+	return view
+
+
+## Sticker instances whose drawn colour isn't what the model has at that spot.
+func sticker_mismatches(view: PuzzleView3D, unturn: bool = false) -> int:
+	var bad := 0
+	for sticker: Dictionary in view.drawn_stickers(unturn):
+		var face := view.model.face_index(sticker["normal"])
+		var expected := view.model.color_at(sticker["position"], face)
+		if expected < 0 or not (sticker["color"] as Color).is_equal_approx(PuzzleShapes.CUBE_COLORS[expected]):
+			bad += 1
+	return bad
+
+
+func test_view_matches_model_after_1000_moves() -> void:
+	for id: String in ["3x3", "4x4", "7x7"]:
+		var view := new_view()
+		view.set_puzzle(id)
+		check(sticker_mismatches(view) == 0, "%s: drawn stickers match the model at the start" % id)
+		view.set_speed(5.0)
+		var reference := PuzzleShapes.from_id(id)
+		reference.orientations = view.model.orientations.duplicate()
+		view.record_moves = true
+		var mid_turn_mismatches := 0
+		for i in 1000:
+			view.scramble_step()
+			if i % 3 == 0:
+				view._process(0.03)  # stop part-way through turns now and then
+				mid_turn_mismatches += sticker_mismatches(view, true)
+		view._process(5.0)  # let the queue run out the normal way
+		view._process(0.0)
+		check(mid_turn_mismatches == 0, "%s: mid-turn, the drawing is the model plus the half-done turn" % id)
+		check(view.is_idle(), "%s: nothing left to animate" % id)
+		check(sticker_mismatches(view) == 0, "%s: after 1,000 moves every drawn sticker matches the model" % id)
+		reference.apply_all(view.recorded_moves)
+		check(reference.orientations == view.model.orientations, "%s: no move was lost or reordered" % id)
+		check(view.recorded_moves.size() == 1000, "%s: all 1,000 moves were applied (got %d)" % [id, view.recorded_moves.size()])
+		view.free()
+
+
+func test_view_queue_stays_bounded() -> void:
+	var view := new_view()
+	view.set_speed(5.0)
+	var longest := 0
+	for i in 1000:
+		view.scramble_step()
+		longest = maxi(longest, view.queued_moves())
+	check(longest <= PuzzleView3D.MAX_QUEUE, "1,000 moves in one frame never queue more than MAX_QUEUE")
+	view.finish_animations()
+	view.set_speed(1000.0)
+	check(view.speed_mode, "1,000 moves/s switches to speed mode")
+	for i in 1000:
+		view.scramble_step()
+	check(view.queued_moves() == 0, "speed mode doesn't queue at all")
+	view._process(0.016)
+	check(sticker_mismatches(view) == 0, "speed mode drawing matches the model after a frame")
+	view.show_solved()
+	check(view.model.is_solved() and view.is_idle(), "a solve in speed mode snaps to solved without a replay")
+	view.scramble_step()
+	view._process(0.016)
+	check(not view.model.is_solved(), "speed mode keeps turning right after a solve (no hold)")
+	view.show_solved()
+	check(not view.model.is_solved(), "back-to-back solves in speed mode don't reset it every frame")
+	view.set_speed(10.0)
+	check(view.speed_mode, "speed mode stays on between the two thresholds")
+	view.set_speed(5.0)
+	check(not view.speed_mode, "speed mode turns off below SPEED_MODE_OFF")
+	view.free()
+
+
+func test_view_solve_replays_backwards() -> void:
+	var view := new_view()
+	view.set_speed(5.0)
+	for i in 12:
+		view.scramble_step()
+	view._process(0.05)
+	check(not view.model.is_solved(), "scrambled before the solve")
+	view.show_solved()
+	check(not view.is_idle(), "the solve queues a backwards replay")
+	var elapsed := 0.0
+	while not view.is_idle() and elapsed < 3.0:
+		view._process(1.0 / 60.0)
+		elapsed += 1.0 / 60.0
+	check(view.model.is_solved(), "the replay ends solved")
+	check(elapsed <= PuzzleView3D.REWIND_TIME + 0.05, "the replay takes at most REWIND_TIME (took %.2f s)" % elapsed)
+	check(sticker_mismatches(view) == 0, "drawing matches the solved model")
+	view.scramble_step()
+	check(view.queued_moves() == 0, "moves are held off while the solved puzzle is shown")
+	view.free()
