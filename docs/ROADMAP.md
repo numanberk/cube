@@ -83,7 +83,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       list candidates with links in the CHANGELOG for the owner).
       *Done when:* tracks loop and crossfade with no two at full volume (tested via the player volumes), and licenses
       are recorded in `assets/CREDITS.md`.
-- [ ] **3.3 Buy ×1 / ×10 / Max:** the cost of n helpers is a geometric series sum in `GameState`; there's a toggle on the shop.
+- [x] **3.3 Buy ×1 / ×10 / Max:** the cost of n helpers is a geometric series sum in `GameState`; there's a toggle on the shop.
       *Done when:* tests cover ×10 cost, Max with too few Solves, and Max = 0, and cards show the cost for the chosen amount.
 - [ ] **3.4 Settings autoload and tab:** `scripts/autoload/settings.gd` → `user://settings.cfg`. A settings panel has
       Master/Music/SFX volume, music mode, **Jukebox** (unlocked tracks to play; locked ones show "Unlock 4×4 to hear this"),

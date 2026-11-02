@@ -15,6 +15,8 @@ const MIN_OFFLINE_SECONDS := 10.0
 const BASE_MOVES_PER_SOLVE := 15.0
 const BASE_TAP_MOVES := 1.0
 const COST_GROWTH := 1.15
+const BUY_MAX := -1              ## pass as `count` to buy as many as you can afford
+const BULK_LIMIT := 10000        ## safety cap for bulk cost loops
 
 ## Set to false before the node enters the tree to skip loading/saving (tests do this).
 var persistence_enabled := true
@@ -112,6 +114,47 @@ func get_building_cost(id: String) -> float:
 	var def := Content.get_building(id)
 	var owned: int = buildings.get(id, 0)
 	return ceilf(float(def["base_cost"]) * pow(COST_GROWTH, owned))
+
+
+## Cost of the next `count` copies of a helper: the exact sum of each copy's ceil(base × 1.15^owned), so bulk
+## buying costs the same as buying one at a time.
+func get_building_cost_for(id: String, count: int) -> float:
+	var def := Content.get_building(id)
+	var owned: int = buildings.get(id, 0)
+	var total := 0.0
+	for i in mini(count, BULK_LIMIT):
+		total += ceilf(float(def["base_cost"]) * pow(COST_GROWTH, owned + i))
+	return total
+
+
+## How many copies of a helper the current Solves can buy (0 if not even one).
+func get_max_affordable(id: String) -> int:
+	var def := Content.get_building(id)
+	var owned: int = buildings.get(id, 0)
+	var left := solves
+	var count := 0
+	while count < BULK_LIMIT:
+		var cost := ceilf(float(def["base_cost"]) * pow(COST_GROWTH, owned + count))
+		if cost > left:
+			break
+		left -= cost
+		count += 1
+	return count
+
+
+## Buys `count` copies of a helper, all or nothing; `BUY_MAX` buys as many as affordable. Returns how many were bought.
+func buy_buildings(id: String, count: int) -> int:
+	if count == BUY_MAX:
+		count = get_max_affordable(id)
+	if count <= 0:
+		return 0
+	var cost := get_building_cost_for(id, count)
+	if solves < cost:
+		return 0
+	solves -= cost
+	buildings[id] = int(buildings.get(id, 0)) + count
+	purchased.emit("building", id)
+	return count
 
 
 ## Lifetime Solves at which a helper appears in the shop (its "unlock_at", or half its base cost).

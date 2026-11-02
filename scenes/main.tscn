@@ -4,6 +4,8 @@
 [ext_resource type="PackedScene" path="res://scenes/puzzle_view_3d.tscn" id="2_puzzle"]
 [ext_resource type="Script" path="res://scripts/ui/fx_layer.gd" id="3_fx"]
 
+[sub_resource type="ButtonGroup" id="ButtonGroup_buy_amount"]
+
 [sub_resource type="Gradient" id="Gradient_cube_colors"]
 interpolation_mode = 1
 offsets = PackedFloat32Array(0, 0.17, 0.34, 0.5, 0.67, 0.84)
@@ -158,6 +160,42 @@ metadata/_tab_index = 0
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="BuyRow" type="HBoxContainer" parent="Margin/Rows/Columns/Right/Tabs/Helpers/HelperList"]
+layout_mode = 2
+
+[node name="BuyLabel" type="Label" parent="Margin/Rows/Columns/Right/Tabs/Helpers/HelperList/BuyRow"]
+layout_mode = 2
+theme_type_variation = &"FaintLabel"
+text = "Buy"
+
+[node name="BuyOne" type="Button" parent="Margin/Rows/Columns/Right/Tabs/Helpers/HelperList/BuyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_buy_amount")
+text = "×1"
+
+[node name="BuyTen" type="Button" parent="Margin/Rows/Columns/Right/Tabs/Helpers/HelperList/BuyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+toggle_mode = true
+button_group = SubResource("ButtonGroup_buy_amount")
+text = "×10"
+
+[node name="BuyMax" type="Button" parent="Margin/Rows/Columns/Right/Tabs/Helpers/HelperList/BuyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+toggle_mode = true
+button_group = SubResource("ButtonGroup_buy_amount")
+text = "Max"
 
 [node name="Upgrades" type="ScrollContainer" parent="Margin/Rows/Columns/Right/Tabs"]
 visible = false

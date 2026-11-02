@@ -479,6 +479,38 @@ corner_radius_bottom_left = 10
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_card_focus"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip"]
+content_margin_left = 12.0
+content_margin_top = 4.0
+content_margin_right = 12.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1020, 0.1137, 0.1373, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.1961, 0.2196, 0.2745, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip_on"]
+content_margin_left = 12.0
+content_margin_top = 4.0
+content_margin_right = 12.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1176, 0.2275, 0.1843, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2353, 0.8118, 0.5569, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -628,3 +660,14 @@ PopTap/colors/font_outline_color = Color(0.0549, 0.0627, 0.0784, 0.85)
 PopTap/constants/outline_size = 5
 PopTap/font_sizes/font_size = 22
 PopTap/fonts/font = SubResource("FontVariation_2j8s8")
+ToggleChip/base_type = &"Button"
+ToggleChip/colors/font_color = Color(0.6667, 0.6902, 0.7412, 1)
+ToggleChip/colors/font_hover_color = Color(0.9255, 0.9333, 0.949, 1)
+ToggleChip/colors/font_pressed_color = Color(0.9255, 0.9333, 0.949, 1)
+ToggleChip/colors/font_hover_pressed_color = Color(1, 1, 1, 1)
+ToggleChip/font_sizes/font_size = 13
+ToggleChip/styles/focus = SubResource("StyleBoxEmpty_card_focus")
+ToggleChip/styles/hover = SubResource("StyleBoxFlat_chip")
+ToggleChip/styles/hover_pressed = SubResource("StyleBoxFlat_chip_on")
+ToggleChip/styles/normal = SubResource("StyleBoxFlat_chip")
+ToggleChip/styles/pressed = SubResource("StyleBoxFlat_chip_on")

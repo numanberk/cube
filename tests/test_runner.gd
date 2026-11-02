@@ -1066,3 +1066,57 @@ func test_music_crossfade_never_two_at_full_volume() -> void:
 	check(audio.current_track_id == "first_sub_20", "shuffle mode changes track after a few loops")
 	audio.set_music_mode("follow")
 	audio.stop_all()
+
+
+# --- Buy x1 / x10 / Max (task 3.3) ------------------------------------------------
+
+func test_bulk_buying() -> void:
+	var g := new_game()
+	var one_by_one := 0.0
+	for i in 10:
+		one_by_one += ceilf(5.0 * pow(1.15, i))
+	check_near(g.get_building_cost_for("friend", 10), one_by_one, "x10 costs the same as ten single buys")
+	check_near(g.get_building_cost_for("friend", 1), g.get_building_cost("friend"), "x1 cost = the normal cost")
+	g.cheat_add_solves(one_by_one - 1.0)
+	check(g.buy_buildings("friend", 10) == 0, "x10 with one Solve too few buys nothing")
+	check_near(g.solves, one_by_one - 1.0, "...and spends nothing")
+	g.cheat_add_solves(1.0)
+	check(g.buy_buildings("friend", 10) == 10, "x10 with exactly enough buys 10")
+	check_near(g.solves, 0.0, "...and costs exactly the sum")
+	check(g.buildings["friend"] == 10, "owning 10 Friends now")
+	check(g.get_max_affordable("friend") == 0, "Max with no Solves = 0")
+	check(g.buy_buildings("friend", GameState.BUY_MAX) == 0, "buying Max with no Solves buys nothing")
+	g.cheat_add_solves(1000.0)
+	var max_count := g.get_max_affordable("friend")
+	var max_cost := g.get_building_cost_for("friend", max_count)
+	check(max_count > 0 and max_cost <= 1000.0 and g.get_building_cost_for("friend", max_count + 1) > 1000.0,
+			"Max is the most you can afford (one more would be too many)")
+	check(g.buy_buildings("friend", GameState.BUY_MAX) == max_count, "buying Max buys that many")
+	check_near(g.solves, 1000.0 - max_cost, "...for exactly their cost")
+	check(g.solves < g.get_building_cost("friend"), "what's left can't buy another")
+	g.free()
+
+
+func test_buy_amount_toggle() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	game.cheat_add_solves(100.0)
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var friend: ShopCard = main._helper_cards["friend"]
+	main.set_buy_amount(10)
+	main._refresh()
+	check(friend._cost.text == "×10  ·  %s Solves" % Num.format(game.get_building_cost_for("friend", 10)), "x10 shows the cost of 10")
+	check(friend.affordable == (game.solves >= game.get_building_cost_for("friend", 10)), "x10 is affordable only if all 10 are")
+	main.set_buy_amount(GameState.BUY_MAX)
+	main._refresh()
+	var n := game.get_max_affordable("friend")
+	check(friend._cost.text == "×%d  ·  %s Solves" % [n, Num.format(game.get_building_cost_for("friend", n))], "Max shows how many and their cost")
+	friend.pressed.emit()
+	check(game.buildings["friend"] == n, "pressing the card in Max mode buys that many")
+	main.set_buy_amount(1)
+	main._refresh()
+	check(friend._cost.text == "%s Solves" % Num.format(game.get_building_cost("friend")), "x1 shows the single cost")
+	main.free()
+	game.reset_state()

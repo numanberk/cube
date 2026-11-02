@@ -2,6 +2,23 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 3.3: Buy ×1 / ×10 / Max
+- **`GameState`:** `get_building_cost_for(id, count)` is the exact sum of each copy's `ceil(base × 1.15^n)`, so bulk costs
+  match buying one at a time; a closed-form geometric sum would differ by the rounding. `get_max_affordable(id)`.
+  `buy_buildings(id, count)`: ×10 is **all or nothing**, and `GameState.BUY_MAX` (−1) buys as many as affordable;
+  it returns the number bought and emits `purchased` once. `buy_building(id)` is unchanged (the simulator uses it).
+  Loops are capped at `BULK_LIMIT` (10,000).
+- **Shop toggle:** "Buy ×1 / ×10 / Max" chips (`ToggleChip` theme variation, one `ButtonGroup`) at the top of the Helpers
+  tab. Cards show the chosen amount's cost ("×10 · 1.23K Solves"; Max shows how many, "×22 · 3.02M Solves", or ×1
+  greyed out if none), and they're affordable only if all of it is. `main.set_buy_amount(1 | 10 | BUY_MAX)`.
+  The choice isn't saved (Settings could keep it later).
+- `screenshot.sh` takes `BUY=10` / `BUY=-1`. Screenshots: [mid ×10](screenshots/buy/mid_buy10.png),
+  [late ×10](screenshots/buy/late_buy10.png), [late Max](screenshots/buy/late_buy-1.png).
+- Tests: ×10 = sum of singles; ×10 one Solve short buys nothing and spends nothing; exact ×10; Max with 0 Solves = 0;
+  Max = the most affordable (one more is too many) and spends exactly that; the toggle changes the card texts; a Max press
+  buys that many. 1090 checks, `All good.`
+- **Next:** task 3.4 (Settings autoload and tab).
+
 ## 2026-11-02 — Task 3.2: music system (lo-fi)
 - **`Content.TRACKS`**: all 7 tracks from PLAN §4.3 (id, title, artist, license, file, `unlock` puzzle id; "championship"
   for Finals). Two have files; the other five have `file = ""` and are skipped until task 4.5 or decision D8.

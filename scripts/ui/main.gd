@@ -28,6 +28,9 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var upgrade_list: GridContainer = %UpgradeList
 @onready var tabs: TabContainer = %Tabs
 @onready var fx: FxLayer = %FxLayer
+@onready var buy_one: Button = %BuyOne
+@onready var buy_ten: Button = %BuyTen
+@onready var buy_max: Button = %BuyMax
 @onready var upgrade_empty: Label = %UpgradeEmpty
 @onready var offline_dialog: AcceptDialog = %OfflineDialog
 
@@ -39,12 +42,16 @@ var _shown_solves := 0.0          ## what the counter shows; eases towards Game.
 var _pending_solve_value := 0.0   ## Solves earned since the last "+X Solves" pop
 var _solve_pop_timer := 0.0
 var _burst_timer := 0.0
+var _buy_amount := 1               ## 1, 10 or GameState.BUY_MAX (the ×1 / ×10 / Max toggle)
 var _revealed: Dictionary = {}    ## helper ids already shown unlocked (a newly revealed one plays the unlock sound)
 
 
 func _ready() -> void:
 	puzzle_view.tapped.connect(_on_tap_pressed)
 	_build_settings_menu()
+	buy_one.pressed.connect(set_buy_amount.bind(1))
+	buy_ten.pressed.connect(set_buy_amount.bind(10))
+	buy_max.pressed.connect(set_buy_amount.bind(GameState.BUY_MAX))
 	_apply_graphics(GraphicsConfig.load_quality())
 	Game.solved.connect(_on_solved)
 	Game.purchased.connect(_on_purchased)
@@ -95,7 +102,7 @@ func _build_shop() -> void:
 	for def: Dictionary in Content.BUILDINGS:
 		var card: ShopCard = ShopCardScene.instantiate()
 		card.tooltip_text = def["description"]
-		card.pressed.connect(Game.buy_building.bind(def["id"]))
+		card.pressed.connect(_on_helper_card_pressed.bind(def["id"]))
 		helper_list.add_child(card)
 		_helper_cards[def["id"]] = card
 	for def: Dictionary in Content.UPGRADES:
@@ -144,14 +151,16 @@ func _refresh_helper_cards() -> void:
 				Audio.play_unlock()
 			var owned: int = Game.buildings[id]
 			var each := Game.get_building_mps(id)
-			var cost := Game.get_building_cost(id)
+			var count := _buy_count(id)
+			var cost := Game.get_building_cost_for(id, count)
 			var rate := "+%s moves/s each" % Num.format(each)
 			if owned > 0:
 				rate += "  ·  +%s/s total" % Num.format(each * owned)
 			card.visible = true
 			card.set_view({
 				"icon": Content.icon(def["icon"]), "title": def["name"], "line1": def["description"], "line2": rate,
-				"owned": str(owned), "cost": "%s Solves" % Num.format(cost), "affordable": Game.solves >= cost,
+				"owned": str(owned), "affordable": Game.solves >= cost,
+				"cost": "%s Solves" % Num.format(cost) if _buy_amount == 1 else "×%d  ·  %s Solves" % [count, Num.format(cost)],
 			})
 		elif not shown_locked:
 			shown_locked = true
@@ -165,6 +174,26 @@ func _refresh_helper_cards() -> void:
 			})
 		else:
 			card.visible = false
+
+
+## How many copies of a helper the current toggle means (Max with nothing affordable shows 1, unaffordable).
+func _buy_count(id: String) -> int:
+	if _buy_amount == GameState.BUY_MAX:
+		return maxi(1, Game.get_max_affordable(id))
+	return _buy_amount
+
+
+## The ×1 / ×10 / Max toggle (1, 10 or GameState.BUY_MAX).
+func set_buy_amount(amount: int) -> void:
+	_buy_amount = amount
+	buy_one.set_pressed_no_signal(amount == 1)
+	buy_ten.set_pressed_no_signal(amount == 10)
+	buy_max.set_pressed_no_signal(amount == GameState.BUY_MAX)
+	_refresh()
+
+
+func _on_helper_card_pressed(id: String) -> void:
+	Game.buy_buildings(id, _buy_amount)
 
 
 ## Upgrades are a grid of icon tiles (details in each tile's tooltip): ones you can buy, then a dimmer "Owned" tile for
