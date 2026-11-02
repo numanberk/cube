@@ -3,30 +3,6 @@
 [ext_resource type="Script" path="res://scripts/ui/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/puzzle_view_3d.tscn" id="2_puzzle"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_bar_bg"]
-bg_color = Color(0.165, 0.176, 0.212, 1)
-corner_radius_top_left = 9
-corner_radius_top_right = 9
-corner_radius_bottom_right = 9
-corner_radius_bottom_left = 9
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_bar_fill"]
-bg_color = Color(0, 0.62, 0.376, 1)
-corner_radius_top_left = 9
-corner_radius_top_right = 9
-corner_radius_bottom_right = 9
-corner_radius_bottom_left = 9
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
-content_margin_left = 14.0
-content_margin_top = 14.0
-content_margin_right = 14.0
-content_margin_bottom = 14.0
-bg_color = Color(0.118, 0.129, 0.157, 1)
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-
 [node name="Main" type="Control"]
 layout_mode = 3
 anchors_preset = 15
@@ -52,33 +28,29 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 32
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 24
+theme_type_variation = &"PageMargin"
 
 [node name="Columns" type="HBoxContainer" parent="Margin"]
 layout_mode = 2
-theme_override_constants/separation = 32
+theme_type_variation = &"ColumnsBox"
 
 [node name="Left" type="VBoxContainer" parent="Margin/Columns"]
 layout_mode = 2
+theme_type_variation = &"StackBox"
 size_flags_horizontal = 3
-theme_override_constants/separation = 14
 alignment = 1
 
 [node name="SolvesLabel" type="Label" parent="Margin/Columns/Left"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 44
+theme_type_variation = &"TitleLabel"
 text = "0 Solves"
 horizontal_alignment = 1
 
 [node name="RateLabel" type="Label" parent="Margin/Columns/Left"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.72, 0.78, 1)
-theme_override_font_sizes/font_size = 18
+theme_type_variation = &"SubtitleLabel"
 text = "0 moves/s"
 horizontal_alignment = 1
 
@@ -91,8 +63,7 @@ size_flags_horizontal = 4
 [node name="MoveTicker" type="Label" parent="Margin/Columns/Left"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.58, 0.65, 1)
-theme_override_font_sizes/font_size = 15
+theme_type_variation = &"TickerLabel"
 text = " "
 horizontal_alignment = 1
 
@@ -101,8 +72,6 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(320, 18)
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_styles/background = SubResource("StyleBox_bar_bg")
-theme_override_styles/fill = SubResource("StyleBox_bar_fill")
 max_value = 1.0
 step = 0.0
 show_percentage = false
@@ -110,7 +79,7 @@ show_percentage = false
 [node name="ProgressLabel" type="Label" parent="Margin/Columns/Left"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.72, 0.78, 1)
+theme_type_variation = &"DimLabel"
 text = "0 / 15 moves to next solve"
 horizontal_alignment = 1
 
@@ -118,27 +87,24 @@ horizontal_alignment = 1
 unique_name_in_owner = true
 custom_minimum_size = Vector2(320, 64)
 layout_mode = 2
+theme_type_variation = &"PrimaryButton"
 size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 22
 text = "Turn the cube"
 
 [node name="StatsLabel" type="Label" parent="Margin/Columns/Left"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.52, 0.58, 1)
-theme_override_font_sizes/font_size = 14
+theme_type_variation = &"FaintLabel"
 text = "Lifetime: 0 solves"
 horizontal_alignment = 1
 
 [node name="GraphicsButton" type="Button" parent="Margin/Columns/Left"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"SubtleButton"
 size_flags_horizontal = 4
 focus_mode = 0
-theme_override_colors/font_color = Color(0.5, 0.52, 0.58, 1)
-theme_override_font_sizes/font_size = 13
 text = "Graphics: High"
-flat = true
 
 [node name="Right" type="VBoxContainer" parent="Margin/Columns"]
 custom_minimum_size = Vector2(480, 0)
@@ -148,7 +114,6 @@ size_flags_horizontal = 3
 [node name="Tabs" type="TabContainer" parent="Margin/Columns/Right"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBox_panel")
 current_tab = 0
 
 [node name="Helpers" type="ScrollContainer" parent="Margin/Columns/Right/Tabs"]
@@ -160,7 +125,6 @@ metadata/_tab_index = 0
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
 
 [node name="Upgrades" type="ScrollContainer" parent="Margin/Columns/Right/Tabs"]
 visible = false
@@ -171,12 +135,11 @@ metadata/_tab_index = 1
 [node name="UpgradeBox" type="VBoxContainer" parent="Margin/Columns/Right/Tabs/Upgrades"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
 
 [node name="UpgradeEmpty" type="Label" parent="Margin/Columns/Right/Tabs/Upgrades/UpgradeBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.62, 0.68, 1)
+theme_type_variation = &"DimLabel"
 text = "Keep solving. Upgrades appear here as you earn more Solves."
 autowrap_mode = 3
 
@@ -184,7 +147,6 @@ autowrap_mode = 3
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
 
 [node name="OfflineDialog" type="AcceptDialog" parent="."]
 unique_name_in_owner = true

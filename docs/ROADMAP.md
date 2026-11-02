@@ -56,7 +56,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       so the owner confirms real fps on their PC), and there are no references to `CubeView` left.
 
 ## Phase 2 — Look
-- [ ] **2.1 Theme:** `ui/theme.tres` set as the project theme. One OFL font (e.g. Inter) in `assets/fonts/`, plus
+- [x] **2.1 Theme:** `ui/theme.tres` set as the project theme. One OFL font (e.g. Inter) in `assets/fonts/`, plus
       `assets/CREDITS.md`. Button states (normal/hover/pressed/disabled/focus), panels, tabs, progress bar, one accent colour.
       Remove per-node overrides from `main.tscn`.
       *Done when:* there are no `theme_override_*` lines left except deliberate ones, and before/after screenshots are in `docs/screenshots/`.

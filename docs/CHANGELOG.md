@@ -2,6 +2,26 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 2.1: theme + font
+- **Font:** Inter 4.1, variable (`assets/fonts/InterVariable.ttf`, 880 KB), downloaded from the official GitHub release, under
+  SIL OFL 1.1 (full text in `assets/fonts/Inter-OFL.txt`). New `assets/CREDITS.md` lists it; every future asset goes there.
+  The theme uses two weights through `FontVariation` (450 for text, 700 for titles, tabs and the main button).
+- **`ui/theme.tres`** is the project theme (`gui/theme/custom`). Dark palette (bg `#16181d`, panels `#1d2027`, raised `#252932`,
+  text `#eceef2` / dim `#aab0bd` / faint `#7c8392`) with **one accent, green `#3ccf8e`**. It styles buttons (normal, hover,
+  pressed, disabled, focus), tabs (accent line on the selected tab), the progress bar, scrollbars, panels, dialogs and tooltips.
+  Type variations: TitleLabel, SubtitleLabel, DimLabel, FaintLabel, TickerLabel, PrimaryButton (the Turn button: green
+  border, bold 22 px, no extra focus ring because it always has focus), SubtleButton (the Graphics toggle), and layout
+  variations PageMargin, ColumnsBox, StackBox. The default VBox separation is 8.
+- **`main.tscn` has no overrides left:** all 23 `theme_override_*` lines and the 3 inline StyleBoxes are gone; nodes use
+  `theme_type_variation` instead. New rule 8 in CLAUDE.md, enforced by `test_theme_is_used_everywhere` (no overrides in any
+  scene, every variation used exists in the theme, the font loads and is credited). 895 checks, `All good.`
+- Side effect: disabled (unaffordable) shop rows now look clearly different from affordable ones.
+- Screenshots: before [mid](screenshots/theme/before_mid.png) / [late](screenshots/theme/before_late.png),
+  after [mid](screenshots/theme/after_mid.png) / [late](screenshots/theme/after_late.png).
+- The theme was generated once by a throwaway script; from now on **edit `ui/theme.tres` directly** (in the Godot editor or as
+  text). The offline "Welcome back" dialog is themed but wasn't screenshotted (it only shows after time away); task 3.6 replaces it.
+- **Next:** task 2.2 (layout: top bar, big stage, next-goal strip, remove the Turn button).
+
 ## 2026-11-02 — Decisions D9–D12 (docs only)
 - **D9 (owner): all unlocked puzzles run at once**, replacing D1 (one active puzzle). Helpers are one shared team whose
   moves the player splits across puzzles. Taps go to the focused puzzle. The screen is one big focused puzzle plus a row of

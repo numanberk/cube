@@ -30,6 +30,10 @@ window/size/min_height=600
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[gui]
+
+theme/custom="res://ui/theme.tres"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

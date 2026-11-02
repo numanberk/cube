@@ -23,6 +23,8 @@ Full design: `docs/DESIGN.md`.
 ```
 project.godot              Engine config; autoload "Game" -> scripts/autoload/game.gd
 scenes/main.tscn           The one screen (UI layout)
+ui/theme.tres              Project theme: Inter font, colours, button/tab/bar styles, type variations (see rule 8)
+assets/                    fonts/ (Inter, OFL) and later audio/, images/; every file listed in assets/CREDITS.md
 scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable > Bodies/Stickers MultiMeshes)
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
@@ -55,6 +57,10 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    `SAVE_VERSION` and add a step in `_migrate()` so old saves still load.
 6. Cost formula: `ceil(base_cost * 1.15 ^ owned)`. Offline progress is capped at 8 hours.
 7. Keep scenes editable in the Godot editor: use `%UniqueName` nodes, no deep `get_node` paths.
+8. **Style lives in `ui/theme.tres`.** No `theme_override_*` in scenes (a test enforces it); give a node a
+   `theme_type_variation` instead (TitleLabel, SubtitleLabel, DimLabel, FaintLabel, TickerLabel, PrimaryButton,
+   SubtleButton, PageMargin, ColumnsBox, StackBox), or add a new variation to the theme.
+   One accent colour: green `#3ccf8e` (dim `#2a9d6c`). Every new asset gets a line in `assets/CREDITS.md`.
 
 ## Before you finish (every session)
 1. Run `bash tools/run_tests.sh` and make sure it prints `All good.`

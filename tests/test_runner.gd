@@ -713,3 +713,23 @@ func test_graphics_button_toggles_and_saves() -> void:
 	main.free()
 	GraphicsConfig.path = old_path
 	clean_test_saves()
+
+
+# --- Theme (task 2.1) ----------------------------------------------------------
+
+func test_theme_is_used_everywhere() -> void:
+	check(ProjectSettings.get_setting("gui/theme/custom") == "res://ui/theme.tres", "ui/theme.tres is the project theme")
+	var theme: Theme = load("res://ui/theme.tres")
+	check(theme != null and theme.default_font != null, "the theme loads with its font (Inter)")
+	check(FileAccess.file_exists("res://assets/CREDITS.md") and FileAccess.get_file_as_string("res://assets/CREDITS.md").contains("InterVariable.ttf"),
+			"the font is credited in assets/CREDITS.md")
+	var variation_regex := RegEx.create_from_string("theme_type_variation = &\"(\\w+)\"")
+	for scene_name in DirAccess.get_files_at("res://scenes"):
+		if not scene_name.ends_with(".tscn"):
+			continue
+		var text := FileAccess.get_file_as_string("res://scenes".path_join(scene_name))
+		# Style belongs in the theme. A deliberate exception must be listed here with a reason.
+		check(not text.contains("theme_override_"), "%s has no per-node theme overrides" % scene_name)
+		for found in variation_regex.search_all(text):
+			var variation := found.get_string(1)
+			check(theme.get_type_variation_base(variation) != &"", "%s uses theme variation %s, which the theme defines" % [scene_name, variation])
