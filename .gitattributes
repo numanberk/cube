@@ -1,0 +1,6 @@
+# Keep line endings consistent between Windows and the Linux machines Claude runs on.
+* text=auto eol=lf
+*.png binary
+*.ogg binary
+*.wav binary
+*.ttf binary

@@ -1,0 +1,35 @@
+# Cube Idle — design
+
+## Core loop
+1. **Tap** "Turn the cube" → moves (1 per tap, boosted by upgrades).
+2. Every **15 moves** (reduced by method upgrades) completes a **solve** → +1 Solve.
+3. Spend Solves on **helpers** that make moves automatically.
+4. Spend Solves on **upgrades** that multiply taps, helpers, or cut moves per solve.
+5. Close the game; helpers keep working (offline progress, max 8 h).
+
+## Numbers
+| Thing | Rule |
+|---|---|
+| Moves per solve | `15 × product(solve_moves_mult)`, min 1 |
+| Helper cost | `ceil(base_cost × 1.15^owned)` |
+| Helper unlock | Visible once lifetime Solves ≥ 50% of base cost (or `unlock_at`) |
+| Upgrade unlock | Visible once lifetime Solves ≥ 50% of cost, and its `requires` are met |
+| Offline | Seconds away × moves/sec, capped at 8 h |
+
+## Helpers (current)
+| Helper | Base cost | Moves/s |
+|---|---|---|
+| Cubing Friend | 5 | 0.5 |
+| Cubing Club | 60 | 4 |
+| Solving Robot | 700 | 32 |
+| Local Competition | 9,000 | 260 |
+| Cube Factory | 120,000 | 2,100 |
+| Speedcubing Lab | 1,800,000 | 18,000 |
+
+## Planned systems
+- **Puzzles:** 2×2 → 3×3 → 4×4 → 5×5 → 7×7 → Megaminx. Each pays more Solves per solve and needs more moves.
+- **Methods:** Beginner → CFOP → Roux → ZZ → "God's Number" (20 moves).
+- **Prestige — World Championship:** reset Solves/helpers for **Trophies** (permanent multiplier).
+- **Active play:** occasional "Scramble Challenge" event for a timed boost.
+- **Achievements:** first solve, sub-10 personal best, 1M moves, etc.
+- **3D cube:** replace `CubeView` with a real 3D cube that animates face turns.

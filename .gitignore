@@ -1,0 +1,14 @@
+# Godot 4 cache and imports (regenerated automatically)
+.godot/
+
+# Exported builds
+builds/
+*.exe
+*.pck
+
+# Export secrets
+export_credentials.cfg
+
+# OS junk
+.DS_Store
+Thumbs.db
