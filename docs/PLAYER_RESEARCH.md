@@ -85,11 +85,13 @@ prestige (Zero IDLE), thin repeat prestiges (Idle Pins), and FPS problems (Revol
 
 ## 3. How each pattern becomes Cube Idle
 
-Everything below keeps the decisions already made (D1 one active puzzle, D3 3D cube, D6 first prestige at ~90 min).
+Owner decisions: D3 3D cube, D6 first prestige at ~90 min, and from this research **D9 all unlocked puzzles run at once**
+(shared helper team split across them; one big focused puzzle plus a row of small ones), D10 random drops with pity,
+D11 toggles + Coach rules, D12 Hall of Fame before 1.0.
 
 | Pattern | Cube Idle version | Where in the roadmap |
 |---|---|---|
-| Many parallel bars (Idle Skilling) | **Puzzle Mastery:** each puzzle has its own level from solves made on it, with milestone perks, kept through prestige. Lab and collection run alongside as side tracks. | 4.6 (moved up from Phase 11) |
+| Many parallel bars (Idle Skilling) | **All unlocked puzzles run at once (D9)**, sharing one helper team that the player splits across them. **Puzzle Mastery:** every puzzle levels from its own solves, with milestone perks, kept through prestige. | 4.2, 4.3a/b, 4.6 |
 | Things finish while away (hatchery, lab) | **Algorithm Lab:** real-time research (learn OLL, PLL, finger tricks, lookahead, methods) that keeps running offline. 1 slot, more from trophies. | 5.6 |
 | Local resets (RI circles) | **Helper Promotion:** at 100 owned, promote a helper: its count goes back to 0, it gets a permanent ×3, and its milestones start again. Optional, never forced. | 5.7 |
 | Perk trees that unlock systems (Idle Skilling) | **Trophy perk tree** with 4 branches (Practice, Team, Competition, Automation); the first node of each branch unlocks a system. | 6.3 (reworked) |
@@ -100,7 +102,7 @@ Everything below keeps the decisions already made (D1 one active puzzle, D3 3D c
 | Bosses you can fail (raids, dungeons) | **Competitions:** timed events (Local → Regional → National → Continental → Worlds) where you must hit a solves/s target with your current kit; medals and collection drops. | 8.3 |
 | Challenges (RI) | **Challenge runs:** a championship run with a rule (Beginner method only, No helpers, One-handed: taps ×0.5, Big cubes only…); finishing gives a permanent reward. | 8.4 |
 | Scripting (PT2), but not opaque | **Coach:** a short list of if/then rules picked from menus (e.g. "If a helper costs < 5 % of my Solves → buy it"). No code. | 8.5 |
-| Deeper reset layers (Rebirth, Infinity) | **Hall of Fame:** a second prestige layer that resets championships for *Legacy* points and automates Compete. | 11 (or pre-launch, see D12) |
+| Deeper reset layers (Rebirth, Infinity) | **Hall of Fame:** a second prestige layer that resets championships for *Legacy* points and automates Compete. | 8.6–8.8 (D12: before 1.0) |
 | Hypnotic visual (RI) | Already there: real 3D turns, speed-mode wobble. Later: tiny helper cubes turning in the stage background at their own speed. | 2.4 / 9.1 |
 
 ### Rules that come from the "avoid" list
@@ -117,24 +119,22 @@ Everything below keeps the decisions already made (D1 one active puzzle, D3 3D c
 
 Nothing already done changes, and phases keep their numbers. New or reworked tasks:
 
-- **Phase 4:** + **4.6 Puzzle Mastery** (moved from Phase 11; it's the "many bars" pattern and costs little). The rebalance becomes 4.7.
+- **Phase 4:** 4.2/4.3 rewritten for parallel puzzles (D9: 4.2, 4.3a row + focus, 4.3b split controls), + **4.6 Puzzle Mastery** (moved from Phase 11; it's the "many bars" pattern and costs little). The rebalance becomes 4.7.
 - **Phase 5:** + **5.6 Algorithm Lab**, + **5.7 Helper Promotion** (only if the sim shows the first hour still needs it). The rebalance becomes 5.8.
 - **Phase 6:** **6.3 Trophy shop → perk tree**, + **6.3b Auto-buyers and auto-Compete** (6.4, tuning, stays last).
 - **Phase 7:** **7.1 → ~100 tiered achievements**, + **7.3 Cube Collection [D10]**, + **7.4 Comp Kit**.
 - **Phase 8:** + **8.3 Competitions**, + **8.4 Challenge runs**, + **8.5 Coach rules [D11]**.
-- **Phase 11:** **Hall of Fame** second layer [D12].
+- **Phase 8:** + **8.6–8.8 Hall of Fame** second layer (D12: before 1.0).
 
 Content target moves from "20–40 hours" to **40–100 hours** before the late game runs out, because this player plays for hundreds.
 
-## 5. Open decisions this adds (PLAN §7)
-- **D9 Parallel play:** keep D1 (one active puzzle) and add side tracks (mastery, lab, collection), *or* revisit D1 and let
-  several puzzles run at once like Idle Skilling's skills. *Recommended: keep D1 + side tracks.* The 3D cube is the star,
-  and side tracks give the "many bars" feeling without splitting the screen.
-- **D10 Collection randomness:** random drops with pity counters, *or* fully deterministic (fixed unlock order). *Recommended: random with pity.*
-- **D11 Automation depth:** toggles only (auto-buy, auto-Compete), *or* toggles + a menu-based rule list (Coach), *or* a real
-  scripting language like Perfect Tower. *Recommended: toggles + Coach rules.* That gives most of the fun without the opacity.
-- **D12 Second prestige layer:** before the 1.0 release, *or* as the first big post-launch update. *Recommended: before 1.0*,
-  because this player's favourite games all have at least two layers.
+## 5. Decisions (answered by the owner, 2026-11-02)
+- **D9 Parallel play:** **all unlocked puzzles run at once.** Helpers are one shared team whose moves the player splits
+  across puzzles; the screen is one big focused puzzle (taps go there) plus a row of small ones. (I had recommended
+  keeping one active puzzle; the owner chose the fuller Idle Skilling feel.)
+- **D10 Collection randomness:** random drops with pity counters.
+- **D11 Automation depth:** toggles + menu-based Coach rules.
+- **D12 Second prestige layer:** before 1.0 (tasks 8.6–8.8).
 
 ---
 

@@ -75,7 +75,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 
 ## Phase 3 — Sound and feel
 - [ ] **3.1 Audio autoload + SFX** (soft, warm sounds that fit lo-fi): `scripts/autoload/audio.gd` with Master/Music/SFX buses. Turn click (random pitch ±8 %,
-      lower on bigger puzzles), solve chime (rate-limited to ~4/s), buy sound, tier-up sting. CC0 sounds, credited.
+      lower on bigger puzzles), solve chime (rate-limited to ~4/s), buy sound, unlock sting. CC0 sounds, credited.
       *Done when:* each event plays a sound, 100 solves in one frame don't play 100 chimes, and tests pass.
 - [ ] **3.2 Music system (lo-fi, D7):** `Content.TRACKS` (id, title, artist, license, file, `unlock_puzzle`). The Audio autoload has two
       players crossfading over 2 s, the modes *Follow progress* / *Shuffle unlocked* / *Loop one*, and ducks to 30 % when
@@ -95,30 +95,42 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [ ] **3.6 Offline panel:** a styled "Welcome back" panel (time away, Solves earned, a Collect button) replaces the default AcceptDialog.
       *Done when:* there's a screenshot, and there's no panel when nothing was earned.
 
-## Phase 4 — Puzzles (D1: one active puzzle)
+## Phase 4 — Puzzles (D9: all unlocked puzzles run at once)
 - [ ] **4.1 Puzzle data:** `Content.PUZZLES` (id, name, shape, `moves_per_solve`, `solve_value`, `unlock_cost`, `requires_prestige`)
       using the starting curve in PLAN §4.1, and each track linked to its puzzle.
       *Done when:* a test checks each puzzle earns more Solves per move than the one before it.
-- [ ] **4.2 Active puzzle + save v2:** `GameState` stores the unlocked puzzles and the active one; moves per solve and solve value
-      read from it; new signals `puzzle_changed` and `tier_unlocked`; unlocked tracks follow unlocked puzzles.
-      Migration: old saves start on 3×3 (3×3 unlocked) if they own any upgrade, otherwise 2×2.
-      *Done when:* there's a v1 → v2 migration test, a new game starts on 2×2, and switching puzzles is tested.
-- [ ] **4.3 Puzzle ladder UI + tier-up:** a row of puzzle chips above the stage (locked ones show their cost; the next one is
-      also shown in "Next goal"). Buying one plays the tier-up animation (old puzzle spins away, new one drops in) and
-      fades to its track.
-      *Done when:* there are screenshots of the ladder and mid tier-up, and the switch-back works.
+- [ ] **4.2 Parallel puzzles + save v2 [D9]:** `GameState` stores the unlocked puzzles, each with its own move progress,
+      the focused puzzle, and the helper split (a weight per puzzle). Helper moves are divided by the split; taps go to the
+      focused puzzle; each puzzle completes its own solves with its own `moves_per_solve` and `solve_value`. Income is the
+      sum. Unlocking a puzzle moves the whole split onto it (so not touching the split plays like a ladder). Presets:
+      *Focus newest*, *Spread evenly*. Signals `puzzle_unlocked`, `focus_changed`, `split_changed`; unlocked tracks follow
+      unlocked puzzles. Migration: v1 progress goes to the starting puzzle; old saves get 3×3 unlocked too if they own any upgrade.
+      The simulator must learn to buy puzzles and (for now) keep the default split.
+      *Done when:* there's a v1 → v2 migration test, a new game has only 2×2, and tests cover the split (puzzle moves add up to
+      helper moves), taps going to the focused puzzle, per-puzzle solves, and the unlock moving the split.
+- [ ] **4.3a Puzzle row + focus [D9]:** one big `PuzzleView3D` (the focused puzzle) and a row of small ones under it for every
+      other unlocked puzzle, each always on Graphics Low, turning at the speed of its own share and showing its solves/s.
+      Clicking a small one focuses it (the big and small views swap). The next locked puzzle shows as a "???" card with its
+      cost (also in "Next goal"). Unlocking drops the new puzzle in with a short animation and fades to its track.
+      *Done when:* there are screenshots with 1, 3 and 6 puzzles; a test or smoke check covers click-to-focus; and the
+      bench (extended to show all 6) stays within 1.5× of the single-puzzle frame time.
+- [ ] **4.3b Split controls [D9]:** a small panel to set each puzzle's share (+/− or sliders that always add up to 100 %),
+      the two presets, and each puzzle's moves/s and solves/s next to its share. All changes go through `GameState`.
+      *Done when:* tests cover that shares always add up to 100 % and presets give the right split, and there's a screenshot.
 - [ ] **4.4 Megaminx:** `PuzzleShapes.megaminx()` (12 faces, 72° turns, Pochmann notation `R++ D-- U`), with the view rendering
       pentagonal pieces.
       *Done when:* model tests cover a move applied 5× = solved and scramble + inverse = solved, and there's a screenshot.
 - [ ] **4.5 More placeholder tracks:** one per remaining puzzle tier plus "Finals" (or candidates listed for the owner).
       *Done when:* every `Content.TRACKS` entry has a file or an explicit "owner to supply" note in CREDITS, and the
       Jukebox shows them correctly locked/unlocked.
-- [ ] **4.6 Puzzle Mastery (PR) [D9]:** each puzzle gains mastery XP from solves made on it (levels 1–100, XP curve as data),
+- [ ] **4.6 Puzzle Mastery (PR):** each puzzle gains mastery XP from its own solves, so every running puzzle levels in parallel
+      (levels 1–100, XP curve as data),
       with milestone perks at 5/10/25/50/100 (e.g. +10 % moves on that puzzle, −1 move per solve, +1 % all moves).
-      Kept through prestige. A mastery bar per puzzle chip. Save change → bump the save version with a migration.
+      Kept through prestige. A mastery bar on every puzzle in the row. Save change → bump the save version with a migration.
       *Done when:* tests cover XP gain, level-ups, perk effects and the migration, and mastery shows in a screenshot.
-- [ ] **4.7 Rebalance (early game):** tune puzzles and helpers with the simulator.
-      *Done when:* the first helper, first upgrade and 3×3 targets pass as real (not expected-failure) pacing tests.
+- [ ] **4.7 Rebalance (early game):** tune puzzles, helpers and mastery with the simulator. The bot learns to choose a split.
+      *Done when:* the first helper, first upgrade and 3×3 targets pass as real (not expected-failure) pacing tests, **and the
+      bot's best split at 30 min is a real mix** (no puzzle above ~70 %), so splitting is a real choice (PLAN §4.1 design risk).
 
 ## Phase 5 — Depth
 - [ ] **5.1 Method chain:** Beginner → CFOP → Roux → ZZ → God's Number, each ×0.7 moves per solve, with a per-puzzle floor.
@@ -184,7 +196,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       their full bonus; the rest of the collection gives a small "owned" bonus.
       *Done when:* tests cover slot types, set bonuses and swapping, and there's a screenshot.
 
-## Phase 8 — Active play
+## Phase 8 — Active play and Hall of Fame (D12: before 1.0)
 - [ ] **8.1 Golden Scramble:** a small golden 3D cube flies across the stage every 2–5 min for 12 s. Clicking it gives a random buff
       (×7 moves for 30 s, or 15 minutes' worth of Solves instantly). The timing and buff logic live in `GameState`.
       *Done when:* tests cover the buff math and expiry, a buff survives save/load, and there's a screenshot.
@@ -202,6 +214,19 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       menus (If <helper costs < X % of Solves / trophy gain ≥ N / a research slot is free> → <buy / Compete / start
       research>). Unlocked late in the Automation branch. Every rule shows exactly what it will do.
       *Done when:* tests cover each condition and action type, and there's a screenshot.
+
+- [ ] **8.6 Hall of Fame reset + save version bump (PR) [D12]:** a second prestige layer. Entering the Hall of Fame resets
+      championships (trophies, the trophy tree except what Legacy perks keep) and everything a championship resets, for
+      **Legacy points** (starting formula from total trophies ever earned, for the sim to tune). Keeps achievements,
+      collection, mastery and settings. A screen shows exactly what you keep and lose, like Compete.
+      *Done when:* tests check what resets and what stays, there's a migration test, and there's a screenshot.
+- [ ] **8.7 Legacy perk tree (PR):** perks as data. The first node automates Compete completely (Revolution Idle's
+      "later layers automate earlier ones"), and every branch adds something new to do (new competition tier, new
+      challenges, more lab slots), so the second layer isn't just a bigger number (Idle Pins' weak spot).
+      *Done when:* each perk has a test, and there's a screenshot of the tree.
+- [ ] **8.8 Tune the Hall of Fame:** pick the target time for the first Hall of Fame with the owner after a playtest
+      (suggested ~8–12 h of play), add it to `tools/pacing.gd`, and tune until it passes. The sim learns multiple runs.
+      *Done when:* the new pacing target and the multi-run targets (7×7/Megaminx timing, second run ≤ 50 %) pass for real.
 
 ## Phase 9 — Polish
 - [ ] **9.1 Resolution pass:** 1280×720, 1920×1080 and 2560×1440; final background and layout tweaks.
@@ -225,5 +250,4 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [ ] Bug fixes from player reports
 - [ ] New puzzles: Pyraminx, Skewb, Square-1 (each a new `PuzzleShapes` entry and a new track)
 - [ ] Seasonal events
-- [ ] **Hall of Fame (PR) [D12]:** a second prestige layer that resets championships for Legacy points, with its own
-      perk tree, and automates Compete. If D12 = "before 1.0", this moves in front of Phase 9.
+- [ ] A third prestige layer, if players ask for more

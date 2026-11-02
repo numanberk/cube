@@ -2,6 +2,21 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Decisions D9–D12 (docs only)
+- **D9 (owner): all unlocked puzzles run at once**, replacing D1 (one active puzzle). Helpers are one shared team whose
+  moves the player splits across puzzles. Taps go to the focused puzzle. The screen is one big focused puzzle plus a row of
+  small ones (click to focus). A new unlock moves the whole split onto it, so a player who ignores the split still plays a ladder.
+- PLAN §4.1 rewritten, with a **design risk**: if "everything on the top puzzle" is always best, the split is a fake
+  choice. Task 4.7 now requires the bot's best split at 30 min to be a real mix (no puzzle above ~70 %).
+  §4.2 notes the small views always use Graphics Low and the bench must cover a full row.
+- Roadmap Phase 4: **4.2 Parallel puzzles + save v2**, **4.3a Puzzle row + focus**, **4.3b Split controls** replace
+  "active puzzle" and "ladder UI + tier-up". 4.6 Mastery now levels every running puzzle in parallel.
+- **D10** random drops with pity, **D11** toggles + Coach rules, **D12 Hall of Fame before 1.0**: new tasks
+  **8.6 Hall of Fame reset**, **8.7 Legacy perk tree** (the first node automates Compete, and every branch adds new things to do),
+  **8.8 Tune** (target time chosen with the owner after a playtest; ~8–12 h suggested).
+- PLAN §7: D9–D12 moved to Answered; D1 struck through. FEEDBACK has a Handled entry. Nothing in Phases 0–1 changes.
+- **Next:** task 2.1 (theme + font).
+
 ## 2026-11-02 — Player research and plan (docs only)
 - The owner shared the Steam library of the player the game is made for. The idle games are Idle Skilling (804 h),
   The Perfect Tower II (159 h), Idle Pins (142 h), Revolution Idle (59 h) and Zero IDLE (49 h); tModLoader isn't idle,

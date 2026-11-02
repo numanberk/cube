@@ -4,7 +4,7 @@ How we get from today's prototype to a released PC game.
 `docs/ROADMAP.md` is the task checklist. This file explains the *why* and the *how*.
 If the two disagree, the owner decides and both files get fixed.
 
-**Owner decisions so far:** one active puzzle (D1), a **3D cube** as the centerpiece (D3),
+**Owner decisions so far:** **all unlocked puzzles run at once** (D9, replaces D1), a **3D cube** as the centerpiece (D3),
 **several music tracks** (D5), **first prestige at ~90 min** (D6), **lo-fi music** (D7). See §7.
 
 ---
@@ -100,10 +100,19 @@ For a specific task, replace the second sentence with e.g. "Do task 4.2."
 
 ## 4. Design
 
-### 4.1 Puzzles — one active puzzle (D1)
+### 4.1 Puzzles — all unlocked puzzles run at once (D9)
 - Puzzles are a **ladder**: 2×2 → 3×3 → 4×4 → 5×5 → 7×7 → Megaminx. Each is a one-time unlock bought with Solves.
-- **One puzzle is active.** All taps and helper moves go into it. Buying the next tier switches to it automatically
-  with a tier-up animation (the old puzzle spins away, the new one drops in, and its music track fades in).
+- **Every unlocked puzzle keeps running** (D9, which replaced the old "one active puzzle" D1). Each puzzle has its own
+  move progress and makes its own solves; total income is the sum.
+- **Helpers are one shared team, and the player splits its moves across puzzles** (e.g. 50 % 3×3, 30 % 4×4, 20 % 2×2),
+  with quick presets (*Focus newest*, *Spread evenly*). A newly unlocked puzzle starts with everything moved onto it, so
+  a player who never touches the split plays like the old ladder. Spreading is worth it because mastery (task 4.6),
+  achievements, competitions and collection drops are per puzzle. **Design risk:** if "everything on the top puzzle"
+  is always best, the split is a fake choice. The rebalance (4.7) must show the simulator's best split is a real mix.
+- **Taps go to the focused puzzle**, the big one on the stage.
+- **Screen:** one big 3D puzzle in focus, plus a row of small 3D puzzles under it, each turning at the speed of its own
+  share and showing its solves/s. Clicking a small one brings it into focus. Unlocking a puzzle drops it into the row
+  with a short animation, and its music track fades in.
 - Each tier raises moves per solve *and* Solves per solve by more, so moving up is always a net gain.
   Starting curve for the simulator to tune:
 
@@ -115,11 +124,10 @@ For a specific task, replace the second sentence with e.g. "Do task 4.2."
   | 5×5 | 120 | 50 | ~1.5M |
   | 7×7 | 300 | 200 | after prestige |
   | Megaminx | 700 | 800 | after prestige |
-- You can switch back to an unlocked lower puzzle. It's never better for income, but some achievements
-  and Scramble Challenges use it.
 - Methods (Beginner → CFOP → Roux → ZZ → God's Number) multiply moves per solve by ×0.7 each,
   with a **floor per puzzle** (e.g. 20 on 3×3, "God's Number"), so a puzzle never becomes trivial.
-- **Puzzle mastery** (task 4.6): solves on each puzzle level up its mastery, which gives permanent perks and survives prestige.
+- **Puzzle mastery** (task 4.6): solves on each puzzle level up its own mastery, so every running puzzle has its own bar
+  (the Idle Skilling "many skills" feeling). Mastery gives permanent perks and survives prestige.
 
 ### 4.2 The 3D cube (D3)
 **Look:** a black plastic body made of rounded cubies, with standard-colour rounded stickers (white/yellow,
@@ -153,6 +161,8 @@ streaks) and snaps occasional turns. The game's numbers never wait for the anima
 - Meshes are made in code (`scripts/cube/puzzle_meshes.gd`): a rounded box and a rounded-rectangle sticker, both via
   `SurfaceTool` (geometry rather than a shader, so MSAA smooths the sticker corners).
   No imported models, so there's no external tool or addon.
+- **Several puzzles on screen (D9):** the small puzzles in the row are extra `PuzzleView3D` instances that always use
+  Graphics Low and only animate a few turns a second (speed mode beyond that). The bench must cover a full row.
 - **This is visual state, not game state.** Sticker positions never affect any number, so this code lives under
   `scripts/cube/` and `scripts/ui/`, not in `game.gd`. It's not saved; a fresh scramble on load is fine.
 - **Performance budget:** 7×7×7 = 218 visible cubies + 294 stickers. Must hold 60 fps at 1080p on an integrated GPU.
@@ -179,7 +189,7 @@ streaks) and snaps occasional turns. The game's numbers never wait for the anima
   | Megaminx | Twelve Faces | lo-fi with a twist: koto/kalimba or vibraphone melody |
   | First World Championship | Finals | celebratory lo-fi with a fuller arrangement and a bigger drop; plays on the Compete screen, then joins the Jukebox |
 - **SFX match the music:** soft, warm clicks and a mellow chime (e.g. a muted Rhodes or kalimba note), not bright arcade sounds.
-- **Playback modes** (in Settings): *Follow progress* (the default: plays the active puzzle's track, and sometimes
+- **Playback modes** (in Settings): *Follow progress* (the default: plays the focused puzzle's track, and sometimes
   a random unlocked one), *Shuffle unlocked*, or *Loop one track*.
 - **Jukebox** in Settings lists unlocked tracks with title and artist. Locked ones show "Unlock 5×5 to hear this".
 - **`Audio` autoload** with Master / Music / SFX buses. Two music players crossfade over 2 s, and there are never two
@@ -209,8 +219,8 @@ The game is made for one player first. Their favourite idle games (Idle Skilling
 Idle Pins 142 h, Revolution Idle 59 h, Zero IDLE 49 h) are analysed in **`docs/PLAYER_RESEARCH.md`**. In short, they
 stay for: many progress bars that feed each other, collecting and merging, loadouts with typed slots, layered resets
 where later layers automate earlier ones, automation as a reward, achievements as a map, things that finish while
-away, and bosses or challenges that can be failed. Roadmap tasks marked **(PR)** bring each of these in, without
-changing D1 (one active puzzle). They also add rules from the games' weak spots: every system explains its exact
+away, and bosses or challenges that can be failed. Roadmap tasks marked **(PR)** bring each of these in; the biggest
+one is D9, where all unlocked puzzles run at once. They also add rules from the games' weak spots: every system explains its exact
 numbers in-game, no RNG walls (pity on every random drop), and every prestige layer adds something new to do.
 
 ### 4.5 Look and feel
@@ -234,14 +244,14 @@ Each phase ends with something playable. Task details and "Done when" are in the
 | 1 | **3D cube** | The centerpiece (D3). The layout, puzzles, juice and golden cubes all build on it. | 5 |
 | 2 | **Look** | The UI around the cube: theme, layout, shop cards, juice. | 4 |
 | 3 | **Sound and feel** | SFX, the music system (D5), Buy ×N, settings, keyboard, offline panel. | 6 |
-| 4 | **Puzzles** | The main progression axis (D1). Starting on 2×2 fixes the slow start. Puzzle Mastery adds a bar per puzzle. | 7 |
+| 4 | **Puzzles** | The main progression axis. All unlocked puzzles run at once (D9) with a shared helper team split across them; each has a mastery bar. | 8 |
 | 5 | **Depth** | Fills the first hour so something new arrives every few minutes. The Algorithm Lab finishes research while you're away. | 8 |
 | 6 | **Prestige: World Championship** | Gives the long loop. 7×7, Megaminx and the "Finals" track sit behind it. A perk tree whose branches unlock systems; auto-buyers. | 5 |
 | 7 | **Goals** | Long-term targets between prestiges: ~100 achievements, stats, the Cube Collection and the Comp Kit loadout. | 4 |
-| 8 | **Active play** | Rewards being present without making taps mandatory: Golden Scramble, Competitions, Challenge runs, Coach rules. | 5 |
+| 8 | **Active play + Hall of Fame** | Golden Scramble, Competitions, Challenge runs, Coach rules, and the second prestige layer (D12). | 8 |
 | 9 | **Polish** | Resolution pass, first-time hints, credits screen, final music. | 4 |
 | 10 | **Release** | Windows export, itch.io, Steam (optional), launch checklist. | 4 |
-| 11 | **After launch** | Bug fixes, Pyraminx/Skewb/Square-1, events, the Hall of Fame second prestige layer (unless D12 moves it earlier). | — |
+| 11 | **After launch** | Bug fixes, Pyraminx/Skewb/Square-1, seasonal events, a third layer if players want it. | — |
 
 ---
 
@@ -262,7 +272,7 @@ tools/screenshot.sh, tools/simulate.sh (+ .gd)
 docs/BALANCE.md, docs/screenshots/
 ```
 - `game.gd` stays the single owner of *game* state. The UI and audio talk to `Game` through its methods and signals
-  (`solved`, `purchased`, and new ones like `puzzle_changed` and `tier_unlocked`).
+  (`solved`, `purchased`, and new ones like `puzzle_unlocked`, `focus_changed` and `split_changed`).
 - **The simulator drives the real `GameState`**, never a copy of the formulas, so it can't drift from the game.
 - Content stays as data (`Content.PUZZLES`, `Content.TRACKS`, `Content.ACHIEVEMENTS`, …). If `content.gd` gets huge,
   split it into `content_helpers.gd`, `content_upgrades.gd`, and so on.
@@ -281,12 +291,18 @@ docs/BALANCE.md, docs/screenshots/
 Claude sessions must **not** guess open decisions. Write the answer in place of the question so every session sees it.
 
 ### Answered
-- **D1 Puzzles:** **one active puzzle at a time**, as a ladder you can switch back down (see §4.1).
+- ~~D1 Puzzles: one active puzzle at a time~~ — **replaced by D9** (2026-11-02).
 - **D3 Look:** **3D cube as the centerpiece** (see §4.2). It's built in Phase 1, and the 2D view is removed.
 - **D5 Music:** **several tracks**: one per puzzle tier plus "Finals", with Jukebox and crossfade (see §4.3).
 - **D6 First prestige timing:** **~90 minutes** into the first run. The simulator's pacing test checks this (task 6.4),
   and the second run must reach the same point in ≤ 45 min.
 - **D7 Music style:** **lo-fi** (mellow lo-fi hip-hop / chillhop, no vocals; per-track flavours in §4.3).
+- **D9 Parallel play:** **all unlocked puzzles run at once**, like Idle Skilling's skills (see §4.1). Details, also the owner's:
+  helpers are **one shared team whose moves the player splits across puzzles**, and the screen is **one big focused
+  puzzle plus a row of small ones** (click to focus; taps go to the focused one).
+- **D10 Collection randomness:** **random drops with pity counters** (guaranteed after N tries).
+- **D11 Automation depth:** **toggles + menu-based Coach rules** (no scripting language).
+- **D12 Second prestige layer:** **before 1.0**. The Hall of Fame is tasks 8.6–8.8.
 
 ### Open
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?
@@ -295,14 +311,6 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
 - **D8 Final music source** (needed by 9.4; placeholders are fine until then): (a) the owner picks final CC0/CC-BY lo-fi
   tracks, (b) buys a royalty-free lo-fi pack with a license that allows commercial games, or (c) commissions a lo-fi
   producer for the 7 tracks. *Recommended: (b) or (c)*, so the soundtrack is consistent and can be sold on Steam later.
-- **D9 Parallel play** (needed by 4.6): keep D1 (one active puzzle) and add side tracks (mastery, lab, collection), *or*
-  revisit D1 so several puzzles run at once like Idle Skilling's skills. *Recommended: keep D1 + side tracks.*
-- **D10 Collection randomness** (needed by 7.3): random drops with pity counters, *or* a fixed unlock order.
-  *Recommended: random with pity.*
-- **D11 Automation depth** (needed by 8.5): toggles only, *or* toggles + menu-based Coach rules, *or* a real scripting
-  language like The Perfect Tower II. *Recommended: toggles + Coach rules.*
-- **D12 Second prestige layer** (Hall of Fame): before the 1.0 release, *or* as the first big update after launch.
-  *Recommended: before 1.0.*
 
 ---
 

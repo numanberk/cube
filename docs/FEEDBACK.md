@@ -18,6 +18,10 @@ Template (newest first under "Open"):
 - (none)
 
 ## Handled
+- 2026-11-02 — Owner shared the player's Steam library (Idle Skilling, The Perfect Tower II, Idle Pins, Revolution Idle,
+  Zero IDLE) → `docs/PLAYER_RESEARCH.md` and (PR) roadmap tasks. Decisions: **D9** all unlocked puzzles run at once
+  (shared helper team split across puzzles; big focused puzzle + a row of small ones), **D10** random drops with pity,
+  **D11** toggles + Coach rules, **D12** Hall of Fame before 1.0 → PLAN §4.1/§7, roadmap 4.2–4.3b, 4.7, 8.6–8.8.
 - 2026-11-02 — "It looks bad and there is no progression whatsoever." → Measured in PLAN §1. The roadmap
   now starts with tools, the 3D cube and the UI look, then puzzle progression.
 - 2026-11-02 — Decisions: D1 = one active puzzle (Claude's recommendation), D3 = 3D cube, D5 = several music
