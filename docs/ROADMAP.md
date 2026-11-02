@@ -44,7 +44,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       effect. On `show_solved()`, it plays the move history backwards at high speed (≤ 1 s), then flashes and bounces.
       *Done when:* the model and view agree after 1,000 random moves (a test compares sticker colours), there's no
       queue growth at 1,000 moves/s, and screenshots show a turn mid-animation and a solved flash.
-- [ ] **1.4 Stage and camera:** drag rotates the view and springs back (a drag doesn't tap), idle sway, vignette stage
+- [x] **1.4 Stage and camera:** drag rotates the view and springs back (a drag doesn't tap), idle sway, vignette stage
       background, soft contact shadow, and a move ticker under the puzzle (last ~8 moves in notation).
       *Done when:* there's a screenshot, and a test or smoke check that a drag of > 6 px doesn't count as a tap.
 - [ ] **1.5 Graphics settings and cleanup:** `Graphics: High / Low` (MSAA, shadow, stage effects; stored for now in a small

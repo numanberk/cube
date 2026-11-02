@@ -35,6 +35,14 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
 fov = 30.0
 
+[node name="Backdrop" type="MeshInstance3D" parent="Viewport/Camera"]
+unique_name_in_owner = true
+cast_shadow = 0
+
+[node name="Shadow" type="MeshInstance3D" parent="Viewport"]
+unique_name_in_owner = true
+cast_shadow = 0
+
 [node name="Puzzle" type="Node3D" parent="Viewport" unique_id=1372446240]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 0.88294756, -0.46947157, 0, 0.46947157, 0.88294756, 0, 0, 0)

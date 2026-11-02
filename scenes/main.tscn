@@ -88,6 +88,14 @@ custom_minimum_size = Vector2(300, 300)
 layout_mode = 2
 size_flags_horizontal = 4
 
+[node name="MoveTicker" type="Label" parent="Margin/Columns/Left"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.58, 0.65, 1)
+theme_override_font_sizes/font_size = 15
+text = " "
+horizontal_alignment = 1
+
 [node name="SolveProgress" type="ProgressBar" parent="Margin/Columns/Left"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(320, 18)

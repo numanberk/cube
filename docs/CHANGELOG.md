@@ -2,6 +2,27 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 1.4: stage and camera
+- **Drag to rotate:** pressing the puzzle and moving more than 6 px becomes a drag. It turns the view (0.01 rad/px; yaw wraps,
+  pitch is clamped to ±0.7) and never taps, even if the mouse returns to the start. On release it springs back
+  (exponential, rate 2.5/s). A press-and-release within 6 px still taps. `drag_offset()` exposes the current turn.
+- **Idle sway:** a slow yaw (±0.06 rad) and tilt (±0.025 rad) on top of drag and speed-mode wobble. `sway_enabled` is
+  there for the Reduce motion setting (3.4).
+- **Stage:** `Backdrop` (a quad under the camera that exactly fills the view) draws a soft radial glow that fades to
+  *transparent* at the edges, so the real UI background shows there and the 3D view has no border. A first try faded to the
+  background colour instead and came out 3 RGB steps darker after the 3D colour pipeline; transparency avoids that.
+  `Shadow` is a flat dark ellipse just under the puzzle's lowest corner. Both shaders are in `scripts/ui/shaders/`.
+  The camera sits a little lower (`CAMERA_DROP`) and further back (`FRAME_DISTANCE` 1.0), so there's room for the shadow.
+- **Move ticker:** `%MoveTicker` (a Label under the puzzle in `main.tscn`) shows the last 8 moves in WCA notation
+  (`view.ticker_text()`), including the backwards replay. It clears on a solve.
+- Tests: a drag rotates and doesn't tap, out-and-back is still a drag, a 4 px wiggle still taps, a released drag springs
+  back, and the ticker is ≤ 8 valid moves and clears on solve. 865 checks, `All good.` The headless smoke run is clean.
+- Screenshots: [3×3](screenshots/stage/mid.png), [7×7](screenshots/stage/mid_7x7.png),
+  [late game, speed mode](screenshots/stage/late.png).
+- **For later:** the stage effects (glow, shadow) are what 1.5's Graphics: Low should turn off, along with MSAA.
+  In screenshots the sway depends on frame timing, so two shots of the same preset can differ by a degree or two.
+- **Next:** task 1.5 (graphics settings, delete `cube_view.gd`, bench preset).
+
 ## 2026-11-02 — Task 1.3: animated turns
 - `PuzzleView3D` now animates real layer turns. `scramble_step()` queues a move. The front of the queue rotates its layer's
   MultiMesh transforms around the face axis (0.12 s per quarter turn, ease-out cubic, half turns ×1.4) and is applied to

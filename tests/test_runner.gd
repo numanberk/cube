@@ -593,3 +593,61 @@ func test_view_solve_replays_backwards() -> void:
 	view.scramble_step()
 	check(view.queued_moves() == 0, "moves are held off while the solved puzzle is shown")
 	view.free()
+
+
+# --- Stage and camera (task 1.4) ---------------------------------------------
+
+func mouse_motion(position: Vector2, relative: Vector2) -> InputEventMouseMotion:
+	var event := InputEventMouseMotion.new()
+	event.position = position
+	event.relative = relative
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT
+	return event
+
+
+func test_view_drag_rotates_and_never_taps() -> void:
+	var view := new_view()
+	var taps := [0]
+	view.tapped.connect(func() -> void: taps[0] += 1)
+	view._gui_input(mouse_button(true, Vector2(100, 100)))
+	view._gui_input(mouse_motion(Vector2(110, 103), Vector2(10, 3)))
+	view._gui_input(mouse_motion(Vector2(130, 110), Vector2(20, 7)))
+	check(view.drag_offset().x > 0.2, "dragging right turns the view")
+	check(view.drag_offset().y > 0.05, "dragging down tilts the view")
+	view._gui_input(mouse_button(false, Vector2(130, 110)))
+	check(taps[0] == 0, "a drag of more than 6 px doesn't tap")
+	# Out and back to the start is still a drag.
+	view._gui_input(mouse_button(true, Vector2(100, 100)))
+	view._gui_input(mouse_motion(Vector2(120, 100), Vector2(20, 0)))
+	view._gui_input(mouse_motion(Vector2(100, 100), Vector2(-20, 0)))
+	view._gui_input(mouse_button(false, Vector2(100, 100)))
+	check(taps[0] == 0, "dragging away and back doesn't tap")
+	# A wiggle within 6 px is still a click.
+	view._gui_input(mouse_button(true, Vector2(100, 100)))
+	view._gui_input(mouse_motion(Vector2(104, 101), Vector2(4, 1)))
+	view._gui_input(mouse_button(false, Vector2(104, 101)))
+	check(taps[0] == 1, "moving less than 6 px still taps")
+	var before := view.drag_offset().length()
+	for i in 180:
+		view._process(1.0 / 60.0)
+	check(view.drag_offset().length() < before * 0.05, "a released drag springs back")
+	view.free()
+
+
+func test_view_ticker() -> void:
+	var view := new_view()
+	check(view.ticker_text().split(" ", false).size() <= PuzzleView3D.TICKER_LENGTH, "ticker starts with at most 8 moves")
+	view.set_speed(5.0)
+	for i in 20:
+		view.scramble_step()
+	view.finish_animations()
+	var tokens := view.ticker_text().split(" ", false)
+	check(tokens.size() == PuzzleView3D.TICKER_LENGTH, "ticker shows the last 8 moves")
+	var all_valid := true
+	for token in tokens:
+		all_valid = all_valid and not view.model.parse(token).is_empty()
+	check(all_valid, "every ticker entry is valid notation")
+	view.show_solved()
+	view.finish_animations()
+	check(view.ticker_text() == "", "the ticker clears on a solve")
+	view.free()

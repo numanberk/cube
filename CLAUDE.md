@@ -33,6 +33,7 @@ scripts/ui/cube_view.gd    class CubeView: old 2D face, unused since 1.2 (delete
 scripts/cube/twisty_model.gd   class TwistyModel: pure-data puzzle (pieces, layers, moves, WCA notation)
 scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (from_id("3x3"), cube(2..7); megaminx() in 4.4), colours
 scripts/cube/puzzle_meshes.gd  class PuzzleMeshes: rounded box + rounded sticker meshes (SurfaceTool)
+scripts/ui/shaders/        stage_backdrop (radial glow) + contact_shadow .gdshader, used by PuzzleView3D
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene

@@ -14,6 +14,9 @@ extends SubViewportContainer
 ## what's on screen once the animation ends. Turns get shorter as the queue grows; past MAX_QUEUE the backlog
 ## is applied instantly. Above SPEED_MODE_ON moves/s (set_speed) moves snap without animation and the
 ## puzzle wobbles. show_solved() plays the recent moves backwards, then flashes and bounces.
+## Stage (task 1.4): a radial backdrop (child of the camera) and a soft contact shadow under the puzzle, both
+## unshaded quads with tiny shaders in scripts/ui/shaders/. Dragging turns the view and it springs back; it also
+## sways gently when idle. The last few moves are kept for a ticker (ticker_text()).
 ## Visual state only: nothing here affects game numbers.
 
 signal tapped
@@ -27,7 +30,7 @@ const STICKER_RADIUS := 0.1
 const STICKER_LIFT := 0.004     ## keeps stickers just above the body surface
 const START_MOVES_PER_SIZE := 4 ## a new puzzle starts with size × this many scramble moves
 const CAMERA_FOV := 30.0
-const FRAME_DISTANCE := 0.92    ## 1.0 = the bounding sphere just touches the view edges; smaller zooms in
+const FRAME_DISTANCE := 1.0    ## 1.0 = the bounding sphere just touches the view edges; smaller zooms in
 const TAP_SLOP := 6.0           ## pixels the mouse may move between press and release and still tap
 
 const TURN_TIME := 0.12         ## seconds for a quarter turn with an empty queue
@@ -48,18 +51,31 @@ const PUNCH_SCALE := 0.03
 const PUNCH_DECAY := 7.0
 const BOUNCE_SCALE := 0.08
 const BOUNCE_TIME := 0.45
+const DRAG_SPEED := 0.01        ## radians per pixel dragged
+const DRAG_MAX_PITCH := 0.7
+const DRAG_SPRING := 2.5        ## how fast a released drag returns (higher = faster)
+const SWAY_YAW := 0.06          ## idle sway, radians
+const SWAY_PITCH := 0.025
+const TICKER_LENGTH := 8        ## moves shown under the puzzle
+const STAGE_GLOW_COLOR := Color(0.25, 0.28, 0.36)
+const CAMERA_DROP := 0.1        ## camera sits this × size below centre, so the puzzle rides higher (room for the shadow)
+const BackdropShader := preload("res://scripts/ui/shaders/stage_backdrop.gdshader")
+const ShadowShader := preload("res://scripts/ui/shaders/contact_shadow.gdshader")
 
 @onready var _camera: Camera3D = %Camera
 @onready var _puzzle: Node3D = %Puzzle
 @onready var _turntable: Node3D = %Turntable
 @onready var _bodies: MultiMeshInstance3D = %Bodies
 @onready var _stickers: MultiMeshInstance3D = %Stickers
+@onready var _backdrop: MeshInstance3D = %Backdrop
+@onready var _shadow: MeshInstance3D = %Shadow
 
 var model: TwistyModel
 var puzzle_id := ""
 var speed_mode := false         ## true while moves snap instead of animating
 var recorded_moves: Array[Dictionary] = []  ## when record_moves is on: every move applied, in order (tests)
 var record_moves := false
+var sway_enabled := true        ## idle sway; "Reduce motion" (3.4) turns it off
 
 var _rng := RandomNumberGenerator.new()
 var _last_move := {}             ## last move generated (so the next one uses another face)
@@ -96,6 +112,10 @@ var _sticker_mesh: ArrayMesh
 var _sticker_material: StandardMaterial3D
 var _press_position := Vector2.ZERO
 var _pressing := false
+var _dragging := false
+var _drag_yaw := 0.0
+var _drag_pitch := 0.0
+var _ticker := PackedStringArray()  ## last few moves in notation, newest last
 
 
 func _ready() -> void:
@@ -108,6 +128,15 @@ func _ready() -> void:
 	_sticker_mesh = PuzzleMeshes.rounded_rect(STICKER_HALF, STICKER_RADIUS)
 	_sticker_mesh.surface_set_material(0, _sticker_material)
 	_camera.fov = CAMERA_FOV
+	_backdrop.mesh = QuadMesh.new()
+	var backdrop_material := ShaderMaterial.new()
+	backdrop_material.shader = BackdropShader
+	backdrop_material.set_shader_parameter("glow_color", STAGE_GLOW_COLOR)
+	_backdrop.material_override = backdrop_material
+	_shadow.mesh = QuadMesh.new()
+	var shadow_material := ShaderMaterial.new()
+	shadow_material.shader = ShadowShader
+	_shadow.material_override = shadow_material
 	resized.connect(_frame_camera)
 	set_puzzle(DEFAULT_PUZZLE)
 
@@ -138,6 +167,7 @@ func set_puzzle(id: String) -> void:
 	_queue.clear()
 	_current = {}
 	_history.clear()
+	_ticker.clear()
 	_rewinding = false
 	_solved_timer = 0.0
 	_build_instances()
@@ -201,6 +231,11 @@ func show_solved() -> void:
 	for i in count:
 		_queue.append(model.inverse(_history[_history.size() - 1 - i]))
 	_history.clear()
+
+
+## The last few moves in notation, oldest first, e.g. "R U' Fw2 L" (for the ticker under the puzzle).
+func ticker_text() -> String:
+	return " ".join(_ticker)
 
 
 ## Number of moves waiting to animate (not counting the one in progress).
@@ -315,6 +350,9 @@ func _bake(move: Dictionary) -> void:
 	model.apply(move)
 	if record_moves:
 		recorded_moves.append(move)
+	_ticker.append(model.notation(move))
+	if _ticker.size() > TICKER_LENGTH:
+		_ticker.remove_at(0)
 	if not _rewinding:
 		_remember(move)
 	_dirty = true
@@ -339,6 +377,7 @@ func _flush() -> void:
 func _finish_solve() -> void:
 	model.reset()
 	_history.clear()
+	_ticker.clear()
 	_last_move = {}
 	_solved_timer = SOLVED_HOLD
 	_dirty = false
@@ -421,12 +460,18 @@ func _draw_piece(piece: int, t: Transform3D) -> void:
 func _animate_effects(delta: float) -> void:
 	var target_wobble := 1.0 if speed_mode else 0.0
 	_wobble = move_toward(_wobble, target_wobble, delta * 3.0)
-	if _wobble > 0.0:
-		_turntable.basis = _base_turntable.rotated(Vector3.UP, sin(_clock * 7.0) * WOBBLE_YAW * _wobble)
-		_puzzle.basis = _base_puzzle.rotated(Vector3.RIGHT, sin(_clock * 5.3) * WOBBLE_TILT * _wobble)
-	else:
-		_turntable.basis = _base_turntable
-		_puzzle.basis = _base_puzzle
+	if not _pressing:  # a released drag springs back
+		var spring := exp(-delta * DRAG_SPRING)
+		_drag_yaw *= spring
+		_drag_pitch *= spring
+	var yaw := _drag_yaw + sin(_clock * 7.0) * WOBBLE_YAW * _wobble
+	var pitch := _drag_pitch + sin(_clock * 5.3) * WOBBLE_TILT * _wobble
+	if sway_enabled:
+		yaw += sin(_clock * 0.75) * SWAY_YAW
+		pitch += sin(_clock * 0.53) * SWAY_PITCH
+	# Turntable spins around the puzzle's own up axis; Puzzle tilts around the screen's horizontal axis.
+	_turntable.basis = _base_turntable.rotated(Vector3.UP, yaw)
+	_puzzle.basis = _base_puzzle.rotated(Vector3.RIGHT, pitch)
 
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta * FLASH_DECAY)
@@ -442,18 +487,37 @@ func _animate_effects(delta: float) -> void:
 
 # --- Input -----------------------------------------------------------------------
 
+## A click (press and release within TAP_SLOP px) taps. Moving further turns it into a drag that rotates the
+## view instead, and never taps, even if the mouse comes back to where it started.
 func _gui_input(event: InputEvent) -> void:
+	var motion := event as InputEventMouseMotion
+	if motion != null:
+		if _pressing:
+			if not _dragging and motion.position.distance_to(_press_position) > TAP_SLOP:
+				_dragging = true
+			if _dragging:
+				_drag_yaw = wrapf(_drag_yaw + motion.relative.x * DRAG_SPEED, -PI, PI)
+				_drag_pitch = clampf(_drag_pitch + motion.relative.y * DRAG_SPEED, -DRAG_MAX_PITCH, DRAG_MAX_PITCH)
+			accept_event()
+		return
 	var button := event as InputEventMouseButton
 	if button == null or button.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if button.pressed:
 		_pressing = true
+		_dragging = false
 		_press_position = button.position
 	elif _pressing:
 		_pressing = false
-		if button.position.distance_to(_press_position) <= TAP_SLOP:
+		if not _dragging and button.position.distance_to(_press_position) <= TAP_SLOP:
 			tapped.emit()
+		_dragging = false
 	accept_event()
+
+
+## How far the view is currently turned by a drag (radians, yaw and pitch). Tests use this.
+func drag_offset() -> Vector2:
+	return Vector2(_drag_yaw, _drag_pitch)
 
 
 # --- Setup helpers ---------------------------------------------------------------
@@ -466,9 +530,26 @@ func _frame_camera() -> void:
 	var half_fov := deg_to_rad(_camera.fov) / 2.0
 	if size.x > 0.0 and size.y > 0.0 and size.x < size.y:
 		half_fov = atan(tan(half_fov) * size.x / size.y)  # narrow views are limited by their width
-	_camera.position = Vector3(0.0, 0.0, radius * FRAME_DISTANCE / sin(half_fov))
+	_camera.position = Vector3(0.0, -model.size * CAMERA_DROP, radius * FRAME_DISTANCE / sin(half_fov))
 	_camera.near = 0.1
-	_camera.far = _camera.position.z + radius * 2.0
+
+	# Backdrop: a quad behind the puzzle that exactly fills the view.
+	var depth := _camera.position.z + radius * 1.5
+	var height := 2.0 * depth * tan(deg_to_rad(_camera.fov) / 2.0)
+	var aspect := size.x / size.y if size.y > 0.0 else 1.0
+	(_backdrop.mesh as QuadMesh).size = Vector2(height * aspect, height) * 1.02
+	_backdrop.position = Vector3(0.0, model.size * CAMERA_DROP, -depth)  # centred on the puzzle, not the camera
+	_camera.far = depth + 1.0
+
+	# Contact shadow: a flat ellipse just under the puzzle's lowest corner (at rest).
+	var lowest := 0.0
+	var rest := _base_puzzle * _base_turntable
+	for corner in 8:
+		var c := Vector3(1 if corner & 1 else -1, 1 if corner & 2 else -1, 1 if corner & 4 else -1) * model.size / 2.0
+		lowest = minf(lowest, (rest * c).y)
+	var width := model.size * 1.5
+	(_shadow.mesh as QuadMesh).size = Vector2(width, width * 0.2)
+	_shadow.position = Vector3(0.0, lowest - model.size * 0.04, -model.size * 0.3)
 
 
 func _make_body_material() -> StandardMaterial3D:

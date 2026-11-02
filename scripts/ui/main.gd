@@ -8,6 +8,7 @@ const MAX_VISUAL_MOVES_PER_SECOND := 12.0
 @onready var solves_label: Label = %SolvesLabel
 @onready var rate_label: Label = %RateLabel
 @onready var puzzle_view: PuzzleView3D = %PuzzleView
+@onready var move_ticker: Label = %MoveTicker
 @onready var solve_progress: ProgressBar = %SolveProgress
 @onready var progress_label: Label = %ProgressLabel
 @onready var tap_button: Button = %TapButton
@@ -37,6 +38,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	solve_progress.value = Game.move_progress / Game.get_moves_per_solve()
+	var ticker := puzzle_view.ticker_text()
+	move_ticker.text = ticker if ticker != "" else " "  # keep the line's height when empty
 	_animate_helper_moves(delta)
 	_refresh_timer += delta
 	if _refresh_timer >= UI_REFRESH_INTERVAL:
