@@ -22,7 +22,13 @@ filtered noise). Released as **CC0** by the project; no third-party material.
 | `assets/audio/sfx/unlock.wav` | Unlock sting (rising arpeggio) |
 
 ### Music
-(none yet — task 3.2)
+**Placeholders** until the final soundtrack (open decision D8). Made for Cube Idle by `tools/make_music.py`
+(synthesised lo-fi loops: FM electric piano, pad, bass, synthesised drums, vinyl crackle, rain). Released as **CC0**.
+
+| File | Track | Artist | License |
+|---|---|---|---|
+| `assets/audio/music/practice_room.wav` | Practice Room (2×2), 70 BPM, Fmaj7–Em7–Dm7–Cmaj7 | Cube Idle (placeholder) | CC0 |
+| `assets/audio/music/first_sub_20.wav` | First Sub-20 (3×3), 80 BPM, Dm9–G13–Cmaj9–A7b9 | Cube Idle (placeholder) | CC0 |
 
 ## Images
 Icons from [game-icons.net](https://game-icons.net) (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/).

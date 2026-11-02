@@ -121,6 +121,7 @@ func _refresh() -> void:
 		Num.format(tap_moves), "move" if is_equal_approx(tap_moves, 1.0) else "moves",
 	]
 	next_goal_label.text = _next_goal_text(Game.get_next_goal())
+	Audio.set_music_context(Game.get_unlocked_track_ids(), Game.get_track_for_puzzle(Game.get_focused_puzzle_id()))
 	stats_label.text = "Lifetime: %s solves  ·  %s moves" % [
 		Num.format(Game.total_solves),
 		Num.format(Game.total_moves),

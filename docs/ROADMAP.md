@@ -77,7 +77,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] **3.1 Audio autoload + SFX** (soft, warm sounds that fit lo-fi): `scripts/autoload/audio.gd` with Master/Music/SFX buses. Turn click (random pitch ±8 %,
       lower on bigger puzzles), solve chime (rate-limited to ~4/s), buy sound, unlock sting. CC0 sounds, credited.
       *Done when:* each event plays a sound, 100 solves in one frame don't play 100 chimes, and tests pass.
-- [ ] **3.2 Music system (lo-fi, D7):** `Content.TRACKS` (id, title, artist, license, file, `unlock_puzzle`). The Audio autoload has two
+- [x] **3.2 Music system (lo-fi, D7):** `Content.TRACKS` (id, title, artist, license, file, `unlock_puzzle`). The Audio autoload has two
       players crossfading over 2 s, the modes *Follow progress* / *Shuffle unlocked* / *Loop one*, and ducks to 30 % when
       the window is unfocused. Add at least **2 lo-fi placeholder tracks** (CC0/CC-BY, style in PLAN §4.3; if they can't be downloaded,
       list candidates with links in the CHANGELOG for the owner).

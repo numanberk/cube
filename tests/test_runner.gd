@@ -988,3 +988,81 @@ func test_game_events_play_sounds() -> void:
 	check(int(audio.played["chime"]) == int(before["chime"]) + 1, "a solve chimes")
 	main.free()
 	game.reset_state()
+
+
+# --- Music (task 3.2) ----------------------------------------------------------------
+
+func test_tracks_data() -> void:
+	var ids := {}
+	for def: Dictionary in Content.TRACKS:
+		for field: String in ["id", "title", "artist", "license", "file", "unlock"]:
+			check(def.has(field), "track %s has '%s'" % [def.get("id", "?"), field])
+		check(not ids.has(def["id"]), "track id %s is unique" % def["id"])
+		ids[def["id"]] = true
+		if def["file"] != "":
+			check(ResourceLoader.exists(def["file"]), "track %s's file exists" % def["id"])
+			check(def["license"] in ["CC0", "CC-BY", "CC-BY 4.0", "CC-BY 3.0"], "track %s is CC0 or CC-BY" % def["id"])
+			check(FileAccess.get_file_as_string("res://assets/CREDITS.md").contains(String(def["file"]).get_file()), "track %s is credited" % def["id"])
+			var stream: AudioStreamWAV = load(def["file"])
+			check(stream.loop_mode == AudioStreamWAV.LOOP_FORWARD, "track %s loops" % def["id"])
+	var with_files := 0
+	for def: Dictionary in Content.TRACKS:
+		if def["file"] != "":
+			with_files += 1
+	check(with_files >= 2, "at least 2 tracks have music")
+	var g := new_game()
+	check(g.get_unlocked_track_ids() == (["practice_room", "first_sub_20"] as Array[String]), "the two placeholder tracks are unlocked")
+	check(g.get_track_for_puzzle("3x3") == "first_sub_20", "3x3's track is First Sub-20")
+	check(g.get_track_for_puzzle("4x4") == "", "a track without a file isn't offered")
+	g.free()
+
+
+func test_music_crossfade_never_two_at_full_volume() -> void:
+	var audio: AudioManager = root.get_node("Audio")
+	audio.music_clock = 0.0
+	audio.stop_all()
+	audio.set_window_focused(true)
+	audio.set_music_mode("follow")
+	var tracks: Array[String] = ["practice_room", "first_sub_20"]
+	audio.set_music_context(tracks, "practice_room")
+	check(audio.current_track_id == "", "no music in the first seconds after launch")
+	audio.advance_music(AudioManager.MUSIC_START_DELAY)
+	check(audio.current_track_id == "practice_room", "after the delay, follow mode plays the focused puzzle's track")
+	audio.advance_music(0.1)
+	check(audio.music_volumes().max() < 0.2, "the first track fades in rather than starting loud")
+	for i in 30:
+		audio.advance_music(0.1)
+	var both_loud := false
+	audio.set_music_context(tracks, "first_sub_20")  # focus moved to another puzzle
+	check(audio.current_track_id == "first_sub_20", "follow mode switches when the focused puzzle changes")
+	var saw_overlap := false
+	for i in 30:
+		audio.advance_music(0.1)
+		var v := audio.music_volumes()
+		both_loud = both_loud or (v[0] > 0.99 and v[1] > 0.99)
+		saw_overlap = saw_overlap or (v[0] > 0.05 and v[1] > 0.05)
+	check(saw_overlap, "the two tracks overlap during the crossfade")
+	check(not both_loud, "two tracks are never both at full volume")
+	var v_end := audio.music_volumes()
+	check((v_end[0] > 0.99) != (v_end[1] > 0.99) and minf(v_end[0], v_end[1]) == 0.0, "after the crossfade only one track plays")
+	# Ducking when the window loses focus.
+	audio.set_window_focused(false)
+	for i in 20:
+		audio.advance_music(0.1)
+	check(absf(maxf(audio.music_volumes()[0], audio.music_volumes()[1]) - AudioManager.DUCK_VOLUME) < 0.02, "music ducks to 30 % when unfocused")
+	audio.set_window_focused(true)
+	for i in 20:
+		audio.advance_music(0.1)
+	check(maxf(audio.music_volumes()[0], audio.music_volumes()[1]) > 0.99, "music comes back when focused again")
+	# Loop and shuffle modes.
+	audio.set_music_mode("loop", "practice_room")
+	check(audio.current_track_id == "practice_room", "loop mode plays the chosen track")
+	for i in 10:
+		audio.on_music_looped()
+	check(audio.current_track_id == "practice_room", "loop mode never changes track")
+	audio.set_music_mode("shuffle")
+	for i in AudioManager.SHUFFLE_LOOPS:
+		audio.on_music_looped()
+	check(audio.current_track_id == "first_sub_20", "shuffle mode changes track after a few loops")
+	audio.set_music_mode("follow")
+	audio.stop_all()

@@ -134,6 +134,21 @@ const UPGRADES := [
 ]
 
 
+## Music (PLAN §4.3): one track per puzzle tier plus "Finals". `unlock` is the puzzle id that unlocks the track
+## ("championship" = the first World Championship). `file` is "" until the track exists (task 4.5 / decision D8);
+## tracks without a file are skipped by the player. License must be CC0 or CC-BY (credited in assets/CREDITS.md).
+const TRACKS := [
+	{"id": "practice_room", "title": "Practice Room", "artist": "Cube Idle (placeholder)", "license": "CC0",
+		"file": "res://assets/audio/music/practice_room.wav", "unlock": "2x2"},
+	{"id": "first_sub_20", "title": "First Sub-20", "artist": "Cube Idle (placeholder)", "license": "CC0",
+		"file": "res://assets/audio/music/first_sub_20.wav", "unlock": "3x3"},
+	{"id": "parity", "title": "Parity", "artist": "", "license": "", "file": "", "unlock": "4x4"},
+	{"id": "big_cube_energy", "title": "Big Cube Energy", "artist": "", "license": "", "file": "", "unlock": "5x5"},
+	{"id": "long_solve", "title": "Long Solve", "artist": "", "license": "", "file": "", "unlock": "7x7"},
+	{"id": "twelve_faces", "title": "Twelve Faces", "artist": "", "license": "", "file": "", "unlock": "megaminx"},
+	{"id": "finals", "title": "Finals", "artist": "", "license": "", "file": "", "unlock": "championship"},
+]
+
 const ICON_DIR := "res://assets/icons/"
 const LOCKED_ICON := "locked"
 
@@ -141,6 +156,13 @@ const LOCKED_ICON := "locked"
 ## The icon texture for a content entry's "icon" field (assets/icons/<name>.svg).
 static func icon(name: String) -> Texture2D:
 	return load(ICON_DIR + name + ".svg")
+
+
+static func get_track(id: String) -> Dictionary:
+	for def: Dictionary in TRACKS:
+		if def["id"] == id:
+			return def
+	return {}
 
 
 static func get_building(id: String) -> Dictionary:

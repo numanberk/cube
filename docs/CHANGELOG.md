@@ -2,6 +2,29 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 3.2: music system (lo-fi)
+- **`Content.TRACKS`**: all 7 tracks from PLAN §4.3 (id, title, artist, license, file, `unlock` puzzle id; "championship"
+  for Finals). Two have files; the other five have `file = ""` and are skipped until task 4.5 or decision D8.
+- **Two placeholder lo-fi loops, synthesised by `tools/make_music.py`** (CC0; music sites aren't reachable from the
+  container): *Practice Room* (2×2, 70 BPM, Fmaj7–Em7–Dm7–Cmaj7, soft kick, rain) and *First Sub-20* (3×3, 80 BPM, swung,
+  Dm9–G13–Cmaj9–A7b9). FM electric piano, a soft pad bed, saturated sine bass, synthesised drums and vinyl crackle;
+  8 bars each (27 s / 24 s), the tail folded into the start for a seamless loop, about −20 dBFS RMS. 22.05 kHz mono WAV
+  (~1.1 MB each), imported with forward looping (`edit/loop_mode=2`). **Not heard by me. Owner: please listen**; they're
+  placeholders, but say if the style is off.
+- **Music in `Audio`:** two `AudioStreamPlayer`s on the Music bus with a **2 s linear crossfade** (never two at full volume).
+  Modes in `MUSIC_MODES`: *follow* (default: the focused puzzle's track; after 3 loops a 25 % chance of a 2-loop detour to
+  another unlocked track), *shuffle* (a new track every 2 loops), *loop* (one track). **Ducks to 30 %** when the window loses
+  focus (`focus_behaviour` duck/mute/keep, for 3.4's setting). Music starts **2 s after launch and fades in**. That lets the
+  first clicks lead in, and it keeps the 120-frame headless smoke run from quitting with music playing, which Godot reports
+  as a leaked resource. Loops are counted by playback-position wrap-around.
+- **Rules in `GameState`:** `get_unlocked_track_ids()` and `get_track_for_puzzle()`, plus **placeholders**
+  `get_unlocked_puzzle_ids()` (2×2 and 3×3) and `get_focused_puzzle_id()` ("3x3"); **task 4.2 replaces these two with real
+  puzzle state.** `main.gd` passes the context to `Audio.set_music_context()` every UI refresh.
+- Tests: track data (fields, unique ids, files exist, CC0/CC-BY, credited, looping, ≥ 2 with music); unlocked tracks;
+  no music before the delay, then a fade-in from silence; the crossfade overlaps but never has two at full volume, and ends
+  with one; ducking to 30 % and back; loop mode never changes; shuffle changes after 2 loops. 1068 checks, `All good.`
+- **Next:** task 3.3 (Buy ×1 / ×10 / Max).
+
 ## 2026-11-02 — Task 3.1: Audio autoload + SFX
 - **Sounds are synthesised by us** (`tools/make_sfx.py`, Python standard library only; CC0): kenney.nl isn't reachable
   from the container, and our own sounds avoid licence questions anyway. Lo-fi-friendly and soft (PLAN §4.3):

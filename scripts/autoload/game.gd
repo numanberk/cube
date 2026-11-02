@@ -159,6 +159,39 @@ func buy_upgrade(id: String) -> bool:
 	return true
 
 
+# --- Puzzles and music (placeholders until task 4.2) ------------------------------
+
+## Puzzles the player has unlocked. Until puzzles exist (4.2), the game behaves as if 2×2 and 3×3 are unlocked
+## and the 3×3 is the one on screen; 4.2 replaces these two functions with real state.
+const PRE_PUZZLE_UNLOCKED: Array[String] = ["2x2", "3x3"]
+
+
+func get_unlocked_puzzle_ids() -> Array[String]:
+	return PRE_PUZZLE_UNLOCKED.duplicate()
+
+
+func get_focused_puzzle_id() -> String:
+	return "3x3"
+
+
+## Tracks the player can hear: their unlock puzzle is unlocked and the file exists.
+func get_unlocked_track_ids() -> Array[String]:
+	var unlocked := get_unlocked_puzzle_ids()
+	var ids: Array[String] = []
+	for def: Dictionary in Content.TRACKS:
+		if def["file"] != "" and unlocked.has(def["unlock"]):
+			ids.append(def["id"])
+	return ids
+
+
+## The track that belongs to a puzzle ("" if it has none or isn't available yet).
+func get_track_for_puzzle(puzzle_id: String) -> String:
+	for def: Dictionary in Content.TRACKS:
+		if def["unlock"] == puzzle_id and def["file"] != "":
+			return def["id"]
+	return ""
+
+
 ## The next new thing to aim for (the "Next goal" strip): the cheapest helper not owned yet, or upgrade not bought
 ## yet whose requirements are met. If everything is owned, the cheapest next copy of a helper (`more` = true).
 ## Returns {kind, id, name, cost, missing (Solves still needed, 0 = can buy now), seconds (at the current
