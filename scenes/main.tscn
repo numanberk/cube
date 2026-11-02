@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/main.gd" id="1_main"]
-[ext_resource type="Script" path="res://scripts/ui/cube_view.gd" id="2_cube"]
+[ext_resource type="PackedScene" path="res://scenes/puzzle_view_3d.tscn" id="2_puzzle"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_bar_bg"]
 bg_color = Color(0.165, 0.176, 0.212, 1)
@@ -82,13 +82,11 @@ theme_override_font_sizes/font_size = 18
 text = "0 moves/s"
 horizontal_alignment = 1
 
-[node name="CubeView" type="Control" parent="Margin/Columns/Left"]
+[node name="PuzzleView" parent="Margin/Columns/Left" instance=ExtResource("2_puzzle")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 280)
+custom_minimum_size = Vector2(300, 300)
 layout_mode = 2
 size_flags_horizontal = 4
-mouse_filter = 2
-script = ExtResource("2_cube")
 
 [node name="SolveProgress" type="ProgressBar" parent="Margin/Columns/Left"]
 unique_name_in_owner = true

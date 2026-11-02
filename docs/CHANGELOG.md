@@ -2,6 +2,34 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 1.2: PuzzleView3D (static)
+- New `scenes/puzzle_view_3d.tscn` + `scripts/ui/puzzle_view_3d.gd` (`PuzzleView3D`) replace the 2D `CubeView` in
+  `main.tscn` (node `%PuzzleView`, 300×300). Same API, `scramble_step()` and `show_solved()`, plus `set_puzzle(id)` for
+  "2x2" ... "7x7" (`PuzzleShapes.from_id()`). A new puzzle starts part-scrambled (size × 4 moves).
+- **Clicking the puzzle taps:** the view emits `tapped` when the mouse is released within 6 px of where it was pressed
+  (a drag doesn't tap, ready for 1.4); `main.gd` connects it to the same handler as the Turn button.
+- **Rendering:** SubViewport (transparent, own world, MSAA 4×) > `Puzzle` node (tilted 28° towards the camera, scaled for
+  the tap punch) > `Turntable` (turned −38° so F and R show) > `Bodies` + `Stickers` MultiMeshes. That's two draw calls for
+  any size. Key light from the upper left, a weak fill from the right, ambient colour, no shadows yet.
+  The camera backs off to fit the puzzle's bounding sphere, so every size fills the view the same.
+- `scripts/cube/puzzle_meshes.gd` (`PuzzleMeshes`): a rounded box (rounded edges and corners, smooth normals) and a
+  rounded-rectangle sticker, both from `SurfaceTool`. **Two deviations from the plan:** stickers are geometry, not a
+  shader (MSAA then smooths the corners), and pieces are MultiMesh instances, not nodes, so 1.3 rotates the turning
+  layer's transforms instead of parenting to a pivot. PLAN §4.2 and ROADMAP 1.3 are updated.
+- Screenshots: [2×2](screenshots/cube/mid_2x2.png), [3×3](screenshots/cube/mid_3x3.png),
+  [5×5](screenshots/cube/mid_5x5.png), [7×7](screenshots/cube/mid_7x7.png). `screenshot.sh` takes `PUZZLE=5x5` for this.
+- Tests: puzzle ids, click vs drag on the view, `set_puzzle` instance counts, `show_solved`, and a click on the real
+  main scene raising `Game.total_moves` by one tap. The test runner now waits one frame first, so added nodes get `_ready()`.
+  822 checks, `All good.` The headless smoke run is clean.
+- **Still the same / for later:** the game always shows a 3×3 until puzzles exist (4.2 calls `set_puzzle`). Moves
+  are instant, not animated, and at high speed the puzzle sits solved like the 2D cube did (1.3).
+  The Turn button stays until 2.2. `cube_view.gd` is unused and is deleted in 1.5.
+  Under `canvas_items` stretch, the SubViewport renders at the 1280×720 layout size and is scaled up on bigger windows,
+  so it may look soft at 1440p. Check it in 9.1, or render at the real window scale.
+- **Owner:** this is the first change you can see. Please play it and note anything in FEEDBACK.md
+  (angle, colours, size, the black plastic).
+- **Next:** task 1.3 (animated turns).
+
 ## 2026-11-02 — Task 1.1: TwistyModel + cube shapes
 - New `scripts/cube/twisty_model.gd` (`TwistyModel`, pure data, no nodes) and `scripts/cube/puzzle_shapes.gd`
   (`PuzzleShapes.cube(n)`, n = 2–7, standard colours: white U, yellow D, green F, blue B, red R, orange L).

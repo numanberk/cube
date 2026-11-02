@@ -33,13 +33,13 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       `is_solved`, and WCA `notation` (`R`, `U'`, `F2`, `Rw`, `3Rw` on big cubes). No nodes.
       *Done when:* tests cover, for every n: a move applied 4× = solved; a random 50-move scramble + its inverse = solved;
       a scrambled cube is not solved; piece count = n³ − (n−2)³; and the notation strings.
-- [ ] **1.2 PuzzleView3D (static):** `scenes/puzzle_view_3d.tscn` + `scripts/ui/puzzle_view_3d.gd`. It renders a TwistyModel in a
+- [x] **1.2 PuzzleView3D (static):** `scenes/puzzle_view_3d.tscn` + `scripts/ui/puzzle_view_3d.gd`. It renders a TwistyModel in a
       `SubViewport`: rounded cubies made with `SurfaceTool`, rounded-rect sticker shader, key + ambient light,
       3/4 camera framed to the puzzle size. It replaces `CubeView` in `main.tscn` with the same API
       (`scramble_step()`, `show_solved()`) plus `set_puzzle(id)`. **Clicking the puzzle taps.**
       *Done when:* screenshots of 2×2, 3×3, 5×5 and 7×7 are in `docs/screenshots/cube/`, the headless smoke run is clean,
       and clicking the puzzle calls `Game.tap()`.
-- [ ] **1.3 Animated turns:** each `scramble_step()` queues a real layer turn (pivot tween, ~0.12 s, eased) and bakes it
+- [ ] **1.3 Animated turns:** each `scramble_step()` queues a real layer turn (rotate the layer's MultiMesh transforms, ~0.12 s, eased) and bakes it
       into the model. Turns get shorter as the queue grows. Above ~12 visual moves/s it switches to the speed-spin
       effect. On `show_solved()`, it plays the move history backwards at high speed (≤ 1 s), then flashes and bounces.
       *Done when:* the model and view agree after 1,000 random moves (a test compares sticker colours), there's no

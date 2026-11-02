@@ -1,6 +1,6 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
-## Run through tools/screenshot.sh, which passes:  -- --preset <name> --out <file.png>
+## Run through tools/screenshot.sh, which passes:  -- --preset <name> --out <file.png> [--puzzle 5x5]
 ## Not part of the game: never reference this from scenes/ or scripts/.
 
 const Presets := preload("res://tools/screenshot_presets.gd")
@@ -22,7 +22,11 @@ func _ready() -> void:
 	Game.apply_save_data(Presets.PRESETS[preset], Time.get_unix_time_from_system())
 	Game.set_process(false)  # freeze the economy so the numbers match the preset exactly
 	seed(RANDOM_SEED)
-	add_child(MAIN_SCENE.instantiate())
+	var main := MAIN_SCENE.instantiate()
+	add_child(main)
+	var puzzle: String = args.get("puzzle", "")
+	if puzzle != "":
+		main.get_node("%PuzzleView").set_puzzle(puzzle)
 
 	for i in SETTLE_FRAMES:
 		await get_tree().process_frame

@@ -1,0 +1,50 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/puzzle_view_3d.gd" id="1_view"]
+
+[sub_resource type="Environment" id="Environment_upf4m"]
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.66, 0.75, 1)
+ambient_light_energy = 0.7
+
+[node name="PuzzleView3D" type="SubViewportContainer" unique_id=172532214]
+custom_minimum_size = Vector2(300, 300)
+stretch = true
+script = ExtResource("1_view")
+
+[node name="Viewport" type="SubViewport" parent="." unique_id=1189757273]
+unique_name_in_owner = true
+own_world_3d = true
+transparent_bg = true
+msaa_3d = 2
+size = Vector2i(300, 300)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Viewport" unique_id=1134012301]
+environment = SubResource("Environment_upf4m")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="Viewport" unique_id=44299064]
+transform = Transform3D(0.8660254, 0.38302222, -0.32139382, 0, 0.64278764, 0.76604444, 0.5, -0.66341394, 0.5566704, 0, 0, 0)
+light_energy = 1.1
+
+[node name="FillLight" type="DirectionalLight3D" parent="Viewport" unique_id=1647419398]
+transform = Transform3D(-0.50000006, -0.22414386, 0.83651626, 0, 0.9659258, 0.25881904, -0.8660254, 0.12940954, -0.48296297, 0, 0, 0)
+light_energy = 0.3
+
+[node name="Camera" type="Camera3D" parent="Viewport" unique_id=1383761057]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
+fov = 30.0
+
+[node name="Puzzle" type="Node3D" parent="Viewport" unique_id=1372446240]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 0.88294756, -0.46947157, 0, 0.46947157, 0.88294756, 0, 0, 0)
+
+[node name="Turntable" type="Node3D" parent="Viewport/Puzzle"]
+unique_name_in_owner = true
+transform = Transform3D(0.7880108, 0, -0.6156615, 0, 1, 0, 0.6156615, 0, 0.7880108, 0, 0, 0)
+
+[node name="Bodies" type="MultiMeshInstance3D" parent="Viewport/Puzzle/Turntable" unique_id=1987886621]
+unique_name_in_owner = true
+
+[node name="Stickers" type="MultiMeshInstance3D" parent="Viewport/Puzzle/Turntable" unique_id=1658948842]
+unique_name_in_owner = true

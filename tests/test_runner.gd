@@ -10,6 +10,7 @@ var _current := ""
 
 
 func _initialize() -> void:
+	await process_frame  # the tree only runs _ready() on added nodes once the main loop has started
 	for method: Dictionary in get_method_list():
 		var method_name: String = method["name"]
 		if method_name.begins_with("test_"):
@@ -441,3 +442,57 @@ func test_cube_notation() -> void:
 			var move := model.random_move(rng)
 			all_round_trip = all_round_trip and model.parse(model.notation(move)) == move
 		check(all_round_trip, "%dx%d notation -> parse round-trips random moves" % [n, n])
+
+
+# --- 3D puzzle view (task 1.2) -----------------------------------------------
+
+func mouse_button(pressed: bool, position: Vector2) -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.position = position
+	return event
+
+
+func test_puzzle_ids() -> void:
+	for n in range(PuzzleShapes.MIN_CUBE, PuzzleShapes.MAX_CUBE + 1):
+		var model := PuzzleShapes.from_id("%dx%d" % [n, n])
+		check(model != null and model.size == n, "'%dx%d' builds a %d-cube" % [n, n, n])
+	check(PuzzleShapes.from_id("8x8") == null, "8x8 doesn't exist")
+	check(PuzzleShapes.from_id("3x4") == null, "3x4 doesn't exist")
+	check(PuzzleShapes.from_id("banana") == null, "nonsense id gives null")
+
+
+func test_puzzle_view_click_and_drag() -> void:
+	var view: PuzzleView3D = load("res://scenes/puzzle_view_3d.tscn").instantiate()
+	root.add_child(view)
+	check(view.puzzle_id == PuzzleView3D.DEFAULT_PUZZLE and view.model != null, "the view starts on the default puzzle")
+	var taps := [0]
+	view.tapped.connect(func() -> void: taps[0] += 1)
+	view._gui_input(mouse_button(true, Vector2(100, 100)))
+	view._gui_input(mouse_button(false, Vector2(103, 102)))
+	check(taps[0] == 1, "a click (moving < 6 px) taps")
+	view._gui_input(mouse_button(true, Vector2(100, 100)))
+	view._gui_input(mouse_button(false, Vector2(130, 100)))
+	check(taps[0] == 1, "a drag doesn't tap")
+	view.set_puzzle("5x5")
+	check(view.puzzle_id == "5x5" and view.model.size == 5, "set_puzzle switches puzzles")
+	check(view._bodies.multimesh.instance_count == 98, "5x5 draws 98 pieces")
+	check(view._stickers.multimesh.instance_count == 150, "5x5 draws 150 stickers")
+	view.show_solved()
+	check(view.model.is_solved(), "show_solved shows a solved puzzle")
+	view.free()
+
+
+func test_clicking_the_puzzle_taps() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var view: PuzzleView3D = main.get_node("%PuzzleView")
+	view._gui_input(mouse_button(true, Vector2(150, 150)))
+	view._gui_input(mouse_button(false, Vector2(150, 150)))
+	check_near(game.total_moves, game.get_tap_moves(), "clicking the puzzle calls Game.tap()")
+	main.free()
+	game.reset_state()

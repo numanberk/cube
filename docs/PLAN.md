@@ -146,10 +146,12 @@ streaks) and snaps occasional turns. The game's numbers never wait for the anima
   It provides `apply(move)`, `inverse(move)`, `random_move()`, `is_solved()` and `notation(move)`.
 - `PuzzleShapes` (`scripts/cube/puzzle_shapes.gd`): builds the pieces for `cube(n)` (n = 2–7) and `megaminx()`.
 - `PuzzleView3D` (`scenes/puzzle_view_3d.tscn` + `scripts/ui/puzzle_view_3d.gd`): a `SubViewportContainer` →
-  `SubViewport` → camera, lights and piece meshes. It animates a turn by parenting the layer's pieces to a pivot,
-  tweening the pivot, and baking the result back. It keeps the old API (`scramble_step()`, `show_solved()`) and adds
+  `SubViewport` → camera, lights, and two `MultiMeshInstance3D`s (all piece bodies, all stickers), so even a 7×7 is
+  two draw calls. It animates a turn by rotating the turning layer's instance transforms around the face axis each
+  frame, then applying the move to the model. It keeps the old API (`scramble_step()`, `show_solved()`) and adds
   `set_puzzle(id)`.
-- Meshes are made in code: a rounded box via `SurfaceTool`, and stickers as quads with a small rounded-rectangle shader.
+- Meshes are made in code (`scripts/cube/puzzle_meshes.gd`): a rounded box and a rounded-rectangle sticker, both via
+  `SurfaceTool` (geometry rather than a shader, so MSAA smooths the sticker corners).
   No imported models, so there's no external tool or addon.
 - **This is visual state, not game state.** Sticker positions never affect any number, so this code lives under
   `scripts/cube/` and `scripts/ui/`, not in `game.gd`. It's not saved; a fresh scramble on load is fine.

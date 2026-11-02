@@ -23,12 +23,15 @@ Full design: `docs/DESIGN.md`.
 ```
 project.godot              Engine config; autoload "Game" -> scripts/autoload/game.gd
 scenes/main.tscn           The one screen (UI layout)
+scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable > Bodies/Stickers MultiMeshes)
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
-scripts/ui/cube_view.gd    class CubeView: draws the cube face (2D; replaced by the 3D view in Phase 1)
+scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle, `tapped`
+scripts/ui/cube_view.gd    class CubeView: old 2D face, unused since 1.2 (deleted in 1.5)
 scripts/cube/twisty_model.gd   class TwistyModel: pure-data puzzle (pieces, layers, moves, WCA notation)
-scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (cube(2..7); megaminx() in 4.4), colours
+scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (from_id("3x3"), cube(2..7); megaminx() in 4.4), colours
+scripts/cube/puzzle_meshes.gd  class PuzzleMeshes: rounded box + rounded sticker meshes (SurfaceTool)
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
@@ -71,6 +74,7 @@ You can't see the game window, so look at it this way (works in the cloud contai
 bash tools/screenshot.sh docs/screenshots/<task-name>             # every preset
 bash tools/screenshot.sh /tmp/shots mid late                      # only some presets
 SIZE=1920x1080 bash tools/screenshot.sh docs/screenshots/1080p    # another resolution
+PUZZLE=7x7 bash tools/screenshot.sh /tmp/shots mid                # another puzzle -> mid_7x7.png
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
 - It runs under `xvfb-run` with the real OpenGL 3 renderer (software Mesa, so it's slow but correct) and
@@ -80,6 +84,8 @@ SIZE=1920x1080 bash tools/screenshot.sh docs/screenshots/1080p    # another reso
   Add a preset there when a new feature needs its own state (e.g. a puzzle tier or prestige).
 - The economy is frozen during the shot, so numbers match the preset exactly. The cube is seeded, so
   before/after shots compare. `docs/screenshots/baseline/` is the look before Phase 1.
+- New `class_name` scripts aren't known to Godot until an import runs (`run_tests.sh` does one). If a
+  `-s` script can't find a class you just added, run `godot --headless --path . --import` first.
 - `docs/` has a `.gdignore`, so Godot never imports these PNGs into the game. Keep committed PNGs small (< 300 KB each). Don't commit throwaway shots; put them in `/tmp` or a scratchpad.
 
 ## Debug keys (debug builds only)

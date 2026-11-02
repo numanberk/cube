@@ -7,7 +7,7 @@ const MAX_VISUAL_MOVES_PER_SECOND := 12.0
 
 @onready var solves_label: Label = %SolvesLabel
 @onready var rate_label: Label = %RateLabel
-@onready var cube_view: CubeView = %CubeView
+@onready var puzzle_view: PuzzleView3D = %PuzzleView
 @onready var solve_progress: ProgressBar = %SolveProgress
 @onready var progress_label: Label = %ProgressLabel
 @onready var tap_button: Button = %TapButton
@@ -25,6 +25,7 @@ var _visual_move_timer := 0.0
 
 func _ready() -> void:
 	tap_button.pressed.connect(_on_tap_pressed)
+	puzzle_view.tapped.connect(_on_tap_pressed)
 	Game.solved.connect(_on_solved)
 	Game.purchased.connect(_on_purchased)
 	Game.state_reset.connect(_refresh)
@@ -128,7 +129,7 @@ func _animate_helper_moves(delta: float) -> void:
 	_visual_move_timer += delta * minf(mps, MAX_VISUAL_MOVES_PER_SECOND)
 	while _visual_move_timer >= 1.0:
 		_visual_move_timer -= 1.0
-		cube_view.scramble_step()
+		puzzle_view.scramble_step()
 
 
 func _show_offline_report() -> void:
@@ -151,11 +152,11 @@ func _show_offline_report() -> void:
 
 func _on_tap_pressed() -> void:
 	Game.tap()
-	cube_view.scramble_step()
+	puzzle_view.scramble_step()
 
 
 func _on_solved(_count: int) -> void:
-	cube_view.show_solved()
+	puzzle_view.show_solved()
 
 
 func _on_purchased(_kind: String, _id: String) -> void:

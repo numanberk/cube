@@ -36,6 +36,16 @@ const MIN_CUBE := 2
 const MAX_CUBE := 7
 
 
+## The model for a puzzle id: "2x2" ... "7x7" (Megaminx in 4.4). Returns null for an unknown id.
+static func from_id(id: String) -> TwistyModel:
+	var parts := id.split("x")
+	if parts.size() == 2 and parts[0] == parts[1] and parts[0].is_valid_int():
+		var n := parts[0].to_int()
+		if n >= MIN_CUBE and n <= MAX_CUBE:
+			return cube(n)
+	return null
+
+
 ## An n×n×n cube (n = 2-7), solved. Only the visible pieces exist: n³ − (n−2)³ of them.
 static func cube(n: int) -> TwistyModel:
 	assert(n >= MIN_CUBE and n <= MAX_CUBE, "cube size must be 2-7")
