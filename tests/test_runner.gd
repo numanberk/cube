@@ -17,6 +17,10 @@ func _initialize() -> void:
 			_current = method_name
 			await call(method_name)  # tests may await frames
 	print("\n%d checks, %d failed" % [_checks, _failures])
+	var audio := root.get_node_or_null("Audio") as AudioManager
+	if audio != null:
+		audio.stop_all()  # sounds still playing at exit would be reported as leaked resources
+		await create_timer(0.25).timeout  # the audio thread releases stopped playbacks on its next mix
 	quit(1 if _failures > 0 else 0)
 
 
@@ -932,5 +936,55 @@ func test_juice_at_high_speed() -> void:
 	check(most <= FxLayer.POOL_SIZE, "never more than 20 floating texts at high speed")
 	check(most >= 1, "solves show a floating +X Solves")
 	check((main.get_node("%PuzzleView") as PuzzleView3D).speed_mode, "the puzzle is in speed mode")
+	main.free()
+	game.reset_state()
+
+
+# --- Audio (task 3.1) ----------------------------------------------------------------
+
+func test_audio_buses_and_rate_limits() -> void:
+	var audio: AudioManager = root.get_node("Audio")
+	for bus: String in ["Master", "Music", "SFX"]:
+		check(AudioServer.get_bus_index(bus) >= 0, "audio bus %s exists" % bus)
+	check(absf(audio.get_bus_volume(AudioManager.SFX_BUS) - AudioManager.DEFAULT_SFX_VOLUME) < 0.01, "SFX starts at 70 %")
+	check(absf(audio.get_bus_volume(AudioManager.MUSIC_BUS) - AudioManager.DEFAULT_MUSIC_VOLUME) < 0.01, "Music starts at 50 %")
+	await create_timer(0.6).timeout  # let any earlier test's sounds age past their rate limits
+	var before: Dictionary = audio.played.duplicate()
+	var chimes := 0
+	for i in 100:
+		if audio.play_solve():
+			chimes += 1
+	check(chimes == 1 and int(audio.played["chime"]) == int(before["chime"]) + 1, "100 solves in one frame play one chime, not 100")
+	check(audio.play_buy(), "buying plays a sound")
+	check(audio.play_unlock(), "an unlock plays a sound")
+	check(audio.play_click(7), "a turn plays a click")
+	check(not audio.play_click(7), "a second click in the same instant is skipped")
+	await create_timer(0.3).timeout
+	check(audio.play_solve(), "after 0.25 s a solve chimes again")
+	audio.set_bus_volume(AudioManager.SFX_BUS, 0.0)
+	check(AudioServer.is_bus_mute(AudioServer.get_bus_index(AudioManager.SFX_BUS)), "volume 0 mutes the bus")
+	audio.set_bus_volume(AudioManager.SFX_BUS, AudioManager.DEFAULT_SFX_VOLUME)
+	check(not AudioServer.is_bus_mute(AudioServer.get_bus_index(AudioManager.SFX_BUS)), "volume back up unmutes it")
+
+
+func test_game_events_play_sounds() -> void:
+	var audio: AudioManager = root.get_node("Audio")
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	await create_timer(0.6).timeout
+	var before: Dictionary = audio.played.duplicate()
+	main._on_tap_pressed()
+	check(int(audio.played["click"]) == int(before["click"]) + 1, "a tap clicks")
+	game.cheat_add_solves(40.0)  # reveals the Club (unlocks at 30 lifetime Solves)
+	main._refresh()
+	check(int(audio.played["unlock"]) == int(before["unlock"]) + 1, "a newly revealed helper plays the unlock sound")
+	game.buy_building("friend")
+	check(int(audio.played["buy"]) == int(before["buy"]) + 1, "buying plays the buy sound")
+	for i in 20:
+		game.tap()  # completes a solve
+	check(int(audio.played["chime"]) == int(before["chime"]) + 1, "a solve chimes")
 	main.free()
 	game.reset_state()

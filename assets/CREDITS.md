@@ -10,7 +10,19 @@ The in-game Credits screen (task 9.3) must match this file.
 | `assets/fonts/InterVariable.ttf` | Inter 4.1 (variable) | The Inter Project Authors (Rasmus Andersson) | SIL Open Font License 1.1 — full text in `assets/fonts/Inter-OFL.txt` | https://github.com/rsms/inter/releases/tag/v4.1 |
 
 ## Audio
-(none yet — task 3.1)
+### Sound effects
+Made for Cube Idle by `tools/make_sfx.py` (synthesised from scratch: FM electric piano, Karplus-Strong pluck,
+filtered noise). Released as **CC0** by the project; no third-party material.
+
+| File | Sound |
+|---|---|
+| `assets/audio/sfx/click.wav` | Cube turn clack (pitch varies in game) |
+| `assets/audio/sfx/chime.wav` | Solve chime (Rhodes-style major third) |
+| `assets/audio/sfx/buy.wav` | Purchase (two soft plucks) |
+| `assets/audio/sfx/unlock.wav` | Unlock sting (rising arpeggio) |
+
+### Music
+(none yet — task 3.2)
 
 ## Images
 Icons from [game-icons.net](https://game-icons.net) (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/).

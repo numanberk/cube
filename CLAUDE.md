@@ -21,12 +21,14 @@ Full design: `docs/DESIGN.md`.
 
 ## Layout
 ```
-project.godot              Engine config; autoload "Game" -> scripts/autoload/game.gd
+project.godot              Engine config; autoloads "Game" (game.gd) and "Audio" (audio.gd); input action "tap"
+default_bus_layout.tres    Audio buses: Master > Music, SFX
 scenes/main.tscn           The one screen (UI layout)
 ui/theme.tres              Project theme: Inter font, colours, button/tab/bar styles, type variations (see rule 8)
 assets/                    fonts/ (Inter, OFL) and later audio/, images/; every file listed in assets/CREDITS.md
 scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable > Bodies/Stickers MultiMeshes)
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
+scripts/autoload/audio.gd  class AudioManager ("Audio"): play_click/solve/buy/unlock (rate-limited), bus volumes
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
 scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only
@@ -44,6 +46,7 @@ tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
 tools/screenshot.sh        PNGs of the main scene in preset states (see "Screenshots" below)
 tools/find_godot.sh        Shared by the tools/*.sh scripts: finds or downloads Godot
+tools/make_sfx.py          Synthesises assets/audio/sfx/*.wav (CC0, ours); edit and re-run to change a sound
 tools/simulate.sh          Balance bot (tools/simulator.gd) -> docs/BALANCE.md; run after any balance change
 tools/pacing.gd            PLAN §2 pacing targets as data; tests fail if one is missed (or newly met, see below)
 docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK, DESIGN,

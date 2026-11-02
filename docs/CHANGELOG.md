@@ -2,6 +2,26 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 3.1: Audio autoload + SFX
+- **Sounds are synthesised by us** (`tools/make_sfx.py`, Python standard library only; CC0): kenney.nl isn't reachable
+  from the container, and our own sounds avoid licence questions anyway. Lo-fi-friendly and soft (PLAN §4.3):
+  `click.wav` (filtered-noise plastic clack + low knock, 0.09 s), `chime.wav` (FM "Rhodes" major third, 1.4 s),
+  `buy.wav` (two Karplus-Strong plucks a fourth apart, 0.6 s), `unlock.wav` (rising C-E-G-C Rhodes arpeggio, 2.1 s).
+  All about −20 dBFS RMS, no clipping, DC removed. **I can't listen in the container. Owner: please check they sound
+  good**, and say what to change (brighter, softer, different notes…); it's a quick edit and re-run.
+- **`Audio` autoload** (`scripts/autoload/audio.gd`, `AudioManager`) with buses from `default_bus_layout.tres`
+  (Master > Music, SFX). Default volumes: SFX 70 %, Music 50 % (set by Settings in 3.4). One `AudioStreamPlayer` per sound,
+  with polyphony. **Rate limits per sound:** click ≤ 20/s, chime ≤ 4/s, buy ≤ ~16/s, unlock ≤ 2/s.
+  Click pitch: `(3 / size)^0.25` (7×7 about 20 % lower, 2×2 about 10 % higher) × random ±8 %.
+- **Hooked up in `main.gd`:** tap → click, solve → chime, purchase → buy, a helper newly revealed in the shop → unlock
+  sting (helpers already visible at start stay silent). Puzzle unlocks will use the same sting in 4.3a.
+- `Audio.stop_all()`: the test runner and screenshot tool call it and wait 0.25 s before quitting. Otherwise a sound still
+  playing at exit is reported as "resources still in use", which `run_tests.sh` treats as an error.
+- Tests: buses exist with default volumes; 100 solves in one frame play **one** chime; each event plays; a second click in
+  the same instant is skipped; the chime plays again after 0.25 s; volume 0 mutes. Game events → sounds in the real main scene.
+  995 checks, `All good.`
+- **Next:** task 3.2 (music system, lo-fi).
+
 ## 2026-11-02 — Task 2.4: juice (Phase 2 done)
 - **Floating "+N" on every tap**, at the cursor (the view's `tapped` signal now carries the global click position) or at
   the puzzle's centre for Space/Enter. White bold text with a dark outline (theme variation `PopTap`), rising 70 px and

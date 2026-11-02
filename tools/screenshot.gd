@@ -24,7 +24,7 @@ func _ready() -> void:
 		args["puzzle"] = "7x7"
 	if out == "" or not Presets.PRESETS.has(preset):
 		push_error("Usage: -- --preset <%s> --out <file.png>" % "|".join(Presets.PRESETS.keys()))
-		get_tree().quit(2)
+		_quit(2)
 		return
 
 	Game.persistence_enabled = false  # never write a save from here
@@ -67,10 +67,17 @@ func _ready() -> void:
 	var err := image.save_png(out)
 	if err != OK:
 		push_error("Could not write %s: %s" % [out, error_string(err)])
-		get_tree().quit(1)
+		_quit(1)
 		return
 	print("Saved %s (%dx%d, preset '%s')" % [out, image.get_width(), image.get_height(), "bench" if bench else preset])
-	get_tree().quit(0)
+	_quit(0)
+
+
+## Stops sounds and gives the audio thread a moment, so no playback is reported as leaked at exit.
+func _quit(code: int) -> void:
+	Audio.stop_all()
+	await get_tree().create_timer(0.25).timeout
+	get_tree().quit(code)
 
 
 func _bench(view: PuzzleView3D, quality: String) -> void:

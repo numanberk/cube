@@ -39,6 +39,7 @@ var _shown_solves := 0.0          ## what the counter shows; eases towards Game.
 var _pending_solve_value := 0.0   ## Solves earned since the last "+X Solves" pop
 var _solve_pop_timer := 0.0
 var _burst_timer := 0.0
+var _revealed: Dictionary = {}    ## helper ids already shown unlocked (a newly revealed one plays the unlock sound)
 
 
 func _ready() -> void:
@@ -50,6 +51,9 @@ func _ready() -> void:
 	Game.state_reset.connect(_on_state_reset)
 	_shown_solves = Game.solves
 	_build_shop()
+	for def: Dictionary in Content.BUILDINGS:
+		if Game.is_building_unlocked(def["id"]):
+			_revealed[def["id"]] = true  # already known at start: no sound
 	_refresh()
 	_show_offline_report()
 
@@ -134,6 +138,9 @@ func _refresh_helper_cards() -> void:
 		var id: String = def["id"]
 		var card: ShopCard = _helper_cards[id]
 		if Game.is_building_unlocked(id):
+			if not _revealed.has(id):
+				_revealed[id] = true
+				Audio.play_unlock()
 			var owned: int = Game.buildings[id]
 			var each := Game.get_building_mps(id)
 			var cost := Game.get_building_cost(id)
@@ -260,6 +267,7 @@ func _on_tap_pressed(at: Vector2 = Vector2.INF) -> void:
 	Game.tap()
 	puzzle_view.scramble_step()
 	puzzle_view.squash()
+	Audio.play_click(puzzle_view.model.size if puzzle_view.model != null else 3)
 	if at == Vector2.INF:
 		at = puzzle_view.get_global_rect().get_center()
 	fx.pop("+%s" % Num.format(Game.get_tap_moves()), at)
@@ -267,15 +275,21 @@ func _on_tap_pressed(at: Vector2 = Vector2.INF) -> void:
 
 func _on_solved(count: int) -> void:
 	puzzle_view.show_solved()
+	Audio.play_solve()
 	_pending_solve_value += count * Game.get_solve_value()
 
 
 func _on_state_reset() -> void:
 	_shown_solves = Game.solves
+	_revealed.clear()
+	for def: Dictionary in Content.BUILDINGS:
+		if Game.is_building_unlocked(def["id"]):
+			_revealed[def["id"]] = true
 	_refresh()
 
 
 func _on_purchased(_kind: String, _id: String) -> void:
+	Audio.play_buy()
 	_refresh()
 
 
