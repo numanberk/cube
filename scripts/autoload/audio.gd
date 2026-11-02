@@ -37,6 +37,7 @@ var _players: Dictionary = {}    ## sound name -> AudioStreamPlayer
 var _last_played: Dictionary = {}  ## sound name -> seconds (engine time) it last played
 var _rng := RandomNumberGenerator.new()
 
+var music_enabled := true        ## false = never start music (the screenshot tool; nothing to hear there)
 var music_mode := "follow"
 var loop_track_id := ""          ## the track "loop" mode plays ("" = the follow track)
 var focus_behaviour := "duck"
@@ -97,7 +98,7 @@ func set_music_context(unlocked_track_ids: Array[String], follow_track_id: Strin
 	_unlocked_tracks = unlocked_track_ids.duplicate()
 	_follow_track_id = follow_track_id
 	_context_ready = true
-	if music_clock < MUSIC_START_DELAY:
+	if not music_enabled or music_clock < MUSIC_START_DELAY:
 		return  # advance_music starts it once the delay has passed
 	var wanted := _wanted_track()
 	if current_track_id == "" or not _unlocked_tracks.has(current_track_id) or (music_mode == "loop" and wanted != current_track_id) \
@@ -107,7 +108,7 @@ func set_music_context(unlocked_track_ids: Array[String], follow_track_id: Strin
 
 ## Crossfades to a track (no-op if it's already playing or has no file).
 func play_track(track_id: String) -> void:
-	if track_id == "" or track_id == current_track_id:
+	if not music_enabled or track_id == "" or track_id == current_track_id:
 		return
 	var def := Content.get_track(track_id)
 	if def.is_empty() or def["file"] == "":

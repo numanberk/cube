@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1]
 ## Preset "bench" is special: the late-game state on a 7×7 with the economy running (speed mode, a solve every
 ## frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame time.
 ## Not part of the game: never reference this from scenes/ or scripts/.
@@ -28,6 +28,8 @@ func _ready() -> void:
 		return
 
 	Game.persistence_enabled = false  # never write a save from here
+	Settings.persistence_enabled = false  # nor settings
+	Audio.music_enabled = false  # nothing to hear, and a track still playing at exit is reported as a leak
 	Game.apply_save_data(Presets.PRESETS[preset], Time.get_unix_time_from_system())
 	Game.set_process(bench)  # freeze the economy so the numbers match the preset (the bench keeps it running)
 	seed(RANDOM_SEED)
@@ -37,6 +39,8 @@ func _ready() -> void:
 	var view: PuzzleView3D = main.get_node("%PuzzleView")
 	if puzzle != "":
 		view.set_puzzle(puzzle)
+	if args.has("settings"):
+		main.get_node("%SettingsPanel").open()
 	if args.has("buy"):
 		main.set_buy_amount(int(args["buy"]))
 	if args.has("tab"):
@@ -78,7 +82,7 @@ func _ready() -> void:
 ## Stops sounds and gives the audio thread a moment, so no playback is reported as leaked at exit.
 func _quit(code: int) -> void:
 	Audio.stop_all()
-	await get_tree().create_timer(0.25).timeout
+	await get_tree().create_timer(0.25).timeout  # the audio thread releases stopped sound effects
 	get_tree().quit(code)
 
 

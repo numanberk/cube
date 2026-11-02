@@ -2,7 +2,8 @@ class_name FxLayer
 extends Control
 ## Floating "+N" texts and solve bursts drawn over the main screen (task 2.4). Display only.
 ## Labels are pooled: never more than POOL_SIZE on screen; when all are busy, the oldest is reused.
-## The burst is one CPUParticles2D restarted in place. "Reduce motion" (3.4) should turn `enabled` off.
+## The burst is one CPUParticles2D restarted in place. Reduce motion turns `particles_enabled` off (the floating
+## numbers stay: they carry information).
 
 const POOL_SIZE := 20
 const RISE := 70.0        ## pixels a text floats up over its lifetime
@@ -12,6 +13,7 @@ const JITTER := 14.0      ## random sideways offset, so rapid taps don't stack e
 @onready var _burst: CPUParticles2D = %Burst
 
 var enabled := true
+var particles_enabled := true
 var _labels: Array[Label] = []
 var _ages := PackedFloat32Array()
 var _lifetimes := PackedFloat32Array()
@@ -51,7 +53,7 @@ func pop(text: String, at: Vector2, variation: StringName = &"PopTap", lifetime:
 
 ## A one-shot burst of cube-coloured squares at `at` (global position).
 func burst(at: Vector2) -> void:
-	if not enabled:
+	if not enabled or not particles_enabled:
 		return
 	_burst.position = get_global_transform().affine_inverse() * at
 	_burst.restart()

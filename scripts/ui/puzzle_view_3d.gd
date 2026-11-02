@@ -18,7 +18,8 @@ extends SubViewportContainer
 ## unshaded quads with tiny shaders in scripts/ui/shaders/. Dragging turns the view and it springs back; it also
 ## sways gently when idle. The last few moves are kept for a ticker (ticker_text()).
 ## Graphics (task 1.5): "high" = MSAA 4×, rounded pieces, glow and shadow; "low" = no MSAA, bevelled pieces
-## (about 5× fewer triangles), no glow or shadow. main.gd applies the player's choice from GraphicsConfig.
+## (about 5× fewer triangles), no glow or shadow. main.gd applies the player's choice from Settings.
+## Reduce motion (set_reduce_motion) turns off sway, squash, bounce and the speed-mode wobble.
 ## Visual state only: nothing here affects game numbers.
 
 signal tapped(at: Vector2)  ## global position of the click
@@ -85,6 +86,7 @@ var recorded_moves: Array[Dictionary] = []  ## when record_moves is on: every mo
 var record_moves := false
 var sway_enabled := true        ## idle sway; "Reduce motion" (3.4) turns it off
 var graphics_quality := "high"  ## see set_graphics()
+var reduce_motion := false      ## see set_reduce_motion()
 
 var _rng := RandomNumberGenerator.new()
 var _last_move := {}             ## last move generated (so the next one uses another face)
@@ -190,7 +192,7 @@ func set_puzzle(id: String) -> void:
 
 ## "high" or "low" (see the header). Safe to call at any time; the puzzle keeps its state.
 func set_graphics(quality: String) -> void:
-	if not quality in GraphicsConfig.QUALITIES:
+	if not quality in GameSettings.SPEC["quality"]["choices"]:
 		push_warning("Unknown graphics quality '%s'" % quality)
 		return
 	graphics_quality = quality
@@ -219,9 +221,19 @@ func set_speed(moves_per_second: float) -> void:
 		_flush()
 
 
-## A tap's squash-and-stretch (bigger than the punch every move gets). "Reduce motion" (3.4) should skip it.
+## A tap's squash-and-stretch (bigger than the punch every move gets). Off with Reduce motion.
 func squash() -> void:
-	_squash = 1.0
+	if not reduce_motion:
+		_squash = 1.0
+
+
+## Reduce motion: no idle sway, tap squash, solve bounce or speed-mode wobble. Turns still animate (they're the game).
+func set_reduce_motion(on: bool) -> void:
+	reduce_motion = on
+	sway_enabled = not on
+	if on:
+		_squash = 0.0
+		_bounce = 0.0
 
 
 ## One visible move: a random scramble-style turn.
@@ -419,7 +431,8 @@ func _finish_solve() -> void:
 	if _clock - _last_flash_at >= FLASH_MIN_INTERVAL and not speed_mode:
 		_last_flash_at = _clock
 		_flash = FLASH_ENERGY
-		_bounce = BOUNCE_TIME
+		if not reduce_motion:
+			_bounce = BOUNCE_TIME
 	else:
 		_punch = 1.0
 
@@ -492,7 +505,7 @@ func _draw_piece(piece: int, t: Transform3D) -> void:
 
 
 func _animate_effects(delta: float) -> void:
-	var target_wobble := 1.0 if speed_mode else 0.0
+	var target_wobble := 1.0 if speed_mode and not reduce_motion else 0.0
 	_wobble = move_toward(_wobble, target_wobble, delta * 3.0)
 	if not _pressing:  # a released drag springs back
 		var spring := exp(-delta * DRAG_SPRING)

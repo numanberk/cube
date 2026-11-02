@@ -4,8 +4,11 @@ extends RefCounted
 
 const SUFFIXES := ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"]
 
+## "short" (1.50K, 2.50M) or "scientific" (1.50e3). Set from Settings.
+static var notation := "short"
 
-## 999 -> "999", 1500 -> "1.50K", 2.5e6 -> "2.50M", huge -> "1.23e45"
+
+## 999 -> "999", 1500 -> "1.50K", 2.5e6 -> "2.50M", huge -> "1.23e45". Scientific notation: 1500 -> "1.50e3".
 static func format(n: float) -> String:
 	if n < 0.0:
 		return "-" + format(-n)
@@ -14,7 +17,7 @@ static func format(n: float) -> String:
 			return "%.1f" % n
 		return str(int(floorf(n)))
 	var tier := int(floorf(log(n) / log(1000.0)))
-	if tier < SUFFIXES.size():
+	if notation == "short" and tier < SUFFIXES.size():
 		var scaled := n / pow(1000.0, tier)
 		var digits := "%.2f" if scaled < 100.0 else "%.1f"
 		return (digits % scaled) + SUFFIXES[tier]

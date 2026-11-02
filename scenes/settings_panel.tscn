@@ -1,0 +1,254 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/settings_panel.gd" id="1_settings"]
+
+[node name="SettingsPanel" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_settings")
+
+[node name="Dim" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(580, 0)
+layout_mode = 2
+
+[node name="Box" type="VBoxContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_type_variation = &"StackBox"
+
+[node name="Header" type="HBoxContainer" parent="Center/Panel/Box"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Center/Panel/Box/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TitleLabel"
+text = "Settings"
+
+[node name="CloseButton" type="Button" parent="Center/Panel/Box/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+text = "Close"
+
+[node name="Scroll" type="ScrollContainer" parent="Center/Panel/Box"]
+custom_minimum_size = Vector2(0, 520)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="Center/Panel/Box/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SoundHeader" type="Label" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+theme_type_variation = &"CardTitle"
+text = "Sound"
+
+[node name="MasterRow" type="HBoxContainer" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Center/Panel/Box/Scroll/Rows/MasterRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Master volume"
+
+[node name="MasterSlider" type="HSlider" parent="Center/Panel/Box/Scroll/Rows/MasterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+focus_mode = 0
+max_value = 1.0
+step = 0.05
+
+[node name="MasterSliderValue" type="Label" parent="Center/Panel/Box/Scroll/Rows/MasterRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "100%"
+horizontal_alignment = 2
+
+[node name="MusicRow" type="HBoxContainer" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Center/Panel/Box/Scroll/Rows/MusicRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Music volume"
+
+[node name="MusicSlider" type="HSlider" parent="Center/Panel/Box/Scroll/Rows/MusicRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+focus_mode = 0
+max_value = 1.0
+step = 0.05
+
+[node name="MusicSliderValue" type="Label" parent="Center/Panel/Box/Scroll/Rows/MusicRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "100%"
+horizontal_alignment = 2
+
+[node name="SfxRow" type="HBoxContainer" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Center/Panel/Box/Scroll/Rows/SfxRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Sound effects"
+
+[node name="SfxSlider" type="HSlider" parent="Center/Panel/Box/Scroll/Rows/SfxRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+focus_mode = 0
+max_value = 1.0
+step = 0.05
+
+[node name="SfxSliderValue" type="Label" parent="Center/Panel/Box/Scroll/Rows/SfxRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "100%"
+horizontal_alignment = 2
+
+[node name="MusicModeRow" type="HBoxContainer" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Center/Panel/Box/Scroll/Rows/MusicModeRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Music"
+
+[node name="MusicMode" type="OptionButton" parent="Center/Panel/Box/Scroll/Rows/MusicModeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="FocusRow" type="HBoxContainer" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Center/Panel/Box/Scroll/Rows/FocusRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "In the background"
+
+[node name="FocusAudio" type="OptionButton" parent="Center/Panel/Box/Scroll/Rows/FocusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="JukeboxHeader" type="Label" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+theme_type_variation = &"CardTitle"
+text = "Jukebox"
+
+[node name="JukeboxList" type="VBoxContainer" parent="Center/Panel/Box/Scroll/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="DisplayHeader" type="Label" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+theme_type_variation = &"CardTitle"
+text = "Display"
+
+[node name="GraphicsRow" type="HBoxContainer" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Center/Panel/Box/Scroll/Rows/GraphicsRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Graphics"
+
+[node name="Graphics" type="OptionButton" parent="Center/Panel/Box/Scroll/Rows/GraphicsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="MotionRow" type="HBoxContainer" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Center/Panel/Box/Scroll/Rows/MotionRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Reduce motion"
+
+[node name="ReduceMotion" type="CheckButton" parent="Center/Panel/Box/Scroll/Rows/MotionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+
+[node name="NotationRow" type="HBoxContainer" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Center/Panel/Box/Scroll/Rows/NotationRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Numbers"
+
+[node name="Notation" type="OptionButton" parent="Center/Panel/Box/Scroll/Rows/NotationRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="SaveHeader" type="Label" parent="Center/Panel/Box/Scroll/Rows"]
+layout_mode = 2
+theme_type_variation = &"CardTitle"
+text = "Save"
+
+[node name="ResetButton" type="Button" parent="Center/Panel/Box/Scroll/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+focus_mode = 0
+text = "Reset save…"
+
+[node name="ResetDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "Reset save?"
+ok_button_text = "Delete my save"
+dialog_autowrap = true

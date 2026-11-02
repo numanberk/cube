@@ -20,7 +20,8 @@ func _initialize() -> void:
 	var audio := root.get_node_or_null("Audio") as AudioManager
 	if audio != null:
 		audio.stop_all()  # sounds still playing at exit would be reported as leaked resources
-		await create_timer(0.25).timeout  # the audio thread releases stopped playbacks on its next mix
+		for i in 6:  # the audio thread releases stopped playbacks on its next mixes
+			await create_timer(0.1).timeout
 	quit(1 if _failures > 0 else 0)
 
 
@@ -659,23 +660,51 @@ func test_view_ticker() -> void:
 
 # --- Graphics settings (task 1.5) --------------------------------------------
 
-func test_graphics_config() -> void:
+func test_settings_store() -> void:
 	clean_test_saves()
-	var old_path := GraphicsConfig.path
-	GraphicsConfig.path = TEST_SAVE_DIR.path_join("settings.cfg")
-	check(GraphicsConfig.load_quality() == "high", "no settings file = High")
-	GraphicsConfig.save_quality("low")
-	check(GraphicsConfig.load_quality() == "low", "Low survives a restart")
+	var path := TEST_SAVE_DIR.path_join("settings.cfg")
+	var settings := GameSettings.new()
+	settings.path = path
+	settings.reset_to_defaults()
+	check(settings.get_value("quality") == "high" and is_equal_approx(settings.get_value("music_volume"), 0.5), "defaults")
+	check(settings.set_value("quality", "low"), "a valid value is accepted")
+	check(not settings.set_value("quality", "ultra"), "an invalid choice is rejected")
+	check(settings.set_value("sfx_volume", 3.0) and is_equal_approx(settings.get_value("sfx_volume"), 1.0), "volumes are clamped")
+	settings.set_value("reduce_motion", true)
+	settings.set_value("notation", "scientific")
+	settings.set_value("music_mode", "shuffle")
+	var reloaded := GameSettings.new()
+	reloaded.path = path
+	reloaded.reset_to_defaults()
+	reloaded.load_settings()
+	check(reloaded.get_value("quality") == "low" and reloaded.get_value("reduce_motion") == true
+			and reloaded.get_value("notation") == "scientific" and reloaded.get_value("music_mode") == "shuffle"
+			and is_equal_approx(reloaded.get_value("sfx_volume"), 1.0), "settings survive a restart")
+	# A save reset never touches settings.
+	var g := save_game_at(TEST_SAVE_DIR.path_join("save.json"))
+	g.save_game()
+	g.wipe_save()
+	check(FileAccess.file_exists(path), "wiping the save keeps settings.cfg")
+	g.free()
+	# Files from task 1.5 (GraphicsConfig) and hand-edited junk.
+	write_text(path, "[graphics]\nquality=\"low\"\n[other]\nkeep=1\n")
+	var legacy := GameSettings.new()
+	legacy.path = path
+	legacy.reset_to_defaults()
+	legacy.load_settings()
+	check(legacy.get_value("quality") == "low", "a 1.5-era graphics setting still loads")
+	legacy.set_value("notation", "short")
 	var config := ConfigFile.new()
-	config.load(GraphicsConfig.path)
-	config.set_value("audio", "music", 0.5)
-	config.set_value("graphics", "quality", "ultra")
-	config.save(GraphicsConfig.path)
-	check(GraphicsConfig.load_quality() == "high", "an unknown quality falls back to High")
-	GraphicsConfig.save_quality("low")
-	config.load(GraphicsConfig.path)
-	check(is_equal_approx(float(config.get_value("audio", "music", 0.0)), 0.5), "saving graphics keeps other settings")
-	GraphicsConfig.path = old_path
+	config.load(path)
+	check(config.get_value("other", "keep", 0) == 1, "saving keeps unknown sections")
+	write_text(path, "[graphics]\nquality=\"ultra\"\n")
+	var junk := GameSettings.new()
+	junk.path = path
+	junk.reset_to_defaults()
+	junk.load_settings()
+	check(junk.get_value("quality") == "high", "an invalid stored value falls back to the default")
+	for node: GameSettings in [settings, reloaded, legacy, junk]:
+		node.free()
 	clean_test_saves()
 
 
@@ -700,29 +729,74 @@ func test_view_graphics_quality() -> void:
 	view.free()
 
 
-func test_graphics_button_toggles_and_saves() -> void:
+func test_settings_panel() -> void:
+	var settings: GameSettings = root.get_node("Settings")
+	settings.persistence_enabled = false  # never write the real settings.cfg from tests
+	settings.reset_to_defaults()
+	settings.apply_all()
 	clean_test_saves()
-	var old_path := GraphicsConfig.path
-	GraphicsConfig.path = TEST_SAVE_DIR.path_join("settings.cfg")
 	var game: GameState = root.get_node("Game")
 	game.persistence_enabled = false
+	game.save_path = TEST_SAVE_DIR.path_join("save.json")
+	game.reset_state()
+	game.cheat_add_solves(1500.0)
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
+	var panel: Control = main.get_node("%SettingsPanel")  # untyped: SettingsPanel uses autoload names, which the runner compiles before they exist
 	var view: PuzzleView3D = main.get_node("%PuzzleView")
-	var popup: PopupMenu = (main.get_node("%SettingsButton") as MenuButton).get_popup()
-	var high_index := popup.get_item_index(main.MENU_GRAPHICS_HIGH)
-	var low_index := popup.get_item_index(main.MENU_GRAPHICS_LOW)
-	check(view.graphics_quality == "high" and popup.is_item_checked(high_index), "starts on High")
-	popup.id_pressed.emit(main.MENU_GRAPHICS_LOW)
-	check(view.graphics_quality == "low" and popup.is_item_checked(low_index) and not popup.is_item_checked(high_index),
-			"the Settings menu switches to Low")
-	check(GraphicsConfig.load_quality() == "low", "the choice is saved")
+	var fx: FxLayer = main.get_node("%FxLayer")
+	(main.get_node("%SettingsButton") as Button).pressed.emit()
+	check(panel.visible, "the Settings button opens the panel")
+	main._unhandled_input(key_event(KEY_SPACE, true, false))
+	check_near(game.total_moves, 0.0, "Space doesn't tap while the panel is open")
+	# Graphics
+	var graphics: OptionButton = panel._options["quality"]
+	for i in graphics.item_count:
+		if graphics.get_item_metadata(i) == "low":
+			graphics.select(i)
+			graphics.item_selected.emit(i)
+	check(settings.get_value("quality") == "low" and view.graphics_quality == "low", "choosing Graphics: Low applies it")
+	# Reduce motion
+	panel._reduce_motion.button_pressed = true
+	check(settings.get_value("reduce_motion") == true, "the Reduce motion switch sets the setting")
+	check(view.reduce_motion and not view.sway_enabled and not fx.particles_enabled, "Reduce motion turns off sway and particles")
+	view.squash()
+	view._process(1.0 / 60.0)
+	check(is_equal_approx(view._puzzle.scale.y, view._puzzle.scale.x), "Reduce motion: no squash")
+	view.set_speed(1000.0)
+	for i in 30:
+		view._process(0.05)
+	check(view._wobble == 0.0, "Reduce motion: no speed-mode wobble")
+	# Numbers
+	settings.set_value("notation", "scientific")
+	check(Num.format(1500.0) == "1.50e3", "scientific notation")
+	main._animate_counter(1.0)
+	check((main.get_node("%SolvesLabel") as Label).text == "1.50e3 Solves", "the UI uses the chosen notation")
+	settings.set_value("notation", "short")
+	check(Num.format(1500.0) == "1.50K", "back to short notation")
+	# Volumes and music
+	(panel._sliders["sfx_volume"] as HSlider).value = 0.4
+	check(absf(root.get_node("Audio").get_bus_volume(AudioManager.SFX_BUS) - 0.4) < 0.01, "the SFX slider sets the bus volume")
+	check(panel._jukebox.get_child_count() == Content.TRACKS.size(), "the Jukebox lists every track")
+	panel.play_track("practice_room")
+	check(settings.get_value("music_mode") == "loop" and settings.get_value("loop_track") == "practice_room", "Jukebox play loops that track")
+	# Reset save
+	panel._ask_reset()
+	check(panel._reset_dialog.dialog_text.contains("1.50K Solves") and panel._reset_dialog.dialog_text.contains("settings are kept"),
+			"the reset dialog names what is lost and what is kept")
+	panel._reset_save()
+	check_near(game.solves, 0.0, "confirming the reset wipes the save")
+	check(settings.get_value("reduce_motion") == true, "...and keeps the settings")
+	check(not panel.visible, "the panel closes after the reset")
+	panel.open()
+	panel._unhandled_input(key_event(KEY_ESCAPE, true, false))
 	main.free()
-	GraphicsConfig.path = old_path
+	settings.reset_to_defaults()
+	settings.apply_all()
+	settings.persistence_enabled = true
+	game.save_path = GameState.SAVE_PATH
+	game.reset_state()
 	clean_test_saves()
-
-
-# --- Theme (task 2.1) ----------------------------------------------------------
 
 func test_theme_is_used_everywhere() -> void:
 	check(ProjectSettings.get_setting("gui/theme/custom") == "res://ui/theme.tres", "ui/theme.tres is the project theme")

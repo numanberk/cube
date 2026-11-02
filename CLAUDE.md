@@ -21,7 +21,7 @@ Full design: `docs/DESIGN.md`.
 
 ## Layout
 ```
-project.godot              Engine config; autoloads "Game" (game.gd) and "Audio" (audio.gd); input action "tap"
+project.godot              Engine config; autoloads "Game", "Audio", "Settings" (in that order); input action "tap"
 default_bus_layout.tres    Audio buses: Master > Music, SFX
 scenes/main.tscn           The one screen (UI layout)
 ui/theme.tres              Project theme: Inter font, colours, button/tab/bar styles, type variations (see rule 8)
@@ -30,6 +30,9 @@ scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable 
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
 scripts/autoload/audio.gd  class AudioManager ("Audio"): play_click/solve/buy/unlock (rate-limited), bus volumes,
                            music (Content.TRACKS; 2 players crossfading 2 s; follow/shuffle/loop; ducks when unfocused)
+scripts/autoload/settings.gd  class GameSettings ("Settings"): every setting in user://settings.cfg (SPEC), get/set_value,
+                           `changed` signal; applies audio + notation itself, main.gd applies graphics + reduce motion
+scenes/settings_panel.tscn class SettingsPanel: sound, music mode, Jukebox, graphics, reduce motion, notation, reset save
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
 scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only
@@ -42,7 +45,6 @@ scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (from_id("3x3")
 scripts/cube/puzzle_meshes.gd  class PuzzleMeshes: rounded box + rounded sticker meshes (SurfaceTool)
 scripts/ui/shaders/        stage_backdrop (radial glow) + contact_shadow .gdshader, used by PuzzleView3D
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
-scripts/util/graphics_config.gd  class GraphicsConfig: Graphics High/Low in user://settings.cfg (3.4 takes over)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
 tools/screenshot.sh        PNGs of the main scene in preset states (see "Screenshots" below)
@@ -102,6 +104,7 @@ GRAPHICS=low bash tools/screenshot.sh /tmp/shots mid              # Graphics: Lo
 TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 (Upgrades) -> mid_tab1.png
 JUICE=1 bash tools/screenshot.sh /tmp/shots mid                   # taps + solve pop mid-animation -> mid_juice.png
 BUY=10 bash tools/screenshot.sh /tmp/shots mid                    # shop on ×10 (BUY=-1: Max) -> mid_buy10.png
+SETTINGS=1 bash tools/screenshot.sh /tmp/shots mid                # Settings panel open -> mid_settings.png
 bash tools/screenshot.sh /tmp/shots bench                         # 7×7 at max speed: logs ms/frame for Low and High
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
@@ -115,6 +118,11 @@ bash tools/screenshot.sh /tmp/shots bench                         # 7×7 at max 
 - New `class_name` scripts aren't known to Godot until an import runs (`run_tests.sh` does one). If a
   `-s` script can't find a class you just added, run `godot --headless --path . --import` first.
 - `docs/` has a `.gdignore`, so Godot never imports these PNGs into the game. Keep committed PNGs small (< 300 KB each). Don't commit throwaway shots; put them in `/tmp` or a scratchpad.
+
+**Testing gotcha:** the test runner compiles any script whose `class_name` it names as a type *before* the autoloads
+exist. A class that uses `Game`/`Audio`/`Settings` by name (like SettingsPanel) must be used untyped in tests.
+Tests that touch the real `Settings`/`Game` autoloads set `persistence_enabled = false` (and Game's `save_path` to
+`user://test_saves/`) so they never write the player's files.
 
 ## Debug keys (debug builds only)
 - **F9**: +1000 Solves

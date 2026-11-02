@@ -2,6 +2,32 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 3.4: Settings autoload and panel
+- **`Settings` autoload** (`scripts/autoload/settings.gd`, `GameSettings`; loads after Game and Audio). All settings are
+  data in `SPEC` (section, default, choices or range): master/music/SFX volume (100/50/70 %), music mode
+  (follow/shuffle/loop) + loop track, background audio (duck/mute/keep), graphics (high/low), reduce motion, notation
+  (short/scientific). Stored in `user://settings.cfg`. `set_value()` validates (clamps volumes, rejects bad choices),
+  saves, applies and emits `changed`. Audio and notation apply themselves; `main.gd` applies graphics and reduce motion.
+  **Took over GraphicsConfig** (deleted): same file and `[graphics] quality` key, so a 1.5-era choice still loads (tested),
+  and unknown sections in the file are kept.
+- **Settings panel** (`scenes/settings_panel.tscn`, `SettingsPanel`), opened by the top-bar Settings button (now a plain
+  Button) and closed by Close, Escape or a click outside. It has volume sliders with %, music mode, background audio,
+  a **Jukebox** (play buttons for unlocked tracks, which switch to "Loop one track"; locked tracks say "Unlock 4×4 to hear
+  this", "Win a World Championship…", or "Coming soon"), Graphics, a Reduce motion switch, Numbers (short/scientific),
+  and **Reset save…** with a confirmation that names what's lost (Solves, lifetime, helper and upgrade counts, stats) and
+  says settings are kept. Space doesn't tap while the panel is open. Sliders got accent styling in the theme.
+- **Reduce motion** (`PuzzleView3D.set_reduce_motion`, `FxLayer.particles_enabled`): no idle sway, tap squash, solve
+  bounce, speed-mode wobble or particle burst. Turns still animate and floating numbers stay (they're information).
+- **Number notation:** `Num.notation` ("short" 1.50K / "scientific" 1.50e3).
+- **Audio exit robustness:** `Audio.music_enabled` (the screenshot tool turns it off; a track still playing at exit was
+  reported as a leak about a third of the time). The test runner waits 0.6 s after `stop_all()`. 5 + 3 screenshot runs clean.
+- Screenshot tool: `SETTINGS=1` opens the panel; it also no longer writes settings. Screenshot: [panel](screenshots/settings/mid_settings.png).
+- Tests: the store (defaults, validation, clamping, survives restart, survives a save wipe, legacy 1.5 file, unknown
+  sections kept, bad stored values fall back) and the panel in the real main scene (opens, blocks Space, Graphics → view,
+  Reduce motion → no sway/particles/squash/wobble, scientific notation in the UI, SFX slider → bus, Jukebox lists all and
+  plays, reset dialog text, reset wipes the save but keeps settings, closes). 1127 checks, `All good.`
+- **Next:** task 3.6 (offline panel), the last task of Phase 3.
+
 ## 2026-11-02 — Task 3.3: Buy ×1 / ×10 / Max
 - **`GameState`:** `get_building_cost_for(id, count)` is the exact sum of each copy's `ceil(base × 1.15^n)`, so bulk costs
   match buying one at a time; a closed-form geometric sum would differ by the rounding. `get_max_affordable(id)`.

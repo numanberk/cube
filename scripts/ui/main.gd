@@ -5,8 +5,6 @@ extends Control
 const UI_REFRESH_INTERVAL := 0.1
 const MAX_VISUAL_MOVES_PER_SECOND := 12.0
 const TAP_ACTION := &"tap"  ## Space / Enter (project.godot input map); held keys don't repeat
-const MENU_GRAPHICS_HIGH := 0
-const MENU_GRAPHICS_LOW := 1
 const UPGRADES_TAB := 1
 const SOLVE_POP_INTERVAL := 0.25   ## at most ~4 "+X Solves" pops a second, however many solves happen
 const BURST_INTERVAL := 0.5
@@ -19,7 +17,8 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var puzzle_view: PuzzleView3D = %PuzzleView
 @onready var move_ticker: Label = %MoveTicker
 @onready var hint_label: Label = %HintLabel
-@onready var settings_button: MenuButton = %SettingsButton
+@onready var settings_button: Button = %SettingsButton
+@onready var settings_panel: SettingsPanel = %SettingsPanel
 @onready var next_goal_label: Label = %NextGoalLabel
 @onready var solve_progress: ProgressBar = %SolveProgress
 @onready var progress_label: Label = %ProgressLabel
@@ -48,11 +47,12 @@ var _revealed: Dictionary = {}    ## helper ids already shown unlocked (a newly 
 
 func _ready() -> void:
 	puzzle_view.tapped.connect(_on_tap_pressed)
-	_build_settings_menu()
+	settings_button.pressed.connect(settings_panel.open)
+	Settings.changed.connect(_on_setting_changed)
 	buy_one.pressed.connect(set_buy_amount.bind(1))
 	buy_ten.pressed.connect(set_buy_amount.bind(10))
 	buy_max.pressed.connect(set_buy_amount.bind(GameState.BUY_MAX))
-	_apply_graphics(GraphicsConfig.load_quality())
+	_apply_display_settings()
 	Game.solved.connect(_on_solved)
 	Game.purchased.connect(_on_purchased)
 	Game.state_reset.connect(_on_state_reset)
@@ -80,7 +80,7 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Space / Enter tap from anywhere. allow_echo = false: holding the key down doesn't repeat (PLAN: no hold-to-repeat).
-	if event.is_action_pressed(TAP_ACTION, false):
+	if event.is_action_pressed(TAP_ACTION, false) and not settings_panel.visible:
 		_on_tap_pressed()
 		get_viewport().set_input_as_handled()
 		return
@@ -323,27 +323,18 @@ func _on_purchased(_kind: String, _id: String) -> void:
 	_refresh()
 
 
-# --- Settings menu (temporary home until the Settings tab, task 3.4) ------------
+# --- Settings ----------------------------------------------------------------------
 
-func _build_settings_menu() -> void:
-	var popup := settings_button.get_popup()
-	popup.add_radio_check_item("Graphics: High", MENU_GRAPHICS_HIGH)
-	popup.add_radio_check_item("Graphics: Low", MENU_GRAPHICS_LOW)
-	popup.set_item_tooltip(popup.get_item_index(MENU_GRAPHICS_HIGH), "Smooth edges, rounded pieces, stage glow and shadow.")
-	popup.set_item_tooltip(popup.get_item_index(MENU_GRAPHICS_LOW), "Faster on older PCs.")
-	popup.id_pressed.connect(_on_settings_id_pressed)
-
-
-func _on_settings_id_pressed(id: int) -> void:
-	match id:
-		MENU_GRAPHICS_HIGH, MENU_GRAPHICS_LOW:
-			var quality := "high" if id == MENU_GRAPHICS_HIGH else "low"
-			GraphicsConfig.save_quality(quality)
-			_apply_graphics(quality)
+## Graphics and Reduce motion are applied here (main owns the views); audio and notation apply themselves in Settings.
+func _apply_display_settings() -> void:
+	puzzle_view.set_graphics(Settings.get_value("quality"))
+	var reduce: bool = Settings.get_value("reduce_motion")
+	puzzle_view.set_reduce_motion(reduce)
+	fx.particles_enabled = not reduce
 
 
-func _apply_graphics(quality: String) -> void:
-	puzzle_view.set_graphics(quality)
-	var popup := settings_button.get_popup()
-	popup.set_item_checked(popup.get_item_index(MENU_GRAPHICS_HIGH), quality == "high")
-	popup.set_item_checked(popup.get_item_index(MENU_GRAPHICS_LOW), quality == "low")
+func _on_setting_changed(key: String) -> void:
+	if key in ["quality", "reduce_motion"]:
+		_apply_display_settings()
+	elif key == "notation":
+		_refresh()
