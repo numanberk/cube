@@ -2,6 +2,27 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 0.1: screenshot script
+- Merged `claude/relaxed-edison-220seq` (the plan rebuilt around D1/D3/D5/D6/D7) into this branch; the owner
+  confirmed that plan is the one to follow. This branch now carries both that plan and the 0.1 work.
+- New `tools/screenshot.sh <out_dir> [preset ...]`: runs `tools/screenshot.tscn` under `xvfb-run` with
+  `--rendering-driver opengl3`, dummy audio and a throwaway `XDG_DATA_HOME`, so a real save is never read or written.
+  It loads a preset, freezes `Game`, seeds the RNG, waits 30 frames and saves `<out_dir>/<preset>.png`.
+  `SIZE=1920x1080` changes the resolution. Usage is in CLAUDE.md under "Screenshots".
+- Presets `fresh` / `mid` / `late` live in `tools/screenshot_presets.gd` as v1 save data loaded through
+  `apply_save_data()`, so `_migrate()` keeps them valid. A new test (`test_screenshot_presets_still_load`) checks this.
+- The Godot download logic moved from `run_tests.sh` into `tools/find_godot.sh`; both scripts source it. Same behaviour.
+- Baseline screenshots (before any visual work): [fresh](screenshots/baseline/fresh.png),
+  [mid](screenshots/baseline/mid.png), [late](screenshots/baseline/late.png). 40–100 KB each.
+- Added `docs/.gdignore` so Godot doesn't import the screenshots as game textures.
+- Tests: 154 checks, `All good.`
+- **Notes for the next session:**
+  - The shots are taken with the game *paused*. When the game is running, the late preset (~44K solves/s) completes a solve every frame,
+    so the 2D cube stays stuck on one colour. Task 1.3's speed-spin effect should fix this; check it with a running game.
+  - `tools/` (screenshot scene, presets) must be excluded from the Windows export in 10.1.
+  - The ALSA "cannot find card" error in the container is avoided with `--audio-driver Dummy`; `run_tests.sh` is unaffected.
+- **Next:** task 0.2 (simulator).
+
 ## 2026-11-02 — Decisions D6 and D7 (docs only)
 - Owner answered: **D6** first prestige at ~90 min, **D7** lo-fi music.
 - PLAN: the pacing table now says 90 min; §4.3 has a lo-fi style guide (70–90 BPM, no vocals, a flavour per tier)

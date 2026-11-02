@@ -13,7 +13,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] Headless tests + smoke run
 
 ## Phase 0 — Tools and safety
-- [ ] **0.1 Screenshot script** `tools/screenshot.sh`: runs the main scene under `xvfb-run` with
+- [x] **0.1 Screenshot script** `tools/screenshot.sh`: runs the main scene under `xvfb-run` with
       `--rendering-driver opengl3` and a throwaway user-data dir. It has preset states (fresh, mid-game, late-game)
       and writes PNGs to a given folder.
       *Done when:* it produces 1280×720 PNGs of all presets in the cloud container, and CLAUDE.md explains how to use it.

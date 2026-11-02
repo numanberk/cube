@@ -138,3 +138,22 @@ func test_number_formatting() -> void:
 	check(Num.format(123456789) == "123.5M", "123.5M")
 	check(Num.format_duration(75) == "1m 15s", "75s -> 1m 15s")
 	check(Num.format_duration(7300) == "2h 1m", "7300s -> 2h 1m")
+
+
+func test_screenshot_presets_still_load() -> void:
+	# tools/screenshot.sh relies on these; a save-format change must keep them loading.
+	var presets: Dictionary = load("res://tools/screenshot_presets.gd").PRESETS
+	for name: String in ["fresh", "mid", "late"]:
+		check(presets.has(name), "screenshot preset '%s' exists" % name)
+	for name: String in presets:
+		var data: Dictionary = presets[name]
+		var g := new_game()
+		g.apply_save_data(data.duplicate(true), 1000.0)
+		check_near(g.solves, float(data.get("solves", 0.0)), "preset '%s' loads its Solves" % name)
+		var saved_buildings: Dictionary = data.get("buildings", {})
+		for id: String in saved_buildings:
+			check(int(g.buildings.get(id, -1)) == int(saved_buildings[id]), "preset '%s' keeps helper '%s'" % [name, id])
+		for id: String in data.get("upgrades", []):
+			check(g.upgrades.has(id), "preset '%s' keeps upgrade '%s'" % [name, id])
+		check(g.offline_report.is_empty(), "preset '%s' grants no offline progress" % name)
+		g.free()

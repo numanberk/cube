@@ -30,6 +30,8 @@ scripts/ui/cube_view.gd    class CubeView: draws the cube face
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
+tools/screenshot.sh        PNGs of the main scene in preset states (see "Screenshots" below)
+tools/find_godot.sh        Shared by the tools/*.sh scripts: finds or downloads Godot
 docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK, DESIGN
 ```
 
@@ -49,11 +51,28 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    (On Linux it downloads Godot automatically. Elsewhere set `GODOT=/path/to/godot`.)
    Add or adjust tests in `tests/test_runner.gd` for any rule you changed.
 2. Tick off the task in `docs/ROADMAP.md`, but only if its "Done when" is true.
-   Visual changes: add a screenshot to `docs/screenshots/` (see task 0.1).
+   Visual changes: add a screenshot to `docs/screenshots/` (see "Screenshots" below).
 3. Add a dated entry at the top of `docs/CHANGELOG.md`: what changed, what's half-done,
    anything the next session should know.
 4. Commit with a clear message. Pull before you start and push when you're done,
    so the next session (possibly another account) starts from your work.
+
+## Screenshots
+You can't see the game window, so look at it this way (works in the cloud container):
+```
+bash tools/screenshot.sh docs/screenshots/<task-name>             # every preset
+bash tools/screenshot.sh /tmp/shots mid late                      # only some presets
+SIZE=1920x1080 bash tools/screenshot.sh docs/screenshots/1080p    # another resolution
+```
+- Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
+- It runs under `xvfb-run` with the real OpenGL 3 renderer (software Mesa, so it's slow but correct) and
+  a throwaway user-data dir, so it never touches a real save.
+- Presets (`fresh`, `mid`, `late`) are version-1 save data in `tools/screenshot_presets.gd`. They go through
+  `_migrate()`, so they keep working after save-format changes. A test checks that they still load.
+  Add a preset there when a new feature needs its own state (e.g. a puzzle tier or prestige).
+- The economy is frozen during the shot, so numbers match the preset exactly. The cube is seeded, so
+  before/after shots compare. `docs/screenshots/baseline/` is the look before Phase 1.
+- `docs/` has a `.gdignore`, so Godot never imports these PNGs into the game. Keep committed PNGs small (< 300 KB each). Don't commit throwaway shots; put them in `/tmp` or a scratchpad.
 
 ## Debug keys (debug builds only)
 - **F9**: +1000 Solves
