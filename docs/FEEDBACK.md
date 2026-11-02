@@ -22,3 +22,5 @@ Template (newest first under "Open"):
   now starts with tools, the 3D cube and the UI look, then puzzle progression.
 - 2026-11-02 — Decisions: D1 = one active puzzle (Claude's recommendation), D3 = 3D cube, D5 = several music
   tracks. → Built into PLAN §4–§7 and the roadmap.
+- 2026-11-02 — Decisions: D6 = first prestige at ~90 min, D7 = lo-fi music. → PLAN §2, §4.3 and §7, roadmap 3.1/3.2/6.4.
+  The final music source is split out as new open decision D8.

@@ -2,6 +2,15 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Decisions D6 and D7 (docs only)
+- Owner answered: **D6** first prestige at ~90 min, **D7** lo-fi music.
+- PLAN: the pacing table now says 90 min; §4.3 has a lo-fi style guide (70–90 BPM, no vocals, a flavour per tier)
+  and SFX that fit it; §7 moves D6/D7 to answered. The final music *source* is now open decision **D8** (needed by 9.4).
+- ROADMAP: 3.1/3.2 reference the lo-fi style; 6.4 has concrete targets (first prestige 80–100 min, second run ≤ 45 min);
+  9.4 is now tagged [D8].
+- **Open decisions left:** D2 (name), D4 (price), D8 (final music source). None block Phases 0–8.
+- **Next:** task 0.1 (screenshot script).
+
 ## 2026-11-02 — Plan rebuilt around the owner's decisions (docs only)
 - Owner answered: **D1** one active puzzle (Claude's recommendation), **D3** 3D cube, **D5** several music tracks.
 - Merged `main` (which had the owner-supplied plan) into this branch; that plan is superseded by `docs/PLAN.md`.

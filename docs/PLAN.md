@@ -5,7 +5,7 @@ How we get from today's prototype to a released PC game.
 If the two disagree, the owner decides and both files get fixed.
 
 **Owner decisions so far:** one active puzzle (D1), a **3D cube** as the centerpiece (D3),
-**several music tracks** (D5). See §7 for the open ones.
+**several music tracks** (D5), **first prestige at ~90 min** (D6), **lo-fi music** (D7). See §7.
 
 ---
 
@@ -54,7 +54,7 @@ Every balance change is checked against this table by the simulator (task 0.3). 
 | Solving Robot | ~10 min |
 | 4×4 unlocked | ~30 min |
 | 5×5 unlocked | ~60 min |
-| First World Championship (prestige) | **[D6]** ~90 min recommended |
+| First World Championship (prestige) | **~90 min** (D6) |
 | 7×7 / Megaminx | 2nd–3rd run / 4th–5th run |
 | Second run to the same point | ≤ 50 % of the first run's time |
 | Never tapping | Still makes progress (e.g. the first Friend is free or there's a small tap-free trickle) |
@@ -163,15 +163,21 @@ streaks) and snaps occasional turns. The game's numbers never wait for the anima
 - **One track per puzzle tier, plus one for the World Championship.** Unlocking a puzzle unlocks its track, so music
   is part of the progression. Working titles:
 
-  | Unlocks with | Track (working title) | Mood |
+  **Style: lo-fi (D7).** Mellow lo-fi hip-hop / chillhop at ~70–90 BPM: soft drums, warm keys, vinyl crackle,
+  no vocals (or only short wordless chops). Calm enough to idle to for hours, and every track should sit in the same
+  family so crossfades sound natural. Each tier adds a bit more energy or texture, so moving up the ladder
+  *sounds* like progress:
+
+  | Unlocks with | Track (working title) | Lo-fi flavour |
   |---|---|---|
-  | 2×2 (start) | Practice Room | calm, sparse |
-  | 3×3 | First Sub-20 | light, a bit more drive |
-  | 4×4 | Parity | warmer, more layers |
-  | 5×5 | Big Cube Energy | upbeat |
-  | 7×7 | Long Solve | spacious, long-form |
-  | Megaminx | Twelve Faces | bright, exotic |
-  | First World Championship | Finals | triumphant, used on the Compete screen and afterwards in the Jukebox |
+  | 2×2 (start) | Practice Room | sparse: soft kick, Rhodes chords, rain/room noise, ~70 BPM |
+  | 3×3 | First Sub-20 | classic chillhop: swung drums, jazzy piano, ~80 BPM |
+  | 4×4 | Parity | warmer: bass line, guitar licks, tape wobble |
+  | 5×5 | Big Cube Energy | the most upbeat: ~90 BPM, brighter drums, a little sax or synth lead |
+  | 7×7 | Long Solve | spacious, ambient lo-fi with long pads and a slow beat |
+  | Megaminx | Twelve Faces | lo-fi with a twist: koto/kalimba or vibraphone melody |
+  | First World Championship | Finals | celebratory lo-fi with a fuller arrangement and a bigger drop; plays on the Compete screen, then joins the Jukebox |
+- **SFX match the music:** soft, warm clicks and a mellow chime (e.g. a muted Rhodes or kalimba note), not bright arcade sounds.
 - **Playback modes** (in Settings): *Follow progress* (the default: plays the active puzzle's track, and sometimes
   a random unlocked one), *Shuffle unlocked*, or *Loop one track*.
 - **Jukebox** in Settings lists unlocked tracks with title and artist. Locked ones show "Unlock 5×5 to hear this".
@@ -183,9 +189,9 @@ streaks) and snaps occasional turns. The game's numbers never wait for the anima
 - **Files:** OGG Vorbis, looping, 96–128 kbps, ≤ 4 MB each, ~40 MB total. They go in `assets/audio/music/`.
 - **Licensing (important for a paid release, D4):** only **CC0** or **CC-BY** (credit in `assets/CREDITS.md` *and* an
   in-game Credits screen). Never NC (non-commercial), ND or "free for personal use", because those would block selling the game.
-- **Who makes the music [D7]:** Claude sessions can't compose audio. Sessions add CC0/CC-BY placeholder tracks
-  if the container can download them; otherwise they write a list of candidate tracks (with links and licenses)
-  in the CHANGELOG for the owner to add. Final tracks (commissioned, bought, or chosen CC0) go in before Steam.
+- **Where the music comes from:** Claude sessions can't compose audio. Sessions add CC0/CC-BY **lo-fi** placeholder tracks
+  if the container can download them; otherwise they list candidate tracks (with links and licenses) in the
+  CHANGELOG for the owner to add. The **final** source is still open (**D8**, needed by 9.4).
 
 ### 4.4 Economy
 - **Upgrades are generated from data where possible.** Helper milestones (×2 at 1/10/25/50/100/150/200 owned) come
@@ -268,15 +274,17 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
 - **D1 Puzzles:** **one active puzzle at a time**, as a ladder you can switch back down (see §4.1).
 - **D3 Look:** **3D cube as the centerpiece** (see §4.2). It's built in Phase 1, and the 2D view is removed.
 - **D5 Music:** **several tracks**: one per puzzle tier plus "Finals", with Jukebox and crossfade (see §4.3).
+- **D6 First prestige timing:** **~90 minutes** into the first run. The simulator's pacing test checks this (task 6.4),
+  and the second run must reach the same point in ≤ 45 min.
+- **D7 Music style:** **lo-fi** (mellow lo-fi hip-hop / chillhop, no vocals; per-track flavours in §4.3).
 
 ### Open
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?
 - **D4 Price** (needed by 10.2): free, pay-what-you-want on itch, or paid on Steam?
   *Either way, only CC0/CC-BY assets, so a paid release stays possible.*
-- **D6 First prestige timing** (needed by 6.4): ~90 min (*recommended*, because the long loop starts sooner) or 2–3 h?
-- **D7 Music style and source** (needed by 3.2): style (*recommended: chill lo-fi / soft electronic*, calm enough for
-  hours of idling), and source: CC0/CC-BY tracks chosen by sessions as placeholders, then (a) the owner picks final
-  CC0/CC-BY tracks, (b) buys a royalty-free pack, or (c) commissions a composer.
+- **D8 Final music source** (needed by 9.4; placeholders are fine until then): (a) the owner picks final CC0/CC-BY lo-fi
+  tracks, (b) buys a royalty-free lo-fi pack with a license that allows commercial games, or (c) commissions a lo-fi
+  producer for the 7 tracks. *Recommended: (b) or (c)*, so the soundtrack is consistent and can be sold on Steam later.
 
 ---
 
