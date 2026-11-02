@@ -1,8 +1,9 @@
 # Roadmap
 
 Task checklist for `docs/PLAN.md`. Do the **next unchecked task**, one per session.
-Tick it only when its **Done when** is true. Tasks marked **[D#]** need that owner decision
-(PLAN section 7) first. If it's unanswered, ask, don't guess.
+Tick it only when its **Done when** is true and `tools/run_tests.sh` prints `All good.`
+Tasks marked **[D#]** need that owner decision (PLAN §7) first. If it's unanswered, ask, don't guess.
+If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do the first part.
 
 ## Milestone 1 — Playable core ✅
 - [x] Tap to make moves, moves complete solves
@@ -13,126 +14,171 @@ Tick it only when its **Done when** is true. Tasks marked **[D#]** need that own
 
 ## Phase 0 — Tools and safety
 - [ ] **0.1 Screenshot script** `tools/screenshot.sh`: runs the main scene under `xvfb-run` with
-      `--rendering-driver opengl3` and a throwaway user-data dir. Supports a few preset states (fresh,
-      mid-game, late-game) and writes PNGs to a given folder.
+      `--rendering-driver opengl3` and a throwaway user-data dir. It has preset states (fresh, mid-game, late-game)
+      and writes PNGs to a given folder.
       *Done when:* it produces 1280×720 PNGs of all presets in the cloud container, and CLAUDE.md explains how to use it.
-- [ ] **0.2 Simulator** `tools/simulate.gd`: a headless bot that drives the real `GameState`. It's greedy (buys
-      the best-payback item), with configurable taps/s and duration. It logs when each helper, upgrade and puzzle is
-      first bought, plus solves/s at 1/5/15/30/60/120 min.
-      *Done when:* `tools/simulate.sh` writes a table to `docs/BALANCE.md`, and today's numbers roughly match PLAN §1
-      (everything bought by ~53 min).
+- [ ] **0.2 Simulator** `tools/simulate.sh` + `tools/simulate.gd`: a headless bot that drives the real `GameState`.
+      It's greedy (buys the best-payback item), with configurable taps/s and duration. It logs when each
+      helper, upgrade and puzzle is first bought, plus solves/s at 1/5/15/30/60/120 min.
+      *Done when:* it writes a table to `docs/BALANCE.md`, and today's numbers roughly match PLAN §1 (everything bought by ~53 min).
 - [ ] **0.3 Pacing tests:** `test_runner.gd` checks PLAN §2's pacing table with the simulator.
-      Targets the current content can't meet yet are listed as *expected failures* that print but don't fail the run.
+      Targets the current content can't meet yet are *expected failures* that print but don't fail the run.
       *Done when:* tests pass, and the expected-failure list appears in `docs/BALANCE.md`.
-- [ ] **0.4 Safe saves:** write `save.json.tmp` then rename it; keep `save.bak`; if the save is corrupt, load the
-      backup and warn.
+- [ ] **0.4 Safe saves:** write `save.json.tmp` then rename it; keep `save.bak`; if the save is corrupt, load the backup and warn.
       *Done when:* there are tests for a corrupt main save → loads the backup, and a missing save → starts fresh.
 
-## Phase 1 — Look
-- [ ] **1.1 Theme:** `ui/theme.tres` set as the project theme. One OFL font (e.g. Inter) in `assets/fonts/`,
-      plus `assets/CREDITS.md`. Button states (normal/hover/pressed/disabled/focus), panels, tabs, progress bar,
-      one accent colour. Remove per-node overrides from `main.tscn`.
-      *Done when:* there are no `theme_override_*` lines left except deliberate ones, and before/after screenshots are in `docs/screenshots/`.
-- [ ] **1.2 Layout and click the cube:** top bar (Solves, solves/s), a large cube centre-left that you **click to tap**,
-      the shop on the right, and a "Next goal" strip under the cube (cheapest locked thing and how far away it is).
-      The old Turn button goes away; a "Click the cube (Space)" hint replaces it.
-      *Done when:* clicking the cube taps, it works at 1280×720 and 1920×1080, there's a screenshot, and tests pass.
-- [ ] **1.3 Shop cards:** `scenes/shop_card.tscn` replaces the text Buttons. Each card has an icon, name, short
-      description, a big owned count, the cost (accent colour when affordable, grey when not), and "+X/s" total.
-      Affordable cards lift or glow. Locked helpers show as "???" cards with their unlock requirement.
-      Upgrades become a grid of icon tiles with a tooltip panel, and the Upgrades tab shows a badge "(N)" when any are buyable.
-      *Done when:* you can tell affordable from not at a glance in screenshots, and the next locked item is always visible.
-- [ ] **1.4 Juice:** cube squash on tap, floating "+N" at the cursor, a rising "+X Solves" plus a particle burst on each
-      solve (pooled, ≤ 20 on screen), and the Solves counter tweens up instead of jumping.
-      *Done when:* this runs at a steady 60 fps with 1,000 moves/s in the smoke run, and there's a screenshot.
+## Phase 1 — 3D cube (D3)
+- [ ] **1.1 TwistyModel + cube shapes:** `scripts/cube/twisty_model.gd` (`TwistyModel`) and `scripts/cube/puzzle_shapes.gd`
+      (`PuzzleShapes.cube(n)` for n = 2–7). Pure data: pieces, axes, layers, `apply`, `inverse`, `random_move`,
+      `is_solved`, and WCA `notation` (`R`, `U'`, `F2`, `Rw`, `3Rw` on big cubes). No nodes.
+      *Done when:* tests cover, for every n: a move applied 4× = solved; a random 50-move scramble + its inverse = solved;
+      a scrambled cube is not solved; piece count = n³ − (n−2)³; and the notation strings.
+- [ ] **1.2 PuzzleView3D (static):** `scenes/puzzle_view_3d.tscn` + `scripts/ui/puzzle_view_3d.gd`. It renders a TwistyModel in a
+      `SubViewport`: rounded cubies made with `SurfaceTool`, rounded-rect sticker shader, key + ambient light,
+      3/4 camera framed to the puzzle size. It replaces `CubeView` in `main.tscn` with the same API
+      (`scramble_step()`, `show_solved()`) plus `set_puzzle(id)`. **Clicking the puzzle taps.**
+      *Done when:* screenshots of 2×2, 3×3, 5×5 and 7×7 are in `docs/screenshots/cube/`, the headless smoke run is clean,
+      and clicking the puzzle calls `Game.tap()`.
+- [ ] **1.3 Animated turns:** each `scramble_step()` queues a real layer turn (pivot tween, ~0.12 s, eased) and bakes it
+      into the model. Turns get shorter as the queue grows. Above ~12 visual moves/s it switches to the speed-spin
+      effect. On `show_solved()`, it plays the move history backwards at high speed (≤ 1 s), then flashes and bounces.
+      *Done when:* the model and view agree after 1,000 random moves (a test compares sticker colours), there's no
+      queue growth at 1,000 moves/s, and screenshots show a turn mid-animation and a solved flash.
+- [ ] **1.4 Stage and camera:** drag rotates the view and springs back (a drag doesn't tap), idle sway, vignette stage
+      background, soft contact shadow, and a move ticker under the puzzle (last ~8 moves in notation).
+      *Done when:* there's a screenshot, and a test or smoke check that a drag of > 6 px doesn't count as a tap.
+- [ ] **1.5 Graphics settings and cleanup:** `Graphics: High / Low` (MSAA, shadow, stage effects; stored for now in a small
+      config the Phase 3 Settings autoload will take over). Delete the 2D `scripts/ui/cube_view.gd`.
+      Add a `bench` preset to `tools/screenshot.sh` (7×7 at max speed, 600 frames, logs average frame time).
+      *Done when:* bench runs without errors (and the frame time is noted in the CHANGELOG; xvfb is software-rendered,
+      so the owner confirms real fps on their PC), and there are no references to `CubeView` left.
 
-## Phase 2 — Feel
-- [ ] **2.1 Sound [D5]:** `Audio` autoload with Master/SFX/Music buses. Turn click (random pitch ±8 %), solve chime,
-      buy sound, plus music if D5 says so. CC0 assets credited in `assets/CREDITS.md`.
-      *Done when:* each event plays a sound, a burst of 100 solves doesn't stack 100 chimes (rate-limited), and tests pass.
-- [ ] **2.2 Buy ×1 / ×10 / Max:** the cost of n helpers is a geometric series sum in `GameState`; there's a toggle on the shop.
+## Phase 2 — Look
+- [ ] **2.1 Theme:** `ui/theme.tres` set as the project theme. One OFL font (e.g. Inter) in `assets/fonts/`, plus
+      `assets/CREDITS.md`. Button states (normal/hover/pressed/disabled/focus), panels, tabs, progress bar, one accent colour.
+      Remove per-node overrides from `main.tscn`.
+      *Done when:* there are no `theme_override_*` lines left except deliberate ones, and before/after screenshots are in `docs/screenshots/`.
+- [ ] **2.2 Layout:** top bar (Solves, solves/s, settings button), the puzzle stage large on the left, the shop on the right,
+      a "Next goal" strip under the stage (cheapest locked thing and how far away it is), and a "Click the cube (Space)"
+      hint. The old Turn button is removed.
+      *Done when:* it works at 1280×720 and 1920×1080, and there are screenshots.
+- [ ] **2.3 Shop cards:** `scenes/shop_card.tscn` replaces the text Buttons. Each card has an icon, name, short description,
+      a big owned count, the cost (accent when affordable, grey when not), and "+X/s" total. Affordable cards lift on hover.
+      Locked helpers show as "???" cards with their requirement. Upgrades become a grid of icon tiles with a tooltip panel,
+      and the Upgrades tab shows a badge "(N)" when any are buyable.
+      *Done when:* you can tell affordable from not at a glance in screenshots, and the next locked item is always visible.
+- [ ] **2.4 Juice:** floating "+N" at the cursor on tap, a rising "+X Solves" plus a particle burst on each solve
+      (pooled, ≤ 20 on screen), the Solves counter tweens up, the puzzle squashes slightly on tap.
+      *Done when:* the smoke run at 1,000 moves/s is clean, and there's a screenshot.
+
+## Phase 3 — Sound and feel
+- [ ] **3.1 Audio autoload + SFX:** `scripts/autoload/audio.gd` with Master/Music/SFX buses. Turn click (random pitch ±8 %,
+      lower on bigger puzzles), solve chime (rate-limited to ~4/s), buy sound, tier-up sting. CC0 sounds, credited.
+      *Done when:* each event plays a sound, 100 solves in one frame don't play 100 chimes, and tests pass.
+- [ ] **3.2 Music system [D7]:** `Content.TRACKS` (id, title, artist, license, file, `unlock_puzzle`). The Audio autoload has two
+      players crossfading over 2 s, the modes *Follow progress* / *Shuffle unlocked* / *Loop one*, and ducks to 30 % when
+      the window is unfocused. Add at least **2 placeholder tracks** (CC0/CC-BY; if they can't be downloaded,
+      list candidates with links in the CHANGELOG for the owner).
+      *Done when:* tracks loop and crossfade with no two at full volume (tested via the player volumes), and licenses
+      are recorded in `assets/CREDITS.md`.
+- [ ] **3.3 Buy ×1 / ×10 / Max:** the cost of n helpers is a geometric series sum in `GameState`; there's a toggle on the shop.
       *Done when:* tests cover ×10 cost, Max with too few Solves, and Max = 0, and cards show the cost for the chosen amount.
-- [ ] **2.3 Settings tab:** Master/SFX/Music volume, Reduce motion, number notation (1.5K vs 1.5e3), and
-      "Reset save" behind a dialog that names what will be lost. Settings are stored in `user://settings.cfg`.
-      *Done when:* settings survive a restart and a save reset, and Reduce motion turns off 1.4's effects.
-- [ ] **2.4 Keyboard:** Space/Enter tap from anywhere through an input action (not button focus); holding the key does **not** repeat.
+- [ ] **3.4 Settings autoload and tab:** `scripts/autoload/settings.gd` → `user://settings.cfg`. A settings panel has
+      Master/Music/SFX volume, music mode, **Jukebox** (unlocked tracks to play; locked ones show "Unlock 4×4 to hear this"),
+      unfocused-window audio (duck/mute/keep), Graphics High/Low (taking over from 1.5), Reduce motion, number notation,
+      and "Reset save" behind a dialog that names what will be lost.
+      *Done when:* settings survive a restart and a save reset, and Reduce motion turns off sway, squash, particles and speed-spin.
+- [ ] **3.5 Keyboard:** Space/Enter tap from anywhere through an input action (not button focus); holding the key does **not** repeat.
       *Done when:* there's a test or smoke check that echo events are ignored.
-- [ ] **2.5 Offline panel:** a styled "Welcome back" panel (time away, Solves earned, a Collect button) replaces the default AcceptDialog.
+- [ ] **3.6 Offline panel:** a styled "Welcome back" panel (time away, Solves earned, a Collect button) replaces the default AcceptDialog.
       *Done when:* there's a screenshot, and there's no panel when nothing was earned.
 
-## Phase 3 — Puzzles
-- [ ] **3.1 Puzzle data:** `Content.PUZZLES` with 2×2, 3×3, 4×4, 5×5, 7×7, Megaminx (`moves_per_solve`,
-      `solve_value`, `unlock_cost`, `grid`). Use the starting curve in PLAN §4.
-      *Done when:* the data is in place and a test checks every puzzle is a net gain in Solves per move over the one before it.
-- [ ] **3.2 Active puzzle [D1]:** puzzle state in `GameState`, with moves per solve and solve value read from it. Save v2:
-      old saves start on 3×3 if they own any upgrade, otherwise 2×2.
-      *Done when:* there's a migration test that loads a v1 save, and the game starts on 2×2.
-- [ ] **3.3 Puzzle picker:** a row of puzzle buttons above the cube. Locked ones show their unlock cost; the next one teases in "Next goal".
-      *Done when:* there's a screenshot, and buying a puzzle switches to it.
-- [ ] **3.4 N×N cube view:** `CubeView` draws 2–7 grids and a pentagon-ish Megaminx face, keeping the same
-      `scramble_step()` / `show_solved()` API.
-      *Done when:* there's a screenshot per puzzle in `docs/screenshots/puzzles/`.
-- [ ] **3.5 Rebalance (early game):** tune puzzles and helpers with the simulator.
+## Phase 4 — Puzzles (D1: one active puzzle)
+- [ ] **4.1 Puzzle data:** `Content.PUZZLES` (id, name, shape, `moves_per_solve`, `solve_value`, `unlock_cost`, `requires_prestige`)
+      using the starting curve in PLAN §4.1, and each track linked to its puzzle.
+      *Done when:* a test checks each puzzle earns more Solves per move than the one before it.
+- [ ] **4.2 Active puzzle + save v2:** `GameState` stores the unlocked puzzles and the active one; moves per solve and solve value
+      read from it; new signals `puzzle_changed` and `tier_unlocked`; unlocked tracks follow unlocked puzzles.
+      Migration: old saves start on 3×3 (3×3 unlocked) if they own any upgrade, otherwise 2×2.
+      *Done when:* there's a v1 → v2 migration test, a new game starts on 2×2, and switching puzzles is tested.
+- [ ] **4.3 Puzzle ladder UI + tier-up:** a row of puzzle chips above the stage (locked ones show their cost; the next one is
+      also shown in "Next goal"). Buying one plays the tier-up animation (old puzzle spins away, new one drops in) and
+      fades to its track.
+      *Done when:* there are screenshots of the ladder and mid tier-up, and the switch-back works.
+- [ ] **4.4 Megaminx:** `PuzzleShapes.megaminx()` (12 faces, 72° turns, Pochmann notation `R++ D-- U`), with the view rendering
+      pentagonal pieces.
+      *Done when:* model tests cover a move applied 5× = solved and scramble + inverse = solved, and there's a screenshot.
+- [ ] **4.5 More placeholder tracks:** one per remaining puzzle tier plus "Finals" (or candidates listed for the owner).
+      *Done when:* every `Content.TRACKS` entry has a file or an explicit "owner to supply" note in CREDITS, and the
+      Jukebox shows them correctly locked/unlocked.
+- [ ] **4.6 Rebalance (early game):** tune puzzles and helpers with the simulator.
       *Done when:* the first helper, first upgrade and 3×3 targets pass as real (not expected-failure) pacing tests.
 
-## Phase 4 — Depth
-- [ ] **4.1 Method chain:** Beginner → CFOP → Roux → ZZ → God's Number, each ×0.7 moves per solve, with a per-puzzle floor.
+## Phase 5 — Depth
+- [ ] **5.1 Method chain:** Beginner → CFOP → Roux → ZZ → God's Number, each ×0.7 moves per solve, with a per-puzzle floor.
       Replaces the hand-written `cfop`/`roux` upgrades (migrate their ids).
       *Done when:* tests cover the floor and the old-id migration.
-- [ ] **4.2 Generated helper milestones:** ×2 at 1/10/25/50/100/150/200 owned, generated from one table in `content.gd`.
+- [ ] **5.2 Generated helper milestones:** ×2 at 1/10/25/50/100/150/200 owned, generated from one table in `content.gd`.
       *Done when:* adding a helper automatically gets its milestones, and a test checks this.
-- [ ] **4.3 Synergies and solve value:** e.g. "Club Coaching" (each Club gives Friends +1 %), and upgrades that use
+- [ ] **5.3 Synergies and solve value:** e.g. "Club Coaching" (each Club gives Friends +1 %), and upgrades that use
       `solve_value_mult` ("Sponsorship deal", "Prize money"). New effect types go in `Content.EFFECT_TYPES` and `GameState`.
       *Done when:* each new effect type has a test.
-- [ ] **4.4 Tap scaling:** tap upgrades that add a % of moves/s to each tap.
+- [ ] **5.4 Tap scaling:** tap upgrades that add a % of moves/s to each tap.
       *Done when:* the sim shows taps still give ≥ 10 % of income at 30 min when tapping 3/s.
-- [ ] **4.5 Six more helpers** past the Lab (e.g. Pro Team, Cubing Federation, Cube Museum, AI Solver,
-      Orbital Cube Station, Quantum Solver), so costs reach ~1e15.
-      *Done when:* they're in the data with icons and descriptions, and their milestones are generated.
-- [ ] **4.6 Rebalance (first hour):** ~40 upgrades in total.
-      *Done when:* the "something new every 1–3 min", Robot and 4×4 pacing tests pass for real.
+- [ ] **5.5 Six more helpers** past the Lab (e.g. Pro Team, Cubing Federation, Cube Museum, AI Solver, Orbital Cube Station,
+      Quantum Solver), so costs reach ~1e15, each with an icon.
+      *Done when:* they're in the data, their milestones are generated, and there's a screenshot of the shop.
+- [ ] **5.6 Rebalance (first hour):** ~40 upgrades in total.
+      *Done when:* the "something new every 1–3 min", Robot, 4×4 and 5×5 pacing tests pass for real.
 
-## Phase 5 — Prestige: World Championship
-- [ ] **5.1 Trophy formula and Compete screen:** `floor(sqrt(run_solves / 1e6))` to start, each unspent trophy +2 % all moves.
-      The Compete screen shows the trophies you'll get, the new bonus, and exactly what you keep and lose.
+## Phase 6 — Prestige: World Championship
+- [ ] **6.1 Trophy formula and Compete screen:** `floor(sqrt(run_solves / 1e6))` to start, each unspent trophy +2 % all moves.
+      The Compete screen shows the trophies you'll get, the new bonus, and exactly what you keep and lose. It plays "Finals".
       *Done when:* there's a screenshot and tests cover the formula.
-- [ ] **5.2 Reset logic + save v3:** keeps trophies, achievements and settings; resets Solves, helpers, upgrades, puzzles and methods.
+- [ ] **6.2 Reset logic + save v3:** keeps trophies, achievements, unlocked tracks and settings; resets Solves, helpers,
+      upgrades, puzzles and methods. 7×7 and Megaminx become unlockable after the first championship.
       *Done when:* tests check what resets and what stays, and there's a v2 → v3 migration test.
-- [ ] **5.3 Trophy shop:** permanent perks (start with 3×3, +2 h offline cap, auto-buy Friends, start with 10 Friends, …) as data.
+- [ ] **6.3 Trophy shop:** permanent perks as data (start with 3×3, +2 h offline cap, auto-buy Friends, start with 10 Friends, …).
       *Done when:* each perk has a test.
-- [ ] **5.4 Tune prestige [D6]:**
-      *Done when:* the sim's first prestige and second-run (≤ 50 % time) pacing tests pass.
+- [ ] **6.4 Tune prestige [D6]:**
+      *Done when:* the sim's first-prestige and second-run (≤ 50 % time) pacing tests pass.
 
-## Phase 6 — Goals
-- [ ] **6.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving
-      +1 % all moves, with a toast when earned. Save v4. ~40 achievements (first solve, every puzzle, 1M moves, sub-X, …).
+## Phase 7 — Goals
+- [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
+      all moves, with a toast when earned. Save v4. ~40 achievements (first solve, every puzzle, every track heard,
+      1M moves, a solve on every puzzle, …).
       *Done when:* there are tests for the conditions and the v3 → v4 migration, and a screenshot of the tab and toast.
-- [ ] **6.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
+- [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
 
-## Phase 7 — Active play
-- [ ] **7.1 Golden Scramble:** a glowing cube appears every 2–5 min for 12 s. Clicking it gives a random buff
-      (×7 moves for 30 s, or 15 minutes' worth of Solves instantly). The timing logic lives in `GameState`.
-      *Done when:* tests cover the buff math and expiry, and a buff survives save/load.
-- [ ] **7.2 Scramble Challenge:** an optional 10-second burst where taps count ×10. Never required.
-      *Done when:* there are tests, and a screenshot.
+## Phase 8 — Active play
+- [ ] **8.1 Golden Scramble:** a small golden 3D cube flies across the stage every 2–5 min for 12 s. Clicking it gives a random buff
+      (×7 moves for 30 s, or 15 minutes' worth of Solves instantly). The timing and buff logic live in `GameState`.
+      *Done when:* tests cover the buff math and expiry, a buff survives save/load, and there's a screenshot.
+- [ ] **8.2 Scramble Challenge:** an optional 10-second burst where taps count ×10, with a result card. Never required.
+      *Done when:* there are tests and a screenshot.
 
-## Phase 8 — 3D cube [D3]
-- [ ] **8.1 3D cube:** a `SubViewport` with N×N×N cubies (current puzzle); each move tweens a real 90° face turn (~0.12 s),
-      queued and sped up. Above 12 moves/s it shows a fast-spin effect instead of every turn. Same API as `CubeView`.
-      *Done when:* it works in GL Compatibility, the smoke run is clean, and there's a screenshot per puzzle size.
-- [ ] **8.2 Resolution pass:** check 1280×720, 1920×1080 and 2560×1440; add a background and final layout tweaks.
+## Phase 9 — Polish
+- [ ] **9.1 Resolution pass:** 1280×720, 1920×1080 and 2560×1440; final background and layout tweaks.
       *Done when:* there are screenshots at all three sizes.
+- [ ] **9.2 First-time hints:** short, skippable hints ("Click the cube", "Buy your first Friend", "Upgrades are here").
+      *Done when:* a fresh save shows them once, and they never show again after being dismissed or done.
+- [ ] **9.3 Credits screen:** in-game list of every asset and track with its license (required for CC-BY).
+      *Done when:* it matches `assets/CREDITS.md` (a test compares them).
+- [ ] **9.4 Final music and mix [D7]:** final tracks in, loudness matched (~−16 LUFS music, SFX balanced against it).
+      *Done when:* the owner signs off in `docs/FEEDBACK.md`.
 
-## Phase 9 — Release
-- [ ] **9.1 Windows export [D2]:** export preset, `.ico` icon, version in the corner, 64-bit build.
-- [ ] **9.2 itch.io [D4]:** page text, screenshots, `butler` upload, a feedback link.
-- [ ] **9.3 Steam (optional) [D4]:** Steamworks ($100 per game), store page, capsule art, GodotSteam for achievements
-      and cloud saves. GodotSteam is an addon, so log it in the CHANGELOG.
-- [ ] **9.4 Launch checklist:** fresh-install test, offline progress across a reboot, a 1-hour soak test with no errors.
+## Phase 10 — Release
+- [ ] **10.1 Windows export [D2]:** export preset, `.ico` icon, version in the corner, 64-bit build.
+- [ ] **10.2 itch.io [D4]:** page text, screenshots, `butler` upload, a feedback link.
+- [ ] **10.3 Steam (optional) [D4]:** Steamworks ($100 per game), store page, capsule art, GodotSteam for achievements and
+      cloud saves. GodotSteam is an addon, so log it in the CHANGELOG.
+- [ ] **10.4 Launch checklist:** fresh-install test, offline progress across a reboot, a 1-hour soak test with no errors,
+      fps check on a low-end PC with Graphics Low.
 
-## Phase 10 — After launch
+## Phase 11 — After launch
 - [ ] Bug fixes from player reports
-- [ ] New puzzles: Pyraminx, Skewb, Square-1
+- [ ] New puzzles: Pyraminx, Skewb, Square-1 (each a new `PuzzleShapes` entry and a new track)
+- [ ] Puzzle mastery (permanent bonus per puzzle from solves on it)
 - [ ] Seasonal events
 - [ ] Second prestige layer
