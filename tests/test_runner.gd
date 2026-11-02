@@ -705,10 +705,13 @@ func test_graphics_button_toggles_and_saves() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	var view: PuzzleView3D = main.get_node("%PuzzleView")
-	var button: Button = main.get_node("%GraphicsButton")
-	check(view.graphics_quality == "high" and button.text == "Graphics: High", "starts on High")
-	button.pressed.emit()
-	check(view.graphics_quality == "low" and button.text == "Graphics: Low", "the button switches to Low")
+	var popup: PopupMenu = (main.get_node("%SettingsButton") as MenuButton).get_popup()
+	var high_index := popup.get_item_index(main.MENU_GRAPHICS_HIGH)
+	var low_index := popup.get_item_index(main.MENU_GRAPHICS_LOW)
+	check(view.graphics_quality == "high" and popup.is_item_checked(high_index), "starts on High")
+	popup.id_pressed.emit(main.MENU_GRAPHICS_LOW)
+	check(view.graphics_quality == "low" and popup.is_item_checked(low_index) and not popup.is_item_checked(high_index),
+			"the Settings menu switches to Low")
 	check(GraphicsConfig.load_quality() == "low", "the choice is saved")
 	main.free()
 	GraphicsConfig.path = old_path
@@ -733,3 +736,59 @@ func test_theme_is_used_everywhere() -> void:
 		for found in variation_regex.search_all(text):
 			var variation := found.get_string(1)
 			check(theme.get_type_variation_base(variation) != &"", "%s uses theme variation %s, which the theme defines" % [scene_name, variation])
+
+
+# --- Layout (task 2.2) -----------------------------------------------------------
+
+func test_next_goal() -> void:
+	var g := new_game()
+	var goal := g.get_next_goal()
+	check(goal["id"] == "friend" and goal["kind"] == "helper", "a new game aims at the first Friend")
+	check_near(goal["missing"], 5.0, "it says how many Solves are missing")
+	check(is_inf(float(goal["seconds"])), "with no helpers the time is unknown (tap to get there)")
+	g.cheat_add_solves(5.0)
+	check_near(g.get_next_goal()["missing"], 0.0, "with enough Solves it's ready to buy")
+	g.buy_building("friend")
+	goal = g.get_next_goal()
+	check(goal["id"] == "lube", "next is the cheapest new thing (Cube Lube, 15)")
+	check(float(goal["seconds"]) > 0.0 and not is_inf(float(goal["seconds"])), "with a helper there's a time estimate")
+	g.cheat_add_solves(1e12)
+	for def: Dictionary in Content.BUILDINGS:
+		g.buy_building(def["id"])
+	for def: Dictionary in Content.UPGRADES:
+		g.buy_upgrade(def["id"])
+	goal = g.get_next_goal()
+	check(goal["more"] and goal["kind"] == "helper", "with everything owned it aims at another helper")
+	g.free()
+
+
+func key_event(physical: Key, pressed: bool, echo: bool) -> InputEventKey:
+	var event := InputEventKey.new()
+	event.physical_keycode = physical
+	event.pressed = pressed
+	event.echo = echo
+	return event
+
+
+func test_layout_and_keyboard_tap() -> void:
+	check(InputMap.has_action("tap"), "there's a tap input action")
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	check(main.get_node_or_null("%TapButton") == null, "the old Turn button is gone")
+	check(main.get_node_or_null("%NextGoalLabel") != null and main.get_node_or_null("%SettingsButton") != null,
+			"the next-goal strip and the settings button exist")
+	main._unhandled_input(key_event(KEY_SPACE, true, false))
+	check_near(game.total_moves, game.get_tap_moves(), "Space taps")
+	main._unhandled_input(key_event(KEY_SPACE, true, true))
+	main._unhandled_input(key_event(KEY_SPACE, true, true))
+	check_near(game.total_moves, game.get_tap_moves(), "holding Space doesn't repeat (echo events are ignored)")
+	main._unhandled_input(key_event(KEY_SPACE, false, false))
+	main._unhandled_input(key_event(KEY_ENTER, true, false))
+	check_near(game.total_moves, game.get_tap_moves() * 2.0, "Enter taps too")
+	main._refresh()
+	check((main.get_node("%NextGoalLabel") as Label).text.begins_with("Next: Cubing Friend"), "the strip shows the next goal")
+	main.free()
+	game.reset_state()

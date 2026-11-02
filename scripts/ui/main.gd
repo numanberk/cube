@@ -4,15 +4,19 @@ extends Control
 
 const UI_REFRESH_INTERVAL := 0.1
 const MAX_VISUAL_MOVES_PER_SECOND := 12.0
+const TAP_ACTION := &"tap"  ## Space / Enter (project.godot input map); held keys don't repeat
+const MENU_GRAPHICS_HIGH := 0
+const MENU_GRAPHICS_LOW := 1
 
 @onready var solves_label: Label = %SolvesLabel
 @onready var rate_label: Label = %RateLabel
 @onready var puzzle_view: PuzzleView3D = %PuzzleView
 @onready var move_ticker: Label = %MoveTicker
-@onready var graphics_button: Button = %GraphicsButton
+@onready var hint_label: Label = %HintLabel
+@onready var settings_button: MenuButton = %SettingsButton
+@onready var next_goal_label: Label = %NextGoalLabel
 @onready var solve_progress: ProgressBar = %SolveProgress
 @onready var progress_label: Label = %ProgressLabel
-@onready var tap_button: Button = %TapButton
 @onready var stats_label: Label = %StatsLabel
 @onready var helper_list: VBoxContainer = %HelperList
 @onready var upgrade_list: VBoxContainer = %UpgradeList
@@ -26,9 +30,8 @@ var _visual_move_timer := 0.0
 
 
 func _ready() -> void:
-	tap_button.pressed.connect(_on_tap_pressed)
 	puzzle_view.tapped.connect(_on_tap_pressed)
-	graphics_button.pressed.connect(_on_graphics_pressed)
+	_build_settings_menu()
 	_apply_graphics(GraphicsConfig.load_quality())
 	Game.solved.connect(_on_solved)
 	Game.purchased.connect(_on_purchased)
@@ -36,7 +39,6 @@ func _ready() -> void:
 	_build_shop()
 	_refresh()
 	_show_offline_report()
-	tap_button.grab_focus()
 
 
 func _process(delta: float) -> void:
@@ -51,6 +53,11 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Space / Enter tap from anywhere. allow_echo = false: holding the key down doesn't repeat (PLAN: no hold-to-repeat).
+	if event.is_action_pressed(TAP_ACTION, false):
+		_on_tap_pressed()
+		get_viewport().set_input_as_handled()
+		return
 	if not OS.is_debug_build():
 		return
 	var key := event as InputEventKey
@@ -84,7 +91,7 @@ func _make_shop_button() -> Button:
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.custom_minimum_size = Vector2(0, 64)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.focus_mode = Control.FOCUS_NONE  # keeps Space/Enter on the Turn button
+	button.focus_mode = Control.FOCUS_NONE  # so Space/Enter always tap instead of pressing a focused button
 	return button
 
 
@@ -92,15 +99,19 @@ func _make_shop_button() -> Button:
 
 func _refresh() -> void:
 	solves_label.text = "%s Solves" % Num.format(Game.solves)
-	rate_label.text = "%s moves/s  ·  %s solves/s" % [
-		Num.format(Game.get_moves_per_second()),
+	rate_label.text = "+%s solves/s   ·   %s moves/s" % [
 		Num.format(Game.get_solves_per_second()),
+		Num.format(Game.get_moves_per_second()),
 	]
 	progress_label.text = "%s / %s moves to next solve" % [
 		Num.format(Game.move_progress),
 		Num.format(Game.get_moves_per_solve()),
 	]
-	tap_button.text = "Turn the cube  (+%s)" % Num.format(Game.get_tap_moves())
+	var tap_moves := Game.get_tap_moves()
+	hint_label.text = "Click the cube or press Space: +%s %s   ·   drag to look around" % [
+		Num.format(tap_moves), "move" if is_equal_approx(tap_moves, 1.0) else "moves",
+	]
+	next_goal_label.text = _next_goal_text(Game.get_next_goal())
 	stats_label.text = "Lifetime: %s solves  ·  %s moves" % [
 		Num.format(Game.total_solves),
 		Num.format(Game.total_moves),
@@ -126,6 +137,16 @@ func _refresh() -> void:
 		button.text = "%s   ·   Costs %s Solves\n%s" % [def["name"], Num.format(cost), def["description"]]
 		any_upgrade_visible = any_upgrade_visible or button.visible
 	upgrade_empty.visible = not any_upgrade_visible
+
+
+func _next_goal_text(goal: Dictionary) -> String:
+	if goal.is_empty():
+		return "Next: keep solving"
+	var name: String = ("another " if goal["more"] else "") + String(goal["name"])
+	if float(goal["missing"]) <= 0.0:
+		return "Next: %s  —  ready to buy!" % name
+	var eta := "tap to get there" if is_inf(float(goal["seconds"])) else "about %s" % Num.format_duration(goal["seconds"])
+	return "Next: %s  ·  %s more Solves  ·  %s" % [name, Num.format(goal["missing"]), eta]
 
 
 func _animate_helper_moves(delta: float) -> void:
@@ -170,14 +191,27 @@ func _on_purchased(_kind: String, _id: String) -> void:
 	_refresh()
 
 
-## Temporary home for Graphics: High / Low until the Settings tab (task 3.4).
-func _on_graphics_pressed() -> void:
-	var quality := "low" if puzzle_view.graphics_quality == "high" else "high"
-	GraphicsConfig.save_quality(quality)
-	_apply_graphics(quality)
+# --- Settings menu (temporary home until the Settings tab, task 3.4) ------------
+
+func _build_settings_menu() -> void:
+	var popup := settings_button.get_popup()
+	popup.add_radio_check_item("Graphics: High", MENU_GRAPHICS_HIGH)
+	popup.add_radio_check_item("Graphics: Low", MENU_GRAPHICS_LOW)
+	popup.set_item_tooltip(popup.get_item_index(MENU_GRAPHICS_HIGH), "Smooth edges, rounded pieces, stage glow and shadow.")
+	popup.set_item_tooltip(popup.get_item_index(MENU_GRAPHICS_LOW), "Faster on older PCs.")
+	popup.id_pressed.connect(_on_settings_id_pressed)
+
+
+func _on_settings_id_pressed(id: int) -> void:
+	match id:
+		MENU_GRAPHICS_HIGH, MENU_GRAPHICS_LOW:
+			var quality := "high" if id == MENU_GRAPHICS_HIGH else "low"
+			GraphicsConfig.save_quality(quality)
+			_apply_graphics(quality)
 
 
 func _apply_graphics(quality: String) -> void:
 	puzzle_view.set_graphics(quality)
-	graphics_button.text = "Graphics: %s" % quality.capitalize()
-	graphics_button.tooltip_text = "High: smooth edges, rounded pieces, stage glow and shadow.\nLow: faster on older PCs."
+	var popup := settings_button.get_popup()
+	popup.set_item_checked(popup.get_item_index(MENU_GRAPHICS_HIGH), quality == "high")
+	popup.set_item_checked(popup.get_item_index(MENU_GRAPHICS_LOW), quality == "low")

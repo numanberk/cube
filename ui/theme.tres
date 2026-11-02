@@ -369,6 +369,55 @@ variation_opentype = {
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_primary_focus"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_topbar"]
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.11372549, 0.1254902, 0.15294118, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_goal"]
+content_margin_left = 16.0
+content_margin_top = 9.0
+content_margin_right = 16.0
+content_margin_bottom = 9.0
+bg_color = Color(0.11764706, 0.22745098, 0.18431373, 0.55)
+border_width_left = 3
+border_color = Color(0.23529412, 0.8117647, 0.5568628, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+bg_color = Color(0.14509805, 0.16078432, 0.19607843, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.19607843, 0.21960784, 0.27450982, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup_hover"]
+content_margin_left = 8.0
+content_margin_right = 8.0
+bg_color = Color(0.11764706, 0.22745098, 0.18431373, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -443,7 +492,7 @@ TickerLabel/colors/font_color = Color(0.4862745, 0.5137255, 0.57254905, 1)
 TickerLabel/font_sizes/font_size = 15
 TitleLabel/base_type = &"Label"
 TitleLabel/colors/font_color = Color(0.9254902, 0.93333334, 0.9490196, 1)
-TitleLabel/font_sizes/font_size = 44
+TitleLabel/font_sizes/font_size = 36
 TitleLabel/fonts/font = SubResource("FontVariation_2j8s8")
 TooltipLabel/colors/font_color = Color(0.9254902, 0.93333334, 0.9490196, 1)
 TooltipPanel/styles/panel = SubResource("StyleBoxFlat_2kqek")
@@ -456,3 +505,16 @@ Window/colors/title_color = Color(0.9254902, 0.93333334, 0.9490196, 1)
 Window/fonts/title_font = SubResource("FontVariation_2j8s8")
 Window/styles/embedded_border = SubResource("StyleBoxFlat_07r1r")
 Window/styles/embedded_unfocused_border = SubResource("StyleBoxFlat_07r1r")
+GoalStrip/base_type = &"PanelContainer"
+GoalStrip/styles/panel = SubResource("StyleBoxFlat_goal")
+HBoxContainer/constants/separation = 12
+HintLabel/base_type = &"Label"
+HintLabel/colors/font_color = Color(0.4862745, 0.5137255, 0.57254905, 1)
+HintLabel/font_sizes/font_size = 13
+PopupMenu/colors/font_color = Color(0.9254902, 0.93333334, 0.9490196, 1)
+PopupMenu/colors/font_hover_color = Color(1, 1, 1, 1)
+PopupMenu/constants/v_separation = 8
+PopupMenu/styles/hover = SubResource("StyleBoxFlat_popup_hover")
+PopupMenu/styles/panel = SubResource("StyleBoxFlat_popup")
+TopBar/base_type = &"PanelContainer"
+TopBar/styles/panel = SubResource("StyleBoxFlat_topbar")

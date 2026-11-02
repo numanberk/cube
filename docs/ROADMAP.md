@@ -60,7 +60,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       `assets/CREDITS.md`. Button states (normal/hover/pressed/disabled/focus), panels, tabs, progress bar, one accent colour.
       Remove per-node overrides from `main.tscn`.
       *Done when:* there are no `theme_override_*` lines left except deliberate ones, and before/after screenshots are in `docs/screenshots/`.
-- [ ] **2.2 Layout:** top bar (Solves, solves/s, settings button), the puzzle stage large on the left, the shop on the right,
+- [x] **2.2 Layout:** top bar (Solves, solves/s, settings button), the puzzle stage large on the left, the shop on the right,
       a "Next goal" strip under the stage (cheapest locked thing and how far away it is), and a "Click the cube (Space)"
       hint. The old Turn button is removed.
       *Done when:* it works at 1280×720 and 1920×1080, and there are screenshots.
@@ -90,7 +90,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       unfocused-window audio (duck/mute/keep), Graphics High/Low (taking over from 1.5), Reduce motion, number notation,
       and "Reset save" behind a dialog that names what will be lost.
       *Done when:* settings survive a restart and a save reset, and Reduce motion turns off sway, squash, particles and speed-spin.
-- [ ] **3.5 Keyboard:** Space/Enter tap from anywhere through an input action (not button focus); holding the key does **not** repeat.
+- [x] **3.5 Keyboard:** *(done early in 2.2: removing the Turn button needed it)* Space/Enter tap from anywhere through an input action (not button focus); holding the key does **not** repeat.
       *Done when:* there's a test or smoke check that echo events are ignored.
 - [ ] **3.6 Offline panel:** a styled "Welcome back" panel (time away, Solves earned, a Collect button) replaces the default AcceptDialog.
       *Done when:* there's a screenshot, and there's no panel when nothing was earned.

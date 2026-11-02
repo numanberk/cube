@@ -2,6 +2,33 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 2.2: layout (and 3.5 keyboard, done early)
+- **New layout** (`main.tscn` rewritten; every unique name the code uses is kept):
+  - **Top bar** (`TopBar` panel): Solves (TitleLabel, now 36 px), "+X solves/s · Y moves/s", and a **Settings** menu button on the right.
+  - **Stage** (left, 1.25× the shop's width): the 3D puzzle now expands to fill the space (about 650×400 at 720p instead
+    of 300×300), then the move ticker, a hint ("Click the cube or press Space: +N moves · drag to look around"), the solve
+    progress bar, and a **Next goal** strip (`GoalStrip`: accent bar on the left).
+  - **Shop** (right, min 460 px): unchanged tabs. The **Turn button is gone**; clicking the cube or pressing Space/Enter taps.
+- **Next goal** = `GameState.get_next_goal()`: the cheapest helper not owned yet, or upgrade not bought yet whose
+  requirements are met. When everything is owned, it's "another <cheapest helper>". It returns the missing Solves and the
+  seconds at the current helper rate (INF without helpers → "tap to get there"); it shows "ready to buy!" when affordable.
+  Puzzles join it in 4.3a.
+- **Keyboard (task 3.5, done early):** a `tap` input action in `project.godot` (Space, Enter, keypad Enter, physical keys).
+  `main.gd._unhandled_input` uses `is_action_pressed(..., allow_echo = false)`, so holding a key never repeats.
+  This was needed now because Space used to work only through the Turn button's focus. New CLAUDE.md rule 9.
+- **Settings menu:** the Graphics High/Low toggle moved from the button under the stats into a radio item in the
+  Settings `MenuButton` popup. Task 3.4 replaces this popup with a real Settings panel.
+- Theme additions: TopBar, GoalStrip, HintLabel, PopupMenu styles, HBox separation 12.
+- Tests: next goal (first Friend, missing Solves, no-rate ETA, ready to buy, the next new thing, "another" at the end);
+  layout (Turn button gone, strip and settings exist, Space taps, held Space doesn't repeat, Enter taps, strip text);
+  the graphics test now goes through the Settings menu. 910 checks, `All good.`
+- Screenshots: [fresh](screenshots/layout/fresh.png), [mid](screenshots/layout/mid.png), [late](screenshots/layout/late.png),
+  [mid at 1920×1080](screenshots/layout/mid_1080p.png) (quantised to 256 colours to stay under 300 KB).
+  1080p is the same layout scaled (canvas_items stretch, same 16:9 aspect).
+- **Notes:** the shop column still has empty space early on. 2.3's "???" cards for locked helpers fill it.
+  The stage is wide, not square; the camera frames by height, so the puzzle stays centred.
+- **Next:** task 2.3 (shop cards).
+
 ## 2026-11-02 — Task 2.1: theme + font
 - **Font:** Inter 4.1, variable (`assets/fonts/InterVariable.ttf`, 880 KB), downloaded from the official GitHub release, under
   SIL OFL 1.1 (full text in `assets/fonts/Inter-OFL.txt`). New `assets/CREDITS.md` lists it; every future asset goes there.

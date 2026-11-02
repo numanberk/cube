@@ -58,8 +58,10 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
 6. Cost formula: `ceil(base_cost * 1.15 ^ owned)`. Offline progress is capped at 8 hours.
 7. Keep scenes editable in the Godot editor: use `%UniqueName` nodes, no deep `get_node` paths.
 8. **Style lives in `ui/theme.tres`.** No `theme_override_*` in scenes (a test enforces it); give a node a
-   `theme_type_variation` instead (TitleLabel, SubtitleLabel, DimLabel, FaintLabel, TickerLabel, PrimaryButton,
-   SubtleButton, PageMargin, ColumnsBox, StackBox), or add a new variation to the theme.
+   `theme_type_variation` instead (TitleLabel, SubtitleLabel, DimLabel, FaintLabel, TickerLabel, HintLabel,
+   PrimaryButton, SubtleButton, PageMargin, ColumnsBox, StackBox, TopBar, GoalStrip), or add a new variation to the theme.
+9. **Taps:** clicking the puzzle or the `tap` input action (Space / Enter, no repeat when held). Shop and other
+   buttons use `focus_mode = none`, so Space never presses a focused button by accident.
    One accent colour: green `#3ccf8e` (dim `#2a9d6c`). Every new asset gets a line in `assets/CREDITS.md`.
 
 ## Before you finish (every session)

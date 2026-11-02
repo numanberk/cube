@@ -155,6 +155,43 @@ func buy_upgrade(id: String) -> bool:
 	return true
 
 
+## The next new thing to aim for (the "Next goal" strip): the cheapest helper not owned yet, or upgrade not bought
+## yet whose requirements are met. If everything is owned, the cheapest next copy of a helper (`more` = true).
+## Returns {kind, id, name, cost, missing (Solves still needed, 0 = can buy now), seconds (at the current
+## helper rate; INF without helpers), more}. Puzzles join this list in task 4.3a.
+func get_next_goal() -> Dictionary:
+	var candidates: Array[Dictionary] = []
+	for def: Dictionary in Content.BUILDINGS:
+		if int(buildings.get(def["id"], 0)) == 0:
+			candidates.append({"kind": "helper", "id": def["id"], "name": def["name"], "cost": get_building_cost(def["id"]), "more": false})
+	for def: Dictionary in Content.UPGRADES:
+		if upgrades.has(def["id"]) or not _upgrade_requirements_met(def):
+			continue
+		candidates.append({"kind": "upgrade", "id": def["id"], "name": def["name"], "cost": float(def["cost"]), "more": false})
+	if candidates.is_empty():
+		for def: Dictionary in Content.BUILDINGS:
+			candidates.append({"kind": "helper", "id": def["id"], "name": def["name"], "cost": get_building_cost(def["id"]), "more": true})
+	if candidates.is_empty():
+		return {}
+	var best: Dictionary = candidates[0]
+	for candidate in candidates:
+		if float(candidate["cost"]) < float(best["cost"]):
+			best = candidate
+	var missing := maxf(0.0, float(best["cost"]) - solves)
+	var rate := get_solves_per_second()
+	best["missing"] = missing
+	best["seconds"] = 0.0 if missing <= 0.0 else (missing / rate if rate > 0.0 else INF)
+	return best
+
+
+func _upgrade_requirements_met(def: Dictionary) -> bool:
+	var requires: Dictionary = def.get("requires", {})
+	for building_id: String in requires:
+		if int(buildings.get(building_id, 0)) < int(requires[building_id]):
+			return false
+	return true
+
+
 func _upgrade_mult(effect_type: String, target: String = "") -> float:
 	var mult := 1.0
 	for def: Dictionary in Content.UPGRADES:
