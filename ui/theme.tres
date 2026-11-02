@@ -701,3 +701,7 @@ ToggleChip/styles/pressed = SubResource("StyleBoxFlat_chip_on")
 HSlider/styles/grabber_area = SubResource("StyleBoxFlat_slider_fill")
 HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_slider_fill_hover")
 HSlider/styles/slider = SubResource("StyleBoxFlat_slider")
+BigAccentLabel/base_type = &"Label"
+BigAccentLabel/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1)
+BigAccentLabel/font_sizes/font_size = 40
+BigAccentLabel/fonts/font = SubResource("FontVariation_2j8s8")

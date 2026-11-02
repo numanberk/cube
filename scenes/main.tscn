@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/puzzle_view_3d.tscn" id="2_puzzle"]
 [ext_resource type="Script" path="res://scripts/ui/fx_layer.gd" id="3_fx"]
 [ext_resource type="PackedScene" path="res://scenes/settings_panel.tscn" id="4_settings"]
+[ext_resource type="PackedScene" path="res://scenes/welcome_panel.tscn" id="5_welcome"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_buy_amount"]
 
@@ -256,7 +257,7 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 1
 
-[node name="OfflineDialog" type="AcceptDialog" parent="."]
+[node name="WelcomePanel" parent="." instance=ExtResource("5_welcome")]
 unique_name_in_owner = true
-title = "Welcome back"
-ok_button_text = "Collect"
+visible = false
+layout_mode = 1

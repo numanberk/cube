@@ -32,6 +32,7 @@ scripts/autoload/audio.gd  class AudioManager ("Audio"): play_click/solve/buy/un
                            music (Content.TRACKS; 2 players crossfading 2 s; follow/shuffle/loop; ducks when unfocused)
 scripts/autoload/settings.gd  class GameSettings ("Settings"): every setting in user://settings.cfg (SPEC), get/set_value,
                            `changed` signal; applies audio + notation itself, main.gd applies graphics + reduce motion
+scenes/welcome_panel.tscn  class WelcomePanel: "Welcome back" (time away, +Solves, Collect) and damaged-save notices
 scenes/settings_panel.tscn class SettingsPanel: sound, music mode, Jukebox, graphics, reduce motion, notation, reset save
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
@@ -110,7 +111,7 @@ bash tools/screenshot.sh /tmp/shots bench                         # 7×7 at max 
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
 - It runs under `xvfb-run` with the real OpenGL 3 renderer (software Mesa, so it's slow but correct) and
   a throwaway user-data dir, so it never touches a real save.
-- Presets (`fresh`, `mid`, `late`) are version-1 save data in `tools/screenshot_presets.gd`. They go through
+- Presets (`fresh`, `mid`, `late`, `welcome`) are version-1 save data in `tools/screenshot_presets.gd`. They go through
   `_migrate()`, so they keep working after save-format changes. A test checks that they still load.
   Add a preset there when a new feature needs its own state (e.g. a puzzle tier or prestige).
 - The economy is frozen during the shot, so numbers match the preset exactly. The cube is seeded, so

@@ -2,6 +2,22 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 3.6: Welcome back panel (Phase 3 done)
+- **`scenes/welcome_panel.tscn` (`WelcomePanel`)** replaces the default AcceptDialog. It's a dimmed overlay with
+  "Welcome back!", "You were away for 2h 15m.", a big green **"+220.6K Solves"** (new theme variation `BigAccentLabel`),
+  "Your helpers kept solving while you were gone." and a **Collect** button (PrimaryButton; Space/Enter also collect).
+  A damaged-save notice (`Game.load_notice`) shows in the same panel; alone, the button says OK.
+- **Collect moment:** while the panel is open the Solves counter holds the pre-offline amount. Collect plays the solve chime,
+  pops "+X Solves" under the counter and lets it count up. Space doesn't turn the cube while the panel is open.
+- **No panel when nothing was earned** and there's no notice. `main.gd` clears `Game.offline_report` and `load_notice` once shown.
+- New screenshot preset **`welcome`** (the mid state with `away_seconds: 8100`; the screenshot tool turns that into
+  `saved_at`). Screenshot: [welcome](screenshots/welcome/welcome.png).
+- Tests: no panel on a fresh start; after 2h 15m away it shows the right time and amount, holds the counter, ignores
+  Space, chimes on Collect, then the counter reaches the total; a notice alone shows with OK and only once. 1159 checks, `All good.`
+- **Phase 3 is complete** (3.5 was done in 2.2). Owner: a good time to play with sound on and write FEEDBACK.md. The
+  sounds and music are synthesised placeholders, so please say what to change.
+- **Next:** Phase 4, task 4.1 (puzzle data), then 4.2 parallel puzzles (D9).
+
 ## 2026-11-02 — Task 3.4: Settings autoload and panel
 - **`Settings` autoload** (`scripts/autoload/settings.gd`, `GameSettings`; loads after Game and Audio). All settings are
   data in `SPEC` (section, default, choices or range): master/music/SFX volume (100/50/70 %), music mode

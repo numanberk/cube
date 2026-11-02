@@ -1194,3 +1194,60 @@ func test_buy_amount_toggle() -> void:
 	check(friend._cost.text == "%s Solves" % Num.format(game.get_building_cost("friend")), "x1 shows the single cost")
 	main.free()
 	game.reset_state()
+
+
+# --- Welcome back panel (task 3.6) ---------------------------------------------------
+
+func test_welcome_panel() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var panel: Control = main.get_node("%WelcomePanel")
+	check(not panel.visible, "no panel when nothing was earned away")
+	main.free()
+	# Now with offline earnings.
+	var presets: Dictionary = load("res://tools/screenshot_presets.gd").PRESETS
+	var data: Dictionary = presets["welcome"].duplicate(true)
+	var now := Time.get_unix_time_from_system()
+	data["saved_at"] = now - float(data["away_seconds"])
+	game.apply_save_data(data, now)
+	var earned := float(game.offline_report["solves"])
+	check(earned > 0.0, "2h 15m away earns Solves")
+	game.set_process(false)  # freeze the economy: live solves would chime and rate-limit the Collect chime
+	main = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	panel = main.get_node("%WelcomePanel")
+	check(panel.visible, "the Welcome back panel shows after time away")
+	check((panel.get_node("%Away") as Label).text == "You were away for 2h 15m.", "it says how long you were away")
+	check((panel.get_node("%Earned") as Label).text == "+%s Solves" % Num.format(earned), "it shows what you earned")
+	check(not (panel.get_node("%Notice") as Label).visible, "no damaged-save notice")
+	main._animate_counter(1.0)
+	check_near(main._shown_solves, game.solves - earned, "the counter waits for Collect")
+	main._unhandled_input(key_event(KEY_SPACE, true, false))
+	var moves_before := game.total_moves
+	check_near(game.total_moves, moves_before, "Space doesn't tap the cube while the panel is open")
+	var audio: AudioManager = root.get_node("Audio")
+	await create_timer(0.3).timeout
+	var chimes_before := int(audio.played["chime"])
+	panel.collect()
+	check(not panel.visible, "Collect closes the panel")
+	check(int(audio.played["chime"]) == chimes_before + 1, "collecting chimes")
+	for i in 120:
+		main._animate_counter(1.0 / 60.0)
+	check_near(main._shown_solves, game.solves, "after Collect the counter counts up to the total")
+	main.free()
+	# A damaged-save notice alone shows with an OK button.
+	game.reset_state()
+	game.load_notice = "Your save file was damaged, so the backup was loaded."
+	main = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	panel = main.get_node("%WelcomePanel")
+	check(panel.visible and (panel.get_node("%Notice") as Label).visible and not (panel.get_node("%Earned") as Label).visible,
+			"a load notice alone shows the panel with just the notice")
+	check((panel.get_node("%CollectButton") as Button).text == "OK", "...and an OK button")
+	check(game.load_notice == "", "the notice is shown once")
+	main.free()
+	game.set_process(true)
+	game.reset_state()

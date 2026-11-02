@@ -31,7 +31,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var buy_ten: Button = %BuyTen
 @onready var buy_max: Button = %BuyMax
 @onready var upgrade_empty: Label = %UpgradeEmpty
-@onready var offline_dialog: AcceptDialog = %OfflineDialog
+@onready var welcome_panel: WelcomePanel = %WelcomePanel
 
 var _helper_cards: Dictionary = {}    ## building id -> ShopCard
 var _upgrade_tiles: Dictionary = {}   ## upgrade id -> UpgradeTile
@@ -42,7 +42,8 @@ var _pending_solve_value := 0.0   ## Solves earned since the last "+X Solves" po
 var _solve_pop_timer := 0.0
 var _burst_timer := 0.0
 var _buy_amount := 1               ## 1, 10 or GameState.BUY_MAX (the ×1 / ×10 / Max toggle)
-var _revealed: Dictionary = {}    ## helper ids already shown unlocked (a newly revealed one plays the unlock sound)
+var _revealed: Dictionary = {}
+var _hold_counter := false        ## keeps the counter still while the Welcome back panel is open    ## helper ids already shown unlocked (a newly revealed one plays the unlock sound)
 
 
 func _ready() -> void:
@@ -57,6 +58,7 @@ func _ready() -> void:
 	Game.purchased.connect(_on_purchased)
 	Game.state_reset.connect(_on_state_reset)
 	_shown_solves = Game.solves
+	welcome_panel.collected.connect(_on_welcome_collected)
 	_build_shop()
 	for def: Dictionary in Content.BUILDINGS:
 		if Game.is_building_unlocked(def["id"]):
@@ -80,7 +82,7 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Space / Enter tap from anywhere. allow_echo = false: holding the key down doesn't repeat (PLAN: no hold-to-repeat).
-	if event.is_action_pressed(TAP_ACTION, false) and not settings_panel.visible:
+	if event.is_action_pressed(TAP_ACTION, false) and not settings_panel.visible and not welcome_panel.visible:
 		_on_tap_pressed()
 		get_viewport().set_input_as_handled()
 		return
@@ -230,6 +232,9 @@ func _refresh_upgrade_tiles() -> void:
 
 ## The Solves counter counts up smoothly instead of jumping; spending snaps it down at once.
 func _animate_counter(delta: float) -> void:
+	if _hold_counter:
+		solves_label.text = "%s Solves" % Num.format(_shown_solves)
+		return
 	var target := Game.solves
 	if target <= _shown_solves or absf(target - _shown_solves) <= maxf(0.5, target * 0.002):
 		_shown_solves = target
@@ -274,20 +279,21 @@ func _animate_helper_moves(delta: float) -> void:
 		puzzle_view.scramble_step()
 
 
+## The "Welcome back" panel after time away (or a damaged-save notice). The Solves counter holds the old amount
+## until Collect, then counts up with a chime.
 func _show_offline_report() -> void:
-	var parts: PackedStringArray = []
-	if Game.load_notice != "":
-		parts.append(Game.load_notice)
-	if not Game.offline_report.is_empty():
-		parts.append("You were away for %s.\nYour helpers earned %s Solves." % [
-			Num.format_duration(Game.offline_report["seconds"]),
-			Num.format(Game.offline_report["solves"]),
-		])
-	if parts.is_empty():
-		return
-	offline_dialog.dialog_text = "\n\n".join(parts)
-	offline_dialog.popup_centered()
+	if welcome_panel.show_report(Game.offline_report, Game.load_notice):
+		_shown_solves = Game.solves - float(Game.offline_report.get("solves", 0.0))
+		_hold_counter = true
 	Game.load_notice = ""  # show it once
+	Game.offline_report = {}
+
+
+func _on_welcome_collected(solves: float) -> void:
+	_hold_counter = false
+	if solves > 0.0:
+		Audio.play_solve()
+		fx.pop("+%s Solves" % Num.format(solves), solves_label.get_global_rect().get_center() + Vector2(0, 30), &"PopSolve")
 
 
 # --- Signals -----------------------------------------------------------------

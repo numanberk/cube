@@ -30,7 +30,11 @@ func _ready() -> void:
 	Game.persistence_enabled = false  # never write a save from here
 	Settings.persistence_enabled = false  # nor settings
 	Audio.music_enabled = false  # nothing to hear, and a track still playing at exit is reported as a leak
-	Game.apply_save_data(Presets.PRESETS[preset], Time.get_unix_time_from_system())
+	var data: Dictionary = Presets.PRESETS[preset].duplicate(true)
+	var now := Time.get_unix_time_from_system()
+	if data.has("away_seconds"):
+		data["saved_at"] = now - float(data["away_seconds"])
+	Game.apply_save_data(data, now)
 	Game.set_process(bench)  # freeze the economy so the numbers match the preset (the bench keeps it running)
 	seed(RANDOM_SEED)
 	var main := MAIN_SCENE.instantiate()

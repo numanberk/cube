@@ -19,6 +19,19 @@ const PRESETS := {
 		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets"],
 	},
 
+	# The mid preset after 2h 15m away: shows the Welcome back panel. "away_seconds" isn't save data; the screenshot
+	# tool turns it into saved_at = now - away_seconds.
+	"welcome": {
+		"version": 1,
+		"away_seconds": 8100,
+		"solves": 420.0,
+		"total_solves": 6000.0,
+		"total_moves": 90000.0,
+		"move_progress": 7.0,
+		"buildings": {"friend": 15, "club": 8, "robot": 2},
+		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets"],
+	},
+
 	# Everything unlocked and bought, lots of each helper.
 	"late": {
 		"version": 1,

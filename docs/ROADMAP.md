@@ -73,7 +73,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       (pooled, ≤ 20 on screen), the Solves counter tweens up, the puzzle squashes slightly on tap.
       *Done when:* the smoke run at 1,000 moves/s is clean, and there's a screenshot.
 
-## Phase 3 — Sound and feel
+## Phase 3 — Sound and feel ✅
 - [x] **3.1 Audio autoload + SFX** (soft, warm sounds that fit lo-fi): `scripts/autoload/audio.gd` with Master/Music/SFX buses. Turn click (random pitch ±8 %,
       lower on bigger puzzles), solve chime (rate-limited to ~4/s), buy sound, unlock sting. CC0 sounds, credited.
       *Done when:* each event plays a sound, 100 solves in one frame don't play 100 chimes, and tests pass.
@@ -92,7 +92,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       *Done when:* settings survive a restart and a save reset, and Reduce motion turns off sway, squash, particles and speed-spin.
 - [x] **3.5 Keyboard:** *(done early in 2.2: removing the Turn button needed it)* Space/Enter tap from anywhere through an input action (not button focus); holding the key does **not** repeat.
       *Done when:* there's a test or smoke check that echo events are ignored.
-- [ ] **3.6 Offline panel:** a styled "Welcome back" panel (time away, Solves earned, a Collect button) replaces the default AcceptDialog.
+- [x] **3.6 Offline panel:** a styled "Welcome back" panel (time away, Solves earned, a Collect button) replaces the default AcceptDialog.
       *Done when:* there's a screenshot, and there's no panel when nothing was earned.
 
 ## Phase 4 — Puzzles (D9: all unlocked puzzles run at once)
