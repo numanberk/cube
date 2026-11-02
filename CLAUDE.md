@@ -1,8 +1,10 @@
 # Cube Idle — guide for Claude sessions
 
 This project is worked on by **several different Claude sessions/accounts**, one after another.
-You have no memory of earlier sessions: this file, `docs/ROADMAP.md` and `docs/CHANGELOG.md`
-are the shared memory. Read all three before changing anything, and update them before you finish.
+You have no memory of earlier sessions: this file, `docs/PLAN.md`, `docs/ROADMAP.md`,
+`docs/CHANGELOG.md` and `docs/FEEDBACK.md` are the shared memory. Read them before changing
+anything. Do **one** roadmap task per session unless the owner says otherwise. Never guess an
+open owner decision (PLAN §6, D1–D5); ask instead.
 
 ## What the game is
 An idle/incremental game about Rubik's cubes, for PC (Windows first).
@@ -26,7 +28,7 @@ scripts/ui/cube_view.gd    class CubeView: draws the cube face
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
-docs/                      DESIGN, ROADMAP, CHANGELOG
+docs/                      PLAN, ROADMAP, CHANGELOG, FEEDBACK, DESIGN
 ```
 
 ## Rules of the code
