@@ -157,3 +157,32 @@ func test_screenshot_presets_still_load() -> void:
 			check(g.upgrades.has(id), "preset '%s' keeps upgrade '%s'" % [name, id])
 		check(g.offline_report.is_empty(), "preset '%s' grants no offline progress" % name)
 		g.free()
+
+
+func test_simulator_short_run() -> void:
+	var sim: RefCounted = load("res://tools/simulator.gd").new()
+	var tapping: Dictionary = sim.run(3.0, 2.0)
+	var events: Array = tapping["events"]
+	check(not events.is_empty(), "a tapping bot buys something in 2 minutes")
+	check(not events.is_empty() and events[0]["id"] == "friend", "the first purchase is a Cubing Friend")
+	check(tapping["checkpoints"].size() == 1, "a 2-minute run records only the 1-minute checkpoint")
+	var idle: Dictionary = sim.run(0.0, 1.0)
+	check(idle["events"].is_empty(), "with no taps and no helpers nothing is bought")
+
+
+func test_simulator_leaves_state_unchanged_when_measuring() -> void:
+	var sim: RefCounted = load("res://tools/simulator.gd").new()
+	var g := new_game()
+	g.cheat_add_solves(5000.0)
+	g.buy_building("friend")
+	g.buy_upgrade("lube")
+	var buildings_before := g.buildings.duplicate()
+	var upgrades_before := g.upgrades.duplicate()
+	var base: float = sim.income(g, 3.0)
+	for item: Dictionary in sim._candidates(g):
+		var gain: float = sim._income_gain(g, item, 3.0, base)
+		check(gain >= 0.0, "%s %s never lowers income" % [item["kind"], item["id"]])
+	check(g.buildings == buildings_before, "measuring helpers restores the owned counts")
+	check(g.upgrades == upgrades_before, "measuring upgrades restores the owned set")
+	check_near(sim.income(g, 3.0), base, "income is the same after measuring")
+	g.free()

@@ -32,6 +32,7 @@ tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
 tools/screenshot.sh        PNGs of the main scene in preset states (see "Screenshots" below)
 tools/find_godot.sh        Shared by the tools/*.sh scripts: finds or downloads Godot
+tools/simulate.sh          Balance bot (tools/simulator.gd) -> docs/BALANCE.md; run after any balance change
 docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK, DESIGN
 ```
 
@@ -54,8 +55,9 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    Visual changes: add a screenshot to `docs/screenshots/` (see "Screenshots" below).
 3. Add a dated entry at the top of `docs/CHANGELOG.md`: what changed, what's half-done,
    anything the next session should know.
-4. Commit with a clear message. Pull before you start and push when you're done,
-   so the next session (possibly another account) starts from your work.
+4. Commit with a clear message. Pull `main` before you start. **Owner's rule: every commit is merged into
+   `main` and pushed** (if your session has its own branch, push it, then fast-forward/merge it into `main`
+   and push `main` too). No pull request needed. The next session (possibly another account) starts from `main`.
 
 ## Screenshots
 You can't see the game window, so look at it this way (works in the cloud container):

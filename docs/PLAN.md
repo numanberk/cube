@@ -75,19 +75,18 @@ Every balance change is checked against this table by the simulator (task 0.3). 
 3. Claude does the **next unchecked task**. One task per session keeps changes small and easy to undo.
 4. Claude runs `bash tools/run_tests.sh` (and `tools/screenshot.sh` for anything visual),
    updates ROADMAP and CHANGELOG, then commits and pushes.
-5. The owner merges the branch if needed, pulls (GitHub Desktop → **Pull**) and plays the change in Godot.
+5. The owner pulls (GitHub Desktop → **Pull**) and plays the change in Godot.
 
 **Session prompt (copy this):**
 > Read CLAUDE.md, docs/PLAN.md, docs/ROADMAP.md, docs/CHANGELOG.md and docs/FEEDBACK.md.
 > Handle any open feedback first, otherwise do the next unchecked task in the roadmap — only that one task.
-> Run the tests, update ROADMAP and CHANGELOG, then commit and push. If your session was given its own
-> branch, push there and open a pull request; otherwise push to main.
+> Run the tests, update ROADMAP and CHANGELOG, then commit, merge into main and push main.
 
 For a specific task, replace the second sentence with e.g. "Do task 4.2."
 
 ### Rules that prevent a mess
 - **One session at a time.** Two accounts editing at once will create conflicts.
-  **Merge each session's pull request before starting the next session**, or the next one starts from old files.
+  **Every session merges its work into `main` and pushes it** (owner's rule, 2026-11-02), so the next one starts from current files.
 - **Don't edit in Godot while a session is running.** Pull first, then edit, commit and push.
 - **Every task has a "Done when"** in the roadmap. A task isn't ticked until that's true.
 - **Tests stay green.** A red test is fixed before anything new is started.

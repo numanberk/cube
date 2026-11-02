@@ -2,6 +2,23 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 0.2: balance simulator
+- New `tools/simulator.gd`: a greedy bot that drives a real `GameState` in 0.1 s steps. Every second, and after each
+  purchase, it targets the visible item with the lowest *time to afford + cost ÷ Solves/s gained*, measured by
+  briefly owning the item in the real state and then undoing it. It records the first purchase of each item,
+  checkpoints at 1/5/15/30/60/120 min, when everything is owned, and the longest wait for something new.
+- `tools/simulate.sh [--taps 3,0] [--minutes 120] [--out res://docs/BALANCE.md]` (via `tools/simulate.gd`) writes the report.
+  The default runs two profiles, tapping 3/s and never tapping, in ~20 s.
+- `docs/BALANCE.md` (today's content): **everything owned at 51:32** (PLAN §1 measured ~53 min ✓), first Friend 0:25,
+  Speedcubing Lab is a 16-minute wall, and with no taps nothing at all happens in 2 hours. That's what Phase 4 fixes.
+- Tests: a short sim run (first buy is a Friend; idle buys nothing) and a check that measuring an item leaves the
+  state unchanged. 168 checks, `All good.`
+- **Workflow change (owner):** every commit is merged into `main` and pushed. CLAUDE.md step 4 and the PLAN session loop say so now.
+- **Notes for 0.3:** reuse `Simulator.run()` from the tests. A 120-min run takes ~8 s headless; keep test runs short
+  or run them once and check several targets from one result. Puzzles (Phase 4) need new candidate kinds in
+  `_candidates/_income_gain/_cost/_buy`; each is a single `match` branch.
+- **Next:** task 0.3 (pacing tests).
+
 ## 2026-11-02 — Task 0.1: screenshot script
 - Merged `claude/relaxed-edison-220seq` (the plan rebuilt around D1/D3/D5/D6/D7) into this branch; the owner
   confirmed that plan is the one to follow. This branch now carries both that plan and the 0.1 work.

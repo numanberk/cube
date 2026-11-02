@@ -17,7 +17,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       `--rendering-driver opengl3` and a throwaway user-data dir. It has preset states (fresh, mid-game, late-game)
       and writes PNGs to a given folder.
       *Done when:* it produces 1280×720 PNGs of all presets in the cloud container, and CLAUDE.md explains how to use it.
-- [ ] **0.2 Simulator** `tools/simulate.sh` + `tools/simulate.gd`: a headless bot that drives the real `GameState`.
+- [x] **0.2 Simulator** `tools/simulate.sh` + `tools/simulate.gd`: a headless bot that drives the real `GameState`.
       It's greedy (buys the best-payback item), with configurable taps/s and duration. It logs when each
       helper, upgrade and puzzle is first bought, plus solves/s at 1/5/15/30/60/120 min.
       *Done when:* it writes a table to `docs/BALANCE.md`, and today's numbers roughly match PLAN §1 (everything bought by ~53 min).
