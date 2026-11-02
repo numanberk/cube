@@ -186,3 +186,52 @@ func test_simulator_leaves_state_unchanged_when_measuring() -> void:
 	check(g.upgrades == upgrades_before, "measuring upgrades restores the owned set")
 	check_near(sim.income(g, 3.0), base, "income is the same after measuring")
 	g.free()
+
+
+func test_pacing_checks() -> void:
+	# The pacing rules themselves, on a made-up simulator result.
+	var Pacing: GDScript = load("res://tools/pacing.gd")
+	var result := {"minutes": 10.0, "events": [
+		{"t": 15.0, "kind": "helper", "id": "friend", "name": "Friend"},
+		{"t": 50.0, "kind": "upgrade", "id": "lube", "name": "Lube"},
+		{"t": 400.0, "kind": "helper", "id": "club", "name": "Club"},
+	]}
+	check(Pacing.check({"type": "first_by", "kind": "helper", "max": 20.0}, result)["passed"], "helper at 15 s meets <= 20 s")
+	check(not Pacing.check({"type": "first_by", "kind": "upgrade", "max": 40.0}, result)["passed"], "upgrade at 50 s misses <= 40 s")
+	check(not Pacing.check({"type": "first_by", "kind": "", "max": 5.0}, result)["passed"], "anything by 5 s fails")
+	check(Pacing.check({"type": "item_between", "kind": "helper", "item": "club", "min": 300.0, "max": 500.0}, result)["passed"], "club inside its window")
+	check(not Pacing.check({"type": "item_between", "kind": "puzzle", "item": "3x3", "min": 0.0, "max": 999.0}, result)["passed"], "a missing item fails")
+	var gap: Dictionary = Pacing.longest_gap(result["events"], 0.0, 600.0)
+	check_near(gap["length"], 350.0, "longest gap is Lube -> Club")
+	check_near(Pacing.longest_gap(result["events"], 450.0, 600.0)["length"], 150.0, "a gap after the last item runs to the window end")
+	check(not Pacing.check({"type": "max_gap", "from": 0.0, "to": 600.0, "max": 300.0}, result)["passed"], "350 s gap misses <= 300 s")
+	check(Pacing.check({"type": "max_gap", "from": 0.0, "to": 300.0, "max": 300.0}, result)["passed"], "first 5 min has no gap over 300 s")
+	var rows: Array = Pacing.evaluate({})
+	check(rows.size() == Pacing.TARGETS.size(), "evaluate returns a row per target")
+	for target: Dictionary in Pacing.TARGETS:
+		check(target["profile"] in ["tapping", "idle"], "target %s has a known profile" % target["id"])
+		if target["type"] == "unsupported":
+			check(target.get("expected_failure", "") != "", "unsupported target %s is an expected failure" % target["id"])
+
+
+func test_pacing_targets() -> void:
+	# PLAN §2 pacing, measured by the simulator on today's content. See tools/pacing.gd.
+	var Pacing: GDScript = load("res://tools/pacing.gd")
+	var sim: RefCounted = load("res://tools/simulator.gd").new()
+	var results := {
+		"tapping": sim.run(Pacing.TAPS_PER_SEC, Pacing.TAPPING_MINUTES),
+		"idle": sim.run(0.0, Pacing.IDLE_MINUTES),
+	}
+	var expected: PackedStringArray = []
+	for row: Dictionary in Pacing.evaluate(results):
+		match row["status"]:
+			"FAIL":
+				check(false, "pacing target missed: %s (actual: %s)" % [row["text"], row["actual"]])
+			"NOW PASSES":
+				check(false, "pacing target '%s' now passes (%s): remove its expected_failure in tools/pacing.gd" % [row["id"], row["actual"]])
+			_:
+				check(true, row["id"])
+				if row["status"] == "expected failure":
+					expected.append(row["id"])
+	if not expected.is_empty():
+		print("  pacing: %d expected failures (see docs/BALANCE.md): %s" % [expected.size(), ", ".join(expected)])

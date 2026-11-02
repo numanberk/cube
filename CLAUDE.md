@@ -33,6 +33,7 @@ tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
 tools/screenshot.sh        PNGs of the main scene in preset states (see "Screenshots" below)
 tools/find_godot.sh        Shared by the tools/*.sh scripts: finds or downloads Godot
 tools/simulate.sh          Balance bot (tools/simulator.gd) -> docs/BALANCE.md; run after any balance change
+tools/pacing.gd            PLAN §2 pacing targets as data; tests fail if one is missed (or newly met, see below)
 docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK, DESIGN
 ```
 
@@ -51,6 +52,9 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
 1. Run `bash tools/run_tests.sh` and make sure it prints `All good.`
    (On Linux it downloads Godot automatically. Elsewhere set `GODOT=/path/to/godot`.)
    Add or adjust tests in `tests/test_runner.gd` for any rule you changed.
+   `test_pacing_targets` runs the balance bot (~10 s). Targets with an `expected_failure` in
+   `tools/pacing.gd` may miss; if your change makes one pass, the test tells you to remove its mark.
+   After any content/balance change, also run `bash tools/simulate.sh` and commit `docs/BALANCE.md`.
 2. Tick off the task in `docs/ROADMAP.md`, but only if its "Done when" is true.
    Visual changes: add a screenshot to `docs/screenshots/` (see "Screenshots" below).
 3. Add a dated entry at the top of `docs/CHANGELOG.md`: what changed, what's half-done,

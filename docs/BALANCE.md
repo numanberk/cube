@@ -7,11 +7,48 @@ The bot drives the real `GameState` in 0.1 s steps for 120 minutes. Every second
 it picks the visible item with the lowest *time to afford + cost ÷ Solves/s gained* and buys it as soon
 as it can. Income counts helpers and taps. Times are m:ss from a fresh save.
 
+## Pacing targets (PLAN §2)
+
+Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps/s.
+
+| Target | Actual | Status |
+|---|---|---|
+| First helper ≤ 20 s | Cubing Friend at 0:25 | expected failure |
+| First upgrade < 1 min | Cube Lube at 1:29 | expected failure |
+| Something new every ≤ 3 min in the first hour | longest 16:20 (after Cube Factory, before Speedcubing Lab) | expected failure |
+| Something new every ≤ 10 min after the first hour | longest 1:00:00 (after Speedcubing Lab, until 2:00:00) | expected failure |
+| 3×3 unlocked at ~5 min (4–6 min) | never (in 2:00:00) | expected failure |
+| Solving Robot at ~10 min (8–12 min) | 14:53 | expected failure |
+| 4×4 unlocked at ~30 min (25–35 min) | never (in 2:00:00) | expected failure |
+| 5×5 unlocked at ~60 min (50–70 min) | never (in 2:00:00) | expected failure |
+| First World Championship at ~90 min (80–100 min, D6) | never (in 2:00:00) | expected failure |
+| 7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
+| Second run reaches the same point in ≤ 50 % of the time | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
+| Never tapping still buys something within 5 min | nothing bought in 2:00:00 | expected failure |
+
+### Expected failures
+
+Targets today's content can't meet yet. They print in the tests but don't fail them.
+Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
+
+- **First helper ≤ 20 s** — First Friend costs 5 Solves = 75 taps. Fixed by 2×2 start in Phase 4.
+- **First upgrade < 1 min** — Cube Lube (15) comes after the first Friend. Phase 4 rebalance.
+- **Something new every ≤ 3 min in the first hour** — Only 13 items exist; gaps up to 16 min. Needs puzzles, methods and milestones (Phases 4–5).
+- **Something new every ≤ 10 min after the first hour** — All content is owned by ~52 min. Needs more helpers and prestige (Phases 5–6).
+- **3×3 unlocked at ~5 min (4–6 min)** — Puzzles don't exist yet (task 4.1–4.2).
+- **Solving Robot at ~10 min (8–12 min)** — Robot comes at ~15 min. Phase 4 rebalance.
+- **4×4 unlocked at ~30 min (25–35 min)** — Puzzles don't exist yet (task 4.1–4.2).
+- **5×5 unlocked at ~60 min (50–70 min)** — Puzzles don't exist yet (task 4.1–4.2).
+- **First World Championship at ~90 min (80–100 min, D6)** — Prestige doesn't exist yet (Phase 6); the bot must learn to Compete (6.4).
+- **7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run** — Needs prestige and multi-run simulation (6.2, 6.4).
+- **Second run reaches the same point in ≤ 50 % of the time** — Needs prestige and multi-run simulation (6.2, 6.4).
+- **Never tapping still buys something within 5 min** — With no taps there's no income at all. Phase 4 (free first Friend or a trickle).
+
 ## Tapping (3 taps/s, 120 min)
 
 - Items bought: 204 (13 different)
 - Every helper and upgrade owned at: 51:32
-- Longest wait for something new: 1:08:28 (after the last new item, until the end of the run)
+- Longest wait for something new: 1:08:28 (after Speedcubing Lab, until 2:00:00)
 
 ### First purchase of each item
 
@@ -46,7 +83,7 @@ as it can. Income counts helpers and taps. Times are m:ss from a fresh save.
 
 - Items bought: 0 (0 different)
 - Every helper and upgrade owned at: never
-- Longest wait for something new: the whole run (2:00:00)
+- Longest wait for something new: 2:00:00 (after the start, until 2:00:00)
 
 ### First purchase of each item
 

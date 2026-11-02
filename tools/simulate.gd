@@ -5,6 +5,7 @@ extends SceneTree
 ## --taps takes a comma list (one run per value).
 
 const Simulator := preload("res://tools/simulator.gd")
+const Pacing := preload("res://tools/pacing.gd")
 
 
 func _initialize() -> void:
@@ -15,6 +16,7 @@ func _initialize() -> void:
 
 	var sim: RefCounted = Simulator.new()
 	var sections: PackedStringArray = []
+	var by_profile := {}  ## "tapping"/"idle" -> result, for the pacing check
 	for taps_text in taps_list:
 		var taps := float(taps_text)
 		var started := Time.get_ticks_msec()
@@ -24,8 +26,15 @@ func _initialize() -> void:
 			"never" if float(result["all_bought_at"]) < 0.0 else Simulator._clock(result["all_bought_at"]),
 		])
 		sections.append(Simulator.to_markdown(result))
+		if is_zero_approx(taps):
+			by_profile["idle"] = result
+		elif is_equal_approx(taps, Pacing.TAPS_PER_SEC):
+			by_profile["tapping"] = result
 
-	var text := _header(minutes) + "\n".join(sections)
+	var rows := Pacing.evaluate(by_profile)
+	for row: Dictionary in rows:
+		print("  %-16s %-17s %s" % [row["id"], row["status"], row["actual"]])
+	var text := _header(minutes) + Pacing.to_markdown(rows) + "\n" + "\n".join(sections)
 	var file := FileAccess.open(out, FileAccess.WRITE)
 	if file == null:
 		printerr("Could not write %s: %s" % [out, error_string(FileAccess.get_open_error())])

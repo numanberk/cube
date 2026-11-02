@@ -2,6 +2,23 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-02 — Task 0.3: pacing tests
+- New `tools/pacing.gd`: the 12 pacing targets from PLAN §2 as data (first helper ≤ 20 s, first upgrade < 1 min,
+  something new every ≤ 3 min in hour 1 and ≤ 10 min after, 3×3/Robot/4×4/5×5/first prestige windows, multi-run targets,
+  idle progress). Each has an `expected_failure` reason while today's content can't meet it.
+  "~X min" became explicit windows: 3×3 4–6 min, Robot 8–12, 4×4 25–35, 5×5 50–70, prestige 80–100 (from 6.4).
+- `test_pacing_targets` runs the bot (3 taps/s for 120 min, plus 0 taps/s for 10 min) and checks every target. A missed
+  real target fails, an expected failure prints, and an expected failure that **now passes fails on purpose**, so
+  the session that fixed it removes the mark (checked by hand: loosening one target made the test fail as intended).
+  `test_pacing_checks` covers the rules on made-up data.
+- `docs/BALANCE.md` now starts with a pacing table (target, actual, status) and the expected-failure list.
+  Today: **all 12 are expected failures**. That's the baseline Phase 4 starts from.
+- The simulator report reuses `Pacing.clock()` / `Pacing.longest_gap()`, so there's no duplicate gap logic.
+- The test suite now takes ~10 s longer (the 120-min sim). 204 checks, `All good.`
+- **For Phase 4+:** when puzzles/prestige land, the bot must buy them as events with kind `"puzzle"` (ids `3x3`, `4x4`, `5x5`)
+  and `"prestige"` (id `compete`); those targets already look for exactly that. `unsupported` targets need multi-run sim (6.4).
+- **Next:** task 0.4 (safe saves).
+
 ## 2026-11-02 — Task 0.2: balance simulator
 - New `tools/simulator.gd`: a greedy bot that drives a real `GameState` in 0.1 s steps. Every second, and after each
   purchase, it targets the visible item with the lowest *time to afford + cost ÷ Solves/s gained*, measured by

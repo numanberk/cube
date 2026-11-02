@@ -21,7 +21,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       It's greedy (buys the best-payback item), with configurable taps/s and duration. It logs when each
       helper, upgrade and puzzle is first bought, plus solves/s at 1/5/15/30/60/120 min.
       *Done when:* it writes a table to `docs/BALANCE.md`, and today's numbers roughly match PLAN §1 (everything bought by ~53 min).
-- [ ] **0.3 Pacing tests:** `test_runner.gd` checks PLAN §2's pacing table with the simulator.
+- [x] **0.3 Pacing tests:** `test_runner.gd` checks PLAN §2's pacing table with the simulator.
       Targets the current content can't meet yet are *expected failures* that print but don't fail the run.
       *Done when:* tests pass, and the expected-failure list appears in `docs/BALANCE.md`.
 - [ ] **0.4 Safe saves:** write `save.json.tmp` then rename it; keep `save.bak`; if the save is corrupt, load the backup and warn.

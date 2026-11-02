@@ -10,6 +10,8 @@ extends RefCounted
 ##     time to afford it + cost / income it adds
 ## then buy it as soon as it's affordable. Income counts helpers and taps.
 
+const Pacing := preload("res://tools/pacing.gd")
+
 const STEP := 0.1             ## simulated seconds per tick
 const REPLAN_INTERVAL := 1.0  ## re-pick the target this often (and after every purchase)
 const CHECKPOINT_MINUTES: Array[float] = [1.0, 5.0, 15.0, 30.0, 60.0, 120.0]
@@ -190,7 +192,8 @@ static func to_markdown(result: Dictionary) -> String:
 	var all_at: float = result["all_bought_at"]
 	lines.append("- Items bought: %d (%d different)" % [result["purchases"], events.size()])
 	lines.append("- Every helper and upgrade owned at: %s" % ("never" if all_at < 0.0 else _clock(all_at)))
-	lines.append("- Longest wait for something new: %s" % _longest_gap(events, float(result["minutes"]) * 60.0))
+	var gap := Pacing.longest_gap(events, 0.0, float(result["minutes"]) * 60.0)
+	lines.append("- Longest wait for something new: %s (%s)" % [_clock(gap["length"]), gap["where"]])
 	lines.append("")
 	lines.append("### First purchase of each item")
 	lines.append("")
@@ -219,31 +222,9 @@ static func to_markdown(result: Dictionary) -> String:
 	return "\n".join(lines)
 
 
-static func _longest_gap(events: Array, duration: float) -> String:
-	if events.is_empty():
-		return "the whole run (%s)" % _clock(duration)
-	var longest := 0.0
-	var where := ""
-	var previous := 0.0
-	for e: Dictionary in events:
-		var gap := float(e["t"]) - previous
-		if gap > longest:
-			longest = gap
-			where = "before %s" % e["name"]
-		previous = e["t"]
-	var tail := duration - previous
-	if tail > longest:
-		longest = tail
-		where = "after the last new item, until the end of the run"
-	return "%s (%s)" % [_clock(longest), where]
-
-
 ## Seconds as m:ss (or h:mm:ss).
 static func _clock(seconds: float) -> String:
-	var s := int(round(seconds))
-	if s >= 3600:
-		return "%d:%02d:%02d" % [s / 3600, (s / 60) % 60, s % 60]
-	return "%d:%02d" % [s / 60, s % 60]
+	return Pacing.clock(seconds)
 
 
 static func _num(value: float) -> String:
