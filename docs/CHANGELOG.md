@@ -2,6 +2,19 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Roadmap: "Readable main screen" (R.1–R.6), docs only
+- **Owner feedback:** the main cube is "just some random scrambles", hard to follow, and "nothing happens". Measured: helper
+  moves are random face turns and a solve is the history rewound; past 12 moves/s it only wobbles; the moves-to-next-solve
+  bar and the ticker mean nothing at speed. Phase S adds things to do, but no task changed what the main cube shows.
+- **New ROADMAP block R.1–R.6** inside Phase S, right after S.2: R.1 staged solver (Beginner + CFOP on 3×3, 2×2) as a pure
+  class; R.2 **showcase solve** on the big cube (one real solve at a watchable TPS, stage chips, real solution in the
+  ticker, "1 of N solves/s"); R.3 **cube times** per helper + time-tier pops + a next-goal bar/strip; R.4 **news feed**;
+  R.5 Roux/ZZ; R.6 big cubes by reduction (parity as a stage). Order: S.2 → R.1–R.4 → S.6 → S.3 (D13) → rest.
+  PLAN §4.2 and §5 updated, feedback moved to Handled. No code changed.
+- **Note for the session doing S.2 in parallel:** this commit only touches docs (ROADMAP Phase S, PLAN §4.2/§5, FEEDBACK,
+  this entry). If you get a conflict here, keep both entries. R.2 should reuse S.1's PuzzleView3D manual mode
+  (`show_state`/`turn`), and R.1 and S.4 should share one set of algorithm data.
+
 ## 2026-11-03 — Roadmap reorder (Phase S) + Task S.1: the Solve Station
 - **Owner feedback** (FEEDBACK.md): idling was "just looking at the screen while it shuffles", and **the player is an
   almost professional speedcuber**. New **ROADMAP Phase S — Solve Station** (S.1–S.8), done before the rest of Phase 5:

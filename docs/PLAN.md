@@ -153,6 +153,13 @@ soft contact shadow) to the left of the shop.
 moves/s the puzzle stops animating every turn: it plays a "speed-spin" effect (fast whole-puzzle wobble,
 streaks) and snaps occasional turns. The game's numbers never wait for the animation.
 
+**Showcase solve (ROADMAP R.1–R.6, owner feedback 2026-11-03):** the scramble + rewind above made the cube look like
+"random scrambles" with nothing happening. It is being replaced on the big puzzle by **one real example solve at a
+watchable speed**: a WCA scramble, then a staged solution from the learned method (Beginner: layer by layer; CFOP:
+cross, F2L, OLL, PLL; Roux, ZZ and big-cube reduction later), with stage chips, the real solution in the ticker and a
+"1 of N solves/s" line. Helpers show **solve times** (moves per solve ÷ moves/s), and at high speed the moves bar becomes a
+next-goal bar. The small row cubes and the Megaminx keep speed mode / rewind. It stays visual state, never game state.
+
 **Architecture** (built so cubes and the Megaminx share one turning system):
 - `TwistyModel` (`scripts/cube/twisty_model.gd`): pure data with no nodes, so it's fully unit-tested. A puzzle is a
   list of pieces (position, orientation, sticker colours) and turn axes. A move = rotate every piece whose position
@@ -251,7 +258,7 @@ Each phase ends with something playable. Task details and "Done when" are in the
 | 2 | **Look** | The UI around the cube: theme, layout, shop cards, juice. | 4 |
 | 3 | **Sound and feel** | SFX, the music system (D5), Buy ×N, settings, keyboard, offline panel. | 6 |
 | 4 | **Puzzles** | The main progression axis. All unlocked puzzles run at once (D9) with a shared helper team split across them; each has a mastery bar. | 8 |
-| S | **Solve Station** (owner, 2026-11-03: before the rest of Phase 5) | The player is an almost-pro speedcuber and idling alone was "just looking at the screen". Solve the puzzles yourself with csTimer keys, WCA inspection, records, algorithm drills, daily scrambles; real skill pays into the idle game. Golden Scramble and tap scaling moved here. | 8 |
+| S | **Solve Station** (owner, 2026-11-03: before the rest of Phase 5) | The player is an almost-pro speedcuber and idling alone was "just looking at the screen". Solve the puzzles yourself with csTimer keys, WCA inspection, records, algorithm drills, daily scrambles; real skill pays into the idle game. Golden Scramble and tap scaling moved here. **R.1–R.6** make the main cube readable: real staged showcase solves, cube times, goals, a news feed. | 14 |
 | 5 | **Depth** | Fills the first hour so something new arrives every few minutes. The Algorithm Lab finishes research while you're away. | 8 |
 | 6 | **Prestige: World Championship** | Gives the long loop. 7×7, Megaminx and the "Finals" track sit behind it. A perk tree whose branches unlock systems; auto-buyers. | 5 |
 | 7 | **Goals** | Long-term targets between prestiges: ~100 achievements, stats, the Cube Collection and the Comp Kit loadout. | 4 |

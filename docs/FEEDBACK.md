@@ -18,6 +18,12 @@ Template (newest first under "Open"):
 - (none)
 
 ## Handled
+- 2026-11-03 — "It's just some random scrambles, I can't even understand what's going on after some point, and besides
+  that nothing happens. Does the plan fix it?" → Only partly: Phase S adds things to do, but the main cube stays random
+  turns + rewind (and past 12 moves/s only a wobble), the moves bar and ticker mean nothing at speed, and no task changed
+  that. New ROADMAP block **R.1–R.6 "Readable main screen"** inside Phase S, right after S.2: a real staged solver
+  (Beginner/CFOP, later Roux/ZZ and big cubes), a **showcase solve** at a watchable speed with stage chips, **cube times**
+  per helper and a next-goal bar instead of the moves bar, and a **news feed**. Golden Scramble (S.6) moves up before S.3.
 - 2026-11-03 — "How can we make the gameplay more fun? It's just looking at the screen while it shuffles most of the time."
   Then: "go harder on [hands-on solving] since the game is for an almost professional solver; reorder things and start
   building." → Measured: after ~5 min a tap is worth ~4 moves against 100K+ moves/s, and content had a 30-min gap.

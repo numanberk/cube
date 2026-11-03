@@ -140,6 +140,8 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is an almost
 professional speedcuber**. So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
 records and drills, and your real skill feeds the idle economy. Do S.1–S.6 before the rest of Phase 5 (5.2 onward).
+**Order (2026-11-03):** S.1 ✅ → S.2 → **R.1–R.4** (readable main screen, below) → S.6 → S.3 (needs D13) → S.4, S.5,
+S.7, S.8 → R.5, R.6. Then the rest of Phase 5.
 - [x] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
       using **csTimer's virtual-cube layout** (I/K = R/R', J/F = U/U', H/G = F/F', D/E = L/L', S/L = D/D', W/O = B/B',
       ;/A = y/y', T/Y = x, B/N = x', P/Q = z/z', U/M = r/r', V/R = l/l', 5/6 = M, X/. = M', 2/9 = E/E', 0/1 = S/S',
@@ -154,6 +156,52 @@ records and drills, and your real skill feeds the idle economy. Do S.1–S.6 bef
       2 make the average DNF), best averages, the last 100 times (with +2/DNF/delete), kept through prestige.
       A Times panel in the station. Save v5 (prestige becomes v6, achievements v7).
       *Done when:* tests cover the averages with DNFs and the v4 → v5 migration, and there's a screenshot.
+
+### Readable main screen (owner, 2026-11-03: do R.1–R.4 right after S.2, then S.6, then S.3 once D13 is answered)
+The owner: *"it's just some random scrambles… I can't even understand what's going on after some point, and besides
+that nothing happens."* Measured: every helper move is a random face turn and a "solve" is that history rewound, so the
+main cube never really solves. Above 12 moves/s it only wobbles, the "moves to next solve" bar fills thousands of times a
+second, and the ticker shows random notation. Phase S gives the player things to *do*, but the main screen (which they
+look at all the time) stays noise. These tasks make it show real cubing. S.1's manual mode in PuzzleView3D
+(`show_state`/`turn`) and S.4's algorithm data are meant to be shared with them; whichever task comes first creates the data.
+- [ ] **R.1 Staged solver (3×3 + 2×2):** a pure class (e.g. `StagedSolver`, `scripts/cube/`) that takes a TwistyModel and
+      returns a real solution split into labelled stages, per method: **Beginner** (cross, first-layer corners, middle edges,
+      last-layer steps) and **CFOP** (cross, F2L 1–4, OLL, PLL; 2-look OLL/PLL until S.4's full sets exist, then the full ones).
+      2×2: layer by layer (Ortega later). Piece-by-piece with short searches (depth ≤ ~5) plus fixed insert algorithms as data,
+      not a big lookup table. Must be fast enough not to hitch a frame (≤ ~50 ms per solve, or compute the next one in the
+      background while the current one plays).
+      *Done when:* tests solve 200 random scrambles per method (scramble + solution = solved), check each stage's goal holds
+      after that stage (e.g. cross solved after "Cross"), and check the time budget.
+- [ ] **R.2 Showcase solve on the main cube:** the big focused puzzle stops showing every move. It plays **one example solve
+      at a watchable speed**: a real WCA scramble, a short inspection pause, then R.1's solution at a TPS that grows with the
+      method and helpers (e.g. 3 → 12 TPS), then the next one. Above the ticker, stage chips light up as the solve goes
+      (Cross → F2L → OLL → PLL). The ticker shows the real solution with the current move highlighted. One line explains the
+      gap: "1 of 268K solves/s". The learned method decides what you see, so buying CFOP visibly changes how the team solves.
+      A tap plays the next move of the showcase (so tapping helps it along) and still counts as a tap. The small row cubes keep
+      speed mode. Puzzles without a staged solver yet (4×4+, Megaminx) keep today's scramble + rewind. Visual only: no game
+      numbers change. Reduce motion is respected. (S.7 then decides how the player's own key turns share the big cube: e.g.
+      the showcase pauses while you turn and resumes after a few idle seconds.)
+      *Done when:* a smoke check runs a full showcase solve on 3×3 with two methods, and there are screenshots mid-solve
+      (Beginner and CFOP) and of the stage chips.
+- [ ] **R.3 Cube times and real goals:** show progress in a cuber's language. Each helper gets a **solve time** on its puzzle
+      (moves per solve ÷ its moves/s, e.g. "Friends: 10.0 s · Robots: 0.16 s"), and each puzzle in the row shows the team's
+      best time. Crossing a time tier (sub-20, sub-10, sub-5, "WR pace", tiers as data per puzzle) gets a short pop. When a
+      puzzle solves faster than ~10 times a second, the "moves to next solve" bar becomes a **next-goal bar** (the next puzzle
+      unlock, method, mastery milestone or helper, with an ETA), and the goal strip shows the top 2–3 goals with progress bars
+      instead of "another Cubing Friend". The numbers come from `GameState` (new read-only getters).
+      *Done when:* tests cover the solve-time math, the tier crossing and the goal picking/ETA, and there's a screenshot.
+- [ ] **R.4 News feed:** a small feed under the stage with short, rate-limited lines for things that already happen:
+      a helper's new best time ("Club member Ana: 9.87 s 3×3 single!"; names seeded, as data), mastery level-ups, a method
+      learned, a puzzle unlocked, a time tier crossed, ×10 Solves milestones, and the player's own Solve Station PBs (S.2).
+      Events come from `GameState` signals; the feed only formats them. The last ~20 lines can be scrolled.
+      *Done when:* tests cover which events make a line and the rate limit, and there's a screenshot.
+- [ ] **R.5 Roux and ZZ in the solver:** Roux (first block, second block, CMLL, LSE) and ZZ (EOLine, F2L, last layer) stages,
+      so the showcase changes again when those methods are learned (God's Number shows a short optimal-looking solve, labelled).
+      *Done when:* the same 200-scramble and stage-goal tests pass for both, and there are screenshots.
+- [ ] **R.6 Big cubes in the solver:** 4×4–7×7 by reduction (centres → edge pairing → 3×3 stage, with **parity** as its own
+      stage on even cubes), so the showcase works on every cube. Megaminx stays on scramble + rewind (Phase 11).
+      *Done when:* tests solve random scrambles on 4×4 and 5×5 with the stage goals checked, and the showcase holds the bench.
+
 - [ ] **S.3 Rewards [D13]:** hand solves pay into the idle game. Per-puzzle **time targets** as data (e.g. 3×3: 60/40/25/
       15/10 s, bronze → "WR pace"); reaching a tier for the first time gives a permanent bonus on that puzzle, every solve
       gives a short **Flow** buff (more moves for a few minutes, bigger for better tiers), PBs give mastery XP.
@@ -173,6 +221,7 @@ records and drills, and your real skill feeds the idle economy. Do S.1–S.6 bef
       *Done when:* tests cover the spawn timer, the buff math and expiry, a buff survives save/load, and there's a screenshot.
 - [ ] **S.7 Turns are taps + TPS streak (was 5.4):** on the main screen the same keys turn the focused puzzle and each turn is a
       tap. Taps add a % of moves/s, and a TPS streak meter builds a multiplier while you keep turning steadily.
+      The big cube shows R.2's showcase solve by then: decide how your own turns take it over (see R.2).
       *Done when:* the sim shows taps give ≥ 10 % of income at 30 min at 3 turns/s, and tests cover the streak.
 - [ ] **S.8 Mouse turning (optional):** drag across a sticker to turn its layer (drag on the background still turns the view).
       *Done when:* tests map drags to moves on 3×3 and 4×4.
