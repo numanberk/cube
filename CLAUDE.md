@@ -45,8 +45,8 @@ scripts/ui/fx_layer.gd     class FxLayer (%FxLayer in main.tscn): pooled floatin
 scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle/set_speed,
                            `tapped`; animated turn queue, solve replay, speed mode (see its header comment)
 scripts/cube/twisty_model.gd   class TwistyModel: pure-data puzzle (pieces, layers, moves, WCA notation)
-scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (from_id("3x3"), cube(2..7); megaminx() in 4.4), colours
-scripts/cube/puzzle_meshes.gd  class PuzzleMeshes: rounded box + rounded sticker meshes (SurfaceTool)
+scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (from_id("3x3"), cube(2..7), megaminx()), palette(model)
+scripts/cube/puzzle_meshes.gd  class PuzzleMeshes: rounded box + rounded sticker (cubes), shaped_piece() (Megaminx)
 scripts/ui/shaders/        stage_backdrop (radial glow) + contact_shadow .gdshader, used by PuzzleView3D
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
@@ -114,7 +114,7 @@ bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone v
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
 - It runs under `xvfb-run` with the real OpenGL 3 renderer (software Mesa, so it's slow but correct) and
   a throwaway user-data dir, so it never touches a real save.
-- Presets (`fresh`, `mid`, `late`, `welcome`; v2 puzzle states `row3`, `row5`) are save data in `tools/screenshot_presets.gd`. They go through
+- Presets (`fresh`, `mid`, `late`, `welcome`; v2 puzzle states `row3`, `row5`, `row6`) are save data in `tools/screenshot_presets.gd`. They go through
   `_migrate()`, so they keep working after save-format changes. A test checks that they still load.
   Add a preset there when a new feature needs its own state (e.g. a puzzle tier or prestige).
 - The economy is frozen during the shot, so numbers match the preset exactly. The cube is seeded, so

@@ -124,6 +124,8 @@ var _sticker_colors: Array[Color] = []          ## sticker instance -> colour se
 var _body_mesh: ArrayMesh
 var _sticker_mesh: ArrayMesh
 var _sticker_material: StandardMaterial3D
+var _shaped_sticker_material: StandardMaterial3D  ## the Megaminx's copy (culling off); flashes with the other
+var _mega_pieces: Array[MeshInstance3D] = []      ## one node per piece for shaped puzzles (see _build_shaped_pieces)
 var _press_position := Vector2.ZERO
 var _pressing := false
 var _dragging := false
@@ -185,7 +187,7 @@ func set_puzzle(id: String) -> void:
 	_solved_timer = 0.0
 	_build_instances()
 	_frame_camera()
-	for i in model.size * START_MOVES_PER_SIZE:
+	for i in maxi(model.size * START_MOVES_PER_SIZE, 16):
 		_last_move = model.random_move(_rng, _last_move)
 		model.apply(_last_move)
 		_remember(_last_move)
@@ -324,6 +326,8 @@ func pose(name: String) -> void:
 			_finish_solve()
 			_flash = FLASH_ENERGY
 			_sticker_material.emission_energy_multiplier = _flash
+			if _shaped_sticker_material != null:
+				_shaped_sticker_material.emission_energy_multiplier = _flash
 			_puzzle.scale = Vector3.ONE * (1.0 + BOUNCE_SCALE * 0.6)
 		_:
 			push_warning("Unknown pose '%s'" % name)
@@ -448,6 +452,12 @@ func _finish_solve() -> void:
 # --- Drawing -------------------------------------------------------------------
 
 func _build_instances() -> void:
+	for node in _mega_pieces:
+		node.queue_free()
+	_mega_pieces.clear()
+	if not model.piece_geometry.is_empty():
+		_build_shaped_pieces()
+		return
 	var piece_count := model.piece_count()
 	var bodies := MultiMesh.new()
 	bodies.transform_format = MultiMesh.TRANSFORM_3D
@@ -473,7 +483,7 @@ func _build_instances() -> void:
 			own.append(_sticker_piece.size())
 			_sticker_piece.append(piece)
 			_sticker_local.append(local)
-			colors.append(PuzzleShapes.CUBE_COLORS[model.sticker_colors[piece][s]])
+			colors.append(PuzzleShapes.palette(model)[model.sticker_colors[piece][s]])
 		_piece_stickers.append(own)
 	var stickers := MultiMesh.new()
 	stickers.transform_format = MultiMesh.TRANSFORM_3D
@@ -484,6 +494,33 @@ func _build_instances() -> void:
 	for i in colors.size():
 		stickers.set_instance_color(i, colors[i])
 	_stickers.multimesh = stickers
+
+
+## Puzzles whose pieces aren't all the same shape (the Megaminx): one MeshInstance3D per piece, built from the
+## model's piece_geometry (a dark body and coloured sticker polygons, relative to the piece's home position),
+## so the same Transform3D(basis, position) as the cubes places it. 62 small meshes; the MultiMeshes stay empty.
+func _build_shaped_pieces() -> void:
+	_bodies.multimesh = null
+	_stickers.multimesh = null
+	_sticker_piece.clear()
+	_sticker_local.clear()
+	_sticker_drawn.clear()
+	_sticker_colors.clear()
+	_piece_stickers.clear()
+	_piece_transforms.clear()
+	_piece_transforms.resize(model.piece_count())
+	var body_material := _make_body_material()
+	body_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var sticker_material := _sticker_material.duplicate() as StandardMaterial3D
+	sticker_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_shaped_sticker_material = sticker_material
+	var colors := PuzzleShapes.palette(model)
+	for piece in model.piece_count():
+		var node := MeshInstance3D.new()
+		node.mesh = PuzzleMeshes.shaped_piece(model.piece_geometry[piece], colors, body_material, sticker_material)
+		_turntable.add_child(node)
+		_mega_pieces.append(node)
+		_piece_stickers.append(PackedInt32Array())
 
 
 ## Redraws every piece from the model.
@@ -505,6 +542,9 @@ func _draw_current() -> void:
 
 
 func _draw_piece(piece: int, t: Transform3D) -> void:
+	if not _mega_pieces.is_empty():
+		_mega_pieces[piece].transform = t
+		return
 	_bodies.multimesh.set_instance_transform(piece, t)
 	for sticker in _piece_stickers[piece]:
 		var sticker_transform := t * _sticker_local[sticker]
@@ -531,6 +571,8 @@ func _animate_effects(delta: float) -> void:
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta * FLASH_DECAY)
 		_sticker_material.emission_energy_multiplier = _flash
+		if _shaped_sticker_material != null:
+			_shaped_sticker_material.emission_energy_multiplier = _flash
 	_punch = maxf(0.0, _punch - delta * PUNCH_DECAY)
 	var scale_value := 1.0 - PUNCH_SCALE * _punch
 	if _bounce > 0.0:
@@ -542,7 +584,7 @@ func _animate_effects(delta: float) -> void:
 		var t := 1.0 - _drop / DROP_TIME                       # 0 -> 1
 		var fall := pow(1.0 - t, 2.0)                           # starts high, lands at 0
 		var settle := sin(t * PI * 2.0) * (1.0 - t) * 0.06      # a small bounce on landing
-		_puzzle.position = Vector3(0.0, fall * model.size * 1.2, 0.0)
+		_puzzle.position = Vector3(0.0, fall * _extent() * 1.2, 0.0)
 		scale_value *= 0.7 + 0.3 * t + settle
 	else:
 		_puzzle.position = Vector3.ZERO
@@ -591,15 +633,21 @@ func drag_offset() -> Vector2:
 
 # --- Setup helpers ---------------------------------------------------------------
 
+## The puzzle's width in cubie units (n for an n×n cube; about the same scale for the Megaminx).
+func _extent() -> float:
+	return model.radius * 2.0 / sqrt(3.0)
+
+
 ## Moves the camera back far enough for the whole puzzle to fit, whatever its size.
 func _frame_camera() -> void:
 	if model == null or not is_node_ready():
 		return
-	var radius := sqrt(3.0) * model.size / 2.0  # bounding sphere of an n×n×n cube
+	var radius := model.radius  # bounding sphere of the pieces
+	var extent := _extent()
 	var half_fov := deg_to_rad(_camera.fov) / 2.0
 	if size.x > 0.0 and size.y > 0.0 and size.x < size.y:
 		half_fov = atan(tan(half_fov) * size.x / size.y)  # narrow views are limited by their width
-	_camera.position = Vector3(0.0, -model.size * CAMERA_DROP, radius * FRAME_DISTANCE / sin(half_fov))
+	_camera.position = Vector3(0.0, -extent * CAMERA_DROP, radius * FRAME_DISTANCE / sin(half_fov))
 	_camera.near = 0.1
 
 	# Backdrop: a quad behind the puzzle that exactly fills the view.
@@ -607,18 +655,18 @@ func _frame_camera() -> void:
 	var height := 2.0 * depth * tan(deg_to_rad(_camera.fov) / 2.0)
 	var aspect := size.x / size.y if size.y > 0.0 else 1.0
 	(_backdrop.mesh as QuadMesh).size = Vector2(height * aspect, height) * 1.02
-	_backdrop.position = Vector3(0.0, model.size * CAMERA_DROP, -depth)  # centred on the puzzle, not the camera
+	_backdrop.position = Vector3(0.0, extent * CAMERA_DROP, -depth)  # centred on the puzzle, not the camera
 	_camera.far = depth + 1.0
 
-	# Contact shadow: a flat ellipse just under the puzzle's lowest corner (at rest).
+	# Contact shadow: a flat ellipse just under the puzzle's lowest point (at rest).
 	var lowest := 0.0
 	var rest := _base_puzzle * _base_turntable
-	for corner in 8:
-		var c := Vector3(1 if corner & 1 else -1, 1 if corner & 2 else -1, 1 if corner & 4 else -1) * model.size / 2.0
-		lowest = minf(lowest, (rest * c).y)
-	var width := model.size * 1.5
+	var piece_half := CUBIE_HALF if model.piece_geometry.is_empty() else 0.0
+	for p in model.home_positions:
+		lowest = minf(lowest, (rest * p).y - piece_half)
+	var width := extent * 1.5
 	(_shadow.mesh as QuadMesh).size = Vector2(width, width * 0.2)
-	_shadow.position = Vector3(0.0, lowest - model.size * 0.04, -model.size * 0.3)
+	_shadow.position = Vector3(0.0, lowest - extent * 0.04, -extent * 0.3)
 
 
 func _make_body_mesh(steps: int) -> ArrayMesh:

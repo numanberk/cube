@@ -67,3 +67,52 @@ static func _add_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Ve
 		var core := p.clamp(Vector3.ONE * -inner, Vector3.ONE * inner)
 		st.set_normal((p - core).normalized())
 		st.add_vertex(p)
+
+
+## A piece of a shaped puzzle (the Megaminx) from TwistyModel.piece_geometry: surface 0 is the dark body (each face
+## region as a flat cap plus sides down to an inner apex), surface 1 the coloured stickers (vertex colours).
+## Normals face away from the piece's middle, so it doesn't matter which way the polygons wind.
+static func shaped_piece(geometry: Dictionary, colors: Array[Color], body_material: Material, sticker_material: Material) -> ArrayMesh:
+	var apex: Vector3 = geometry["apex"]
+	var mesh := ArrayMesh.new()
+	var body := SurfaceTool.new()
+	body.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for polygon: PackedVector3Array in geometry["body"]:
+		var centroid := Vector3.ZERO
+		for p in polygon:
+			centroid += p
+		centroid /= polygon.size()
+		var inside := (centroid + apex) / 2.0
+		for i in polygon.size():
+			var a := polygon[i]
+			var b := polygon[(i + 1) % polygon.size()]
+			_triangle(body, centroid, a, b, inside)  # the cap
+			_triangle(body, a, b, apex, inside)       # a side, down to the apex
+	body.set_material(body_material)
+	body.commit(mesh)
+	var stickers := SurfaceTool.new()
+	stickers.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for sticker: Dictionary in geometry["stickers"]:
+		var polygon: PackedVector3Array = sticker["polygon"]
+		var normal: Vector3 = sticker["normal"]
+		stickers.set_color(colors[int(sticker["color"])])
+		var centroid := Vector3.ZERO
+		for p in polygon:
+			centroid += p
+		centroid /= polygon.size()
+		for i in polygon.size():
+			for p: Vector3 in [centroid, polygon[i], polygon[(i + 1) % polygon.size()]]:
+				stickers.set_normal(normal)
+				stickers.add_vertex(p)
+	stickers.set_material(sticker_material)
+	stickers.commit(mesh)
+	return mesh
+
+
+static func _triangle(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, inside: Vector3) -> void:
+	var normal := (b - a).cross(c - a).normalized()
+	if normal.dot((a + b + c) / 3.0 - inside) < 0.0:
+		normal = -normal
+	for p: Vector3 in [a, b, c]:
+		st.set_normal(normal)
+		st.add_vertex(p)

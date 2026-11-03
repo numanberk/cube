@@ -316,7 +316,8 @@ func _on_tap_pressed(at: Vector2 = Vector2.INF) -> void:
 	Game.tap()
 	puzzle_view.scramble_step()
 	puzzle_view.squash()
-	Audio.play_click(puzzle_view.model.size if puzzle_view.model != null else 3)
+	var size := 3 if puzzle_view.model == null else (puzzle_view.model.size if puzzle_view.model.size > 0 else 6)
+	Audio.play_click(size)  # the Megaminx (size 0) clicks like a big cube
 	if at == Vector2.INF:
 		at = puzzle_view.get_global_rect().get_center()
 	fx.pop("+%s" % Num.format(Game.get_tap_moves()), at)

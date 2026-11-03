@@ -2,6 +2,34 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task 4.4: Megaminx
+- **`PuzzleShapes.megaminx()`:** a regular dodecahedron (face normals = the cyclic permutations of (0, ±φ, ±1)),
+  turned so one face points up, scaled to inradius 1.6 (about a 3×3), with WCA face names U, F, R, BR, BL, L (upper ring by
+  angle), DR, DBR, B, DBL, DL and D. **62 pieces** (12 centres, 30 edges, 20 corners) and 132 stickers in the 12 standard colours
+  (`PuzzleShapes.MEGAMINX_COLORS`, `palette(model)`). Each face is cut the usual way into a centre pentagon, 5 edge quads and
+  5 corner kites. **Three layers per axis** (cap, middle, opposite cap), with cuts computed from the geometry.
+- **The same `TwistyModel`:** 72° steps give the 60-element icosahedral rotation group (same BFS as the cubes).
+  New fields: `notation_style` ("wca" / "pochmann"), `palette`, `radius` (bounding, used by the view), `shape_key` and
+  `piece_geometry`. **Rotation tables are now cached per `shape_key`** ("cube" for every n, "megaminx"), so building the
+  60×60 table happens once, not once per view.
+- **Pochmann notation:** two-layer moves `R++ R-- D++ D--` (everything but the opposite cap, 2/5 turn; also `R+`/`R-` for
+  1/5), face turns `U U' F2 BL2'`; `parse()` reads them all. `random_move()` makes WCA-style Megaminx scramble moves:
+  R±± and D±± alternating, with an occasional U/U'.
+- **View:** shaped puzzles get one `MeshInstance3D` per piece (`PuzzleMeshes.shaped_piece`: dark body caps + sides down to
+  an inner apex, and coloured sticker polygons, culling off, normals pointing outward). They're placed with the same
+  transforms as cube pieces, so turns, the solve replay, speed mode, flash and drop-in all work unchanged. The camera,
+  backdrop, shadow and drop-in now size from `model.radius` instead of `model.size` (0 for the Megaminx). A new puzzle starts
+  with at least 16 scramble moves. The Megaminx clicks like a 6×6.
+- Reachable in-game only after a World Championship (`requires_prestige`); `PUZZLE=megaminx` and the new `row6` preset
+  show it now. Screenshots: [Megaminx](screenshots/puzzles/megaminx.png), [all 6 puzzles](screenshots/puzzles/row6.png)
+  (this is also 4.3a's 6-puzzle shot).
+- Tests: 62 pieces, 132 stickers, group of 60, solved at start; **every face turn ×5 = solved (and not before), R++ ×5 = solved,
+  a 70-move scramble isn't solved and + inverse = solved**; notation round trips (R++, D--, U, U', BL2'); scrambles use R, D and U;
+  face names; 12 colours. View: 62 nodes, and after animated turns every piece is where the model says; switching back to a cube
+  uses the MultiMeshes. 1366 checks, `All good.`
+- Limits: `drawn_stickers()` (the cube sticker check) doesn't cover the Megaminx; its test compares piece transforms instead.
+- **Next:** task 4.5 (more placeholder tracks).
+
 ## 2026-11-03 — Task 4.3b: split controls
 - **`GameState.set_share(id, share)`** sets one puzzle's share and rescales the others in proportion; if they were all 0, they
   get the rest equally. **`adjust_share(id, delta)`** steps it, snapped to whole percents. The total always stays 100 %

@@ -24,6 +24,13 @@ var face_normals := PackedVector3Array()
 var face_colors := PackedInt32Array()  ## colour index of each face when solved
 var layer_cuts := PackedFloat32Array() ## dot-product boundaries between layers, from the face inwards
 var scramble_widths := 1             ## random_move() turns outer blocks of 1..this many layers
+var notation_style := "wca"          ## "wca" (cubes: R U' Rw 3Rw2) or "pochmann" (Megaminx: R++ D-- U)
+var palette := "cube"                ## which PuzzleShapes colour table the view uses
+var radius := 0.0                    ## bounding radius of the pieces (the view frames the camera on it)
+var shape_key := ""                  ## puzzles with the same key share their rotation tables (see _CACHE)
+var piece_geometry: Array = []       ## Megaminx only: per piece {"body": [...polygons], "stickers": [...]}
+
+static var _CACHE := {}              ## shape_key -> [group, mult, turn_rotation]; building them is the slow part
 
 var home_positions := PackedVector3Array()
 var sticker_normals: Array[PackedVector3Array] = []  ## per piece, in the home frame
@@ -42,6 +49,14 @@ var _turn_rotation: Array[PackedInt32Array] = []  ## [face][turns mod order] -> 
 ## Builds the rotation group and move tables after the faces and pieces are set. Then resets to solved.
 func finish_setup() -> void:
 	_order = int(round(TAU / step_angle))
+	if shape_key != "" and _CACHE.has(shape_key):
+		var cached: Array = _CACHE[shape_key]
+		_group = cached[0]
+		_mult = cached[1]
+		_turn_rotation = cached[2]
+		_identity = 0
+		reset()
+		return
 	_build_group()
 	_turn_rotation.clear()
 	for f in face_normals.size():
@@ -51,6 +66,8 @@ func finish_setup() -> void:
 			assert(index >= 0, "face turn is not in the rotation group")
 			row.append(index)
 		_turn_rotation.append(row)
+	if shape_key != "":
+		_CACHE[shape_key] = [_group, _mult, _turn_rotation]
 	reset()
 
 
@@ -219,11 +236,25 @@ func random_move(rng: RandomNumberGenerator = null, previous: Dictionary = {}) -
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
+	if notation_style == "pochmann":
+		return _random_pochmann_move(rng, previous)
 	var face := rng.randi_range(0, face_normals.size() - 1)
 	while not previous.is_empty() and face == int(previous["face"]) and face_normals.size() > 1:
 		face = rng.randi_range(0, face_normals.size() - 1)
 	var turns := rng.randi_range(1, _order - 1)  # any non-zero amount, normalized by make_move
 	return make_move(face, turns, rng.randi_range(1, scramble_widths))
+
+
+## WCA Megaminx scramble moves: R++ / R-- / D++ / D-- (everything but the opposite cap, 2/5 of a turn) alternating,
+## with an occasional U / U' (the top face, 1/5).
+func _random_pochmann_move(rng: RandomNumberGenerator, previous: Dictionary) -> Dictionary:
+	var r := face_names.find("R")
+	var d := face_names.find("D")
+	var u := face_names.find("U")
+	if not previous.is_empty() and int(previous["face"]) != u and rng.randf() < 0.15:
+		return make_move(u, 1 if rng.randf() < 0.5 else -1)
+	var face := d if not previous.is_empty() and int(previous["face"]) == r else r
+	return make_move(face, 2 if rng.randf() < 0.5 else -2, 2)
 
 
 ## Applies `count` random moves and returns them.
@@ -241,6 +272,8 @@ func scramble(count: int, rng: RandomNumberGenerator = null) -> Array[Dictionary
 
 ## WCA notation: R, R', R2, Rw (2 layers), 3Rw (3 layers). Inner slices use SiGN: 2R, 2-3Rw.
 func notation(move: Dictionary) -> String:
+	if notation_style == "pochmann":
+		return _pochmann_notation(move)
 	var face_name := face_names[int(move["face"])]
 	var depth := int(move.get("depth", 0))
 	var width := int(move.get("width", 1))
@@ -265,6 +298,16 @@ func notation(move: Dictionary) -> String:
 	return text
 
 
+## Megaminx: face turns R, R', R2, R2' (1/5 and 2/5 turns); two-layer moves R++, R--, R+, R-.
+func _pochmann_notation(move: Dictionary) -> String:
+	var face_name := face_names[int(move["face"])]
+	var turns := int(move["turns"])
+	if int(move.get("width", 1)) >= 2:
+		return face_name + ("++" if turns == 2 else "--" if turns == -2 else "+" if turns == 1 else "-")
+	var text := face_name + ("2" if absi(turns) == 2 else "")
+	return text + ("'" if turns < 0 else "")
+
+
 func notation_sequence(moves: Array) -> String:
 	var parts := PackedStringArray()
 	for move: Dictionary in moves:
@@ -274,6 +317,8 @@ func notation_sequence(moves: Array) -> String:
 
 ## Parses one move like R, U', F2, Rw, 3Rw2, 2R (SiGN slice). Returns {} if it isn't valid here.
 func parse(text: String) -> Dictionary:
+	if notation_style == "pochmann":
+		return _parse_pochmann(text)
 	var regex := RegEx.create_from_string("^(\\d+)?([A-Z])(w)?(\\d)?(')?$")
 	var found := regex.search(text.strip_edges())
 	if found == null:
@@ -295,6 +340,31 @@ func parse(text: String) -> Dictionary:
 	if found.get_string(5) == "'":
 		amount = -amount
 	return make_move(face, amount, width, depth)
+
+
+func _parse_pochmann(text: String) -> Dictionary:
+	var found := RegEx.create_from_string("^([A-Z]+)(\\+\\+|--|\\+|-|2'|2|')?$").search(text.strip_edges())
+	if found == null:
+		return {}
+	var face := face_names.find(found.get_string(1))
+	if face < 0:
+		return {}
+	match found.get_string(2):
+		"++":
+			return make_move(face, 2, 2)
+		"--":
+			return make_move(face, -2, 2)
+		"+":
+			return make_move(face, 1, 2)
+		"-":
+			return make_move(face, -1, 2)
+		"2":
+			return make_move(face, 2)
+		"2'":
+			return make_move(face, -2)
+		"'":
+			return make_move(face, -1)
+	return make_move(face, 1)
 
 
 ## Parses a space-separated sequence. Returns [] if any move is invalid.

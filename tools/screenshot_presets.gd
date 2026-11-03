@@ -56,6 +56,18 @@ const PRESETS := {
 		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets", "firmware", "roux"],
 	},
 
+	# All six puzzles (later in the game, after a championship), focused on the Megaminx.
+	"row6": {
+		"version": 2,
+		"solves": 4.0e9,
+		"total_solves": 9.0e10,
+		"total_moves": 9.0e11,
+		"puzzles": {"unlocked": ["2x2", "3x3", "4x4", "5x5", "7x7", "megaminx"], "progress": {}, "focus": "megaminx",
+			"split": {"2x2": 0.05, "3x3": 0.1, "4x4": 0.15, "5x5": 0.2, "7x7": 0.2, "megaminx": 0.3}},
+		"buildings": {"friend": 80, "club": 60, "robot": 45, "competition": 35, "factory": 25, "lab": 15},
+		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets", "firmware", "roux"],
+	},
+
 	# Everything unlocked and bought, lots of each helper.
 	"late": {
 		"version": 1,

@@ -117,7 +117,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] **4.3b Split controls [D9]:** a small panel to set each puzzle's share (+/− or sliders that always add up to 100 %),
       the two presets, and each puzzle's moves/s and solves/s next to its share. All changes go through `GameState`.
       *Done when:* tests cover that shares always add up to 100 % and presets give the right split, and there's a screenshot.
-- [ ] **4.4 Megaminx:** `PuzzleShapes.megaminx()` (12 faces, 72° turns, Pochmann notation `R++ D-- U`), with the view rendering
+- [x] **4.4 Megaminx:** `PuzzleShapes.megaminx()` (12 faces, 72° turns, Pochmann notation `R++ D-- U`), with the view rendering
       pentagonal pieces.
       *Done when:* model tests cover a move applied 5× = solved and scramble + inverse = solved, and there's a screenshot.
 - [ ] **4.5 More placeholder tracks:** one per remaining puzzle tier plus "Finals" (or candidates listed for the owner).

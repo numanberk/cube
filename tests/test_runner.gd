@@ -1451,3 +1451,69 @@ func test_split_controls() -> void:
 	check((labels["2x2"]["info"] as Label).text.contains("Solves/s"), "each row shows moves/s and Solves/s")
 	main.free()
 	game.reset_state()
+
+
+func test_megaminx_model() -> void:
+	var mega := PuzzleShapes.from_id("megaminx")
+	check(mega != null and mega.notation_style == "pochmann", "megaminx builds with Pochmann notation")
+	check(mega.piece_count() == 62, "62 pieces: 12 centres, 30 edges, 20 corners")
+	var stickers := 0
+	for normals in mega.sticker_normals:
+		stickers += normals.size()
+	check(stickers == 132, "132 stickers (11 per face)")
+	check(mega._group.size() == 60, "the rotation group has 60 elements")
+	check(mega.is_solved(), "starts solved")
+	var all_back := true
+	for face in mega.face_names.size():
+		var move := mega.make_move(face, 1)
+		for i in 5:
+			mega.apply(move)
+			if i < 4 and mega.is_solved():
+				all_back = false
+		all_back = all_back and mega.is_solved()
+	check(all_back, "every face turn applied 5x is solved again (and not before)")
+	var r_pp := mega.parse("R++")
+	for i in 5:
+		mega.apply(r_pp)
+	check(mega.is_solved(), "R++ applied 5x is solved")
+	var moves := mega.scramble(70, seeded_rng(5))
+	check(not mega.is_solved(), "a 70-move scramble isn't solved")
+	mega.apply_all(mega.inverse_sequence(moves))
+	check(mega.is_solved(), "scramble + inverse = solved")
+	check(mega.notation(mega.parse("R++")) == "R++" and mega.notation(mega.parse("D--")) == "D--", "R++ and D-- notation")
+	check(mega.notation(mega.parse("U")) == "U" and mega.notation(mega.parse("U'")) == "U'", "U and U' notation")
+	check(mega.notation(mega.parse("BL2'")) == "BL2'", "multi-letter faces: BL2'")
+	var kinds := {}
+	var rng := seeded_rng(6)
+	var previous := {}
+	var round_trip := true
+	for i in 60:
+		previous = mega.random_move(rng, previous)
+		kinds[mega.notation(previous).trim_suffix("'").trim_suffix("+").trim_suffix("+").trim_suffix("-").trim_suffix("-")] = true
+		round_trip = round_trip and mega.parse(mega.notation(previous)) == previous
+	check(round_trip, "random scramble moves round-trip through notation")
+	check(kinds.has("R") and kinds.has("D") and kinds.has("U"), "scrambles use R, D and U like WCA Megaminx scrambles")
+	check(mega.face_names.has("F") and mega.face_names.has("DBL"), "WCA face names")
+	check(PuzzleShapes.palette(mega).size() == 12, "12 colours")
+
+
+func test_megaminx_view() -> void:
+	var view := new_view()
+	view.set_puzzle("megaminx")
+	check(view._mega_pieces.size() == 62, "the Megaminx view has a node per piece")
+	view.set_speed(5.0)
+	for i in 60:
+		view.scramble_step()
+		if i % 4 == 0:
+			view._process(0.05)
+	view._process(5.0)
+	view._process(0.0)
+	check(view.is_idle(), "the Megaminx animation queue empties")
+	var all_placed := true
+	for piece in view.model.piece_count():
+		var expected := Transform3D(view.model.piece_basis(piece), view.model.piece_position(piece))
+		all_placed = all_placed and view._mega_pieces[piece].transform.is_equal_approx(expected)
+	check(all_placed, "after animated turns every Megaminx piece is where the model says")
+	view.set_puzzle("3x3")
+	check(view._mega_pieces.is_empty() and view._bodies.multimesh != null, "switching back to a cube uses the MultiMeshes again")
+	view.free()
