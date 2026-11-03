@@ -13,14 +13,14 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 
 | Target | Actual | Status |
 |---|---|---|
-| First helper ≤ 20 s | Cubing Friend at 0:25 | expected failure |
-| First upgrade < 1 min | Cube Lube at 1:29 | expected failure |
-| Something new every ≤ 3 min in the first hour | longest 16:20 (after Cube Factory, before Speedcubing Lab) | expected failure |
-| Something new every ≤ 10 min after the first hour | longest 1:00:00 (after Speedcubing Lab, until 2:00:00) | expected failure |
-| 3×3 unlocked at ~5 min (4–6 min) | never (in 2:00:00) | expected failure |
-| Solving Robot at ~10 min (8–12 min) | 14:53 | expected failure |
-| 4×4 unlocked at ~30 min (25–35 min) | never (in 2:00:00) | expected failure |
-| 5×5 unlocked at ~60 min (50–70 min) | never (in 2:00:00) | expected failure |
+| First helper ≤ 20 s | Cubing Friend at 0:13 | pass |
+| First upgrade < 1 min | Cube Lube at 0:48 | pass |
+| Something new every ≤ 3 min in the first hour | longest 42:05 (after 5×5, until 1:00:00) | expected failure |
+| Something new every ≤ 10 min after the first hour | longest 1:00:00 (after 5×5, until 2:00:00) | expected failure |
+| 3×3 unlocked at ~5 min (4–6 min) | 4:38 | pass |
+| Solving Robot at ~10 min (8–12 min) | 7:15 | expected failure |
+| 4×4 unlocked at ~30 min (25–35 min) | 12:01 | expected failure |
+| 5×5 unlocked at ~60 min (50–70 min) | 17:55 | expected failure |
 | First World Championship at ~90 min (80–100 min, D6) | never (in 2:00:00) | expected failure |
 | 7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
 | Second run reaches the same point in ≤ 50 % of the time | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
@@ -31,11 +31,8 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 Targets today's content can't meet yet. They print in the tests but don't fail them.
 Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 
-- **First helper ≤ 20 s** — First Friend costs 5 Solves = 75 taps. Fixed by 2×2 start in Phase 4.
-- **First upgrade < 1 min** — Cube Lube (15) comes after the first Friend. Phase 4 rebalance.
 - **Something new every ≤ 3 min in the first hour** — Only 13 items exist; gaps up to 16 min. Needs puzzles, methods and milestones (Phases 4–5).
 - **Something new every ≤ 10 min after the first hour** — All content is owned by ~52 min. Needs more helpers and prestige (Phases 5–6).
-- **3×3 unlocked at ~5 min (4–6 min)** — Puzzles don't exist yet (task 4.1–4.2).
 - **Solving Robot at ~10 min (8–12 min)** — Robot comes at ~15 min. Phase 4 rebalance.
 - **4×4 unlocked at ~30 min (25–35 min)** — Puzzles don't exist yet (task 4.1–4.2).
 - **5×5 unlocked at ~60 min (50–70 min)** — Puzzles don't exist yet (task 4.1–4.2).
@@ -46,38 +43,41 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 
 ## Tapping (3 taps/s, 120 min)
 
-- Items bought: 204 (13 different)
-- Every helper and upgrade owned at: 51:32
-- Longest wait for something new: 1:08:28 (after Speedcubing Lab, until 2:00:00)
+- Items bought: 343 (16 different)
+- Every helper and upgrade owned at: 17:55
+- Longest wait for something new: 1:42:05 (after 5×5, until 2:00:00)
 
 ### First purchase of each item
 
 | Time | Kind | Item | Cost | Gap |
 |---|---|---|---|---|
-| 0:25 | helper | Cubing Friend | 5 | +0:25 |
-| 1:29 | upgrade | Cube Lube | 15 | +1:04 |
-| 4:17 | helper | Cubing Club | 60 | +2:48 |
-| 6:34 | upgrade | Stackmat Timer | 50 | +2:17 |
-| 10:00 | upgrade | Learn CFOP | 200 | +3:26 |
-| 14:53 | helper | Solving Robot | 700 | +4:53 |
-| 16:15 | upgrade | Club Snacks | 600 | +1:22 |
-| 19:07 | upgrade | Magnetic Cube | 1.50K | +2:52 |
-| 24:30 | upgrade | Robot Firmware v2 | 8.00K | +5:23 |
-| 26:22 | helper | Local Competition | 9.00K | +1:52 |
-| 30:20 | upgrade | Learn Roux | 25.00K | +3:58 |
-| 35:12 | helper | Cube Factory | 120.0K | +4:52 |
-| 51:32 | helper | Speedcubing Lab | 1.80M | +16:20 |
+| 0:13 | helper | Cubing Friend | 5 | +0:13 |
+| 0:48 | upgrade | Cube Lube | 15 | +0:34 |
+| 2:17 | helper | Cubing Club | 60 | +1:30 |
+| 3:30 | upgrade | Stackmat Timer | 50 | +1:13 |
+| 4:38 | puzzle | 3×3 | 150 | +1:08 |
+| 5:38 | upgrade | Learn CFOP | 200 | +0:59 |
+| 7:15 | helper | Solving Robot | 700 | +1:38 |
+| 7:42 | upgrade | Club Snacks | 600 | +0:27 |
+| 8:40 | upgrade | Magnetic Cube | 1.50K | +0:58 |
+| 10:28 | upgrade | Robot Firmware v2 | 8.00K | +1:48 |
+| 11:05 | helper | Local Competition | 9.00K | +0:37 |
+| 12:01 | puzzle | 4×4 | 25.00K | +0:56 |
+| 12:37 | upgrade | Learn Roux | 25.00K | +0:36 |
+| 13:42 | helper | Cube Factory | 120.0K | +1:05 |
+| 17:20 | helper | Speedcubing Lab | 1.80M | +3:38 |
+| 17:55 | puzzle | 5×5 | 1.50M | +0:35 |
 
 ### Income over time
 
 | Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves |
 |---|---|---|---|---|
-| 1 | 0.2 | 3.5 | 8 | 13 |
-| 5 | 0.8 | 12 | 35 | 145 |
-| 15 | 7.3 | 77 | 51 | 1.79K |
-| 30 | 385 | 4.05K | 17.22K | 100.3K |
-| 60 | 18.54K | 155.7K | 1.68M | 10.38M |
-| 120 | 105.5K | 885.9K | 11.00M | 258.8M |
+| 1 | 0.9 | 7 | 4 | 30 |
+| 5 | 5 | 25 | 65 | 536 |
+| 15 | 12.88K | 24.03K | 125.6K | 989.0K |
+| 30 | 689.5K | 926.7K | 17.43M | 305.9M |
+| 60 | 1.08M | 1.46M | 156.8M | 1.99B |
+| 120 | 1.36M | 1.82M | 71.28M | 6.45B |
 
 ## Never tapping (0 taps/s, 120 min)
 

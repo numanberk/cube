@@ -56,10 +56,11 @@ func test_fresh_state() -> void:
 
 func test_tapping_completes_a_solve() -> void:
 	var g := new_game()
-	for i in int(g.BASE_MOVES_PER_SOLVE):
+	check(g.get_focused_puzzle_id() == "2x2", "a new game starts on the 2x2")
+	for i in int(g.get_moves_per_solve()):
 		g.tap()
-	check_near(g.solves, 1.0, "15 taps = 1 solve")
-	check_near(g.move_progress, 0.0, "progress resets after a solve")
+	check_near(g.solves, 1.0, "8 taps = one 2x2 solve = 1 Solve")
+	check_near(g.get_move_progress(), 0.0, "progress resets after a solve")
 	g.free()
 
 
@@ -83,7 +84,7 @@ func test_upgrades() -> void:
 	check_near(g.get_tap_moves(), 2.0, "lube doubles tap moves")
 	check(not g.buy_upgrade("lube"), "can't buy an upgrade twice")
 	check(g.buy_upgrade("cfop"), "buy CFOP")
-	check_near(g.get_moves_per_solve(), 10.5, "CFOP cuts moves per solve by 30%")
+	check_near(g.get_moves_per_solve(), 8.0 * 0.7, "CFOP cuts moves per solve by 30%")
 	check(not g.is_upgrade_available("stackmat"), "Stackmat needs a friend first")
 	g.buy_building("friend")
 	check(g.is_upgrade_available("stackmat"), "Stackmat available after owning a friend")
@@ -106,8 +107,8 @@ func test_save_roundtrip_and_offline_progress() -> void:
 	check(loaded.offline_report.is_empty(), "no offline report when no time passed")
 
 	loaded.apply_save_data(data, saved_at + 3600.0)
-	var expected := floorf(0.5 * 3600.0 / 15.0)
-	check_near(loaded.offline_report.get("solves", 0.0), expected, "1h offline with one friend")
+	var expected := floorf(0.5 * 3600.0 / loaded.get_moves_per_solve("2x2")) * loaded.get_solve_value("2x2")
+	check_near(loaded.offline_report.get("solves", 0.0), expected, "1h offline with one friend (on the 2x2)")
 
 	loaded.apply_save_data(data, saved_at + 100.0 * 3600.0)
 	check_near(loaded.offline_report.get("seconds", 0.0), g.MAX_OFFLINE_SECONDS, "offline time is capped")
@@ -836,6 +837,10 @@ func test_next_goal() -> void:
 	for def: Dictionary in Content.UPGRADES:
 		g.buy_upgrade(def["id"])
 	goal = g.get_next_goal()
+	check(goal["kind"] == "puzzle" and goal["id"] == "3x3", "with every helper and upgrade owned it aims at the next puzzle")
+	while g.get_next_locked_puzzle() != "":
+		g.unlock_puzzle(g.get_next_locked_puzzle())
+	goal = g.get_next_goal()
 	check(goal["more"] and goal["kind"] == "helper", "with everything owned it aims at another helper")
 	g.free()
 
@@ -1085,7 +1090,10 @@ func test_tracks_data() -> void:
 			with_files += 1
 	check(with_files >= 2, "at least 2 tracks have music")
 	var g := new_game()
-	check(g.get_unlocked_track_ids() == (["practice_room", "first_sub_20"] as Array[String]), "the two placeholder tracks are unlocked")
+	check(g.get_unlocked_track_ids() == (["practice_room"] as Array[String]), "a new game hears the 2x2's track")
+	g.cheat_add_solves(150.0)
+	g.unlock_puzzle("3x3")
+	check(g.get_unlocked_track_ids() == (["practice_room", "first_sub_20"] as Array[String]), "unlocking the 3x3 unlocks its track")
 	check(g.get_track_for_puzzle("3x3") == "first_sub_20", "3x3's track is First Sub-20")
 	check(g.get_track_for_puzzle("4x4") == "", "a track without a file isn't offered")
 	g.free()
@@ -1277,3 +1285,78 @@ func test_puzzle_data() -> void:
 		for track: Dictionary in Content.TRACKS:
 			linked = linked or track["unlock"] == def["id"]
 		check(linked, "puzzle %s has a track" % def["id"])
+
+
+func test_parallel_puzzles() -> void:
+	var g := new_game()
+	check(g.get_unlocked_puzzle_ids() == (["2x2"] as Array[String]), "a new game has only the 2x2")
+	check(g.get_next_locked_puzzle() == "3x3", "the next puzzle is the 3x3")
+	check(not g.unlock_puzzle("4x4"), "puzzles unlock in ladder order")
+	check(not g.unlock_puzzle("3x3"), "can't unlock without the Solves")
+	g.cheat_add_solves(150.0)
+	var focus_events := [0]
+	g.focus_changed.connect(func(_id: String) -> void: focus_events[0] += 1)
+	check(g.unlock_puzzle("3x3"), "150 Solves unlock the 3x3")
+	check_near(g.solves, 0.0, "unlocking spends its cost")
+	check(g.get_focused_puzzle_id() == "3x3" and focus_events[0] == 1, "the new puzzle gets the focus")
+	check_near(g.get_puzzle_share("3x3"), 1.0, "unlocking moves the whole split onto it")
+	check_near(g.get_puzzle_share("2x2"), 0.0, "...so the old one gets no helper moves")
+	# Split
+	g.set_split({"2x2": 3.0, "3x3": 1.0, "7x7": 5.0, "banana": 2.0})
+	check_near(g.get_puzzle_share("2x2"), 0.75, "weights become shares (locked and unknown puzzles ignored)")
+	var total := 0.0
+	for id: String in g.get_split():
+		total += float(g.get_split()[id])
+	check_near(total, 1.0, "shares add up to 100 %")
+	g.set_split({"2x2": -4.0, "3x3": 0.0})
+	check_near(g.get_puzzle_share("3x3"), 1.0, "all-zero weights fall back to the newest puzzle")
+	g.set_split_preset("even")
+	check_near(g.get_puzzle_share("2x2"), 0.5, "Spread evenly: 50/50")
+	g.set_split_preset("newest")
+	check_near(g.get_puzzle_share("3x3"), 1.0, "Focus newest: all on the 3x3")
+	# Helper moves are divided by the split; each puzzle solves on its own terms.
+	g.set_split_preset("even")
+	var moves_before := g.total_moves
+	g.add_moves(80.0)
+	check_near(g.total_moves - moves_before, 80.0, "puzzle moves add up to the helper moves")
+	check_near(g.get_move_progress("2x2"), 0.0, "2x2 got 40 moves = 5 solves exactly")
+	check_near(g.get_move_progress("3x3"), 0.0, "3x3 got 40 moves = 2 solves exactly")
+	check_near(g.solves, 5.0 * 1.0 + 2.0 * 4.0, "Solves = 5 x 1 (2x2) + 2 x 4 (3x3)")
+	# Taps go to the focused puzzle only.
+	g.set_focus("2x2")
+	g.tap()
+	check_near(g.get_move_progress("2x2"), g.get_tap_moves(), "a tap goes to the focused puzzle")
+	check_near(g.get_move_progress("3x3"), 0.0, "...not to the others")
+	# Rates
+	g.cheat_add_solves(5.0)
+	g.buy_building("friend")
+	check_near(g.get_puzzle_moves_per_second("2x2") + g.get_puzzle_moves_per_second("3x3"), g.get_moves_per_second(), "per-puzzle moves/s add up")
+	check_near(g.get_solves_per_second(), g.get_puzzle_solves_per_second("2x2") + g.get_puzzle_solves_per_second("3x3"), "total Solves/s = sum of puzzles")
+	check(not g.can_unlock_puzzle("7x7"), "7x7 needs a World Championship")
+	# Save round trip
+	var data := g.get_save_data()
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.get_unlocked_puzzle_ids() == g.get_unlocked_puzzle_ids(), "unlocked puzzles survive save/load")
+	check(loaded.get_focused_puzzle_id() == "2x2", "the focus survives save/load")
+	check_near(loaded.get_puzzle_share("2x2"), 0.5, "the split survives save/load")
+	check_near(loaded.get_move_progress("2x2"), g.get_move_progress("2x2"), "puzzle progress survives save/load")
+	g.free()
+	loaded.free()
+
+
+func test_save_v1_to_v2_migration() -> void:
+	var v1 := {"version": 1, "saved_at": 1000.0, "solves": 50.0, "total_solves": 500.0, "total_moves": 7000.0,
+		"move_progress": 6.0, "buildings": {"friend": 3}, "upgrades": ["lube"]}
+	var g := new_game()
+	g.apply_save_data(v1.duplicate(true), 1000.0)
+	check(g.get_unlocked_puzzle_ids() == (["2x2", "3x3"] as Array[String]), "a v1 player with upgrades gets the 2x2 and 3x3")
+	check(g.get_focused_puzzle_id() == "3x3" and is_equal_approx(g.get_puzzle_share("3x3"), 1.0), "...focused on and splitting to the 3x3")
+	check_near(g.get_move_progress("2x2"), 6.0, "v1 move progress goes to the starting puzzle")
+	check_near(g.solves, 50.0, "Solves carry over")
+	check(g.buildings["friend"] == 3 and g.upgrades.has("lube"), "helpers and upgrades carry over")
+	check(int(g.get_save_data()["version"]) == GameState.SAVE_VERSION, "it saves as the current version")
+	var fresh_v1 := {"version": 1, "saved_at": 1000.0, "solves": 2.0, "total_solves": 2.0, "move_progress": 3.0, "buildings": {}, "upgrades": []}
+	g.apply_save_data(fresh_v1, 1000.0)
+	check(g.get_unlocked_puzzle_ids() == (["2x2"] as Array[String]) and g.get_focused_puzzle_id() == "2x2", "a brand-new v1 player gets just the 2x2")
+	g.free()

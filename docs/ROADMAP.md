@@ -99,7 +99,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] **4.1 Puzzle data:** `Content.PUZZLES` (id, name, shape, `moves_per_solve`, `solve_value`, `unlock_cost`, `requires_prestige`)
       using the starting curve in PLAN §4.1, and each track linked to its puzzle.
       *Done when:* a test checks each puzzle earns more Solves per move than the one before it.
-- [ ] **4.2 Parallel puzzles + save v2 [D9]:** `GameState` stores the unlocked puzzles, each with its own move progress,
+- [x] **4.2 Parallel puzzles + save v2 [D9]:** `GameState` stores the unlocked puzzles, each with its own move progress,
       the focused puzzle, and the helper split (a weight per puzzle). Helper moves are divided by the split; taps go to the
       focused puzzle; each puzzle completes its own solves with its own `moves_per_solve` and `solve_value`. Income is the
       sum. Unlocking a puzzle moves the whole split onto it (so not touching the split plays like a ladder). Presets:

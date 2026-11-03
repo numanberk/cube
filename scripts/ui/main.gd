@@ -57,6 +57,8 @@ func _ready() -> void:
 	Game.solved.connect(_on_solved)
 	Game.purchased.connect(_on_purchased)
 	Game.state_reset.connect(_on_state_reset)
+	Game.focus_changed.connect(_on_focus_changed)
+	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	_shown_solves = Game.solves
 	welcome_panel.collected.connect(_on_welcome_collected)
 	_build_shop()
@@ -68,7 +70,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	solve_progress.value = Game.move_progress / Game.get_moves_per_solve()
+	solve_progress.value = Game.get_move_progress() / Game.get_moves_per_solve()
 	var ticker := puzzle_view.ticker_text()
 	move_ticker.text = ticker if ticker != "" else " "  # keep the line's height when empty
 	_animate_helper_moves(delta)
@@ -122,7 +124,7 @@ func _refresh() -> void:
 		Num.format(Game.get_moves_per_second()),
 	]
 	progress_label.text = "%s / %s moves to next solve" % [
-		Num.format(Game.move_progress),
+		Num.format(Game.get_move_progress()),
 		Num.format(Game.get_moves_per_solve()),
 	]
 	var tap_moves := Game.get_tap_moves()
@@ -309,13 +311,19 @@ func _on_tap_pressed(at: Vector2 = Vector2.INF) -> void:
 	fx.pop("+%s" % Num.format(Game.get_tap_moves()), at)
 
 
-func _on_solved(count: int) -> void:
-	puzzle_view.show_solved()
+func _on_solved(count: int, puzzle_id: String) -> void:
+	if puzzle_id == Game.get_focused_puzzle_id():
+		puzzle_view.show_solved()
 	Audio.play_solve()
-	_pending_solve_value += count * Game.get_solve_value()
+	_pending_solve_value += count * Game.get_solve_value(puzzle_id)
+
+
+func _on_focus_changed(puzzle_id: String) -> void:
+	puzzle_view.set_puzzle(puzzle_id)
 
 
 func _on_state_reset() -> void:
+	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	_shown_solves = Game.solves
 	_revealed.clear()
 	for def: Dictionary in Content.BUILDINGS:

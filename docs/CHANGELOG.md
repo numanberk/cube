@@ -2,6 +2,34 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task 4.2: parallel puzzles + save v2 (D9)
+- **`GameState` runs every unlocked puzzle at once.** New state: `unlocked_puzzles` (ladder order), `puzzle_progress`
+  (moves toward each puzzle's next solve), `focused_puzzle` and `split` (a weight per puzzle). `add_moves()` (helpers and
+  offline) divides moves by the split; `tap()` goes to the focused puzzle; `add_moves_to(id, amount)` completes that puzzle's
+  solves with its own `moves_per_solve` × method upgrades and `solve_value` × value upgrades. Income is summed over puzzles.
+  The old global 15-move solve (`BASE_MOVES_PER_SOLVE`) and `move_progress` are gone: use `get_move_progress(id)`.
+  `get_moves_per_solve(id)` / `get_solve_value(id)` default to the focused puzzle.
+- **API:** `get_puzzle_share/get_split/set_split(weights)/set_split_preset("newest"|"even")`,
+  `get_puzzle_moves_per_second/get_puzzle_solves_per_second(id)`, `get_next_locked_puzzle()`,
+  `can_unlock_puzzle/unlock_puzzle(id)`, `set_focus(id)`, `is_puzzle_unlocked(id)`; `has_won_championship()` is `false` until
+  Phase 6, so 7×7 and Megaminx stay out of reach. Unlocking spends the cost, **focuses the new puzzle and moves the whole split onto
+  it**. Signals: `solved(count, puzzle_id)` (new argument), `puzzle_unlocked`, `focus_changed`, `split_changed`, and `purchased("puzzle", id)`.
+  The next puzzle is now a Next goal candidate. The 4.0-era placeholders are replaced with real state.
+- **Save v2:** a `puzzles` block {unlocked, progress, focus, split}. **Migration v1 → v2:** 2×2, plus the 3×3 if any upgrade was
+  owned; the newest is focused and gets the whole split; v1 `move_progress` goes to the 2×2 (clamped under one solve).
+  Screenshot presets are still v1 and migrate (mid/late start with 2×2 + 3×3, focused on the 3×3).
+- **UI (minimal until 4.3a):** the big view shows the focused puzzle and follows `focus_changed`; the progress bar reads it;
+  solves on other puzzles still chime and pop. **There's no unlock button yet; 4.3a adds the puzzle row.**
+- **Simulator:** it learns kind `"puzzle"` (the next locked one; value measured by briefly unlocking it with the default
+  split). **Pacing:** first helper 0:13 ✓, first upgrade 0:48 ✓, 3×3 at 4:38 ✓ now pass for real (their expected-failure marks
+  were removed). **But the economy is now far too fast:** all content by 17:55 (4×4 at 12:01 vs 25–35, 5×5 at 17:55 vs 50–70)
+  because higher puzzles pay so much more per move. **That's task 4.7's job.** `docs/BALANCE.md` regenerated.
+- Tests: parallel puzzles (only 2×2 at start, ladder order, unlock cost/focus/split, weights → shares adding to 1, bad weights,
+  presets, helper moves split exactly, per-puzzle solves and values, taps to the focused puzzle only, rates add up, 7×7 locked,
+  v2 save round trip) and the **v1 → v2 migration** (with and without upgrades). Older tests updated from 15-move solves.
+  1265 checks, `All good.`
+- **Next:** task 4.3a (puzzle row + focus).
+
 ## 2026-11-03 — Task 4.1: puzzle data
 - `Content.PUZZLES`: 2×2 → 3×3 → 4×4 → 5×5 → 7×7 → Megaminx with `moves_per_solve`, `solve_value`, `unlock_cost` and
   `requires_prestige`, using PLAN §4.1's starting curve (8/1/free, 20/4/150, 60/18/25K, 120/50/1.5M, and for after

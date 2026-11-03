@@ -22,12 +22,12 @@ const TARGETS: Array[Dictionary] = [
 	{
 		"id": "first_helper", "text": "First helper ≤ 20 s", "profile": "tapping",
 		"type": "first_by", "kind": "helper", "max": 20.0,
-		"expected_failure": "First Friend costs 5 Solves = 75 taps. Fixed by 2×2 start in Phase 4.",
+		"expected_failure": "",
 	},
 	{
 		"id": "first_upgrade", "text": "First upgrade < 1 min", "profile": "tapping",
 		"type": "first_by", "kind": "upgrade", "max": 59.9,
-		"expected_failure": "Cube Lube (15) comes after the first Friend. Phase 4 rebalance.",
+		"expected_failure": "",
 	},
 	{
 		"id": "new_every_3_min", "text": "Something new every ≤ 3 min in the first hour", "profile": "tapping",
@@ -42,7 +42,7 @@ const TARGETS: Array[Dictionary] = [
 	{
 		"id": "puzzle_3x3", "text": "3×3 unlocked at ~5 min (4–6 min)", "profile": "tapping",
 		"type": "item_between", "kind": "puzzle", "item": "3x3", "min": 240.0, "max": 360.0,
-		"expected_failure": "Puzzles don't exist yet (task 4.1–4.2).",
+		"expected_failure": "",
 	},
 	{
 		"id": "robot", "text": "Solving Robot at ~10 min (8–12 min)", "profile": "tapping",

@@ -36,6 +36,9 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 	var purchases := 0
 	var all_bought_at := -1.0
 	var item_count := Content.BUILDINGS.size() + Content.UPGRADES.size()
+	for def: Dictionary in Content.PUZZLES:
+		if float(def["unlock_cost"]) > 0.0 and not def["requires_prestige"]:
+			item_count += 1  # puzzles you can buy before prestige
 
 	var t := 0.0
 	var tap_credit := 0.0
@@ -97,7 +100,7 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 
 ## Solves per second from helpers plus tapping at `taps_per_sec`.
 func income(g: GameState, taps_per_sec: float) -> float:
-	var tap_solves := taps_per_sec * g.get_tap_moves() / g.get_moves_per_solve() * g.get_solve_value()
+	var tap_solves := taps_per_sec * g.get_tap_moves() / g.get_moves_per_solve() * g.get_solve_value()  # focused puzzle
 	return g.get_solves_per_second() + tap_solves
 
 
@@ -131,6 +134,9 @@ func _candidates(g: GameState) -> Array[Dictionary]:
 	for def: Dictionary in Content.UPGRADES:
 		if g.is_upgrade_available(def["id"]):
 			items.append({"kind": "upgrade", "id": def["id"]})
+	var next_puzzle := g.get_next_locked_puzzle()
+	if next_puzzle != "":
+		items.append({"kind": "puzzle", "id": next_puzzle})
 	return items
 
 
@@ -148,6 +154,22 @@ func _income_gain(g: GameState, item: Dictionary, taps_per_sec: float, base: flo
 			var with_it := income(g, taps_per_sec)
 			g.upgrades.erase(id)
 			return with_it - base
+		"puzzle":
+			# Unlocking focuses the new puzzle and moves the whole split onto it (the default, kept for now: task 4.7
+			# teaches the bot to choose a split). Measure that, then put everything back.
+			var unlocked := g.unlocked_puzzles.duplicate()
+			var progress := g.puzzle_progress.duplicate()
+			var split := g.split.duplicate()
+			var focus := g.focused_puzzle
+			g._add_puzzle(id)
+			g.split = {id: 1.0}
+			g.focused_puzzle = id
+			var with_it := income(g, taps_per_sec)
+			g.unlocked_puzzles = unlocked
+			g.puzzle_progress = progress
+			g.split = split
+			g.focused_puzzle = focus
+			return with_it - base
 	return 0.0
 
 
@@ -157,6 +179,8 @@ func _cost(g: GameState, item: Dictionary) -> float:
 			return g.get_building_cost(item["id"])
 		"upgrade":
 			return float(Content.get_upgrade(item["id"])["cost"])
+		"puzzle":
+			return g.get_puzzle_unlock_cost(item["id"])
 	return INF
 
 
@@ -166,6 +190,8 @@ func _buy(g: GameState, item: Dictionary) -> bool:
 			return g.buy_building(item["id"])
 		"upgrade":
 			return g.buy_upgrade(item["id"])
+		"puzzle":
+			return g.unlock_puzzle(item["id"])
 	return false
 
 
@@ -175,6 +201,8 @@ func _item_name(item: Dictionary) -> String:
 			return Content.get_building(item["id"])["name"]
 		"upgrade":
 			return Content.get_upgrade(item["id"])["name"]
+		"puzzle":
+			return Content.get_puzzle(item["id"])["name"]
 	return item["id"]
 
 

@@ -3,16 +3,18 @@ extends Node
 ## Global game state and rules. Registered as the autoload "Game".
 ## All numbers live here; UI scripts only read them and call the public methods.
 
-signal solved(count: int)
+signal solved(count: int, puzzle_id: String)
 signal purchased(kind: String, id: String)
 signal state_reset
+signal puzzle_unlocked(puzzle_id: String)
+signal focus_changed(puzzle_id: String)
+signal split_changed
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2  ## v2 (task 4.2): parallel puzzles
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0
 const MIN_OFFLINE_SECONDS := 10.0
-const BASE_MOVES_PER_SOLVE := 15.0
 const BASE_TAP_MOVES := 1.0
 const COST_GROWTH := 1.15
 const BUY_MAX := -1              ## pass as `count` to buy as many as you can afford
@@ -27,7 +29,12 @@ var save_path := SAVE_PATH
 var solves := 0.0          ## Spendable currency.
 var total_solves := 0.0    ## Lifetime Solves earned; never goes down.
 var total_moves := 0.0     ## Lifetime moves made.
-var move_progress := 0.0   ## Moves made toward the current solve.
+## Puzzles (D9, task 4.2): every unlocked puzzle runs at once. Helper moves are split across them by `split`
+## (a weight per puzzle, shown as shares that add up to 100 %); taps go to the focused puzzle.
+var unlocked_puzzles: Array[String] = []  ## in ladder order
+var puzzle_progress: Dictionary = {}       ## puzzle id -> moves made toward its current solve
+var focused_puzzle := ""
+var split: Dictionary = {}                 ## puzzle id -> weight (>= 0)
 var buildings: Dictionary = {}  ## building id -> owned count
 var upgrades: Dictionary = {}   ## upgrade id -> true (owned)
 var offline_report: Dictionary = {}  ## {"seconds", "solves"} after loading, if anything was earned
@@ -59,30 +66,53 @@ func _notification(what: int) -> void:
 # --- Moves and solves --------------------------------------------------------
 
 func tap() -> void:
-	add_moves(get_tap_moves())
+	add_moves_to(focused_puzzle, get_tap_moves())
 
 
+## Helper moves (or offline moves): divided across the unlocked puzzles by the split.
 func add_moves(amount: float) -> void:
 	if amount <= 0.0:
 		return
+	for id in unlocked_puzzles:
+		var share := get_puzzle_share(id)
+		if share > 0.0:
+			add_moves_to(id, amount * share)
+
+
+## Moves made on one puzzle: each full `get_moves_per_solve(id)` completes a solve worth `get_solve_value(id)`.
+func add_moves_to(puzzle_id: String, amount: float) -> void:
+	if amount <= 0.0 or not puzzle_progress.has(puzzle_id):
+		return
 	total_moves += amount
-	move_progress += amount
-	var needed := get_moves_per_solve()
-	if move_progress >= needed:
-		var count := floorf(move_progress / needed)
-		move_progress -= count * needed
-		var reward := count * get_solve_value()
+	var progress := float(puzzle_progress[puzzle_id]) + amount
+	var needed := get_moves_per_solve(puzzle_id)
+	if progress >= needed:
+		var count := floorf(progress / needed)
+		progress -= count * needed
+		var reward := count * get_solve_value(puzzle_id)
 		solves += reward
 		total_solves += reward
-		solved.emit(int(count))
+		puzzle_progress[puzzle_id] = progress
+		solved.emit(int(count), puzzle_id)
+	else:
+		puzzle_progress[puzzle_id] = progress
 
 
-func get_moves_per_solve() -> float:
-	return maxf(1.0, BASE_MOVES_PER_SOLVE * _upgrade_mult("solve_moves_mult"))
+## Moves needed for one solve on a puzzle (the focused one by default), after method upgrades.
+func get_moves_per_solve(puzzle_id: String = "") -> float:
+	var def := Content.get_puzzle(_or_focused(puzzle_id))
+	return maxf(1.0, float(def.get("moves_per_solve", 1.0)) * _upgrade_mult("solve_moves_mult"))
 
 
-func get_solve_value() -> float:
-	return _upgrade_mult("solve_value_mult")
+## Solves earned per solve on a puzzle (the focused one by default).
+func get_solve_value(puzzle_id: String = "") -> float:
+	var def := Content.get_puzzle(_or_focused(puzzle_id))
+	return float(def.get("solve_value", 1.0)) * _upgrade_mult("solve_value_mult")
+
+
+## Moves made toward the next solve on a puzzle (the focused one by default).
+func get_move_progress(puzzle_id: String = "") -> float:
+	return float(puzzle_progress.get(_or_focused(puzzle_id), 0.0))
 
 
 func get_tap_moves() -> float:
@@ -104,8 +134,21 @@ func get_moves_per_second() -> float:
 	return total
 
 
+## Helper moves per second going to one puzzle.
+func get_puzzle_moves_per_second(puzzle_id: String) -> float:
+	return get_moves_per_second() * get_puzzle_share(puzzle_id)
+
+
+func get_puzzle_solves_per_second(puzzle_id: String) -> float:
+	return get_puzzle_moves_per_second(puzzle_id) / get_moves_per_solve(puzzle_id) * get_solve_value(puzzle_id)
+
+
+## Total Solves per second from helpers, summed over every running puzzle.
 func get_solves_per_second() -> float:
-	return get_moves_per_second() / get_moves_per_solve() * get_solve_value()
+	var total := 0.0
+	for id in unlocked_puzzles:
+		total += get_puzzle_solves_per_second(id)
+	return total
 
 
 # --- Shop --------------------------------------------------------------------
@@ -202,19 +245,125 @@ func buy_upgrade(id: String) -> bool:
 	return true
 
 
-# --- Puzzles and music (placeholders until task 4.2) ------------------------------
-
-## Puzzles the player has unlocked. Until puzzles exist (4.2), the game behaves as if 2×2 and 3×3 are unlocked
-## and the 3×3 is the one on screen; 4.2 replaces these two functions with real state.
-const PRE_PUZZLE_UNLOCKED: Array[String] = ["2x2", "3x3"]
-
+# --- Puzzles (D9) -------------------------------------------------------------------
 
 func get_unlocked_puzzle_ids() -> Array[String]:
-	return PRE_PUZZLE_UNLOCKED.duplicate()
+	return unlocked_puzzles.duplicate()
 
 
 func get_focused_puzzle_id() -> String:
-	return "3x3"
+	return focused_puzzle
+
+
+func is_puzzle_unlocked(puzzle_id: String) -> bool:
+	return unlocked_puzzles.has(puzzle_id)
+
+
+## Prestige comes in Phase 6; until then the puzzles that require it stay out of reach.
+func has_won_championship() -> bool:
+	return false
+
+
+## The next puzzle on the ladder that isn't unlocked yet and can be reached now ("" if none).
+func get_next_locked_puzzle() -> String:
+	for def: Dictionary in Content.PUZZLES:
+		if unlocked_puzzles.has(def["id"]):
+			continue
+		if def["requires_prestige"] and not has_won_championship():
+			return ""
+		return def["id"]
+	return ""
+
+
+func get_puzzle_unlock_cost(puzzle_id: String) -> float:
+	return float(Content.get_puzzle(puzzle_id).get("unlock_cost", INF))
+
+
+func can_unlock_puzzle(puzzle_id: String) -> bool:
+	return puzzle_id != "" and puzzle_id == get_next_locked_puzzle() and solves >= get_puzzle_unlock_cost(puzzle_id)
+
+
+## Unlocks the next puzzle: spends its cost, focuses it and moves the whole split onto it (so a player who never
+## touches the split plays a simple ladder). It then runs alongside the others.
+func unlock_puzzle(puzzle_id: String) -> bool:
+	if not can_unlock_puzzle(puzzle_id):
+		return false
+	solves -= get_puzzle_unlock_cost(puzzle_id)
+	_add_puzzle(puzzle_id)
+	set_split_preset("newest")
+	set_focus(puzzle_id)
+	puzzle_unlocked.emit(puzzle_id)
+	purchased.emit("puzzle", puzzle_id)
+	return true
+
+
+func set_focus(puzzle_id: String) -> void:
+	if not unlocked_puzzles.has(puzzle_id) or puzzle_id == focused_puzzle:
+		return
+	focused_puzzle = puzzle_id
+	focus_changed.emit(puzzle_id)
+
+
+## A puzzle's share of helper moves, 0..1 (all unlocked puzzles' shares add up to 1).
+func get_puzzle_share(puzzle_id: String) -> float:
+	if not unlocked_puzzles.has(puzzle_id):
+		return 0.0
+	var total := 0.0
+	for id in unlocked_puzzles:
+		total += float(split.get(id, 0.0))
+	if total <= 0.0:
+		return 1.0 / unlocked_puzzles.size()
+	return float(split.get(puzzle_id, 0.0)) / total
+
+
+## Every unlocked puzzle's share: {id: 0..1}, adding up to 1.
+func get_split() -> Dictionary:
+	var shares := {}
+	for id in unlocked_puzzles:
+		shares[id] = get_puzzle_share(id)
+	return shares
+
+
+## Sets the split from weights (any scale; negatives count as 0; unknown or locked puzzles are ignored).
+## All zero puts everything on the newest puzzle.
+func set_split(weights: Dictionary) -> void:
+	var clean := {}
+	var total := 0.0
+	for id in unlocked_puzzles:
+		var weight := maxf(0.0, float(weights.get(id, 0.0)))
+		clean[id] = weight
+		total += weight
+	if total <= 0.0:
+		clean[unlocked_puzzles.back()] = 1.0
+		total = 1.0
+	for id: String in clean:
+		clean[id] = clean[id] / total
+	split = clean
+	split_changed.emit()
+
+
+## "newest": everything on the newest puzzle; "even": the same share for each unlocked puzzle.
+func set_split_preset(preset: String) -> void:
+	var weights := {}
+	for id in unlocked_puzzles:
+		weights[id] = 1.0 if preset == "even" or id == unlocked_puzzles.back() else 0.0
+	set_split(weights)
+
+
+func _add_puzzle(puzzle_id: String) -> void:
+	if unlocked_puzzles.has(puzzle_id) or Content.get_puzzle(puzzle_id).is_empty():
+		return
+	unlocked_puzzles.append(puzzle_id)
+	# keep ladder order whatever order they were added in
+	var order := {}
+	for i in Content.PUZZLES.size():
+		order[Content.PUZZLES[i]["id"]] = i
+	unlocked_puzzles.sort_custom(func(x: String, y: String) -> bool: return order[x] < order[y])
+	puzzle_progress[puzzle_id] = 0.0
+
+
+func _or_focused(puzzle_id: String) -> String:
+	return focused_puzzle if puzzle_id == "" else puzzle_id
 
 
 ## Tracks the player can hear: their unlock puzzle is unlocked and the file exists.
@@ -238,7 +387,7 @@ func get_track_for_puzzle(puzzle_id: String) -> String:
 ## The next new thing to aim for (the "Next goal" strip): the cheapest helper not owned yet, or upgrade not bought
 ## yet whose requirements are met. If everything is owned, the cheapest next copy of a helper (`more` = true).
 ## Returns {kind, id, name, cost, missing (Solves still needed, 0 = can buy now), seconds (at the current
-## helper rate; INF without helpers), more}. Puzzles join this list in task 4.3a.
+## helper rate; INF without helpers), more}. The next puzzle (kind "puzzle") is one of the candidates.
 func get_next_goal() -> Dictionary:
 	var candidates: Array[Dictionary] = []
 	for def: Dictionary in Content.BUILDINGS:
@@ -248,6 +397,10 @@ func get_next_goal() -> Dictionary:
 		if upgrades.has(def["id"]) or not _upgrade_requirements_met(def):
 			continue
 		candidates.append({"kind": "upgrade", "id": def["id"], "name": def["name"], "cost": float(def["cost"]), "more": false})
+	var next_puzzle := get_next_locked_puzzle()
+	if next_puzzle != "":
+		candidates.append({"kind": "puzzle", "id": next_puzzle, "name": Content.get_puzzle(next_puzzle)["name"],
+				"cost": get_puzzle_unlock_cost(next_puzzle), "more": false})
 	if candidates.is_empty():
 		for def: Dictionary in Content.BUILDINGS:
 			candidates.append({"kind": "helper", "id": def["id"], "name": def["name"], "cost": get_building_cost(def["id"]), "more": true})
@@ -292,7 +445,11 @@ func reset_state() -> void:
 	solves = 0.0
 	total_solves = 0.0
 	total_moves = 0.0
-	move_progress = 0.0
+	unlocked_puzzles.clear()
+	puzzle_progress.clear()
+	_add_puzzle(Content.PUZZLES[0]["id"])
+	focused_puzzle = Content.PUZZLES[0]["id"]
+	split = {focused_puzzle: 1.0}
 	buildings.clear()
 	for def: Dictionary in Content.BUILDINGS:
 		buildings[def["id"]] = 0
@@ -307,7 +464,12 @@ func get_save_data() -> Dictionary:
 		"solves": solves,
 		"total_solves": total_solves,
 		"total_moves": total_moves,
-		"move_progress": move_progress,
+		"puzzles": {
+			"unlocked": unlocked_puzzles.duplicate(),
+			"progress": puzzle_progress.duplicate(),
+			"focus": focused_puzzle,
+			"split": split.duplicate(),
+		},
 		"buildings": buildings.duplicate(),
 		"upgrades": upgrades.keys(),
 	}
@@ -409,7 +571,17 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	solves = float(data.get("solves", 0.0))
 	total_solves = float(data.get("total_solves", 0.0))
 	total_moves = float(data.get("total_moves", 0.0))
-	move_progress = float(data.get("move_progress", 0.0))
+	var saved_puzzles: Dictionary = data.get("puzzles", {})
+	for id in saved_puzzles.get("unlocked", []):
+		_add_puzzle(str(id))  # unknown ids (removed from Content) are skipped
+	var saved_progress: Dictionary = saved_puzzles.get("progress", {})
+	for id: String in saved_progress:
+		if puzzle_progress.has(id):
+			puzzle_progress[id] = clampf(float(saved_progress[id]), 0.0, get_moves_per_solve(id))
+	var saved_split: Dictionary = saved_puzzles.get("split", {})
+	set_split(saved_split)
+	var saved_focus := str(saved_puzzles.get("focus", ""))
+	focused_puzzle = saved_focus if unlocked_puzzles.has(saved_focus) else unlocked_puzzles.back()
 	var saved_buildings: Dictionary = data.get("buildings", {})
 	for id: String in saved_buildings:
 		if buildings.has(id):  # ignore helpers that were removed from Content
@@ -430,10 +602,22 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 ## Upgrades old save formats. Bump SAVE_VERSION and add a step here whenever
 ## the shape of get_save_data() changes, so existing players keep their progress.
 func _migrate(data: Dictionary) -> Dictionary:
-	var _version := int(data.get("version", 1))
-	# Example for the future:
-	# if _version < 2:
-	#     data["trophies"] = 0
+	var version := int(data.get("version", 1))
+	if version < 2:
+		# v1 had one 15-move solve and no puzzles. Old players start with the 2×2, plus the 3×3 if they had bought
+		# any upgrade (they were past the start); the newest is focused and gets the whole split.
+		# Their move progress goes to the starting puzzle (it's clamped to under one solve when applied).
+		var unlocked: Array = ["2x2"]
+		if not (data.get("upgrades", []) as Array).is_empty():
+			unlocked.append("3x3")
+		data["puzzles"] = {
+			"unlocked": unlocked,
+			"progress": {"2x2": float(data.get("move_progress", 0.0))},
+			"focus": unlocked.back(),
+			"split": {unlocked.back(): 1.0},
+		}
+		data.erase("move_progress")
+		data["version"] = 2
 	return data
 
 
