@@ -261,6 +261,15 @@ const SOLVE_KEYS := {
 	KEY_P: [1, "n", "F", 1], KEY_Q: [1, "n", "F", -1],          # z z'
 }
 ## Hand keys: key -> [hand, step]. Moving a hand in makes I/K, D/E, U/M, V/R and the M keys turn deeper layers.
+## The "simple" layout (owner, 2026-11-03), a setting next to csTimer's: the key is the face (R U F L D B), Shift turns it
+## the other way (R'), X Y Z are rotations, M E S the 3×3 slices, and a number first makes the next turn that many layers
+## wide (2 then R = Rw, 3 then R = 3Rw). Keys are physical positions, like SOLVE_KEYS.
+const SOLVE_KEYS_SIMPLE := {
+	KEY_R: "R", KEY_U: "U", KEY_F: "F", KEY_L: "L", KEY_D: "D", KEY_B: "B",
+	KEY_X: "x", KEY_Y: "y", KEY_Z: "z", KEY_M: "M", KEY_E: "E", KEY_S: "S",
+}
+const SOLVE_WIDTH_KEYS := {KEY_2: 2, KEY_3: 3, KEY_4: 4, KEY_5: 5, KEY_6: 6}
+const SOLVE_KEY_LAYOUTS := ["cstimer", "simple"]
 const SOLVE_HAND_KEYS := {KEY_3: ["l", -1], KEY_4: ["l", 1], KEY_7: ["r", 1], KEY_8: ["r", -1]}
 const SOLVE_HAND_RESET_KEY := KEY_SPACE
 ## WCA inspection: 15 s; starting after that is +2, after 17 s it's a DNF.

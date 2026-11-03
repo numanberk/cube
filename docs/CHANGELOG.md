@@ -2,6 +2,31 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — S.1b + S.8: intuitive Solve Station controls (owner request)
+- **Owner:** "fix cube control buttons to make it more intuitive"; asked which fixes: **drag to turn**, **key hints on the
+  cube**, **a simpler key layout option**, in the Solve Station only (the main screen keeps click/Space = tap).
+- **Drag to turn (S.8, done early):** press on the cube and drag along a row or column: that layer turns the way you
+  dragged, like swiping a real cube (one turn per drag, after 12 px). Middle layers give M/E/S on the 3×3 and SiGN
+  slices on big cubes (`2R`, `2L'`); a layer nearer the far side is named from there (`D'`, not `3U`). A drag that starts
+  on the background still turns the view; a click is still not a turn. `PuzzleView3D.drag_turns`, `pick(at)`
+  (ray vs the cube's box, model space), `move_for_drag(hit, drag)`, signal `drag_turned(move)`; the station's
+  `play_move(move)` handles it like a key (timer, records, flash).
+- **Key hints (toggle "Key hints", on by default, setting `key_hints`):** a small label per face, e.g. `R  I / K`, sitting
+  on the middle of each face you can see and just outside the cube's outline for hidden faces (dimmer), following the
+  cube as it sways or is dragged (`PuzzleView3D.face_label_position`). Under the timer: rotations and slices
+  (`x T/Y/B/N · y ;/A · z P/Q · M 5/6/X/. · E 2/9 · S 0/1`). The old "Keys" chip is now "All keys" (the full list).
+- **Simple keys (toggle "Simple keys", setting `solve_keys` = cstimer | simple):** `R U F L D B` turn that face,
+  **Shift** = prime, `X Y Z` rotate, `M E S` are 3×3 slices, and a number first makes the next turn wider (`2` `R` = Rw,
+  `3` `R` = 3Rw; capped at size − 1; "Next turn: 2 layers" shows meanwhile). Hints become `R / ⇧R`.
+  `Content.SOLVE_KEYS_SIMPLE`, `SOLVE_WIDTH_KEYS`; `SolveSession.layout`, `next_width`, `move_for_simple_key()`;
+  `press_key(key, now, shift)`. csTimer's layout stays the default.
+- Theme: `KeyHint`. Screenshot tool: `KEYS=simple`. Shots: `docs/screenshots/S.8-controls/` (csTimer hints while
+  solving, simple keys in inspection).
+- Tests (1896 checks, `All good.`): simple layout (Shift, rotations, slices, widths on 3×3/5×5, caps, 2×2 has no M), drag
+  mapping on 3×3 and 4×4 (R, R', L', D', F, U, M', 2R, 2L') through `pick` and through real mouse events (one turn, no
+  tap, no view turn), and the station: hint texts for both layouts, six hints on screen, toggles saved, Shift+R,
+  2 then R on a 4×4, a drag turn starting the timer.
+
 ## 2026-11-03 — Task R.2: the showcase solve on the main cube
 - **The big cube now plays real solves.** For the 2×2 and 3×3 (what StagedSolver supports) the focused cube no longer
   shows random turns + rewind: it shows a real WCA scramble, ~1.6 s of inspection (the `z2 y` turns play in it), then the

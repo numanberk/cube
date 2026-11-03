@@ -60,6 +60,27 @@ toggle_mode = true
 button_pressed = true
 text = "WCA inspection"
 
+[node name="SimpleKeysToggle" type="Button" parent="Margin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+toggle_mode = true
+tooltip_text = "Simple keys: the key is the face (R U F L D B), Shift turns it back (R'), X Y Z rotate, M E S are slices, a number first makes a wide turn. Off: csTimer's layout."
+text = "Simple keys"
+
+[node name="HintsToggle" type="Button" parent="Margin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+toggle_mode = true
+button_pressed = true
+tooltip_text = "Show which key turns each face, on the cube"
+text = "Key hints"
+
 [node name="KeysToggle" type="Button" parent="Margin/Rows/Header"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -67,7 +88,7 @@ size_flags_vertical = 4
 focus_mode = 0
 theme_type_variation = &"ToggleChip"
 toggle_mode = true
-text = "Keys"
+text = "All keys"
 
 [node name="CloseButton" type="Button" parent="Margin/Rows/Header"]
 unique_name_in_owner = true
@@ -171,7 +192,18 @@ text = "Keys"
 autowrap_mode = 3
 
 [node name="FooterHint" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"HintLabel"
 text = "csTimer keys  ·  Enter: new scramble  ·  Esc: close"
 autowrap_mode = 3
+
+[node name="KeyHints" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

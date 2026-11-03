@@ -18,6 +18,8 @@ Template (newest first under "Open"):
 - (none)
 
 ## Handled
+- 2026-11-03 — "Fix cube control buttons to make it more intuitive." Asked: the owner picked **drag to turn**, **key hints
+  on the cube** and a **simpler key layout option**, Solve Station only. → Done as S.8 (moved up) + new S.1b, see CHANGELOG.
 - 2026-11-03 — "It's just some random scrambles, I can't even understand what's going on after some point, and besides
   that nothing happens. Does the plan fix it?" → Only partly: Phase S adds things to do, but the main cube stays random
   turns + rewind (and past 12 moves/s only a wobble), the moves bar and ticker mean nothing at speed, and no task changed

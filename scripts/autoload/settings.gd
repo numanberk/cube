@@ -21,6 +21,8 @@ const SPEC := {
 	"reduce_motion": {"section": "graphics", "default": false},
 	"notation": {"section": "display", "default": "short", "choices": ["short", "scientific"]},
 	"inspection": {"section": "solve", "default": true},  ## WCA inspection in the Solve Station (task S.1)
+	"solve_keys": {"section": "solve", "default": "cstimer", "choices": ["cstimer", "simple"]},  ## key layout (Content)
+	"key_hints": {"section": "solve", "default": true},  ## key labels on the Solve Station's cube
 }
 
 ## Set to false before the node enters the tree to skip loading from disk (tests do this).

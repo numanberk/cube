@@ -1,9 +1,10 @@
 class_name SolveStation
 extends Control
 ## The Solve Station (task S.1): solve the puzzles yourself, csTimer-style. A full-screen overlay with its own 3D puzzle,
-## turned with the keyboard (Content.SOLVE_KEYS, by physical key), a WCA scramble, inspection, a big timer and this
-## puzzle's records (S.2: PBs, current averages, the times with +2/DNF/delete). The solving rules live in SolveSession,
-## the records in GameState; this script only shows them and forwards keys.
+## turned with the keyboard (by physical key: csTimer's layout, or the simple "key = face" layout) or by dragging across
+## the cube (a drag on the background turns the view), a WCA scramble, inspection, a big timer and this puzzle's records
+## (S.2: PBs, current averages, the times with +2/DNF/delete). Key hints sit on and around the cube's faces.
+## The solving rules live in SolveSession, the records in GameState; this script only shows them and forwards input.
 ## Uses Game/Settings/Audio by name, so tests use it untyped.
 
 const TURN_TIME := 0.055      ## quarter-turn animation here: snappy enough for 8+ TPS
@@ -23,6 +24,10 @@ const LIST_LENGTH := 50       ## times shown in the list (the newest)
 @onready var _inspection_toggle: Button = %InspectionToggle
 @onready var _keys_toggle: Button = %KeysToggle
 @onready var _close_button: Button = %CloseButton
+@onready var _simple_toggle: Button = %SimpleKeysToggle
+@onready var _hints_toggle: Button = %HintsToggle
+@onready var _hints_layer: Control = %KeyHints
+@onready var _footer: Label = %FooterHint
 
 var session := SolveSession.new()
 var frozen_now := -1.0     ## screenshots: show the clock at this time instead of the real one
@@ -30,6 +35,7 @@ var _picker_buttons: Dictionary = {}  ## puzzle id -> Button
 var _puzzle := "3x3"
 var _records_dirty := true
 var last_info: Dictionary = {}       ## what Game.record_hand_solve() said about the last solve (PBs)
+var _hint_labels: Dictionary = {}    ## face index -> Label (key hints on the cube)
 
 
 func _ready() -> void:
@@ -38,6 +44,12 @@ func _ready() -> void:
 	_close_button.pressed.connect(close)
 	_keys_toggle.toggled.connect(func(on: bool) -> void: _keys_help.visible = on)
 	_inspection_toggle.toggled.connect(_on_inspection_toggled)
+	_simple_toggle.toggled.connect(func(on: bool) -> void: set_layout("simple" if on else "cstimer"))
+	_hints_toggle.toggled.connect(func(on: bool) -> void:
+		Settings.set_value("key_hints", on)
+		_build_hints())
+	_view.drag_turns = true
+	_view.drag_turned.connect(play_move)
 	Game.solve_records_changed.connect(func(_id: String) -> void: _records_dirty = true)
 	set_process(false)
 
@@ -50,6 +62,9 @@ func open(puzzle_id: String = "") -> void:
 	if not _picker_buttons.has(puzzle_id):
 		puzzle_id = _picker_buttons.keys().back()
 	_inspection_toggle.set_pressed_no_signal(bool(Settings.get_value("inspection")))
+	session.layout = String(Settings.get_value("solve_keys"))
+	_simple_toggle.set_pressed_no_signal(session.layout == "simple")
+	_hints_toggle.set_pressed_no_signal(bool(Settings.get_value("key_hints")))
 	_view.set_reduce_motion(bool(Settings.get_value("reduce_motion")))
 	_view.set_graphics(String(Settings.get_value("quality")))
 	select_puzzle(puzzle_id)
@@ -81,11 +96,33 @@ func new_attempt(rng: RandomNumberGenerator = null) -> void:
 	_view.show_state(session.scramble)
 	_scramble_label.text = session.scramble_text()
 	_keys_help.text = keys_help_text()
+	_build_hints()
+	_refresh()
+
+
+## "cstimer" or "simple" (saved as the solve_keys setting). Takes effect at once.
+func set_layout(layout: String) -> void:
+	Settings.set_value("solve_keys", layout)
+	session.layout = layout
+	session.next_width = 1
+	_simple_toggle.set_pressed_no_signal(layout == "simple")
+	_keys_help.text = keys_help_text()
+	_build_hints()
 	_refresh()
 
 
 ## Every key the station knows, as "R I · R' K · ..." for this puzzle (generated from Content.SOLVE_KEYS).
 func keys_help_text() -> String:
+	if session.layout == "simple":
+		var simple := PackedStringArray()
+		for key: int in Content.SOLVE_KEYS_SIMPLE:
+			if not session.move_for_simple_key(key).is_empty():
+				var letter: String = Content.SOLVE_KEYS_SIMPLE[key]
+				simple.append("%s %s / Shift+%s" % [letter, _key_name(key), _key_name(key)])
+		var help := "   ".join(simple)
+		if session.model != null and session.model.size > 2:
+			help += "\nWide turns: press 2 (or 3...) first, then the face: 2 R = Rw."
+		return help
 	var by_move: Dictionary = {}  # notation -> key names
 	for key: int in Content.SOLVE_KEYS:
 		var move := session.move_for_key(key)
@@ -102,6 +139,91 @@ func keys_help_text() -> String:
 	if session.model != null and session.model.size > 3:
 		text += "\nHands: 3/4 move the left hand, 8/7 the right one, Space resets."
 	return text
+
+
+# --- Key hints --------------------------------------------------------------------
+
+## The hint for a face: "R  I / K" (csTimer: the keys for R and R') or "R / ⇧R" (simple), "" if no key turns it.
+func face_hint_text(face_name: String) -> String:
+	if session.model == null:
+		return ""
+	var face := session.model.face_names.find(face_name)
+	var keys := ["", ""]  # clockwise, counter-clockwise
+	if session.layout == "simple":
+		for key: int in Content.SOLVE_KEYS_SIMPLE:
+			if Content.SOLVE_KEYS_SIMPLE[key] == face_name:
+				return "%s / ⇧%s" % [_key_name(key), _key_name(key)]  # the key is the face, so no face letter
+		return ""
+	for key: int in Content.SOLVE_KEYS:
+		var move := session.move_for_key(key)
+		if move.is_empty() or int(move["face"]) != face or int(move.get("depth", 0)) != 0 or int(move.get("width", 1)) != 1:
+			continue
+		var slot := 0 if int(move["turns"]) == 1 else (1 if int(move["turns"]) == -1 else -1)
+		if slot >= 0 and keys[slot] == "":
+			keys[slot] = _key_name(key)
+	if keys[0] == "" and keys[1] == "":
+		return ""
+	return "%s  %s / %s" % [face_name, keys[0], keys[1]]
+
+
+## Rotations and slices, under the cube: "x T/Y  y ;/A  z P/Q  M 5/6 ..." (simple: "x X  y Y  z Z · ⇧ = prime ...").
+func extra_keys_text() -> String:
+	if session.model == null:
+		return ""
+	if session.layout == "simple":
+		var text := "x X  ·  y Y  ·  z Z"
+		if session.model.size == 3:
+			text += "  ·  M E S"
+		text += "  ·  ⇧ = prime"
+		if session.model.size > 2:
+			text += "  ·  2 then R = Rw"
+		return text
+	var parts := PackedStringArray()
+	for name: String in ["x", "y", "z", "M", "E", "S"]:
+		var keys := PackedStringArray()
+		for key: int in Content.SOLVE_KEYS:
+			var move := session.move_for_key(key)
+			if move.is_empty():
+				continue
+			var written := session.model.notation(move)
+			if written == name or written == name + "'":
+				keys.append(_key_name(key))
+		if not keys.is_empty():
+			parts.append("%s %s" % [name, "/".join(keys)])
+	return "  ·  ".join(parts)
+
+
+func _build_hints() -> void:
+	for child in _hints_layer.get_children():
+		_hints_layer.remove_child(child)
+		child.queue_free()
+	_hint_labels.clear()
+	if not bool(Settings.get_value("key_hints")) or session.model == null:
+		return
+	for face_name: String in ["U", "D", "F", "B", "R", "L"]:
+		var text := face_hint_text(face_name)
+		if text == "":
+			continue
+		var label := Label.new()
+		label.theme_type_variation = &"KeyHint"
+		label.text = text
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_hints_layer.add_child(label)
+		_hint_labels[session.model.face_names.find(face_name)] = label
+	_place_hints()
+
+
+## Keeps each hint on (or next to) its face as the cube sways or is turned with a drag. Hidden faces' hints are dimmer.
+func _place_hints() -> void:
+	var origin := _view.get_global_rect().position - _hints_layer.get_global_rect().position
+	for face: int in _hint_labels:
+		var label: Label = _hint_labels[face]
+		var info := _view.face_label_position(face)
+		if info.is_empty():
+			continue
+		label.size = label.get_combined_minimum_size()
+		label.position = origin + (info["position"] as Vector2) - label.size / 2.0
+		label.modulate.a = 1.0 if info["facing"] else 0.5
 
 
 func _key_name(key: int) -> String:
@@ -130,11 +252,11 @@ func _input(event: InputEvent) -> void:
 	if not key.pressed or key.echo or key.ctrl_pressed or key.alt_pressed or key.meta_pressed:
 		return
 	var code := key.physical_keycode if key.physical_keycode != KEY_NONE else key.keycode
-	handle_key(code)
+	handle_key(code, key.shift_pressed)
 
 
-## One key press (tests call this directly).
-func handle_key(code: int) -> void:
+## One key press (tests call this directly). `shift`: Shift held (the simple layout's prime turns).
+func handle_key(code: int, shift: bool = false) -> void:
 	match code:
 		KEY_ESCAPE:
 			close()
@@ -143,16 +265,31 @@ func handle_key(code: int) -> void:
 			new_attempt()
 			return
 	var was_done := session.state == "done"
-	var move := session.press_key(code, _now())
+	var move := session.press_key(code, _now(), shift)
 	if not move.is_empty():
 		_view.turn(move)
-		if session.state == "done" and not was_done:
-			var result: Dictionary = session.results.back()
-			last_info = Game.record_hand_solve(session.puzzle_id, float(result["time"]), String(result["penalty"]),
-					int(result["moves"]))
-			_view.flash()
-			Audio.play_solve()
+		_after_turn(was_done)
 	_refresh()
+
+
+## A turn from a drag across the cube (or anything else that isn't a key).
+func play_move(move: Dictionary) -> void:
+	if not visible or session.model == null:
+		return
+	var was_done := session.state == "done"
+	session.turn(move, _now())
+	_view.turn(move)
+	_after_turn(was_done)
+	_refresh()
+
+
+func _after_turn(was_done: bool) -> void:
+	if session.state == "done" and not was_done:
+		var result: Dictionary = session.results.back()
+		last_info = Game.record_hand_solve(session.puzzle_id, float(result["time"]), String(result["penalty"]),
+				int(result["moves"]))
+		_view.flash()
+		Audio.play_solve()
 
 
 func _on_inspection_toggled(on: bool) -> void:
@@ -166,12 +303,22 @@ func _on_inspection_toggled(on: bool) -> void:
 func _process(_delta: float) -> void:
 	session.update(_now())
 	_refresh_clock()
+	_place_hints()
 
 
 func _refresh() -> void:
 	_refresh_clock()
-	var hands := session.model != null and session.model.size > 3
-	_hand_label.text = "Hands: left %d · right %d" % [session.left_hand, session.right_hand] if hands else " "
+	var lines := PackedStringArray()
+	if Settings.get_value("key_hints"):
+		lines.append(extra_keys_text())
+	if session.layout == "simple":
+		if session.next_width > 1:
+			lines.append("Next turn: %d layers" % session.next_width)
+	elif session.model != null and session.model.size > 3:
+		lines.append("Hands: left %d · right %d" % [session.left_hand, session.right_hand])
+	_hand_label.text = "   ·   ".join(lines) if not lines.is_empty() else " "
+	_footer.text = "%s  ·  drag a row to turn it  ·  Enter: new scramble  ·  Esc: close" % (
+			"Simple keys" if session.layout == "simple" else "csTimer keys")
 	if _records_dirty:
 		_records_dirty = false
 		_refresh_records()

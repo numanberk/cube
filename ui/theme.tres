@@ -611,6 +611,22 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_key_hint"]
+content_margin_left = 6.0
+content_margin_top = 1.0
+content_margin_right = 6.0
+content_margin_bottom = 1.0
+bg_color = Color(0.0549, 0.0627, 0.0784, 0.78)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2353, 0.8118, 0.5569, 0.55)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -809,3 +825,8 @@ TickerText/base_type = &"RichTextLabel"
 TickerText/colors/default_color = Color(0.4863, 0.5137, 0.5725, 1)
 TickerText/font_sizes/normal_font_size = 15
 TickerText/font_sizes/bold_font_size = 15
+KeyHint/base_type = &"Label"
+KeyHint/colors/font_color = Color(0.9255, 0.9333, 0.949, 1)
+KeyHint/font_sizes/font_size = 14
+KeyHint/fonts/font = SubResource("FontVariation_2j8s8")
+KeyHint/styles/normal = SubResource("StyleBoxFlat_key_hint")

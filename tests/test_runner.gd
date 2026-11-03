@@ -2340,3 +2340,147 @@ func test_showcase_on_main_screen() -> void:
 	check(main._showcase == null and not chips.visible, "the 4×4 has no showcase yet (R.6)")
 	main.free()
 	game.reset_state()
+
+
+# --- Solve Station controls (owner, 2026-11-03: drag to turn, key hints, simple keys) --------------------------------
+
+func test_simple_key_layout() -> void:
+	var session := SolveSession.new()
+	session.layout = "simple"
+	session.inspection = false
+	session.start("3x3", 0.0)
+	var m := session.model
+	check(m.notation(session.press_key(KEY_R, 1.0)) == "R", "R is R")
+	check(m.notation(session.press_key(KEY_R, 1.1, true)) == "R'", "Shift+R is R'")
+	check(m.notation(session.press_key(KEY_U, 1.2, true)) == "U'", "Shift+U is U'")
+	check(m.notation(session.press_key(KEY_X, 1.3)) == "x" and m.notation(session.press_key(KEY_Y, 1.4, true)) == "y'", "X/Y rotate")
+	check(m.notation(session.press_key(KEY_M, 1.5)) == "M" and m.notation(session.press_key(KEY_S, 1.6, true)) == "S'", "M E S are slices")
+	check(session.press_key(KEY_2, 1.7).is_empty() and session.next_width == 2, "a number sets the next turn's width")
+	check(m.notation(session.press_key(KEY_R, 1.8)) == "Rw", "2 then R is a wide R (Rw)")
+	check(session.next_width == 1, "...and the width goes back to 1")
+	check(session.press_key(KEY_I, 1.9).is_empty(), "csTimer's I does nothing in the simple layout")
+	var big := SolveSession.new()
+	big.layout = "simple"
+	big.start("5x5", 0.0)
+	big.press_key(KEY_3, 0.5)
+	check(big.model.notation(big.press_key(KEY_R, 1.0, true)) == "3Rw'", "5×5: 3 then Shift+R is 3Rw'")
+	big.press_key(KEY_6, 1.1)
+	check(big.next_width == 4, "the width stops at size - 1 (a full width would be a rotation)")
+	var two := SolveSession.new()
+	two.layout = "simple"
+	two.start("2x2", 0.0)
+	check(two.press_key(KEY_M, 1.0).is_empty(), "no M on a 2×2")
+	# csTimer stays the default.
+	check(SolveSession.new().layout == "cstimer", "csTimer's layout is the default")
+
+
+## A drag across the cube turns the layer it runs along, like swiping a real cube (S.8, done early for the owner).
+func test_drag_to_turn() -> void:
+	var view := new_view()
+	view.sway_enabled = false
+	view.drag_turns = true
+	for size: int in [3, 4]:
+		view.set_puzzle("%dx%d" % [size, size])
+		view.finish_animations()
+		var h := size / 2.0
+		var m := view.model
+		# [press point on the surface, direction to drag (model space), expected move]
+		var cases: Array = [
+			[Vector3(h - 0.5, 0, h), Vector3.UP, "R"], [Vector3(h - 0.5, 0, h), Vector3.DOWN, "R'"],
+			[Vector3(-h + 0.5, 0, h), Vector3.UP, "L'"], [Vector3(0.2, -h + 0.5, h), Vector3.LEFT, "D'"],
+			[Vector3(0, h, h - 0.5), Vector3.RIGHT, "F"], [Vector3(h, h - 0.5, 0), Vector3.BACK, "U"],
+		]
+		if size == 3:
+			cases.append([Vector3(0, 0.2, h), Vector3.UP, "M'"])
+		else:
+			cases.append([Vector3(0.5, 0.2, h), Vector3.UP, "2R"])
+			cases.append([Vector3(-0.5, 0.2, h), Vector3.UP, "2L'"])
+		for c: Array in cases:
+			var at := view.screen_position(c[0])
+			var hit := view.pick(at)
+			check(not hit.is_empty() and (hit["point"] as Vector3).distance_to(c[0]) < 0.05,
+					"%d×%d: the press at %s lands on the cube there" % [size, size, c[0]])
+			var drag := (view.screen_position(c[0] + (c[1] as Vector3) * 0.4) - at) * 3.0
+			var move := view.move_for_drag(hit, drag)
+			check(not move.is_empty() and m.notation(move) == c[2],
+					"%d×%d: dragging %s from %s is %s (got %s)" % [size, size, c[1], c[0], c[2], m.notation(move) if not move.is_empty() else "nothing"])
+	check(view.pick(Vector2(2, 2)).is_empty(), "the corner of the view is background")
+	# Through real mouse events: press on a sticker, drag up, one turn and no tap.
+	view.set_puzzle("3x3")
+	view.finish_animations()
+	var turned: Array = []
+	var taps: Array = []
+	view.drag_turned.connect(func(move: Dictionary) -> void: turned.append(move))
+	view.tapped.connect(func(at: Vector2) -> void: taps.append(at))
+	var start := view.screen_position(Vector3(1, 0, 1.5))
+	var up := (view.screen_position(Vector3(1, 1, 1.5)) - start).normalized()
+	view._gui_input(mouse_button(true, start))
+	for step in 4:
+		var motion := InputEventMouseMotion.new()
+		motion.position = start + up * 8.0 * (step + 1)
+		motion.relative = up * 8.0
+		view._gui_input(motion)
+	view._gui_input(mouse_button(false, start + up * 32.0))
+	check(turned.size() == 1 and view.model.notation(turned[0]) == "R", "a drag up the right column is one R")
+	check(taps.is_empty() and view.drag_offset() == Vector2.ZERO, "...not a tap, and the view didn't turn")
+	view.queue_free()
+
+
+func test_solve_station_controls() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var settings: Node = root.get_node("Settings")
+	settings.persistence_enabled = false
+	settings.set_value("inspection", false)
+	settings.set_value("solve_keys", "cstimer")
+	settings.set_value("key_hints", true)
+	game.cheat_add_solves(1e9)
+	game.unlock_puzzle("3x3")
+	game.unlock_puzzle("4x4")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var station: Node = main.get_node("%SolveStation")
+	station.open("3x3")
+	# Key hints: one per face, from the key map.
+	check(station.face_hint_text("R") == "R  I / K" and station.face_hint_text("U") == "U  J / F", "csTimer hints: R I / K, U J / F")
+	check(station.get_node("%KeyHints").get_child_count() == 6, "a hint for each of the six faces")
+	check(station.extra_keys_text().contains("y ;/A") and station.extra_keys_text().contains("M 5/6"), "rotations and slices under the cube")
+	await process_frame  # let the station lay out first
+	await process_frame
+	station._place_hints()
+	var view: PuzzleView3D = station.get_node("%View")
+	var rect := Rect2(Vector2.ZERO, station.size)
+	for label: Label in station.get_node("%KeyHints").get_children():
+		check(rect.has_point(label.position), "hint %s is on screen" % label.text)
+	(station.get_node("%HintsToggle") as Button).toggled.emit(false)
+	check(station.get_node("%KeyHints").get_child_count() == 0 and not settings.get_value("key_hints"), "Key hints off hides them")
+	(station.get_node("%HintsToggle") as Button).toggled.emit(true)
+	# The simple layout, switched in the station (and saved as a setting).
+	(station.get_node("%SimpleKeysToggle") as Button).toggled.emit(true)
+	check(settings.get_value("solve_keys") == "simple" and station.session.layout == "simple", "Simple keys switches the layout")
+	check(station.face_hint_text("R") == "R / ⇧R", "simple hints: R / ⇧R")
+	check(station.keys_help_text().contains("R R / Shift+R"), "the full key list follows the layout")
+	station.handle_key(KEY_R, true)
+	view.finish_animations()
+	check(station.session.moves == 1 and view.model.orientations == station.session.model.orientations, "Shift+R turns R'")
+	station.select_puzzle("4x4")
+	station.handle_key(KEY_2)
+	check((station.get_node("%HandLabel") as Label).text.contains("Next turn: 2 layers"), "the width shows before the turn")
+	station.handle_key(KEY_R)
+	view.finish_animations()
+	check(view.model.orientations == station.session.model.orientations, "2 then R turns two layers")
+	(station.get_node("%SimpleKeysToggle") as Button).toggled.emit(false)
+	check(station.session.layout == "cstimer", "back to csTimer's layout")
+	# A drag on the cube turns it like a key does (and starts the timer).
+	station.select_puzzle("3x3")
+	var start := view.screen_position(Vector3(1, 0, 1.5))
+	var hit := view.pick(start)
+	view.drag_turned.emit(view.move_for_drag(hit, (view.screen_position(Vector3(1, 1, 1.5)) - start) * 2.0))
+	view.finish_animations()
+	check(station.session.moves == 1 and station.session.state == "solving", "a drag turn counts as a turn and starts the timer")
+	check(view.model.orientations == station.session.model.orientations, "...and the view shows it")
+	station.close()
+	main.free()
+	settings.set_value("inspection", true)
+	game.reset_state()

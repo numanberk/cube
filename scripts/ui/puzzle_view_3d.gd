@@ -26,6 +26,7 @@ extends SubViewportContainer
 ## Visual state only: nothing here affects game numbers.
 
 signal tapped(at: Vector2)  ## global position of the click
+signal drag_turned(move: Dictionary)  ## with drag_turns on: a drag across the puzzle asked for this layer turn
 
 const DEFAULT_PUZZLE := "3x3"
 const BODY_COLOR := Color("#14161b")
@@ -64,6 +65,7 @@ const DROP_TIME := 0.55         ## a newly unlocked puzzle drops into place over
 const DRAG_SPEED := 0.01        ## radians per pixel dragged
 const DRAG_MAX_PITCH := 0.7
 const DRAG_SPRING := 2.5        ## how fast a released drag returns (higher = faster)
+const DRAG_TURN_SLOP := 12.0    ## pixels a drag on the puzzle must travel before it picks its layer turn
 const SWAY_YAW := 0.06          ## idle sway, radians
 const SWAY_PITCH := 0.025
 const TICKER_LENGTH := 8        ## moves shown under the puzzle
@@ -136,6 +138,9 @@ var _drag_yaw := 0.0
 var _drag_pitch := 0.0
 var _ticker := PackedStringArray()  ## last few moves in notation, newest last
 var turn_time := TURN_TIME          ## seconds for a quarter turn with an empty queue (the Solve Station sets it shorter)
+var drag_turns := false             ## Solve Station (S.8): a drag that starts on the puzzle turns that layer, not the view
+var _press_hit := {}                ## where the press landed on the puzzle ({normal, point} in model space), or {}
+var _drag_turn_done := false
 
 
 func _ready() -> void:
@@ -642,6 +647,15 @@ func _animate_effects(delta: float) -> void:
 func _gui_input(event: InputEvent) -> void:
 	var motion := event as InputEventMouseMotion
 	if motion != null:
+		if _pressing and not _press_hit.is_empty():  # a drag on the puzzle turns a layer, once per drag
+			_dragging = _dragging or motion.position.distance_to(_press_position) > TAP_SLOP
+			if not _drag_turn_done and motion.position.distance_to(_press_position) > DRAG_TURN_SLOP:
+				_drag_turn_done = true
+				var move := move_for_drag(_press_hit, motion.position - _press_position)
+				if not move.is_empty():
+					drag_turned.emit(move)
+			accept_event()
+			return
 		if _pressing:
 			if not _dragging and motion.position.distance_to(_press_position) > TAP_SLOP:
 				_dragging = true
@@ -657,12 +671,110 @@ func _gui_input(event: InputEvent) -> void:
 		_pressing = true
 		_dragging = false
 		_press_position = button.position
+		_drag_turn_done = false
+		_press_hit = pick(button.position) if drag_turns else {}
 	elif _pressing:
 		_pressing = false
+		_press_hit = {}
 		if not _dragging and button.position.distance_to(_press_position) <= TAP_SLOP:
 			tapped.emit(get_global_transform() * button.position)
 		_dragging = false
 	accept_event()
+
+
+## Where a point in the view (local pixels) hits the puzzle: {normal, point} in model space (a cube's outer surface), or
+## {} for the background (or a non-cube puzzle).
+func pick(at: Vector2) -> Dictionary:
+	if model == null or model.size <= 0:
+		return {}
+	var to_model := _turntable.global_transform.affine_inverse()
+	var origin := to_model * _camera.project_ray_origin(at)
+	var direction := to_model.basis * _camera.project_ray_normal(at)
+	var half := model.size / 2.0
+	var near := -INF
+	var far := INF
+	var axis_in := -1
+	for axis in 3:
+		if absf(direction[axis]) < 1e-9:
+			if absf(origin[axis]) > half:
+				return {}
+			continue
+		var t1 := (-half - origin[axis]) / direction[axis]
+		var t2 := (half - origin[axis]) / direction[axis]
+		if minf(t1, t2) > near:
+			near = minf(t1, t2)
+			axis_in = axis
+		far = minf(far, maxf(t1, t2))
+	if axis_in < 0 or near > far or far < 0.0:
+		return {}
+	var point := origin + direction * near
+	var normal := Vector3.ZERO
+	normal[axis_in] = signf(point[axis_in])
+	return {"normal": normal, "point": point}
+
+
+## The layer turn a drag across the puzzle means, like swiping a real cube: the drag picks the sticker row or column it
+## runs along, and turns that layer the way the drag goes. `hit` is pick() at the press; `drag` is in pixels.
+func move_for_drag(hit: Dictionary, drag: Vector2) -> Dictionary:
+	if hit.is_empty() or drag.length() < 1.0:
+		return {}
+	var normal: Vector3 = hit["normal"]
+	var point: Vector3 = hit["point"]
+	var best := Vector3.ZERO
+	var best_dot := 0.0
+	for axis in 3:  # the face's two in-plane directions, as they look on screen
+		if absf(normal[axis]) > 0.5:
+			continue
+		var along := Vector3.ZERO
+		along[axis] = 1.0
+		var on_screen := screen_position(point + along * 0.5) - screen_position(point)
+		if on_screen.length() < 0.001:
+			continue
+		var d := on_screen.normalized().dot(drag.normalized())
+		if absf(d) > absf(best_dot):
+			best_dot = d
+			best = along * signf(d)
+	if best == Vector3.ZERO:
+		return {}
+	var axis_of_turn := normal.cross(best)  # turning +90° about it moves the pressed sticker along the drag
+	var face := model.face_index(-axis_of_turn)  # ...which is a clockwise turn of the face on the other side
+	var depth := 0
+	var along_face := point.dot(model.face_normals[face])
+	for cut in model.layer_cuts:
+		if along_face < cut:
+			depth += 1
+	depth = mini(depth, model.layer_count() - 1)
+	if depth > (model.layer_count() - 1) / 2.0:  # nearer the other side: name it from there (D', not 3U)
+		return model.make_move(model.face_index(-model.face_normals[face]), -1, 1, model.layer_count() - 1 - depth)
+	return model.make_move(face, 1, 1, depth)
+
+
+## A model-space point, as a position in this view (local pixels).
+func screen_position(model_point: Vector3) -> Vector2:
+	return _camera.unproject_position(_turntable.global_transform * model_point)
+
+
+## Where to put a label for a face (local pixels): on the middle of a face that looks at the camera, or just outside
+## the puzzle's outline in that face's direction for a hidden one (so it never covers a face you can see).
+## {position, facing}, or {} if there's no such face.
+func face_label_position(face: int, margin: float = 22.0) -> Dictionary:
+	if model == null or face < 0 or face >= model.face_normals.size():
+		return {}
+	var normal := model.face_normals[face]
+	var half := _extent() / 2.0
+	var world_normal := (_turntable.global_transform.basis * normal).normalized()
+	var to_camera := (_camera.global_position - _turntable.global_transform * (normal * half)).normalized()
+	var on_face := screen_position(normal * half)
+	if world_normal.dot(to_camera) > 0.05:
+		return {"position": on_face, "facing": true}
+	var center := screen_position(Vector3.ZERO)
+	var outline := 0.0
+	for corner in [Vector3(1, 1, 1), Vector3(1, 1, -1), Vector3(1, -1, 1), Vector3(1, -1, -1), Vector3(-1, 1, 1),
+			Vector3(-1, 1, -1), Vector3(-1, -1, 1), Vector3(-1, -1, -1)]:
+		var along := (on_face - center).normalized()
+		outline = maxf(outline, (screen_position(corner * half) - center).dot(along))
+	var direction := (on_face - center).normalized() if on_face.distance_to(center) > 0.5 else Vector2.UP
+	return {"position": center + direction * (outline + margin), "facing": false}
 
 
 ## How far the view is currently turned by a drag (radians, yaw and pitch). Tests use this.

@@ -224,8 +224,12 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       tap. Taps add a % of moves/s, and a TPS streak meter builds a multiplier while you keep turning steadily.
       The big cube shows R.2's showcase solve by then: decide how your own turns take it over (see R.2).
       *Done when:* the sim shows taps give ≥ 10 % of income at 30 min at 3 turns/s, and tests cover the streak.
-- [ ] **S.8 Mouse turning (optional):** drag across a sticker to turn its layer (drag on the background still turns the view).
-      *Done when:* tests map drags to moves on 3×3 and 4×4.
+- [x] **S.8 Mouse turning (optional):** drag across a sticker to turn its layer (drag on the background still turns the view).
+      *Done when:* tests map drags to moves on 3×3 and 4×4. *(Done early, 2026-11-03, with S.1b.)*
+- [x] **S.1b Intuitive controls (owner, 2026-11-03):** in the Solve Station, key hints on and around the cube's faces
+      (toggle, on by default), rotations/slices listed under the timer, and a **Simple keys** layout next to csTimer's
+      (key = face, Shift = prime, X Y Z rotations, M E S slices, a number first = a wider turn), both saved as settings.
+      *Done when:* tests cover the simple layout, the hint texts and toggles, and drag turns in the station; screenshots.
 - Later ideas (Phase 11): Bluetooth smart-cube support (needs a plugin; GAN/MoYu protocols), relays, blindfolded mode,
   one-handed mode, a replay viewer for PB solves.
 

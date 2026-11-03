@@ -8,7 +8,8 @@ extends RefCounted
 ## inspection off), "solving" (timer running), "done" (solved; turning still works but changes nothing).
 ## The timer starts with the first turn that isn't a whole-puzzle rotation and stops the moment the puzzle is solved
 ## (in any orientation). Inspection: starting after 15 s is +2, after 17 s a DNF (Content.INSPECTION).
-## Keys follow csTimer's layout (Content.SOLVE_KEYS), with movable hands on big cubes.
+## Keys follow csTimer's layout (Content.SOLVE_KEYS), with movable hands on big cubes, or the simple layout
+## (Content.SOLVE_KEYS_SIMPLE: the key is the face, Shift = prime, a number first = a wider turn).
 
 const AVERAGE_SIZES := [5, 12]
 
@@ -22,6 +23,8 @@ var moves := 0               ## turns since the timer started (rotations don't c
 var left_hand := 1           ## depth of the left hand (csTimer's keys 3/4), 1 = outer layer
 var right_hand := 1          ## depth of the right hand (keys 8/7)
 var results: Array[Dictionary] = []  ## this session: {time (raw seconds), penalty, moves, scramble (notation)}
+var layout := "cstimer"      ## "cstimer" (Content.SOLVE_KEYS) or "simple" (Content.SOLVE_KEYS_SIMPLE, Shift = prime)
+var next_width := 1          ## simple layout: layers the next face turn takes (a number key sets it, the turn resets it)
 
 var _inspection_started := 0.0
 var _started_at := 0.0
@@ -44,6 +47,7 @@ func start(id: String, now: float, rng: RandomNumberGenerator = null) -> bool:
 	moves = 0
 	left_hand = 1
 	right_hand = 1
+	next_width = 1
 	_inspection_started = now
 	_started_at = 0.0
 	_finished_at = 0.0
@@ -54,10 +58,20 @@ func scramble_text() -> String:
 	return "" if model == null else model.notation_sequence(scramble)
 
 
-## Handles one key press. Returns the move it made ({} if none), so the view can animate it.
-func press_key(key: int, now: float) -> Dictionary:
+## Handles one key press (`shift`: Shift held, which the simple layout uses for prime turns). Returns the move it made
+## ({} if none), so the view can animate it.
+func press_key(key: int, now: float, shift: bool = false) -> Dictionary:
 	if model == null:
 		return {}
+	if layout == "simple":
+		if Content.SOLVE_WIDTH_KEYS.has(key):
+			next_width = clampi(int(Content.SOLVE_WIDTH_KEYS[key]), 1, maxi(1, model.size - 1))
+			return {}
+		var simple := move_for_simple_key(key, shift)
+		if not simple.is_empty():
+			next_width = 1
+			turn(simple, now)
+		return simple
 	if key == Content.SOLVE_HAND_RESET_KEY:
 		left_hand = 1
 		right_hand = 1
@@ -90,6 +104,17 @@ func move_for_key(key: int) -> Dictionary:
 	if face < 0 or first < 1 or first > last:
 		return {}
 	return model.make_move(face, int(entry[3]), last - first + 1, first - 1)
+
+
+## Simple layout: the move a key makes (with Shift = prime, and `next_width` layers for a face turn), or {}.
+func move_for_simple_key(key: int, shift: bool = false) -> Dictionary:
+	if model == null or not Content.SOLVE_KEYS_SIMPLE.has(key):
+		return {}
+	var letter: String = Content.SOLVE_KEYS_SIMPLE[key]
+	var text := letter
+	if letter in ["R", "U", "F", "L", "D", "B"] and next_width >= 2:
+		text = ("%d" % next_width if next_width > 2 else "") + letter + "w"
+	return model.parse(text + ("'" if shift else ""))
 
 
 func _layer(token: Variant, n: int) -> int:
