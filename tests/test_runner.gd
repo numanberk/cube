@@ -1055,13 +1055,17 @@ func test_game_events_play_sounds() -> void:
 	root.add_child(main)
 	await create_timer(0.6).timeout
 	var before: Dictionary = audio.played.duplicate()
+	audio._last_played.clear()
 	main._on_tap_pressed()
 	check(int(audio.played["click"]) == int(before["click"]) + 1, "a tap clicks")
 	game.cheat_add_solves(40.0)  # reveals the Club (unlocks at 30 lifetime Solves)
+	audio._last_played.clear()
 	main._refresh()
 	check(int(audio.played["unlock"]) == int(before["unlock"]) + 1, "a newly revealed helper plays the unlock sound")
+	audio._last_played.clear()
 	game.buy_building("friend")
 	check(int(audio.played["buy"]) == int(before["buy"]) + 1, "buying plays the buy sound")
+	audio._last_played.clear()
 	for i in 20:
 		game.tap()  # completes a solve
 	check(int(audio.played["chime"]) == int(before["chime"]) + 1, "a solve chimes")
@@ -1239,6 +1243,7 @@ func test_welcome_panel() -> void:
 	var audio: AudioManager = root.get_node("Audio")
 	await create_timer(0.3).timeout
 	var chimes_before := int(audio.played["chime"])
+	audio._last_played.clear()  # deterministic: don't depend on the rate-limit clock
 	panel.collect()
 	check(not panel.visible, "Collect closes the panel")
 	check(int(audio.played["chime"]) == chimes_before + 1, "collecting chimes")
@@ -1379,6 +1384,7 @@ func test_puzzle_row() -> void:
 	var audio: AudioManager = root.get_node("Audio")
 	await create_timer(0.6).timeout
 	var unlock_sounds := int(audio.played["unlock"])
+	audio._last_played.clear()  # deterministic: don't depend on the rate-limit clock
 	locked._unlock.pressed.emit()
 	check(game.is_puzzle_unlocked("3x3"), "pressing Unlock unlocks the 3x3")
 	check(view.puzzle_id == "3x3", "the big view switches to the new puzzle")

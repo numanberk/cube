@@ -2,6 +2,12 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Test fix: sound checks no longer depend on timing
+- The 4.4 commit was merged after a run that printed "1 failed" (my commit command checked that the run printed, not that
+  it said `All good`). Six reruns were clean, and the likely culprit was one of the tests that count sounds (the 0.5 s
+  unlock / 0.25 s chime rate limits overlapping). Those tests now clear `Audio._last_played` right before the sound they check,
+  so they don't depend on timing. 1366 checks, `All good.` **Sessions: gate commits on `All good`, not on the run finishing.**
+
 ## 2026-11-03 — Task 4.4: Megaminx
 - **`PuzzleShapes.megaminx()`:** a regular dodecahedron (face normals = the cyclic permutations of (0, ±φ, ±1)),
   turned so one face points up, scaled to inradius 1.6 (about a 3×3), with WCA face names U, F, R, BR, BL, L (upper ring by
