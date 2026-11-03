@@ -19,7 +19,7 @@ func _initialize() -> void:
 	print("\n%d checks, %d failed" % [_checks, _failures])
 	var audio := root.get_node_or_null("Audio") as AudioManager
 	if audio != null:
-		audio.stop_all()  # sounds still playing at exit would be reported as leaked resources
+		audio.shut_down()  # sounds still playing at exit would be reported as leaked resources
 		for i in 6:  # the audio thread releases stopped playbacks on its next mixes
 			await create_timer(0.1).timeout
 	quit(1 if _failures > 0 else 0)
@@ -1360,3 +1360,39 @@ func test_save_v1_to_v2_migration() -> void:
 	g.apply_save_data(fresh_v1, 1000.0)
 	check(g.get_unlocked_puzzle_ids() == (["2x2"] as Array[String]) and g.get_focused_puzzle_id() == "2x2", "a brand-new v1 player gets just the 2x2")
 	g.free()
+
+
+func test_puzzle_row() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var view: PuzzleView3D = main.get_node("%PuzzleView")
+	check(view.puzzle_id == "2x2", "a new game shows the 2x2 in the big view")
+	var locked: PuzzleChip = main._locked_chip
+	check(locked.visible and locked.locked and locked.puzzle_id == "3x3", "the 3x3 shows as the next locked puzzle")
+	check(locked._unlock.disabled, "...and can't be unlocked without the Solves")
+	game.cheat_add_solves(150.0)
+	main._refresh()
+	check(not locked._unlock.disabled, "with 150 Solves the Unlock button is enabled")
+	var audio: AudioManager = root.get_node("Audio")
+	await create_timer(0.6).timeout
+	var unlock_sounds := int(audio.played["unlock"])
+	locked._unlock.pressed.emit()
+	check(game.is_puzzle_unlocked("3x3"), "pressing Unlock unlocks the 3x3")
+	check(view.puzzle_id == "3x3", "the big view switches to the new puzzle")
+	check(view._drop > 0.0, "it drops in")
+	check(int(audio.played["unlock"]) == unlock_sounds + 1, "the unlock sting plays")
+	var chip_2x2: PuzzleChip = main._chips["2x2"]
+	check(chip_2x2.visible and not main._chips["3x3"].visible, "the 2x2 moved to the row; the focused 3x3 isn't in it")
+	check(locked.puzzle_id == "4x4", "the 4x4 is now the next locked puzzle")
+	# Click-to-focus: a click on the small 2x2 makes it the big one.
+	chip_2x2.view._gui_input(mouse_button(true, Vector2(40, 40)))
+	chip_2x2.view._gui_input(mouse_button(false, Vector2(40, 40)))
+	check(game.get_focused_puzzle_id() == "2x2" and view.puzzle_id == "2x2", "clicking a small puzzle focuses it")
+	check(main._chips["3x3"].visible and not main._chips["2x2"].visible, "...and the views swap")
+	check_near(game.total_moves, 0.0, "clicking a small puzzle doesn't tap")
+	check(chip_2x2.view.graphics_quality == "low" and not chip_2x2.view.sway_enabled, "small views are Low and don't sway")
+	main.free()
+	game.reset_state()

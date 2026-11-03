@@ -10,6 +10,7 @@ const SOLVE_POP_INTERVAL := 0.25   ## at most ~4 "+X Solves" pops a second, howe
 const BURST_INTERVAL := 0.5
 const COUNTER_EASE := 12.0         ## how fast the Solves counter catches up (higher = faster)
 const ShopCardScene := preload("res://scenes/shop_card.tscn")
+const PuzzleChipScene := preload("res://scenes/puzzle_chip.tscn")
 const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 
 @onready var solves_label: Label = %SolvesLabel
@@ -27,6 +28,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var upgrade_list: GridContainer = %UpgradeList
 @onready var tabs: TabContainer = %Tabs
 @onready var fx: FxLayer = %FxLayer
+@onready var puzzle_row: HBoxContainer = %PuzzleRow
 @onready var buy_one: Button = %BuyOne
 @onready var buy_ten: Button = %BuyTen
 @onready var buy_max: Button = %BuyMax
@@ -43,6 +45,8 @@ var _solve_pop_timer := 0.0
 var _burst_timer := 0.0
 var _buy_amount := 1               ## 1, 10 or GameState.BUY_MAX (the ×1 / ×10 / Max toggle)
 var _revealed: Dictionary = {}
+var _chips: Dictionary = {}          ## unlocked puzzle id -> PuzzleChip (the focused one is hidden)
+var _locked_chip: PuzzleChip         ## the next puzzle to unlock
 var _hold_counter := false        ## keeps the counter still while the Welcome back panel is open    ## helper ids already shown unlocked (a newly revealed one plays the unlock sound)
 
 
@@ -58,6 +62,8 @@ func _ready() -> void:
 	Game.purchased.connect(_on_purchased)
 	Game.state_reset.connect(_on_state_reset)
 	Game.focus_changed.connect(_on_focus_changed)
+	Game.puzzle_unlocked.connect(_on_puzzle_unlocked)
+	_build_puzzle_row()
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	_shown_solves = Game.solves
 	welcome_panel.collected.connect(_on_welcome_collected)
@@ -74,6 +80,8 @@ func _process(delta: float) -> void:
 	var ticker := puzzle_view.ticker_text()
 	move_ticker.text = ticker if ticker != "" else " "  # keep the line's height when empty
 	_animate_helper_moves(delta)
+	for id: String in _chips:
+		(_chips[id] as PuzzleChip).advance(delta, Game.get_puzzle_moves_per_second(id))
 	_animate_counter(delta)
 	_pop_solves(delta)
 	_refresh_timer += delta
@@ -140,6 +148,7 @@ func _refresh() -> void:
 
 	_refresh_helper_cards()
 	_refresh_upgrade_tiles()
+	_refresh_puzzle_row()
 
 
 ## Unlocked helpers show as full cards; the first locked one shows as a "???" card with its requirement
@@ -271,7 +280,7 @@ func _next_goal_text(goal: Dictionary) -> String:
 
 
 func _animate_helper_moves(delta: float) -> void:
-	var mps := Game.get_moves_per_second()
+	var mps := Game.get_puzzle_moves_per_second(Game.get_focused_puzzle_id())  # the big view shows its own share
 	puzzle_view.set_speed(mps)
 	if mps <= 0.0:
 		return
@@ -314,16 +323,70 @@ func _on_tap_pressed(at: Vector2 = Vector2.INF) -> void:
 func _on_solved(count: int, puzzle_id: String) -> void:
 	if puzzle_id == Game.get_focused_puzzle_id():
 		puzzle_view.show_solved()
+	elif _chips.has(puzzle_id):
+		(_chips[puzzle_id] as PuzzleChip).view.show_solved()
 	Audio.play_solve()
 	_pending_solve_value += count * Game.get_solve_value(puzzle_id)
 
 
 func _on_focus_changed(puzzle_id: String) -> void:
 	puzzle_view.set_puzzle(puzzle_id)
+	_refresh_puzzle_row()
+
+
+func _on_puzzle_unlocked(_puzzle_id: String) -> void:
+	_build_puzzle_row()
+	puzzle_view.drop_in()
+	Audio.play_unlock()
+
+
+# --- Puzzle row (D9) --------------------------------------------------------------
+
+## One chip per unlocked puzzle (the focused one hidden, as it's the big view) plus the next locked puzzle.
+func _build_puzzle_row() -> void:
+	for id in Game.get_unlocked_puzzle_ids():
+		if not _chips.has(id):
+			var chip: PuzzleChip = PuzzleChipScene.instantiate()
+			puzzle_row.add_child(chip)
+			chip.show_running(id, Content.get_puzzle(id)["name"])
+			chip.chosen.connect(Game.set_focus)
+			chip.set_reduce_motion(Settings.get_value("reduce_motion"))
+			_chips[id] = chip
+	for id: String in _chips.keys():
+		if not Game.is_puzzle_unlocked(id):  # after a save reset
+			(_chips[id] as PuzzleChip).queue_free()
+			puzzle_row.remove_child(_chips[id])
+			_chips.erase(id)
+	if _locked_chip == null:
+		_locked_chip = PuzzleChipScene.instantiate()
+		puzzle_row.add_child(_locked_chip)
+		_locked_chip.unlock_pressed.connect(_on_unlock_pressed)
+	puzzle_row.move_child(_locked_chip, -1)
+	_refresh_puzzle_row()
+
+
+func _refresh_puzzle_row() -> void:
+	var focused := Game.get_focused_puzzle_id()
+	for id: String in _chips:
+		var chip: PuzzleChip = _chips[id]
+		chip.visible = id != focused
+		chip.update_running("+%s/s  ·  %d%%" % [Num.format(Game.get_puzzle_solves_per_second(id)), roundi(Game.get_puzzle_share(id) * 100.0)])
+	if _locked_chip == null:
+		return
+	var next := Game.get_next_locked_puzzle()
+	_locked_chip.visible = next != ""
+	if next != "":
+		var cost := Game.get_puzzle_unlock_cost(next)
+		_locked_chip.show_locked(next, Content.get_puzzle(next)["name"], "%s Solves" % Num.format(cost), Game.solves >= cost)
+
+
+func _on_unlock_pressed(puzzle_id: String) -> void:
+	Game.unlock_puzzle(puzzle_id)
 
 
 func _on_state_reset() -> void:
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
+	_build_puzzle_row()
 	_shown_solves = Game.solves
 	_revealed.clear()
 	for def: Dictionary in Content.BUILDINGS:
@@ -345,6 +408,8 @@ func _apply_display_settings() -> void:
 	var reduce: bool = Settings.get_value("reduce_motion")
 	puzzle_view.set_reduce_motion(reduce)
 	fx.particles_enabled = not reduce
+	for id: String in _chips:
+		(_chips[id] as PuzzleChip).set_reduce_motion(reduce)
 
 
 func _on_setting_changed(key: String) -> void:

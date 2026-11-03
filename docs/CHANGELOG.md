@@ -2,6 +2,32 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task 4.3a: puzzle row + focus
+- **Puzzle row** (`%PuzzleRow` under the big view): a `PuzzleChip` (`scenes/puzzle_chip.tscn`) for every unlocked puzzle
+  except the focused one. Each has a small `PuzzleView3D` (always Graphics Low, never sways, ≤ 4 visible turns/s, speed
+  mode above that, and its own solve replay when that puzzle solves), the name, and "+Solves/s · share %". The big view now
+  turns at the focused puzzle's share only. Chips stay alive (one per puzzle) and the focused one is hidden.
+- **Click-to-focus:** clicking a small puzzle calls `Game.set_focus`, so the big and small views swap. It doesn't tap.
+  Drags on small views still rotate them.
+- **Unlocking:** the next locked puzzle shows as a chip with a padlock, its cost (green when affordable) and an
+  **Unlock** button. Unlocking focuses the new puzzle; the big view **drops it in** (`PuzzleView3D.drop_in()`, 0.55 s fall
+  with a small bounce, skipped by Reduce motion), the unlock sting plays, and the music follows to its track (follow mode).
+  7×7 and Megaminx don't show until prestige exists. The next puzzle was already in Next goal.
+- Theme: `PuzzleChipPanel` card style.
+- **Bench split:** `bench` (the 7×7 alone) and `bench_row` (all five cubes: the big 7×7 + 4 small views), both on the row5
+  state with the economy running. In this container (software rendering), Low 34.5 → 46.4 ms (**1.35×**) and High
+  86.7 → 94.4 ms (**1.09×**), within the 1.5× target.
+- **Exit fix:** in the bench, solves kept starting new chimes *after* `stop_all()`, so a playback was alive at exit.
+  `Audio.shut_down()` now stops everything and refuses new sounds; the screenshot tool also stops the economy before
+  quitting, and the test runner uses `shut_down()`.
+- New presets `row3` (2×2/3×3/4×4, focused on the 4×4) and `row5` (all cubes, focused on the 7×7), written as v2 saves.
+  Screenshots: [1 puzzle](screenshots/puzzles/fresh.png), [3 puzzles](screenshots/puzzles/row3.png),
+  [5 puzzles](screenshots/puzzles/row5.png). **The 6-puzzle shot comes with the Megaminx (4.4).**
+- Tests: fresh shows the 2×2 and a locked 3×3 chip (Unlock disabled until 150 Solves); Unlock unlocks, swaps the big view, drops
+  in and plays the sting; the 2×2 moves into the row and the 4×4 becomes the locked chip; clicking a small puzzle focuses it,
+  swaps the views and doesn't tap; small views are Low and don't sway. 1312 checks, `All good.`
+- **Next:** task 4.3b (split controls).
+
 ## 2026-11-03 — Task 4.2: parallel puzzles + save v2 (D9)
 - **`GameState` runs every unlocked puzzle at once.** New state: `unlocked_puzzles` (ladder order), `puzzle_progress`
   (moves toward each puzzle's next solve), `focused_puzzle` and `split` (a weight per puzzle). `add_moves()` (helpers and

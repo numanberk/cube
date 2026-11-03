@@ -57,6 +57,7 @@ const BOUNCE_TIME := 0.45
 const SQUASH_DOWN := 0.07       ## a tap squashes the puzzle this much vertically...
 const SQUASH_OUT := 0.04        ## ...and bulges it this much sideways
 const SQUASH_DECAY := 9.0
+const DROP_TIME := 0.55         ## a newly unlocked puzzle drops into place over this long
 const DRAG_SPEED := 0.01        ## radians per pixel dragged
 const DRAG_MAX_PITCH := 0.7
 const DRAG_SPRING := 2.5        ## how fast a released drag returns (higher = faster)
@@ -110,6 +111,7 @@ var _last_speed_solve_at := -INF
 var _punch := 0.0
 var _bounce := 0.0               ## counts down from BOUNCE_TIME
 var _squash := 0.0               ## 1 right after a tap, decays to 0
+var _drop := 0.0                 ## counts down from DROP_TIME while a new puzzle drops in
 var _base_turntable := Basis.IDENTITY
 var _base_puzzle := Basis.IDENTITY
 
@@ -225,6 +227,12 @@ func set_speed(moves_per_second: float) -> void:
 func squash() -> void:
 	if not reduce_motion:
 		_squash = 1.0
+
+
+## A newly unlocked puzzle drops in from above with a small bounce. Skipped with Reduce motion.
+func drop_in() -> void:
+	if not reduce_motion:
+		_drop = DROP_TIME
 
 
 ## Reduce motion: no idle sway, tap squash, solve bounce or speed-mode wobble. Turns still animate (they're the game).
@@ -529,6 +537,15 @@ func _animate_effects(delta: float) -> void:
 		_bounce = maxf(0.0, _bounce - delta)
 		var t := 1.0 - _bounce / BOUNCE_TIME
 		scale_value += BOUNCE_SCALE * sin(t * PI) * (1.0 - t)  # a quick swell that settles
+	if _drop > 0.0:
+		_drop = maxf(0.0, _drop - delta)
+		var t := 1.0 - _drop / DROP_TIME                       # 0 -> 1
+		var fall := pow(1.0 - t, 2.0)                           # starts high, lands at 0
+		var settle := sin(t * PI * 2.0) * (1.0 - t) * 0.06      # a small bounce on landing
+		_puzzle.position = Vector3(0.0, fall * model.size * 1.2, 0.0)
+		scale_value *= 0.7 + 0.3 * t + settle
+	else:
+		_puzzle.position = Vector3.ZERO
 	_squash = maxf(0.0, _squash - delta * SQUASH_DECAY)
 	var squash_amount := sin(_squash * PI * 0.5)  # eases out of the squash
 	_puzzle.scale = Vector3(

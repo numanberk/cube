@@ -1,5 +1,5 @@
 extends RefCounted
-## Game states for tools/screenshot.sh, written as *version 1* save data.
+## Game states for tools/screenshot.sh, as save data (version 1, or version 2 for puzzle states).
 ## They go through GameState.apply_save_data(), so _migrate() keeps them loading
 ## after future save-format changes. test_runner.gd checks every preset still loads.
 ## Add a preset: add a key here, then `bash tools/screenshot.sh <dir> <key>`.
@@ -30,6 +30,30 @@ const PRESETS := {
 		"move_progress": 7.0,
 		"buildings": {"friend": 15, "club": 8, "robot": 2},
 		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets"],
+	},
+
+	# Three puzzles running (v2 save): 2x2, 3x3 and 4x4, focused on the 4x4, helpers spread over all three.
+	"row3": {
+		"version": 2,
+		"solves": 18000.0,
+		"total_solves": 260000.0,
+		"total_moves": 2.2e6,
+		"puzzles": {"unlocked": ["2x2", "3x3", "4x4"], "progress": {"4x4": 30.0}, "focus": "4x4",
+			"split": {"2x2": 0.2, "3x3": 0.3, "4x4": 0.5}},
+		"buildings": {"friend": 30, "club": 20, "robot": 12, "competition": 6},
+		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets", "firmware"],
+	},
+
+	# Every cube running (as if after a championship): 2x2 to 7x7, focused on the 7x7.
+	"row5": {
+		"version": 2,
+		"solves": 4.0e6,
+		"total_solves": 9.0e7,
+		"total_moves": 9.0e8,
+		"puzzles": {"unlocked": ["2x2", "3x3", "4x4", "5x5", "7x7"], "progress": {"7x7": 120.0}, "focus": "7x7",
+			"split": {"2x2": 0.1, "3x3": 0.15, "4x4": 0.2, "5x5": 0.25, "7x7": 0.3}},
+		"buildings": {"friend": 60, "club": 45, "robot": 35, "competition": 25, "factory": 15, "lab": 8},
+		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets", "firmware", "roux"],
 	},
 
 	# Everything unlocked and bought, lots of each helper.

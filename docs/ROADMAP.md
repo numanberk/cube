@@ -108,7 +108,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       The simulator must learn to buy puzzles and (for now) keep the default split.
       *Done when:* there's a v1 → v2 migration test, a new game has only 2×2, and tests cover the split (puzzle moves add up to
       helper moves), taps going to the focused puzzle, per-puzzle solves, and the unlock moving the split.
-- [ ] **4.3a Puzzle row + focus [D9]:** one big `PuzzleView3D` (the focused puzzle) and a row of small ones under it for every
+- [x] **4.3a Puzzle row + focus [D9]:** one big `PuzzleView3D` (the focused puzzle) and a row of small ones under it for every
       other unlocked puzzle, each always on Graphics Low, turning at the speed of its own share and showing its solves/s.
       Clicking a small one focuses it (the big and small views swap). The next locked puzzle shows as a "???" card with its
       cost (also in "Next goal"). Unlocking drops the new puzzle in with a short animation and fades to its track.

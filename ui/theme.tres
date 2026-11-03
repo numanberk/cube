@@ -538,6 +538,22 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_puzzle_chip"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.1451, 0.1608, 0.1961, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.1961, 0.2196, 0.2745, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -705,3 +721,5 @@ BigAccentLabel/base_type = &"Label"
 BigAccentLabel/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1)
 BigAccentLabel/font_sizes/font_size = 40
 BigAccentLabel/fonts/font = SubResource("FontVariation_2j8s8")
+PuzzleChipPanel/base_type = &"PanelContainer"
+PuzzleChipPanel/styles/panel = SubResource("StyleBoxFlat_puzzle_chip")

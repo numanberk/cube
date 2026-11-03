@@ -38,6 +38,8 @@ scripts/data/content.gd    class Content: helpers + upgrades as plain data (bala
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
 scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only
 scenes/upgrade_tile.tscn   class UpgradeTile (scripts/ui/upgrade_tile.gd): one upgrade icon tile + tooltip panel
+scenes/puzzle_chip.tscn    class PuzzleChip: one card in the puzzle row (small Low-quality PuzzleView3D, name, Solves/s,
+                           share) or the next locked puzzle (padlock, cost, Unlock button)
 scripts/ui/fx_layer.gd     class FxLayer (%FxLayer in main.tscn): pooled floating "+N" texts (max 20) + solve particle burst
 scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle/set_speed,
                            `tapped`; animated turn queue, solve replay, speed mode (see its header comment)
@@ -106,12 +108,12 @@ TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 (
 JUICE=1 bash tools/screenshot.sh /tmp/shots mid                   # taps + solve pop mid-animation -> mid_juice.png
 BUY=10 bash tools/screenshot.sh /tmp/shots mid                    # shop on ×10 (BUY=-1: Max) -> mid_buy10.png
 SETTINGS=1 bash tools/screenshot.sh /tmp/shots mid                # Settings panel open -> mid_settings.png
-bash tools/screenshot.sh /tmp/shots bench                         # 7×7 at max speed: logs ms/frame for Low and High
+bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
 - It runs under `xvfb-run` with the real OpenGL 3 renderer (software Mesa, so it's slow but correct) and
   a throwaway user-data dir, so it never touches a real save.
-- Presets (`fresh`, `mid`, `late`, `welcome`) are version-1 save data in `tools/screenshot_presets.gd`. They go through
+- Presets (`fresh`, `mid`, `late`, `welcome`; v2 puzzle states `row3`, `row5`) are save data in `tools/screenshot_presets.gd`. They go through
   `_migrate()`, so they keep working after save-format changes. A test checks that they still load.
   Add a preset there when a new feature needs its own state (e.g. a puzzle tier or prestige).
 - The economy is frozen during the shot, so numbers match the preset exactly. The cube is seeded, so

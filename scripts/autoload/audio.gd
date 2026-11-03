@@ -37,6 +37,7 @@ var _players: Dictionary = {}    ## sound name -> AudioStreamPlayer
 var _last_played: Dictionary = {}  ## sound name -> seconds (engine time) it last played
 var _rng := RandomNumberGenerator.new()
 
+var _shut_down := false           ## set by shut_down(): no new sounds
 var music_enabled := true        ## false = never start music (the screenshot tool; nothing to hear there)
 var music_mode := "follow"
 var loop_track_id := ""          ## the track "loop" mode plays ("" = the follow track)
@@ -108,7 +109,7 @@ func set_music_context(unlocked_track_ids: Array[String], follow_track_id: Strin
 
 ## Crossfades to a track (no-op if it's already playing or has no file).
 func play_track(track_id: String) -> void:
-	if not music_enabled or track_id == "" or track_id == current_track_id:
+	if _shut_down or not music_enabled or track_id == "" or track_id == current_track_id:
 		return
 	var def := Content.get_track(track_id)
 	if def.is_empty() or def["file"] == "":
@@ -243,6 +244,14 @@ func play_unlock() -> bool:
 	return _play("unlock")
 
 
+## For quitting: stops every sound and refuses new ones, so nothing is still playing at exit (Godot reports a
+## playback alive at exit as a leaked resource). The game keeps running during the short wait before quitting,
+## and without this its solves would start new chimes.
+func shut_down() -> void:
+	_shut_down = true
+	stop_all()
+
+
 ## Stops every sound now (used before quitting, so no playback is left alive at exit).
 func stop_all() -> void:
 	for player: AudioStreamPlayer in _players.values():
@@ -268,6 +277,8 @@ func get_bus_volume(bus: StringName) -> float:
 
 
 func _play(sound_name: String, pitch: float = 1.0) -> bool:
+	if _shut_down:
+		return false
 	var now := Time.get_ticks_msec() / 1000.0
 	var min_interval: float = SOUNDS[sound_name]["min_interval"]
 	if now - float(_last_played.get(sound_name, -INF)) < min_interval:

@@ -2,8 +2,10 @@ extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
 ##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1]
-## Preset "bench" is special: the late-game state on a 7×7 with the economy running (speed mode, a solve every
-## frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame time.
+## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
+## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
+## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
+## Task 4.3a: bench_row must stay within 1.5× of bench.
 ## Not part of the game: never reference this from scenes/ or scripts/.
 
 const Presets := preload("res://tools/screenshot_presets.gd")
@@ -18,10 +20,11 @@ func _ready() -> void:
 	var args := _parse_args(OS.get_cmdline_user_args())
 	var preset: String = args.get("preset", "fresh")
 	var out: String = args.get("out", "")
-	var bench := preset == "bench"
+	var bench := preset in ["bench", "bench_row"]
+	var single_puzzle := preset == "bench"
+	var bench_name := preset
 	if bench:
-		preset = "late"
-		args["puzzle"] = "7x7"
+		preset = "row5"
 	if out == "" or not Presets.PRESETS.has(preset):
 		push_error("Usage: -- --preset <%s> --out <file.png>" % "|".join(Presets.PRESETS.keys()))
 		_quit(2)
@@ -34,6 +37,8 @@ func _ready() -> void:
 	var now := Time.get_unix_time_from_system()
 	if data.has("away_seconds"):
 		data["saved_at"] = now - float(data["away_seconds"])
+	if bench and single_puzzle:
+		data["puzzles"] = {"unlocked": ["7x7"], "progress": {}, "focus": "7x7", "split": {"7x7": 1.0}}
 	Game.apply_save_data(data, now)
 	Game.set_process(bench)  # freeze the economy so the numbers match the preset (the bench keeps it running)
 	seed(RANDOM_SEED)
@@ -54,7 +59,7 @@ func _ready() -> void:
 		view.set_graphics(graphics)
 	if bench:
 		for quality: String in ["low", "high"]:  # high last, so the saved PNG shows it
-			await _bench(view, quality)
+			await _bench(view, quality, bench_name)
 	var pose: String = args.get("pose", "")
 	if pose != "":
 		for i in SETTLE_FRAMES:  # let the starting animations finish first
@@ -79,18 +84,20 @@ func _ready() -> void:
 		push_error("Could not write %s: %s" % [out, error_string(err)])
 		_quit(1)
 		return
-	print("Saved %s (%dx%d, preset '%s')" % [out, image.get_width(), image.get_height(), "bench" if bench else preset])
+	print("Saved %s (%dx%d, preset '%s')" % [out, image.get_width(), image.get_height(), bench_name if bench else preset])
 	_quit(0)
 
 
 ## Stops sounds and gives the audio thread a moment, so no playback is reported as leaked at exit.
 func _quit(code: int) -> void:
-	Audio.stop_all()
-	await get_tree().create_timer(0.25).timeout  # the audio thread releases stopped sound effects
+	Game.set_process(false)
+	Audio.shut_down()
+	for i in 6:  # the audio thread releases stopped sound effects on its next mixes (slower under a heavy bench)
+		await get_tree().create_timer(0.1).timeout
 	get_tree().quit(code)
 
 
-func _bench(view: PuzzleView3D, quality: String) -> void:
+func _bench(view: PuzzleView3D, quality: String, bench_name: String) -> void:
 	view.set_graphics(quality)
 	for i in BENCH_WARMUP:
 		await get_tree().process_frame
@@ -103,8 +110,8 @@ func _bench(view: PuzzleView3D, quality: String) -> void:
 		worst = maxi(worst, now - previous)
 		previous = now
 	var average_ms := (previous - started) / 1000.0 / BENCH_FRAMES
-	print("Bench %s: %.2f ms/frame average (%.0f fps), worst %.2f ms, %d frames, %s, %s pieces x %d triangles, speed mode %s" % [
-		quality, average_ms, 1000.0 / average_ms, worst / 1000.0, BENCH_FRAMES, view.puzzle_id,
+	print("Bench %s %s: %.2f ms/frame average (%.0f fps), worst %.2f ms, %d frames, %s, %s pieces x %d triangles, speed mode %s" % [
+		bench_name, quality, average_ms, 1000.0 / average_ms, worst / 1000.0, BENCH_FRAMES, view.puzzle_id,
 		view.model.piece_count(), view.body_triangles(), "on" if view.speed_mode else "off",
 	])
 

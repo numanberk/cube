@@ -1,0 +1,52 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/puzzle_chip.gd" id="1_chip"]
+[ext_resource type="PackedScene" path="res://scenes/puzzle_view_3d.tscn" id="2_view"]
+[ext_resource type="Texture2D" path="res://assets/icons/locked.svg" id="3_lock"]
+
+[node name="PuzzleChip" type="PanelContainer"]
+custom_minimum_size = Vector2(112, 0)
+theme_type_variation = &"PuzzleChipPanel"
+script = ExtResource("1_chip")
+
+[node name="Box" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_type_variation = &"TightBox"
+
+[node name="ChipView" parent="Box" instance=ExtResource("2_view")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 84)
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="Lock" type="TextureRect" parent="Box"]
+unique_name_in_owner = true
+visible = false
+modulate = Color(1, 1, 1, 0.55)
+custom_minimum_size = Vector2(96, 52)
+layout_mode = 2
+texture = ExtResource("3_lock")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ChipName" type="Label" parent="Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"CardTitle"
+text = "3×3"
+horizontal_alignment = 1
+
+[node name="ChipRate" type="Label" parent="Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"CardLine"
+text = "+4/s"
+horizontal_alignment = 1
+
+[node name="UnlockButton" type="Button" parent="Box"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+text = "Unlock"
