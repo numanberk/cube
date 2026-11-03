@@ -200,8 +200,8 @@ const ALGORITHMS: Array[Dictionary] = [
 	{"id": "oll_chameleon", "name": "Chameleon", "set": "OLL", "two_look": true, "alg": "r U R' U' r' F R F'"},
 	{"id": "oll_bowtie", "name": "Bowtie", "set": "OLL", "two_look": true, "alg": "F R' F' r U R U' r'"},
 	# 2-look PLL, step 1: permute the corners
-	{"id": "pll_aa", "name": "Aa perm", "set": "PLL", "two_look": true, "alg": "R' F R' B2 R F' R' B2 R2"},
-	{"id": "pll_ab", "name": "Ab perm", "set": "PLL", "two_look": true, "alg": "R2 B2 R F R' B2 R F' R"},
+	{"id": "pll_aa", "name": "Aa perm", "set": "PLL", "two_look": true, "alg": "x R' U R' D2 R U' R' D2 R2 x'"},
+	{"id": "pll_ab", "name": "Ab perm", "set": "PLL", "two_look": true, "alg": "x R2 D2 R U R' D2 R U' R x'"},
 	{"id": "pll_t", "name": "T perm", "set": "PLL", "two_look": true, "alg": "R U R' U' R' F R2 U' R' U' R U R' F'"},
 	{"id": "pll_y", "name": "Y perm", "set": "PLL", "two_look": true, "alg": "F R U' R' U' R U R' F' R U R' U' R' F R F'"},
 	# 2-look PLL, step 2: permute the edges

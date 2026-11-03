@@ -2,6 +2,30 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — R.1 follow-up: solves look right to a pro (owner answers)
+- **Owner answers:** showcase speed as recommended (~3 TPS Beginner → ~10–12 TPS CFOP; noted in ROADMAP R.2); the solve
+  must **look right to a pro**; a 2×2 first layer in any colour is fine.
+- **No more back-face inserts.** F2L and the beginner layers now work only at the front, like a real solver:
+  - F2L inserts are `R U^k R'`, `L' U^k L`, `F' U^k F` (and the other directions, for taking pairs out), never `B`.
+    To reach a back slot the cube turns with **`y` / `y'` / `y2`** (cost 2/2/3 moves, so it only rotates when that
+    saves moves). About 1.4 `y` per CFOP solve.
+  - Beginner: each corner is held at the front and inserted with repeated `R U R' U'` (or `L' U' L U`); each middle edge
+    with the two classic front inserts; **a piece stuck in the wrong slot is held at the front and popped out with one
+    insert first**, as beginners are taught. Corner positions: turn so the corner already in place is front-right, then
+    `U R U' L' U R' U' L`. About 7 `y` per beginner solve.
+  - The solver computes a `y` option's cost *without* turning the cube (`_rotated_option` / `_renamed`: where each piece
+    lands and how it's renamed relative to the turned centres), so choosing stays cheap.
+- **Inspection like a pro:** after `z2` (white cross on the bottom) the solver tries all four `y` holds and keeps the
+  shortest cross (fewest `B` turns on a tie), e.g. `z2 y'`. `B` turns per CFOP solve dropped from 2.7 to 0.3 (only in
+  crosses where every hold needs one, which is normal).
+- **A-perms** are now the standard `x R' U R' D2 R U' R' D2 R2 x'` / `x R2 D2 R U R' D2 R U' R x'` (rotation-free versions
+  used `B2`, which pros don't).
+- Numbers after `warm_up()` (~0.25 s): 3×3 CFOP ~67 moves, ~11 ms (worst ~31 ms); Beginner ~134 moves, ~14 ms; 2×2 ~2 ms.
+- Tests (1785 checks, `All good.`): new check that F2L/first layer/second layer/corner positions never turn `B` over 60
+  solves and use `y` instead; inspection may be `z2` + a `y`.
+- **For R.2:** display wide moves on the 3×3 as cubers write them (`r`, not `Rw`); TwistyModel.notation() gives the WCA
+  form. Stage ids/names are unchanged.
+
 ## 2026-11-03 — Task R.1: the staged solver (real Beginner and CFOP solves)
 - **`StagedSolver`** (`scripts/cube/staged_solver.gd`, pure data like TwistyModel): `StagedSolver.solve(model, method)`
   returns the solve as stages `[{id, name, moves}]` without touching the model; applying them in order solves it.

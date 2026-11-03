@@ -27,6 +27,9 @@ const CROSS_COLOR := PuzzleShapes.COLOR_WHITE   ## 3×3: the cross colour, turne
 const ORIENT_ROTATIONS := ["", "z2", "x'", "x", "z", "z'"]
 const ALG_COST := 100        ## an algorithm costs this much more than its moves, so the search uses as few as it can
 const MAX_CROSS_DEPTH := 10
+## Extra cost of turning the whole cube by y^k before a pair (k = 0..3: none, y, y2, y'), so the solver only rotates
+## when it saves moves, and prefers y / y' to y2.
+const ROTATION_COST := [0, 2, 3, 2]
 
 const STAGE_NAMES := {
 	"inspection": "Inspection", "cross": "Cross", "f2l_1": "F2L 1", "f2l_2": "F2L 2", "f2l_3": "F2L 3",
@@ -469,26 +472,11 @@ class _Run:
 			id = model.notation_sequence(moves)
 		return {"id": id, "moves": moves, "ct": ct, "et": et, "cost": moves.size() + extra_cost, "dc": dc, "de": de}
 
-	func alg_macro(id: String, extra_cost: int = ALG_COST, y_turns: int = 0) -> Dictionary:
+	func alg_macro(id: String, extra_cost: int = ALG_COST) -> Dictionary:
 		var moves := model.parse_sequence(Content.get_algorithm(id).get("alg", ""))
 		if moves.is_empty():
 			return {}
-		if y_turns != 0:
-			moves = _turned(moves, y_turns)
 		return macro(moves, extra_cost)
-
-	## The same algorithm done from another side: F -> R -> B -> L (a y rotation, written without rotating).
-	func _turned(moves: Array[Dictionary], y_turns: int) -> Array[Dictionary]:
-		var ring := ["F", "R", "B", "L"]
-		var out: Array[Dictionary] = []
-		for move in moves:
-			var name := model.face_names[int(move["face"])]
-			var k := ring.find(name)
-			if k >= 0:
-				name = ring[(k + y_turns) % 4]
-			out.append(model.make_move(model.face_names.find(name), move["turns"], move.get("width", 1),
-					move.get("depth", 0)))
-		return out
 
 	func apply_moves(moves: Array) -> void:
 		for move: Dictionary in moves:
@@ -770,6 +758,39 @@ class _Run:
 	## Cross: IDA* over the four bottom edges. The heuristic is the exact cost of every three of them, from one table
 	## (three edges) looked up four times, turned by y, y2 and y' (the other triples are the same pattern rotated).
 	func solve_cross() -> void:
+		# Like a solver in inspection: try the four ways to hold the cube (y turns) and take the shortest cross,
+		# then the one with fewest B turns (awkward to do).
+		var best_k := 0
+		var best_path: Array = []
+		var best_score := -1
+		for k: int in [0, 1, 3, 2]:
+			var probe := self
+			if k != 0:
+				var probe_model := PuzzleShapes.cube(shape.size)
+				probe_model.orientations = model.orientations.duplicate()
+				probe_model.apply(model.make_move(shape.u_face, k, shape.size))
+				probe = _Run.new(shape, probe_model)
+			var path := probe.plan_cross()
+			var score := path.size() * 10
+			for move: Dictionary in path:
+				if int(move["face"]) == model.face_names.find("B"):
+					score += 1
+			if best_score < 0 or score < best_score:
+				best_score = score
+				best_k = k
+				best_path = path
+		if best_k != 0:
+			var turn := model.make_move(shape.u_face, best_k, shape.size)
+			apply_moves([turn])
+			read_state()
+			if not stages.is_empty() and stages[-1]["id"] == "inspection":
+				(stages[-1]["moves"] as Array).append(turn)
+			else:
+				stages.append({"id": "inspection", "name": StagedSolver.STAGE_NAMES["inspection"], "moves": [turn]})
+		add_stage("cross", best_path)
+
+	## The shortest cross from here, as moves (not applied).
+	func plan_cross() -> Array:
 		var lookups := _cross_lookups()
 		var table: PackedByteArray = lookups[0]
 		var state := PackedInt32Array()
@@ -785,7 +806,7 @@ class _Run:
 		var moves: Array = []
 		for m in path:
 			moves.append(shape.face_moves[m])
-		add_stage("cross", moves)
+		return moves
 
 	## [table, rotations]: the 3-edge table for d_edges[0..2], and for each y turn k: [i0, i1, i2, unturn table], so
 	## the cost of the triple turned by y^k is table[unturn[s[i0]] + 24 * unturn[s[i1]] + 576 * unturn[s[i2]]].
@@ -833,66 +854,176 @@ class _Run:
 			path.pop_back()
 		return false
 
-	## F2L: the cheapest unsolved pair each time, with inserts that leave the cross and finished pairs alone.
+	## F2L: the cheapest unsolved pair each time. Like a real solver, it only inserts at the front (R U R', F' U' F,
+	## L' U' L, ...; never B) and turns the whole cube with y to bring a back pair round to the front.
 	func solve_f2l() -> void:
-		var pairs := f2l_pairs()
-		var done: Array[int] = []  # indices into pairs
+		var jobs := f2l_pairs()
+		var front := _front_macros("f2l", _f2l_front_moves())
+		var cross: Array[int] = d_edges
 		for n in 4:
-			var macros := _f2l_macros(pairs, done)
-			var best_cost := -1
-			var best_pair := -1
-			for k in pairs.size():
-				if k in done:
+			var moves: Variant = _solve_next(jobs, front, _none, cross)
+			_record_applied("f2l_%d" % (n + 1), moves if moves != null else [])
+
+	## X U^k X' style inserts on the front faces (R, L, F), both directions, k = 1, -1, 2.
+	func _f2l_front_moves() -> Array:
+		var sequences := []
+		for side: String in ["R", "L", "F"]:
+			var f := model.face_names.find(side)
+			for s: int in [1, -1]:
+				for k: int in [1, -1, 2]:
+					sequences.append([model.make_move(f, s), model.make_move(shape.u_face, k), model.make_move(f, -s)])
+		return sequences
+
+	## Macros for a list of move sequences (cached on the shape under `key`).
+	func _front_macros(key: String, sequences: Array) -> Array:
+		if not shape.macro_tables.has("front|" + key):
+			var macros := []
+			for moves: Array in sequences:
+				macros.append(macro(moves, 0))
+			shape.macro_tables["front|" + key] = macros
+		return shape.macro_tables["front|" + key]
+
+	## Solves the cheapest unsolved job (a [corner, edge] pair; -1 = none of that kind) from `jobs`, turning the cube by y
+	## first if that's cheaper, with `front` macros plus U turns, never disturbing `keep_c`/`keep_e` or a solved job.
+	## Applies the moves and returns them (with the rotation), or null if every job is already solved.
+	func _solve_next(jobs: Array, front: Array, keep_c: Array[int], keep_e: Array[int]) -> Variant:
+		var best := {}
+		for job: Array in jobs:
+			if _job_done(job):
+				continue
+			for r in 4:
+				var option := _rotated_option(job, r, jobs, front, keep_c, keep_e)
+				if option.is_empty():
 					continue
-				var c: Array[int] = [pairs[k][0]]
-				var e: Array[int] = [pairs[k][1]]
-				var cost := cost_to_goal("full", c, e, macros)
-				if cost >= 0 and (best_cost < 0 or cost < best_cost):
-					best_cost = cost
-					best_pair = k
-			if best_pair < 0:
-				break
-			done.append(best_pair)
-			var bc: Array[int] = [pairs[best_pair][0]]
-			var be: Array[int] = [pairs[best_pair][1]]
-			var moves: Variant = table_search("full", bc, be, macros)
-			add_stage("f2l_%d" % (n + 1), moves if moves != null else [])
+				var cost := int(option["cost"]) + int(StagedSolver.ROTATION_COST[r])
+				if best.is_empty() or cost < int(best["total"]):
+					best = option
+					best["total"] = cost
+					best["r"] = r
+		if best.is_empty():
+			for job: Array in jobs:
+				if not _job_done(job):
+					return _pop_out(jobs, front, keep_c, keep_e)
+			return null
+		var moves: Array = []
+		if int(best["r"]) != 0:
+			var turn := model.make_move(shape.u_face, int(best["r"]), shape.size)
+			moves.append(turn)
+			apply_moves([turn])
+			read_state()  # pieces are named by the centres, which just moved
+		var path: Variant = table_search("full", best["c"], best["e"], best["macros"])
+		if path != null:
+			moves.append_array(path)
+			apply_moves(path)
+		return moves
 
-	## U turns plus every insert (R U R', R U' R', F' U F, ...) that leaves the cross and the finished pairs alone.
-	func _f2l_macros(pairs: Array, done: Array[int]) -> Array:
-		if not shape.macro_tables.has("f2l_inserts"):
-			var inserts := []
-			for side: String in ["F", "R", "B", "L"]:
-				var f := model.face_names.find(side)
-				for s: int in [1, -1]:
-					for k: int in [1, -1, 2]:
-						inserts.append(macro([model.make_move(f, s), model.make_move(shape.u_face, k),
-								model.make_move(f, -s)], 0))
-			shape.macro_tables["f2l_inserts"] = inserts
-		var keep_c: Array[int] = []
-		var keep_e: Array[int] = d_edges.duplicate()
-		for k in done:
-			keep_c.append(pairs[k][0])
-			keep_e.append(pairs[k][1])
-		return _u_turns + safe(shape.macro_tables["f2l_inserts"], keep_c, keep_e)
+	## A piece stuck in the wrong slot below, where the front inserts can't reach from its own slot: hold that slot at the
+	## front (a y turn) and do one insert there to pop it up, as a beginner does. Then solve on as normal.
+	func _pop_out(jobs: Array, front: Array, keep_c: Array[int], keep_e: Array[int]) -> Variant:
+		for r in [0, 1, 3, 2]:
+			var t: Array = shape.tables(model.make_move(shape.u_face, r, shape.size))
+			var rc: PackedInt32Array = t[0]
+			var re: PackedInt32Array = t[1]
+			var kc: Array[int] = []
+			var ke: Array[int] = []
+			for i in keep_c:
+				kc.append(rc[i * 3] / 3)
+			for i in keep_e:
+				ke.append(re[i * 2] / 2)
+			for job: Array in jobs:
+				if _job_done(job):
+					if int(job[0]) >= 0:
+						kc.append(rc[int(job[0]) * 3] / 3)
+					if int(job[1]) >= 0:
+						ke.append(re[int(job[1]) * 2] / 2)
+			for job: Array in jobs:
+				if _job_done(job):
+					continue
+				var at_c := rc[corners[job[0]]] / 3 if int(job[0]) >= 0 else -1
+				var at_e := re[edges[job[1]]] / 2 if int(job[1]) >= 0 else -1
+				for m: Dictionary in safe(front, kc, ke):
+					var hits := (at_c >= 0 and int(m["dc"]) & (1 << at_c) != 0) or \
+							(at_e >= 0 and int(m["de"]) & (1 << at_e) != 0)
+					var stuck := (at_c >= 0 and at_c in d_corners) or (at_e >= 0 and at_e in mid_edges)
+					if not hits or not stuck:
+						continue
+					var moves: Array = []
+					if r != 0:
+						var turn := model.make_move(shape.u_face, r, shape.size)
+						moves.append(turn)
+						apply_moves([turn])
+						read_state()
+					moves.append_array(m["moves"])
+					apply_moves(m["moves"])
+					var rest: Variant = _solve_next(jobs, front, keep_c, keep_e)
+					if rest != null:
+						moves.append_array(rest)
+					return moves
+		return null
 
-	## Builds every table a CFOP solve can need (cross, each pair with each set of finished pairs, last layer).
+	func _job_done(job: Array) -> bool:
+		return (int(job[0]) < 0 or corner_done(job[0])) and (int(job[1]) < 0 or edge_done(job[1]))
+
+	## The cost of `job` after turning the cube by y^r, worked out without turning it: where its pieces and the kept
+	## ones would be (and how they'd be named) after the turn. {} if the front macros can't solve it from there.
+	## {cost, c, e, macros}: the job's pieces and the macros as named after the turn.
+	func _rotated_option(job: Array, r: int, jobs: Array, front: Array, keep_c: Array[int], keep_e: Array[int]) -> Dictionary:
+		var t: Array = shape.tables(model.make_move(shape.u_face, r, shape.size))
+		var rc: PackedInt32Array = t[0]
+		var re: PackedInt32Array = t[1]
+		var kc: Array[int] = []
+		var ke: Array[int] = []
+		for i in keep_c:
+			kc.append(rc[i * 3] / 3)
+		for i in keep_e:
+			ke.append(re[i * 2] / 2)
+		for other: Array in jobs:
+			if other != job and _job_done(other):
+				if int(other[0]) >= 0:
+					kc.append(rc[int(other[0]) * 3] / 3)
+				if int(other[1]) >= 0:
+					ke.append(re[int(other[1]) * 2] / 2)
+		var tc: Array[int] = []
+		var te: Array[int] = []
+		var code := 0
+		if int(job[0]) >= 0:
+			tc.append(rc[int(job[0]) * 3] / 3)
+			code = _renamed(rc, corners[job[0]], rc[int(job[0]) * 3] % 3, 3)
+		if int(job[1]) >= 0:
+			te.append(re[int(job[1]) * 2] / 2)
+			code = code * 24 + _renamed(re, edges[job[1]], re[int(job[1]) * 2] % 2, 2)
+		var macros: Array = _u_turns + safe(front, kc, ke)
+		var cost := _cost_at(cost_table("full", tc, te, macros), code)
+		if cost < 0:
+			return {}
+		return {"cost": cost, "c": tc, "e": te, "macros": macros}
+
+	## A piece's slot after a whole-cube turn, counted from its new home: the turn moves its home too, and `shift` is how
+	## far the turn moves its home's first sticker (so its twist is measured the way read_state() would).
+	func _renamed(turn: PackedInt32Array, slot: int, shift: int, twists: int) -> int:
+		var moved := turn[slot]
+		return (moved / twists) * twists + posmod(moved % twists - shift, twists)
+
+	## Builds every table a CFOP solve can need (cross, each front pair with each set of finished pairs, last layer).
 	func warm_up_cfop() -> void:
 		_cross_lookups()
 		var pairs := f2l_pairs()
-		for mask in 16:
-			var done: Array[int] = []
-			for k in 4:
-				if mask & (1 << k):
-					done.append(k)
-			if done.size() == 4:
-				continue
-			var macros := _f2l_macros(pairs, done)
-			for k in 4:
-				if not k in done:
-					var c: Array[int] = [pairs[k][0]]
-					var e: Array[int] = [pairs[k][1]]
-					cost_table("full", c, e, macros)
+		var front := _front_macros("f2l", _f2l_front_moves())
+		for k in pairs.size():
+			for mask in 8:
+				var kc: Array[int] = []
+				var ke: Array[int] = d_edges.duplicate()
+				var bit := 0
+				for j in pairs.size():
+					if j == k:
+						continue
+					if mask & (1 << bit):
+						kc.append(pairs[j][0])
+						ke.append(pairs[j][1])
+					bit += 1
+				var tc: Array[int] = [pairs[k][0]]
+				var te: Array[int] = [pairs[k][1]]
+				cost_table("full", tc, te, _u_turns + safe(front, kc, ke))
 
 	func solve_last_layer(oll_ids: Array, pll_ids: Array, oll_stage: String, pll_stage: String) -> void:
 		var keep_c: Array[int] = d_corners
@@ -924,37 +1055,33 @@ class _Run:
 	func solve_beginner() -> void:
 		orient_for_cross()
 		solve_cross()
-		# First layer: one corner at a time with repeated R U R' U' (from whichever side it sits).
+		# First layer: one corner at a time, held at the front and inserted with repeated R U R' U' (or L' U' L U),
+		# turning the cube with y to bring it round, as a beginner does.
+		var corner_jobs := []
+		for c in d_corners:
+			corner_jobs.append([c, -1])
+		var sexy := _front_macros("beg_corner", [model.parse_sequence(Content.get_algorithm("beg_corner")["alg"]),
+				model.parse_sequence("L' U' L U")])
 		var corner_moves: Array = []
-		var sexy := []
-		for y in 4:
-			sexy.append(alg_macro("beg_corner", 0, y))
-			var mirrored := model.parse_sequence("L' U' L U")
-			sexy.append(macro(_turned(mirrored, y), 0))
-		var solved_c: Array[int] = []
 		for n in 4:
-			var choice := _cheapest_single(d_corners, solved_c, true, sexy, solved_c, d_edges)
-			if choice.is_empty():
+			var moves: Variant = _solve_next(corner_jobs, sexy, _none, d_edges)
+			if moves == null:
 				break
-			solved_c.append(choice["piece"])
-			corner_moves.append_array(choice["moves"])
-			apply_moves(StagedSolver.simplify(model, choice["moves"]))
+			corner_moves.append_array(moves)
 		_record_applied("first_layer", corner_moves)
-		# Second layer: one edge at a time with the two classic inserts.
-		var inserts := []
-		for y in 4:
-			inserts.append(alg_macro("beg_edge_right", 0, y))
-			inserts.append(alg_macro("beg_edge_left", 0, y))
+		# Second layer: one edge at a time with the two classic inserts, from the front.
+		var edge_jobs := []
+		for e in mid_edges:
+			edge_jobs.append([-1, e])
+		var inserts := _front_macros("beg_edge", [
+				model.parse_sequence(Content.get_algorithm("beg_edge_right")["alg"]),
+				model.parse_sequence(Content.get_algorithm("beg_edge_left")["alg"])])
 		var edge_moves: Array = []
-		var solved_e: Array[int] = []
 		for n in 4:
-			var keep_e: Array[int] = _join(d_edges, solved_e)
-			var choice := _cheapest_single(mid_edges, solved_e, false, inserts, d_corners, keep_e)
-			if choice.is_empty():
+			var moves: Variant = _solve_next(edge_jobs, inserts, d_corners, d_edges)
+			if moves == null:
 				break
-			solved_e.append(choice["piece"])
-			edge_moves.append_array(choice["moves"])
-			apply_moves(StagedSolver.simplify(model, choice["moves"]))
+			edge_moves.append_array(moves)
 		_record_applied("second_layer", edge_moves)
 		# Last layer, step by step.
 		var keep_c: Array[int] = d_corners
@@ -966,14 +1093,43 @@ class _Run:
 		var edges_alg := safe([alg_macro("beg_yellow_edges")], keep_c, keep_e)
 		moves = table_search("full", no_c, u_edges, _u_turns + edges_alg)
 		add_stage("yellow_edges", moves if moves != null else [])
-		var cycles := []
-		for y in 4:
-			cycles.append(alg_macro("beg_corner_cycle", ALG_COST, y))
-		var all_e: Array[int] = _join(keep_e, u_edges)
-		var no_e: Array[int] = []
-		moves = table_search("perm", u_corners, no_e, safe(cycles, keep_c, all_e))
-		add_stage("corner_cycle", moves if moves != null else [])
+		_corner_cycle()
 		_corner_twist()
+
+	## Beginner corner positions: hold the cube so the one corner already in place is at the front right (a y turn) and
+	## cycle the other three with U R U' L' U R' U' L until they're home. If no corner is in place yet, cycle once first.
+	func _corner_cycle() -> void:
+		var cycle := alg_macro("beg_corner_cycle", ALG_COST)
+		var moves: Array = []
+		for attempt in 3:
+			var best_r := -1
+			var best_cost := -1
+			for r in 4:
+				var probe_model := PuzzleShapes.cube(shape.size)
+				probe_model.orientations = model.orientations.duplicate()
+				probe_model.apply(model.make_move(shape.u_face, r, shape.size))
+				var probe := _Run.new(shape, probe_model)
+				var cost := probe.cost_to_goal("perm", probe.u_corners, _none, [cycle])
+				if cost >= 0:
+					cost += int(StagedSolver.ROTATION_COST[r])
+					if best_cost < 0 or cost < best_cost:
+						best_cost = cost
+						best_r = r
+			if best_r < 0:  # no corner in place: one cycle from here puts one in place
+				moves.append_array(cycle["moves"])
+				apply_moves(cycle["moves"])
+				continue
+			if best_r != 0:
+				var turn := model.make_move(shape.u_face, best_r, shape.size)
+				moves.append(turn)
+				apply_moves([turn])
+				read_state()
+			var path: Variant = table_search("perm", u_corners, _none, [cycle])
+			if path != null:
+				moves.append_array(path)
+				apply_moves(path)
+			break
+		_record_applied("corner_cycle", moves)
 
 	## Beginner's last step: hold each top corner at the front-right and repeat R' D' R D until it's twisted right,
 	## turning only the top (U) between corners. The bottom comes back by itself once all four are done.
@@ -1002,26 +1158,6 @@ class _Run:
 			moves.append(u)
 			apply_moves([u])
 		_record_applied("corner_twist", moves)
-
-	## The cheapest unsolved piece from `candidates` (corners if is_corner) and its moves, without disturbing the kept
-	## pieces. Returns {} if none can be solved.
-	func _cheapest_single(candidates: Array[int], solved: Array[int], is_corner: bool, algs: Array,
-			keep_c: Array[int], keep_e: Array[int]) -> Dictionary:
-		var macros: Array = _u_turns + safe(algs, keep_c, keep_e)
-		var best := {}
-		for p in candidates:
-			if p in solved:
-				continue
-			var c: Array[int] = []
-			var e: Array[int] = []
-			if is_corner:
-				c.append(p)
-			else:
-				e.append(p)
-			var cost := cost_to_goal("full", c, e, macros)
-			if cost >= 0 and (best.is_empty() or cost < int(best["cost"])):
-				best = {"piece": p, "cost": cost, "moves": table_search("full", c, e, macros)}
-		return best
 
 	## Adds a stage whose moves were already applied piece by piece.
 	func _record_applied(id: String, moves: Array) -> void:

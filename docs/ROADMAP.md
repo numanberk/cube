@@ -174,7 +174,8 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       after that stage (e.g. cross solved after "Cross"), and check the time budget.
 - [ ] **R.2 Showcase solve on the main cube:** the big focused puzzle stops showing every move. It plays **one example solve
       at a watchable speed**: a real WCA scramble, a short inspection pause, then R.1's solution at a TPS that grows with the
-      method and helpers (e.g. 3 → 12 TPS), then the next one. Above the ticker, stage chips light up as the solve goes
+      method and helpers (owner OK'd 2026-11-03: about 3 TPS with Beginner, up to ~10–12 with CFOP and many helpers),
+      then the next one. Show 3×3 wide moves the way cubers write algorithms (`r U R' U' r'`, not `Rw`). Above the ticker, stage chips light up as the solve goes
       (Cross → F2L → OLL → PLL). The ticker shows the real solution with the current move highlighted. One line explains the
       gap: "1 of 268K solves/s". The learned method decides what you see, so buying CFOP visibly changes how the team solves.
       A tap plays the next move of the showcase (so tapping helps it along) and still counts as a tap. The small row cubes keep

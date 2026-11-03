@@ -2137,7 +2137,8 @@ func test_staged_solver_details() -> void:
 	var model := PuzzleShapes.from_id("3x3")
 	model.scramble(25)
 	var stages := StagedSolver.solve(model, "cfop")
-	check(model.notation_sequence(stages[0]["moves"]) == "z2", "a CFOP solve starts with z2 in inspection")
+	var inspection := model.notation_sequence(stages[0]["moves"])
+	check(inspection in ["z2", "z2 y", "z2 y'", "z2 y2"], "a CFOP solve starts with z2 (and maybe a y) in inspection: %s" % inspection)
 	var cross_moves: Array = stages[1]["moves"]
 	check(cross_moves.size() <= 8, "the cross is planned in at most 8 moves (%d)" % cross_moves.size())
 	# The input model is never changed.
@@ -2175,6 +2176,26 @@ func test_staged_solver_details() -> void:
 		if stage["id"] == "corner_twist":
 			twist = b.notation_sequence(stage["moves"])
 	check(twist == "" or "R' D' R D" in twist, "the beginner corner twist uses R' D' R D (%s)" % twist)
+	# Looks right to a speedcuber: pairs, first-layer corners and middle edges go in at the front (R, L, F and U turns),
+	# with y turns of the whole cube to bring a back slot round, never B turns.
+	var back := 0
+	var rotations := 0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 21
+	for method: String in ["cfop", "beginner"]:
+		for i in 30:
+			var cube := PuzzleShapes.from_id("3x3")
+			cube.scramble(25, rng)
+			for stage: Dictionary in StagedSolver.solve(cube, method):
+				if not (stage["id"].begins_with("f2l") or stage["id"] in ["first_layer", "second_layer", "corner_cycle"]):
+					continue
+				for move: Dictionary in stage["moves"]:
+					if cube.face_names[int(move["face"])] == "B":
+						back += 1
+					if cube.is_rotation(move):
+						rotations += 1
+	check(back == 0, "F2L and the beginner layers never turn B (%d B turns)" % back)
+	check(rotations > 30, "...they turn the cube with y instead (%d y turns in 60 solves)" % rotations)
 	# simplify() merges turns of the same layer.
 	var m := PuzzleShapes.from_id("3x3")
 	check(m.notation_sequence(StagedSolver.simplify(m, m.parse_sequence("R R U U' F F F"))) == "R2 F'", "R R U U' F F F -> R2 F'")
