@@ -10,6 +10,7 @@ signal puzzle_unlocked(puzzle_id: String)
 signal focus_changed(puzzle_id: String)
 signal split_changed
 signal mastery_level_up(puzzle_id: String, level: int)
+signal time_tier_reached(puzzle_id: String, tier: String, seconds: float)  ## the team's best time crossed a tier (R.3)
 signal solve_records_changed(puzzle_id: String)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
@@ -53,6 +54,13 @@ var offline_report: Dictionary = {}  ## {"seconds", "solves"} after loading, if 
 var load_notice := ""  ## Set when the save was damaged and a backup (or nothing) was loaded; the UI shows it once.
 
 var _autosave_timer := 0.0
+var _tier_reached: Dictionary = {}         ## puzzle id -> index of the best time tier reached (derived, not saved)
+
+
+func _init() -> void:
+	# Anything that can speed a helper up can cross a time tier.
+	purchased.connect(func(_kind: String, _id: String) -> void: check_time_tiers())
+	mastery_level_up.connect(func(_id: String, _level: int) -> void: check_time_tiers())
 
 
 func _ready() -> void:
@@ -736,6 +744,134 @@ func get_next_goal() -> Dictionary:
 	return best
 
 
+# --- Cube times and goals (task R.3) --------------------------------------------------
+
+## Seconds ONE helper of this kind takes for one solve on a puzzle: the puzzle's moves per solve ÷ the helper's moves/s
+## there (its upgrades and the puzzle's mastery bonus count). INF if it makes no moves.
+func get_helper_solve_time(building_id: String, puzzle_id: String = "") -> float:
+	var id := _or_focused(puzzle_id)
+	var mps := get_building_mps(building_id) * get_puzzle_moves_mult(id)
+	return get_moves_per_solve(id) / mps if mps > 0.0 else INF
+
+
+## The team's best time on a puzzle: the fastest helper kind the player owns. INF with no helpers.
+func get_team_solve_time(puzzle_id: String = "") -> float:
+	var best := INF
+	for def: Dictionary in Content.BUILDINGS:
+		if int(buildings.get(def["id"], 0)) > 0:
+			best = minf(best, get_helper_solve_time(def["id"], puzzle_id))
+	return best
+
+
+## The best time tier the team has reached on a puzzle: {index, name, seconds}, or {} below the first.
+func get_time_tier(puzzle_id: String = "") -> Dictionary:
+	var id := _or_focused(puzzle_id)
+	var tiers: Array = Content.TIME_TIERS.get(id, [])
+	var time := get_team_solve_time(id)
+	var reached := {}
+	for i in tiers.size():
+		if time < float(tiers[i][0]):
+			reached = {"index": i, "name": tiers[i][1], "seconds": float(tiers[i][0])}
+	return reached
+
+
+## The next tier to reach on a puzzle: {index, name, seconds}, or {} past the last.
+func get_next_time_tier(puzzle_id: String = "") -> Dictionary:
+	var id := _or_focused(puzzle_id)
+	var tiers: Array = Content.TIME_TIERS.get(id, [])
+	var index := int(get_time_tier(id).get("index", -1)) + 1
+	return {} if index >= tiers.size() else {"index": index, "name": tiers[index][1], "seconds": float(tiers[index][0])}
+
+
+## Emits time_tier_reached for every unlocked puzzle whose team time just crossed a new tier (the best one only).
+## A puzzle seen for the first time (or after a load, emit = false) is just noted, so old tiers never pop.
+func check_time_tiers(emit: bool = true) -> void:
+	for id in unlocked_puzzles:
+		var tier := get_time_tier(id)
+		var index := int(tier.get("index", -1))
+		if not _tier_reached.has(id) or not emit:
+			_tier_reached[id] = index
+			continue
+		if index > int(_tier_reached[id]):
+			_tier_reached[id] = index
+			time_tier_reached.emit(id, tier["name"], get_team_solve_time(id))
+
+
+## Solves a puzzle completes each second (a count, not Solves earned).
+func get_puzzle_solve_rate(puzzle_id: String = "") -> float:
+	var id := _or_focused(puzzle_id)
+	return get_puzzle_moves_per_second(id) / get_moves_per_solve(id)
+
+
+## The next few things to aim for, soonest first, at most one of each kind (helper, upgrade, method, puzzle, mastery):
+## [{kind, id, name, more, unit ("Solves"/"XP"), missing, seconds (ETA, INF if unknown), progress (0..1)}].
+## Cost goals count the player's Solves; the mastery goal is the focused puzzle's next milestone level.
+func get_goals(limit: int = 3) -> Array[Dictionary]:
+	var by_kind := {}
+	var add := func(goal: Dictionary) -> void:
+		var kind: String = goal["kind"]
+		if not by_kind.has(kind) or _goal_before(goal, by_kind[kind]):
+			by_kind[kind] = goal
+	var rate := get_solves_per_second()
+	var cost_goal := func(kind: String, id: String, name: String, cost: float, more: bool) -> Dictionary:
+		var missing := maxf(0.0, cost - solves)
+		return {"kind": kind, "id": id, "name": name, "more": more, "unit": "Solves", "missing": missing,
+				"seconds": 0.0 if missing <= 0.0 else (missing / rate if rate > 0.0 else INF),
+				"progress": 1.0 if cost <= 0.0 else clampf(solves / cost, 0.0, 1.0)}
+	var all_owned := true
+	for def: Dictionary in Content.BUILDINGS:
+		if int(buildings.get(def["id"], 0)) == 0:
+			all_owned = false
+			add.call(cost_goal.call("helper", def["id"], def["name"], get_building_cost(def["id"]), false))
+	if all_owned:
+		for def: Dictionary in Content.BUILDINGS:
+			add.call(cost_goal.call("helper", def["id"], def["name"], get_building_cost(def["id"]), true))
+	for def: Dictionary in Content.UPGRADES:
+		if not upgrades.has(def["id"]) and _upgrade_requirements_met(def):
+			add.call(cost_goal.call("upgrade", def["id"], def["name"], float(def["cost"]), false))
+	var next_method := get_next_method()
+	if not next_method.is_empty():
+		add.call(cost_goal.call("method", next_method["id"], next_method["name"], float(next_method["cost"]), false))
+	var next_puzzle := get_next_locked_puzzle()
+	if next_puzzle != "":
+		add.call(cost_goal.call("puzzle", next_puzzle, Content.get_puzzle(next_puzzle)["name"],
+				get_puzzle_unlock_cost(next_puzzle), false))
+	var milestone := get_next_mastery_milestone(focused_puzzle)
+	if not milestone.is_empty():
+		var level := int(milestone["level"])
+		var target := _mastery_xp_at(level)
+		var start := _mastery_xp_at(maxi(1, _previous_milestone_level(level)))
+		var xp := get_mastery_xp(focused_puzzle)
+		var xp_rate := get_puzzle_solve_rate(focused_puzzle) * get_mastery_xp_per_solve(focused_puzzle)
+		var missing := maxf(0.0, target - xp)
+		add.call({"kind": "mastery", "id": focused_puzzle, "more": false, "unit": "XP", "missing": missing,
+				"name": "%s Mastery %d" % [Content.get_puzzle(focused_puzzle)["name"], level],
+				"seconds": 0.0 if missing <= 0.0 else (missing / xp_rate if xp_rate > 0.0 else INF),
+				"progress": clampf((xp - start) / maxf(1.0, target - start), 0.0, 1.0)})
+	var goals: Array[Dictionary] = []
+	for kind: String in by_kind:
+		goals.append(by_kind[kind])
+	goals.sort_custom(_goal_before)
+	return goals.slice(0, limit)
+
+
+## Soonest first; with the same (or no) estimate, Solves goals before mastery, then the cheapest.
+func _goal_before(a: Dictionary, b: Dictionary) -> bool:
+	if float(a["seconds"]) != float(b["seconds"]):
+		return float(a["seconds"]) < float(b["seconds"])
+	if (a["unit"] == "XP") != (b["unit"] == "XP"):
+		return b["unit"] == "XP"
+	return float(a["missing"]) < float(b["missing"])
+
+
+func _previous_milestone_level(level: int) -> int:
+	var previous := 1
+	for milestone: Dictionary in Content.MASTERY["milestones"]:
+		if int(milestone["level"]) < level:
+			previous = int(milestone["level"])
+	return previous
+
+
 func _upgrade_requirements_met(def: Dictionary) -> bool:
 	var requires: Dictionary = def.get("requires", {})
 	for building_id: String in requires:
@@ -779,6 +915,8 @@ func reset_state() -> void:
 	solve_records.clear()
 	_solve_bests.clear()
 	offline_report = {}
+	_tier_reached.clear()
+	check_time_tiers(false)
 
 
 func get_save_data() -> Dictionary:
@@ -937,6 +1075,8 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		history = history.slice(maxi(0, history.size() - SOLVE_HISTORY_LIMIT))
 		solve_records[id] = {"history": history, "count": maxi(history.size(), int((saved_records[id] as Dictionary).get("count", 0)))}
 
+	_tier_reached.clear()
+	check_time_tiers(false)  # tiers reached before don't pop again
 	var saved_at := float(data.get("saved_at", now))
 	var elapsed := clampf(now - saved_at, 0.0, MAX_OFFLINE_SECONDS)
 	if elapsed >= MIN_OFFLINE_SECONDS:

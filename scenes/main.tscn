@@ -112,11 +112,12 @@ alignment = 1
 
 [node name="MoveTicker" type="RichTextLabel" parent="Margin/Rows/Columns/Stage"]
 unique_name_in_owner = true
+clip_contents = true
+custom_minimum_size = Vector2(0, 22)
 layout_mode = 2
 theme_type_variation = &"TickerText"
 bbcode_enabled = true
 text = " "
-fit_content = true
 scroll_active = false
 autowrap_mode = 0
 horizontal_alignment = 1
@@ -129,10 +130,12 @@ alignment = 1
 
 [node name="HintLabel" type="Label" parent="Margin/Rows/Columns/Stage"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_type_variation = &"HintLabel"
 text = "Click the cube or press Space to turn it  ·  drag to look around"
 horizontal_alignment = 1
+text_overrun_behavior = 3
 
 [node name="SolveProgress" type="ProgressBar" parent="Margin/Rows/Columns/Stage"]
 unique_name_in_owner = true
@@ -155,11 +158,76 @@ text_overrun_behavior = 3
 layout_mode = 2
 theme_type_variation = &"GoalStrip"
 
-[node name="NextGoalLabel" type="Label" parent="Margin/Rows/Columns/Stage/NextGoal"]
+[node name="GoalRow" type="HBoxContainer" parent="Margin/Rows/Columns/Stage/NextGoal"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"ColumnsBox"
+
+[node name="Goal0" type="VBoxContainer" parent="Margin/Rows/Columns/Stage/NextGoal/GoalRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightBox"
+
+[node name="NextGoalLabel" type="Label" parent="Margin/Rows/Columns/Stage/NextGoal/GoalRow/Goal0"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_type_variation = &"GoalLabel"
 text = "Next: Cubing Friend"
 text_overrun_behavior = 3
+
+[node name="Goal0Bar" type="ProgressBar" parent="Margin/Rows/Columns/Stage/NextGoal/GoalRow/Goal0"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 5)
+layout_mode = 2
+theme_type_variation = &"GoalBar"
+max_value = 1.0
+step = 0.0
+show_percentage = false
+
+[node name="Goal1" type="VBoxContainer" parent="Margin/Rows/Columns/Stage/NextGoal/GoalRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightBox"
+
+[node name="Goal1Label" type="Label" parent="Margin/Rows/Columns/Stage/NextGoal/GoalRow/Goal1"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_type_variation = &"GoalLabelDim"
+text = " "
+text_overrun_behavior = 3
+
+[node name="Goal1Bar" type="ProgressBar" parent="Margin/Rows/Columns/Stage/NextGoal/GoalRow/Goal1"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 5)
+layout_mode = 2
+theme_type_variation = &"GoalBar"
+max_value = 1.0
+step = 0.0
+show_percentage = false
+
+[node name="Goal2" type="VBoxContainer" parent="Margin/Rows/Columns/Stage/NextGoal/GoalRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TightBox"
+
+[node name="Goal2Label" type="Label" parent="Margin/Rows/Columns/Stage/NextGoal/GoalRow/Goal2"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_type_variation = &"GoalLabelDim"
+text = " "
+text_overrun_behavior = 3
+
+[node name="Goal2Bar" type="ProgressBar" parent="Margin/Rows/Columns/Stage/NextGoal/GoalRow/Goal2"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 5)
+layout_mode = 2
+theme_type_variation = &"GoalBar"
+max_value = 1.0
+step = 0.0
+show_percentage = false
 
 [node name="StatsLabel" type="Label" parent="Margin/Rows/Columns/Stage"]
 unique_name_in_owner = true

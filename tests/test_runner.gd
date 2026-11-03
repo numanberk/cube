@@ -892,7 +892,7 @@ func test_layout_and_keyboard_tap() -> void:
 	main._unhandled_input(key_event(KEY_ENTER, true, false))
 	check_near(game.total_moves, game.get_tap_moves() * 2.0, "Enter taps too")
 	main._refresh()
-	check((main.get_node("%NextGoalLabel") as Label).text.begins_with("Next: Cubing Friend"), "the strip shows the next goal")
+	check((main.get_node("%NextGoalLabel") as Label).text.begins_with("Cubing Friend"), "the strip shows the next goal first")
 	main.free()
 	game.reset_state()
 
@@ -2484,3 +2484,106 @@ func test_solve_station_controls() -> void:
 	main.free()
 	settings.set_value("inspection", true)
 	game.reset_state()
+
+
+# --- Cube times and goals (task R.3) ---------------------------------------------------
+
+func test_cube_time_format() -> void:
+	check(Num.cube_time(9.876) == "9.87 s", "9.876 s -> 9.87 s (truncated, like WCA)")
+	check(Num.cube_time(83.45) == "1:23.45", "a minute and more -> 1:23.45")
+	check(Num.cube_time(0.00408) == "4.08 ms" and Num.cube_time(3.8e-5) == "38.0 µs", "milliseconds and microseconds")
+	check(Num.cube_time(1.2e-8) == "12.0 ns" and Num.cube_time(1e-12) == "<1 ns", "nanoseconds, and below")
+	check(Num.cube_time(INF) == "—", "no helpers: a dash")
+
+
+func test_helper_solve_times_and_tiers() -> void:
+	var g := new_game()
+	check(is_inf(g.get_team_solve_time("2x2")) and g.get_time_tier("2x2").is_empty(), "no helpers: no team time, no tier")
+	var reached: Array = []
+	g.time_tier_reached.connect(func(id: String, tier: String, seconds: float) -> void: reached.append([id, tier, seconds]))
+	g.cheat_add_solves(5.0)
+	g.buy_building("friend")
+	var expected := g.get_moves_per_solve("2x2") / (g.get_building_mps("friend") * g.get_puzzle_moves_mult("2x2"))
+	check_near(g.get_helper_solve_time("friend", "2x2"), expected, "a Friend's 2×2 time = moves per solve ÷ its moves/s")
+	check_near(g.get_team_solve_time("2x2"), expected, "the team's best is the only helper's")
+	check(reached.size() == 1 and reached[0][0] == "2x2" and reached[0][1] == g.get_time_tier("2x2")["name"],
+			"the first helper crosses a tier and it pops once: %s" % [reached])
+	g.cheat_add_solves(100.0)
+	g.buy_building("friend")
+	check(reached.size() == 1, "another Friend is no faster: no new tier")
+	g.cheat_add_solves(1e4)
+	g.buy_building("club")
+	check_near(g.get_team_solve_time("2x2"), g.get_helper_solve_time("club", "2x2"), "the faster helper sets the team's best")
+	check(reached.size() == 2 and reached[1][1] == g.get_time_tier("2x2")["name"], "a big jump pops only the best tier reached")
+	var next := g.get_next_time_tier("2x2")
+	check(not next.is_empty() and float(next["seconds"]) < float(g.get_time_tier("2x2")["seconds"]), "the next tier is faster")
+	# Loading a save or unlocking a puzzle never pops tiers reached earlier.
+	var data := g.get_save_data()
+	g.apply_save_data(data, float(data["saved_at"]))
+	g.cheat_add_solves(1e6)
+	g.unlock_puzzle("3x3")
+	check(reached.size() == 2, "no pops from loading or from a new puzzle's first look (%s)" % [reached])
+	check(not g.get_time_tier("3x3").is_empty(), "the 3×3 has its own tier from the start")
+	for id: String in Content.TIME_TIERS:
+		var tiers: Array = Content.TIME_TIERS[id]
+		for i in range(1, tiers.size()):
+			check(float(tiers[i][0]) < float(tiers[i - 1][0]), "%s tiers get faster: %s" % [id, tiers[i][1]])
+	for def: Dictionary in Content.PUZZLES:
+		check(Content.TIME_TIERS.has(def["id"]), "%s has time tiers" % def["id"])
+	g.free()
+
+
+func test_goals() -> void:
+	var g := new_game()
+	var goals := g.get_goals(3)
+	check(not goals.is_empty() and goals[0]["id"] == "friend", "a new game's first goal is the first Friend")
+	check(is_inf(float(goals[0]["seconds"])) and float(goals[0]["progress"]) == 0.0, "no helpers: no ETA yet, no progress")
+	check(goals.size() <= 3, "at most 3 goals")
+	var kinds := {}
+	for goal in g.get_goals(10):
+		check(not kinds.has(goal["kind"]), "one goal per kind (%s)" % goal["kind"])
+		kinds[goal["kind"]] = true
+	check(kinds.has("mastery") and kinds.has("puzzle") and kinds.has("helper"), "mastery, puzzles and helpers are all goals")
+	g.cheat_add_solves(5.0)
+	g.buy_building("friend")
+	g.cheat_add_solves(3.0)
+	goals = g.get_goals(10)
+	for i in range(1, goals.size()):
+		check(float(goals[i]["seconds"]) >= float(goals[i - 1]["seconds"]), "goals are soonest first")
+	for goal in goals:
+		if goal["unit"] == "Solves" and float(goal["missing"]) > 0.0:
+			check_near(float(goal["seconds"]), float(goal["missing"]) / g.get_solves_per_second(), "%s: ETA = missing ÷ Solves/s" % goal["name"])
+			check(float(goal["progress"]) > 0.0 and float(goal["progress"]) < 1.0, "%s: progress is part-way" % goal["name"])
+		if goal["kind"] == "mastery":
+			var xp_rate := g.get_puzzle_solve_rate("2x2") * g.get_mastery_xp_per_solve("2x2")
+			check_near(float(goal["seconds"]), float(goal["missing"]) / xp_rate, "mastery: ETA = XP missing ÷ XP/s")
+			check(String(goal["name"]).contains("Mastery 5"), "the mastery goal is the next milestone: %s" % goal["name"])
+	check_near(g.get_puzzle_solve_rate("2x2"), g.get_puzzle_moves_per_second("2x2") / g.get_moves_per_solve("2x2"), "solve rate = moves/s ÷ moves per solve")
+	g.cheat_add_solves(1e3)
+	check(g.get_goals(1)[0]["missing"] == 0.0 and float(g.get_goals(1)[0]["seconds"]) == 0.0, "something affordable comes first: ready now")
+	g.free()
+
+
+func test_goal_bar_on_main_screen() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	var presets: Dictionary = load("res://tools/screenshot_presets.gd").PRESETS
+	game.apply_save_data(presets["late"].duplicate(true), Time.get_unix_time_from_system())
+	game.set_process(false)
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	main._refresh()
+	var focus := game.get_focused_puzzle_id()
+	check(game.get_puzzle_solve_rate(focus) > Content.GOAL_BAR_SOLVES_PER_SECOND, "the late game solves far faster than 10/s")
+	check((main.get_node("%ProgressLabel") as Label).text.begins_with("Next goal:"), "so the moves bar becomes the next-goal bar")
+	check((main.get_node("%NextGoalLabel") as Label).text != "", "the strip shows the first goal")
+	check((main.get_node("%Goal1Label") as Label).text != "" and (main.get_node("%Goal2Bar") as ProgressBar).visible, "three goals with bars")
+	check((main.get_node("%HintLabel") as Label).text.begins_with("Team best "), "the team's best time is under the cube")
+	main.free()
+	game.reset_state()
+	game.set_process(true)
+	var fresh: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(fresh)
+	fresh._refresh()
+	check((fresh.get_node("%ProgressLabel") as Label).text.contains("moves"), "a new game keeps the moves-to-next-solve bar")
+	fresh.free()

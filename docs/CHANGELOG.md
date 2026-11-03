@@ -2,6 +2,36 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task R.3: cube times and real goals
+- **Solve times, a cuber's way to read speed.** `GameState.get_helper_solve_time(helper, puzzle)` = moves per solve ÷ one
+  helper's moves/s on that puzzle (upgrades and the puzzle's mastery bonus count); `get_team_solve_time(puzzle)` = the
+  fastest owned helper. Shown on every shop card first ("10.00 s a 3×3 · +2 moves/s each (+30/s)", for the focused
+  puzzle), on every puzzle chip ("109 µs · 10%"; Solves/s moved to the chip's tooltip and the Puzzles tab, since it no
+  longer fit), and under the big cube ("Team best 0.21 s (Robot record pace) · Click the cube…").
+  `Num.cube_time()`: "1:23.45", "9.87 s", "4.08 ms", "38.0 µs", "12.0 ns", "—".
+- **Time tiers** (`Content.TIME_TIERS`, per puzzle, slowest first): human tiers (3×3: Sub-1:00, Sub-30, Sub-20, Sub-10,
+  Sub-5, WR pace ≈ 3.1 s), then machine tiers (Robot record pace ≈ 0.31 s, Faster than a blink, Sub-millisecond,
+  Sub-microsecond). WR values are approximate (2025). `get_time_tier()`, `get_next_time_tier()`,
+  `check_time_tiers()` + signal **`time_tier_reached(puzzle, tier, seconds)`**, checked after every purchase and mastery
+  level-up; only the best newly reached tier pops ("3×3 team: Sub-10!  9.87 s" + unlock sting). Tiers are derived, not
+  saved: loading a save or unlocking a puzzle notes its tier silently, so nothing pops twice.
+- **Goals:** `get_goals(limit)` = the soonest goals, one per kind (helper, upgrade, method, puzzle, mastery = the
+  focused puzzle's next milestone), each with `missing`, `unit` (Solves/XP), `seconds` (ETA, INF without helpers) and
+  `progress` 0..1. `get_next_goal()` is unchanged (cheapest; kept for its tests). `get_puzzle_solve_rate()` = solves a
+  second (a count).
+  - **The goal strip** now shows the top 3 goals side by side, each with a thin bar: "Cubing Friend · 5 Solves" (no ETA
+    yet: what's left), "Local Competition · 1m 45s", "ready!", "under 1s". The full text is in each goal's tooltip.
+  - **Next-goal bar:** when the focused puzzle solves more than 10 times a second (`Content.GOAL_BAR_SOLVES_PER_SECOND`),
+    the "moves to next solve" bar and its line track the top goal instead: "Next goal: 3×3 Mastery 5 · 127 more XP ·
+    about 2s". Below that it stays the moves bar.
+- Layout: the move ticker and hint line clip/ellipsize instead of widening the left column (a long Beginner stage or a
+  late-game time used to push the shop over). Theme: GoalBar, GoalLabel, GoalLabelDim.
+- Tests (2008 checks, `All good.`): `cube_time` formats; solve-time math, team best = fastest helper, tier pops (once, best
+  only, not after load/unlock), tier data ordered for every puzzle; goals (fresh = Friend, ≤ 3, one per kind, soonest
+  first, ETA = missing ÷ rate for Solves and XP, ready first); main screen: late game uses the goal bar + 3 goals + team
+  time, a new game keeps the moves bar. Screenshots: `docs/screenshots/R.3-times-goals/` (fresh, mid, row5).
+- **Next: R.4 news feed.** The tier pops and mastery pops are natural feed lines; `time_tier_reached` is ready for it.
+
 ## 2026-11-03 — S.1b + S.8: intuitive Solve Station controls (owner request)
 - **Owner:** "fix cube control buttons to make it more intuitive"; asked which fixes: **drag to turn**, **key hints on the
   cube**, **a simpler key layout option**, in the Solve Station only (the main screen keeps click/Space = tap).

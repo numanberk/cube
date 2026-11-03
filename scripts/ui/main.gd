@@ -24,6 +24,8 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var solve_button: Button = %SolveButton
 @onready var solve_station: SolveStation = %SolveStation
 @onready var next_goal_label: Label = %NextGoalLabel
+@onready var goal_labels: Array[Label] = [%NextGoalLabel, %Goal1Label, %Goal2Label]
+@onready var goal_bars: Array[ProgressBar] = [%Goal0Bar, %Goal1Bar, %Goal2Bar]
 @onready var solve_progress: ProgressBar = %SolveProgress
 @onready var progress_label: Label = %ProgressLabel
 @onready var stats_label: Label = %StatsLabel
@@ -72,6 +74,7 @@ func _ready() -> void:
 	Game.focus_changed.connect(_on_focus_changed)
 	Game.puzzle_unlocked.connect(_on_puzzle_unlocked)
 	Game.mastery_level_up.connect(_on_mastery_level_up)
+	Game.time_tier_reached.connect(_on_time_tier_reached)
 	_build_puzzle_row()
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	for id: String in StagedSolver.PUZZLES:  # builds the solver's tables now (~0.3 s, cached), not mid-game
@@ -88,7 +91,11 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	solve_progress.value = Game.get_move_progress() / Game.get_moves_per_solve()
+	if _goal_bar_mode():
+		var goals := Game.get_goals(1)
+		solve_progress.value = float(goals[0]["progress"]) if not goals.is_empty() else 1.0
+	else:
+		solve_progress.value = Game.get_move_progress() / Game.get_moves_per_solve()
 	if _showcase != null:
 		_play_showcase(delta)
 	else:
@@ -154,16 +161,21 @@ func _refresh() -> void:
 	]
 	var focus := Game.get_focused_puzzle_id()
 	var next_milestone := Game.get_next_mastery_milestone(focus)
-	progress_label.text = "%s / %s moves  ·  %s mastery Lv %d%s" % [
-		Num.format(Game.get_move_progress()), Num.format(Game.get_moves_per_solve()),
-		Content.get_puzzle(focus)["name"], Game.get_mastery_level(focus),
-		"" if next_milestone.is_empty() else " → Lv %d: %s" % [next_milestone["level"], next_milestone["text"]],
-	]
+	var goals := Game.get_goals(3)
+	if _goal_bar_mode() and not goals.is_empty():
+		# Too many solves a second to follow the moves bar: it tracks the top goal instead.
+		progress_label.text = "Next goal: %s" % _goal_text(goals[0], true)
+	else:
+		progress_label.text = "%s / %s moves  ·  %s mastery Lv %d%s" % [
+			Num.format(Game.get_move_progress()), Num.format(Game.get_moves_per_solve()),
+			Content.get_puzzle(focus)["name"], Game.get_mastery_level(focus),
+			"" if next_milestone.is_empty() else " → Lv %d: %s" % [next_milestone["level"], next_milestone["text"]],
+		]
 	var tap_moves := Game.get_tap_moves()
-	hint_label.text = "Click the cube or press Space: +%s %s   ·   drag to look around" % [
-		Num.format(tap_moves), "move" if is_equal_approx(tap_moves, 1.0) else "moves",
+	hint_label.text = "%sClick the cube or press Space: +%s %s   ·   drag to look around" % [
+		_team_time_text(), Num.format(tap_moves), "move" if is_equal_approx(tap_moves, 1.0) else "moves",
 	]
-	next_goal_label.text = _next_goal_text(Game.get_next_goal())
+	_refresh_goal_strip(goals)
 	Audio.set_music_context(Game.get_unlocked_track_ids(), Game.get_track_for_puzzle(Game.get_focused_puzzle_id()))
 	stats_label.text = "Lifetime: %s solves  ·  %s moves" % [
 		Num.format(Game.total_solves),
@@ -191,9 +203,10 @@ func _refresh_helper_cards() -> void:
 			var each := Game.get_building_mps(id)
 			var count := _buy_count(id)
 			var cost := Game.get_building_cost_for(id, count)
-			var rate := "+%s moves/s each" % Num.format(each)
+			var focus_name: String = Content.get_puzzle(Game.get_focused_puzzle_id())["name"]
+			var rate := "%s a %s  ·  +%s moves/s each" % [Num.cube_time(Game.get_helper_solve_time(id)), focus_name, Num.format(each)]
 			if owned > 0:
-				rate += "  ·  +%s/s total" % Num.format(each * owned)
+				rate += " (+%s/s)" % Num.format(each * owned)
 			card.visible = true
 			card.set_view({
 				"icon": Content.icon(def["icon"]), "title": def["name"], "line1": def["description"], "line2": rate,
@@ -326,14 +339,49 @@ func _pop_solves(delta: float) -> void:
 		_burst_timer = BURST_INTERVAL
 
 
-func _next_goal_text(goal: Dictionary) -> String:
-	if goal.is_empty():
-		return "Next: keep solving"
+## "Cubing Friend · ready!", "Learn ZZ · 1m 14s", "Cube Lube · 15 Solves" (no estimate yet: what's left) or, with `long`,
+## "Learn ZZ · 46.00M more Solves · about 1m 14s".
+func _goal_text(goal: Dictionary, long: bool = false) -> String:
 	var name: String = ("another " if goal["more"] else "") + String(goal["name"])
 	if float(goal["missing"]) <= 0.0:
-		return "Next: %s  —  ready to buy!" % name
-	var eta := "tap to get there" if is_inf(float(goal["seconds"])) else "about %s" % Num.format_duration(goal["seconds"])
-	return "Next: %s  ·  %s more Solves  ·  %s" % [name, Num.format(goal["missing"]), eta]
+		return "%s  —  ready%s!" % [name, " to buy" if goal["unit"] == "Solves" else ""]
+	var seconds := float(goal["seconds"])
+	if is_inf(seconds) and not long:  # no estimate yet (no helpers): say what's left instead
+		return "%s  ·  %s %s" % [name, Num.format(goal["missing"]), goal["unit"]]
+	var eta := ("tap to get there" if goal["unit"] == "Solves" else "solve it to level up") if is_inf(seconds) \
+			else ("under 1s" if seconds < 1.0 else ("about " if long else "") + Num.format_duration(seconds))
+	if long:
+		return "%s  ·  %s more %s  ·  %s" % [name, Num.format(goal["missing"]), goal["unit"], eta]
+	return "%s  ·  %s" % [name, eta]
+
+
+## The goal strip: the three soonest goals, each with its progress bar (the first, the next one, is brighter).
+func _refresh_goal_strip(goals: Array[Dictionary]) -> void:
+	for i in goal_labels.size():
+		var shown := i < goals.size()
+		goal_bars[i].visible = shown
+		goal_labels[i].get_parent().visible = shown or i == 0
+		if not shown:
+			if i == 0:
+				goal_labels[0].text = "Keep solving"
+			continue
+		goal_labels[i].text = _goal_text(goals[i])
+		goal_labels[i].tooltip_text = _goal_text(goals[i], true)
+		goal_bars[i].value = float(goals[i]["progress"])
+
+
+## True when the focused puzzle solves too fast for the moves bar to mean anything.
+func _goal_bar_mode() -> bool:
+	return Game.get_puzzle_solve_rate(Game.get_focused_puzzle_id()) > Content.GOAL_BAR_SOLVES_PER_SECOND
+
+
+## A time tier crossed: "3×3 team: Sub-10!  9.87 s".
+func _on_time_tier_reached(puzzle_id: String, tier: String, seconds: float) -> void:
+	var at := puzzle_view.get_global_rect().get_center() - Vector2(0.0, puzzle_view.size.y * 0.35)
+	if puzzle_id != Game.get_focused_puzzle_id() and _chips.has(puzzle_id):
+		at = (_chips[puzzle_id] as PuzzleChip).get_global_rect().get_center()
+	fx.pop("%s team: %s!  %s" % [Content.get_puzzle(puzzle_id)["name"], tier, Num.cube_time(seconds)], at, &"PopSolve", 2.0)
+	Audio.play_unlock()
 
 
 func _animate_helper_moves(delta: float) -> void:
@@ -479,6 +527,16 @@ func _showcase_ticker(solves_per_second: float) -> String:
 	return "[center]%s[/center]" % text
 
 
+## "Team best 0.16 s (Robot record pace)   ·   " for the focused puzzle (the hint line starts with it), "" with no helpers.
+func _team_time_text() -> String:
+	var focus := Game.get_focused_puzzle_id()
+	var time := Game.get_team_solve_time(focus)
+	if is_inf(time):
+		return ""
+	var tier := Game.get_time_tier(focus)
+	return "Team best %s%s   ·   " % [Num.cube_time(time), " (%s)" % tier["name"] if not tier.is_empty() else ""]
+
+
 ## Long stages (a beginner's second layer is ~35 moves) show a window around the current move, so the line stays short.
 const TICKER_BEFORE := 5
 const TICKER_AFTER := 7
@@ -604,7 +662,10 @@ func _refresh_puzzle_row() -> void:
 	for id: String in _chips:
 		var chip: PuzzleChip = _chips[id]
 		chip.visible = id != focused
-		chip.update_running("+%s/s  ·  %d%%" % [Num.format(Game.get_puzzle_solves_per_second(id)), roundi(Game.get_puzzle_share(id) * 100.0)],
+		chip.tooltip_text = "%s: +%s Solves/s, %d %% of the helpers, team best %s" % [Content.get_puzzle(id)["name"],
+				Num.format(Game.get_puzzle_solves_per_second(id)), roundi(Game.get_puzzle_share(id) * 100.0),
+				Num.cube_time(Game.get_team_solve_time(id))]
+		chip.update_running("%s  ·  %d%%" % [Num.cube_time(Game.get_team_solve_time(id)), roundi(Game.get_puzzle_share(id) * 100.0)],
 				Game.get_mastery_level(id), Game.get_mastery_progress(id))
 	if _locked_chip == null:
 		return

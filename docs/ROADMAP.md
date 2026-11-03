@@ -140,7 +140,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is an almost
 professional speedcuber**. So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
 records and drills, and your real skill feeds the idle economy. Do S.1–S.6 before the rest of Phase 5 (5.2 onward).
-**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1 ✅ → R.2 ✅ → R.3–R.4** (readable main screen, below) → S.6 → S.3 (needs D13) → S.4, S.5,
+**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1 ✅ → R.2 ✅ → R.3 ✅ → R.4** (readable main screen, below) → S.6 → S.3 (needs D13) → S.4, S.5,
 S.7, S.8 → R.5, R.6. Then the rest of Phase 5.
 - [x] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
       using **csTimer's virtual-cube layout** (I/K = R/R', J/F = U/U', H/G = F/F', D/E = L/L', S/L = D/D', W/O = B/B',
@@ -184,7 +184,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       the showcase pauses while you turn and resumes after a few idle seconds.)
       *Done when:* a smoke check runs a full showcase solve on 3×3 with two methods, and there are screenshots mid-solve
       (Beginner and CFOP) and of the stage chips.
-- [ ] **R.3 Cube times and real goals:** show progress in a cuber's language. Each helper gets a **solve time** on its puzzle
+- [x] **R.3 Cube times and real goals:** show progress in a cuber's language. Each helper gets a **solve time** on its puzzle
       (moves per solve ÷ its moves/s, e.g. "Friends: 10.0 s · Robots: 0.16 s"), and each puzzle in the row shows the team's
       best time. Crossing a time tier (sub-20, sub-10, sub-5, "WR pace", tiers as data per puzzle) gets a short pop. When a
       puzzle solves faster than ~10 times a second, the "moves to next solve" bar becomes a **next-goal bar** (the next puzzle

@@ -220,6 +220,30 @@ const ALGORITHMS: Array[Dictionary] = [
 ]
 
 
+## Time tiers (task R.3): progress in a cuber's language. A helper's solve time on a puzzle is its moves per solve ÷ the
+## helper's moves/s there; the team's best time is the fastest helper's. Crossing a tier pops a message. Per puzzle,
+## slowest first: [seconds, name]. "WR pace" is about the human world record single (approximate, 2025); past it come
+## machine tiers (the solving-robot record is about 0.3 s).
+const TIME_TIERS := {
+	"2x2": [[30.0, "Sub-30"], [10.0, "Sub-10"], [5.0, "Sub-5"], [2.0, "Sub-2"], [1.0, "Sub-1"], [0.5, "WR pace"],
+			[0.1, "Faster than a blink"], [0.001, "Sub-millisecond"], [1e-6, "Sub-microsecond"]],
+	"3x3": [[60.0, "Sub-1:00"], [30.0, "Sub-30"], [20.0, "Sub-20"], [10.0, "Sub-10"], [5.0, "Sub-5"], [3.1, "WR pace"],
+			[0.31, "Robot record pace"], [0.1, "Faster than a blink"], [0.001, "Sub-millisecond"], [1e-6, "Sub-microsecond"]],
+	"4x4": [[180.0, "Sub-3:00"], [60.0, "Sub-1:00"], [40.0, "Sub-40"], [30.0, "Sub-30"], [20.0, "Sub-20"],
+			[16.0, "WR pace"], [1.0, "Sub-1"], [0.1, "Faster than a blink"], [0.001, "Sub-millisecond"],
+			[1e-6, "Sub-microsecond"]],
+	"5x5": [[300.0, "Sub-5:00"], [120.0, "Sub-2:00"], [60.0, "Sub-1:00"], [45.0, "Sub-45"], [33.0, "WR pace"],
+			[1.0, "Sub-1"], [0.1, "Faster than a blink"], [0.001, "Sub-millisecond"], [1e-6, "Sub-microsecond"]],
+	"7x7": [[600.0, "Sub-10:00"], [300.0, "Sub-5:00"], [180.0, "Sub-3:00"], [120.0, "Sub-2:00"], [95.0, "WR pace"],
+			[1.0, "Sub-1"], [0.1, "Faster than a blink"], [0.001, "Sub-millisecond"], [1e-6, "Sub-microsecond"]],
+	"megaminx": [[180.0, "Sub-3:00"], [90.0, "Sub-1:30"], [60.0, "Sub-1:00"], [40.0, "Sub-40"], [24.0, "WR pace"],
+			[1.0, "Sub-1"], [0.1, "Faster than a blink"], [0.001, "Sub-millisecond"], [1e-6, "Sub-microsecond"]],
+}
+## Above this many solves a second on the focused puzzle, the "moves to next solve" bar can't be followed; it shows the
+## top goal instead (task R.3).
+const GOAL_BAR_SOLVES_PER_SECOND := 10.0
+
+
 ## Showcase solve (task R.2): the main cube plays one real solve (StagedSolver) at a speed you can follow, instead of
 ## showing every move. Visual only: it never changes a number. Turns per second come from the learned method plus a bit
 ## per 10× more moves/s of the focused puzzle (owner, 2026-11-03: ~3 TPS Beginner up to ~10–12 with CFOP and many
