@@ -34,6 +34,8 @@ scripts/autoload/settings.gd  class GameSettings ("Settings"): every setting in 
                            `changed` signal; applies audio + notation itself, main.gd applies graphics + reduce motion
 scenes/welcome_panel.tscn  class WelcomePanel: "Welcome back" (time away, +Solves, Collect) and damaged-save notices
 scenes/settings_panel.tscn class SettingsPanel: sound, music mode, Jukebox, graphics, reduce motion, notation, reset save
+scenes/solve_station.tscn  class SolveStation (scripts/ui/solve_station.gd): the "Solve it yourself" overlay: keyboard
+                           solving with csTimer keys, scramble, inspection, timer, session times (Phase S)
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
 scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only
@@ -47,6 +49,8 @@ scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_
 scripts/cube/twisty_model.gd   class TwistyModel: pure-data puzzle (pieces, layers, moves, WCA notation)
 scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (from_id("3x3"), cube(2..7), megaminx()), palette(model)
 scripts/cube/puzzle_meshes.gd  class PuzzleMeshes: rounded box + rounded sticker (cubes), shaped_piece() (Megaminx)
+scripts/cube/solve_session.gd  class SolveSession: Solve Station rules (scramble, WCA inspection, timer, keys -> moves,
+                           big-cube hands, session averages). Pure data; keys are Content.SOLVE_KEYS
 scripts/ui/shaders/        stage_backdrop (radial glow) + contact_shadow .gdshader, used by PuzzleView3D
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
@@ -76,7 +80,7 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    `theme_type_variation` instead (TitleLabel, SubtitleLabel, DimLabel, FaintLabel, TickerLabel, HintLabel,
    PrimaryButton, SubtleButton, PageMargin, ColumnsBox, StackBox, TopBar, GoalStrip, ShopCard, IconTile, CardMargin,
    TightBox, CardTitle, CardLine, CardOwned, CostAffordable, CostUnaffordable, UpgradeGrid, ToggleChip, PopTap,
-   PopSolve), or add a new variation.
+   PopSolve, TimerLabel, TimerWaiting, TimerDone, ScrambleLabel, SidePanel), or add a new variation.
 9. **Taps:** clicking the puzzle or the `tap` input action (Space / Enter, no repeat when held). Shop and other
    buttons use `focus_mode = none`, so Space never presses a focused button by accident.
    One accent colour: green `#3ccf8e` (dim `#2a9d6c`). Every new asset gets a line in `assets/CREDITS.md`.
@@ -109,6 +113,7 @@ TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 U
 JUICE=1 bash tools/screenshot.sh /tmp/shots mid                   # taps + solve pop mid-animation -> mid_juice.png
 BUY=10 bash tools/screenshot.sh /tmp/shots mid                    # shop on ×10 (BUY=-1: Max) -> mid_buy10.png
 SETTINGS=1 bash tools/screenshot.sh /tmp/shots mid                # Settings panel open -> mid_settings.png
+SOLVE=done bash tools/screenshot.sh /tmp/shots mid                # Solve Station: inspecting|solving|done -> mid_solvedone.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

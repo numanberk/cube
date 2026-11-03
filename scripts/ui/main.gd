@@ -20,6 +20,8 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var hint_label: Label = %HintLabel
 @onready var settings_button: Button = %SettingsButton
 @onready var settings_panel: SettingsPanel = %SettingsPanel
+@onready var solve_button: Button = %SolveButton
+@onready var solve_station: SolveStation = %SolveStation
 @onready var next_goal_label: Label = %NextGoalLabel
 @onready var solve_progress: ProgressBar = %SolveProgress
 @onready var progress_label: Label = %ProgressLabel
@@ -55,6 +57,7 @@ var _hold_counter := false        ## keeps the counter still while the Welcome b
 func _ready() -> void:
 	puzzle_view.tapped.connect(_on_tap_pressed)
 	settings_button.pressed.connect(settings_panel.open)
+	solve_button.pressed.connect(func() -> void: solve_station.open(Game.get_focused_puzzle_id()))
 	Settings.changed.connect(_on_setting_changed)
 	buy_one.pressed.connect(set_buy_amount.bind(1))
 	buy_ten.pressed.connect(set_buy_amount.bind(10))
@@ -95,7 +98,8 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Space / Enter tap from anywhere. allow_echo = false: holding the key down doesn't repeat (PLAN: no hold-to-repeat).
-	if event.is_action_pressed(TAP_ACTION, false) and not settings_panel.visible and not welcome_panel.visible:
+	if event.is_action_pressed(TAP_ACTION, false) and not settings_panel.visible and not welcome_panel.visible \
+			and not solve_station.visible:
 		_on_tap_pressed()
 		get_viewport().set_input_as_handled()
 		return

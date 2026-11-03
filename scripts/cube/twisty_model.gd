@@ -270,13 +270,36 @@ func scramble(count: int, rng: RandomNumberGenerator = null) -> Array[Dictionary
 
 # --- Notation (WCA for cubes) --------------------------------------------------
 
-## WCA notation: R, R', R2, Rw (2 layers), 3Rw (3 layers). Inner slices use SiGN: 2R, 2-3Rw.
+## Whole-puzzle rotations (cubes): the face each rotation follows, and which way. x' is written as an L-turn of every
+## layer, and so on, so every full-width move has a name.
+const ROTATIONS := {"R": ["x", 1], "L": ["x", -1], "U": ["y", 1], "D": ["y", -1], "F": ["z", 1], "B": ["z", -1]}
+## 3×3 middle slices (task S.1): M turns like L, E like D, S like F.
+const SLICES := {"L": ["M", 1], "R": ["M", -1], "D": ["E", 1], "U": ["E", -1], "F": ["S", 1], "B": ["S", -1]}
+
+
+## Layers along each axis (cube: n).
+func layer_count() -> int:
+	return layer_cuts.size() + 1
+
+
+## True for a whole-puzzle rotation (every layer turns), like x or y'.
+func is_rotation(move: Dictionary) -> bool:
+	return int(move.get("depth", 0)) == 0 and int(move.get("width", 1)) >= layer_count()
+
+
+## WCA notation: R, R', R2, Rw (2 layers), 3Rw (3 layers), rotations x y z. Inner slices use SiGN (2R, 2-3Rw), except
+## the 3×3's middle slices, which are M, E and S.
 func notation(move: Dictionary) -> String:
 	if notation_style == "pochmann":
 		return _pochmann_notation(move)
 	var face_name := face_names[int(move["face"])]
 	var depth := int(move.get("depth", 0))
 	var width := int(move.get("width", 1))
+	var turns := int(move["turns"])
+	if size > 0 and is_rotation(move):
+		return _named_turn(ROTATIONS[face_name][0], turns * int(ROTATIONS[face_name][1]))
+	if size == 3 and depth == 1 and width == 1:
+		return _named_turn(SLICES[face_name][0], turns * int(SLICES[face_name][1]))
 	var text := ""
 	if depth == 0:
 		if width == 1:
@@ -289,7 +312,12 @@ func notation(move: Dictionary) -> String:
 		text = "%d%s" % [depth + 1, face_name]
 	else:
 		text = "%d-%d%sw" % [depth + 1, depth + width, face_name]
-	var turns := int(move["turns"])
+	return _named_turn(text, turns)
+
+
+## "R" + turns -> R, R', R2 (2 and -2 are both written R2).
+func _named_turn(text: String, turns: int) -> String:
+	turns = int(make_move(0, turns)["turns"])
 	var amount := absi(turns)
 	if amount > 1:
 		text += str(amount)
@@ -315,30 +343,48 @@ func notation_sequence(moves: Array) -> String:
 	return " ".join(parts)
 
 
-## Parses one move like R, U', F2, Rw, 3Rw2, 2R (SiGN slice). Returns {} if it isn't valid here.
+## Parses one move like R, U', F2, Rw, 3Rw2, 2R (SiGN slice), r (= Rw), x/y/z rotations, or M/E/S on a 3×3.
+## Returns {} if it isn't valid here.
 func parse(text: String) -> Dictionary:
 	if notation_style == "pochmann":
 		return _parse_pochmann(text)
-	var regex := RegEx.create_from_string("^(\\d+)?([A-Z])(w)?(\\d)?(')?$")
+	var regex := RegEx.create_from_string("^(\\d+)?([A-Za-z])(w)?(\\d)?(')?$")
 	var found := regex.search(text.strip_edges())
 	if found == null:
 		return {}
-	var face := face_names.find(found.get_string(2))
-	if face < 0:
-		return {}
+	var letter := found.get_string(2)
 	var number := int(found.get_string(1)) if found.get_string(1) != "" else 0
-	var width := 1
-	var depth := 0
-	if found.get_string(3) == "w":
-		width = number if number > 0 else 2
-	elif number > 0:
-		depth = number - 1
-	var layers := layer_cuts.size() + 1
-	if depth + width > layers or width >= layers:  # turning every layer is a rotation, not a move
-		return {}
+	var wide := found.get_string(3) == "w"
 	var amount := int(found.get_string(4)) if found.get_string(4) != "" else 1
 	if found.get_string(5) == "'":
 		amount = -amount
+	var layers := layer_count()
+	if size > 0 and letter in ["x", "y", "z"]:
+		if number > 0 or wide:
+			return {}
+		var axis_face := face_names.find({"x": "R", "y": "U", "z": "F"}[letter])
+		return make_move(axis_face, amount, layers)
+	if size == 3 and letter in ["M", "E", "S"]:
+		if number > 0 or wide:
+			return {}
+		var slice_face := face_names.find({"M": "L", "E": "D", "S": "F"}[letter])
+		return make_move(slice_face, amount, 1, 1)
+	var width := 1
+	var depth := 0
+	if letter == letter.to_lower():  # r = Rw (two layers), as speedcubers write it
+		if number > 0 or wide:
+			return {}
+		letter = letter.to_upper()
+		width = 2
+	var face := face_names.find(letter)
+	if face < 0:
+		return {}
+	if wide:
+		width = number if number > 0 else 2
+	elif number > 0:
+		depth = number - 1
+	if depth + width > layers or width >= layers:  # turning every layer is a rotation (x, y, z), not a face move
+		return {}
 	return make_move(face, amount, width, depth)
 
 

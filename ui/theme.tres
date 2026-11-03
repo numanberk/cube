@@ -554,6 +554,31 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
+[sub_resource type="FontVariation" id="FontVariation_timer"]
+base_font = ExtResource("1_rqugq")
+variation_opentype = {
+2003265652: 700
+}
+opentype_features = {
+1953396077: 1
+}
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_side_panel"]
+content_margin_left = 16.0
+content_margin_top = 14.0
+content_margin_right = 16.0
+content_margin_bottom = 14.0
+bg_color = Color(0.1451, 0.1608, 0.1961, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.1961, 0.2196, 0.2745, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -723,3 +748,17 @@ BigAccentLabel/font_sizes/font_size = 40
 BigAccentLabel/fonts/font = SubResource("FontVariation_2j8s8")
 PuzzleChipPanel/base_type = &"PanelContainer"
 PuzzleChipPanel/styles/panel = SubResource("StyleBoxFlat_puzzle_chip")
+TimerLabel/base_type = &"Label"
+TimerLabel/colors/font_color = Color(0.9254902, 0.93333334, 0.9490196, 1)
+TimerLabel/font_sizes/font_size = 76
+TimerLabel/fonts/font = SubResource("FontVariation_timer")
+TimerDone/base_type = &"TimerLabel"
+TimerDone/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1)
+TimerWaiting/base_type = &"TimerLabel"
+TimerWaiting/colors/font_color = Color(0.6666667, 0.6901961, 0.7411765, 1)
+ScrambleLabel/base_type = &"Label"
+ScrambleLabel/colors/font_color = Color(0.9254902, 0.93333334, 0.9490196, 1)
+ScrambleLabel/font_sizes/font_size = 19
+ScrambleLabel/fonts/font = SubResource("FontVariation_timer")
+SidePanel/base_type = &"PanelContainer"
+SidePanel/styles/panel = SubResource("StyleBoxFlat_side_panel")

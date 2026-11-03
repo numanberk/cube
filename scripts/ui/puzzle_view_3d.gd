@@ -20,6 +20,9 @@ extends SubViewportContainer
 ## Graphics (task 1.5): "high" = MSAA 4×, rounded pieces, glow and shadow; "low" = no MSAA, bevelled pieces
 ## (about 5× fewer triangles), no glow or shadow. main.gd applies the player's choice from Settings.
 ## Reduce motion (set_reduce_motion) turns off sway, squash, bounce and the speed-mode wobble.
+## Manual mode (Solve Station, task S.1): show_state(moves) shows an exact state (solved + those moves), turn(move)
+## animates one given move, turn_time sets how fast (pros turn at 5-10 TPS, so the station uses a short time) and
+## flash() celebrates without resetting the puzzle.
 ## Visual state only: nothing here affects game numbers.
 
 signal tapped(at: Vector2)  ## global position of the click
@@ -132,6 +135,7 @@ var _dragging := false
 var _drag_yaw := 0.0
 var _drag_pitch := 0.0
 var _ticker := PackedStringArray()  ## last few moves in notation, newest last
+var turn_time := TURN_TIME          ## seconds for a quarter turn with an empty queue (the Solve Station sets it shorter)
 
 
 func _ready() -> void:
@@ -263,6 +267,41 @@ func scramble_step() -> void:
 	_queue.append(_last_move)
 
 
+## Manual mode: shows the puzzle solved plus `moves`, at once (no animation), with nothing queued.
+func show_state(moves: Array) -> void:
+	if model == null:
+		return
+	_queue.clear()
+	_current = {}
+	_history.clear()
+	_ticker.clear()
+	_rewinding = false
+	_solved_timer = 0.0
+	_last_move = {}
+	model.reset()
+	model.apply_all(moves)
+	_dirty = false
+	_refresh_all()
+
+
+## Manual mode: animates one given move (queued behind any turn still in progress).
+func turn(move: Dictionary) -> void:
+	if model == null or _frozen:
+		return
+	_punch = 0.5
+	if _queue.size() >= MAX_QUEUE:
+		_flush()
+	_queue.append(move)
+
+
+## Manual mode: the solved flash and bounce, without resetting the puzzle (it may be solved in another orientation).
+func flash() -> void:
+	_flash = FLASH_ENERGY
+	_last_flash_at = _clock
+	if not reduce_motion:
+		_bounce = BOUNCE_TIME
+
+
 ## A solve just completed: replay the recent moves backwards, then flash and bounce.
 ## In speed mode (or if it's already replaying) it just snaps to solved with a small pulse.
 func show_solved() -> void:
@@ -392,7 +431,7 @@ func _start(move: Dictionary) -> void:
 	if _rewinding:
 		_current_duration = _rewind_turn_time
 	else:
-		var duration := TURN_TIME * (HALF_TURN_FACTOR if absi(int(move["turns"])) >= 2 else 1.0)
+		var duration := turn_time * (HALF_TURN_FACTOR if absi(int(move["turns"])) >= 2 else 1.0)
 		_current_duration = duration / (1.0 + _queue.size() * QUEUE_SPEEDUP)
 	_current_pieces.clear()
 	var first := int(move.get("depth", 0))

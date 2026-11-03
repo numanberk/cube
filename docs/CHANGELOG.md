@@ -2,6 +2,38 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Roadmap reorder (Phase S) + Task S.1: the Solve Station
+- **Owner feedback** (FEEDBACK.md): idling was "just looking at the screen while it shuffles", and **the player is an
+  almost professional speedcuber**. New **ROADMAP Phase S — Solve Station** (S.1–S.8), done before the rest of Phase 5:
+  records (S.2), rewards (S.3, needs **new open decision D13**: how much hand solves pay), PLL/OLL drills (S.4), daily
+  scramble + FMC (S.5), Golden Scramble as a quick solve (S.6, was 8.1), turns-as-taps + TPS streak (S.7, was 5.4),
+  mouse turning (S.8). Planned save numbers moved again: v5 solve records, v6 prestige, v7 achievements.
+- **S.1 done: "Solve it yourself"** (green button in the top bar) opens a full-screen station on the focused puzzle (any
+  unlocked cube, 2×2–7×7; the Megaminx needs its own keys later):
+  - **csTimer's virtual-cube keyboard layout** (`Content.SOLVE_KEYS`, checked against csTimer's source): I/K R, J/F U,
+    H/G F, D/E L, S/L D, W/O B, ;/A y, T/Y/B/N x, P/Q z, U/M r, V/R l, 5/6 M, X/. M', 2/9 E, 0/1 S, ,/C u, Z// d, and
+    3/4 + 8/7 move the left/right hand deeper on big cubes (Space resets). **Physical keys**, so a Turkish (or any)
+    keyboard layout still works by position.
+  - Random-move scrambles in WCA notation (`scramble_length` per puzzle: 11/25/40/60/100), **15 s WCA inspection**
+    (+2 after 15 s, DNF after 17 s; toggle "WCA inspection", saved as the new setting `inspection`), rotations are free
+    during inspection, the timer starts on the first real turn and stops when solved in any orientation.
+  - Big tabular timer, then "Solved! 52 moves · 6.10 TPS"; session list with best, ao5 and ao12 (WCA trimmed mean,
+    1 DNF dropped, 2 = DNF, averages rounded, singles truncated); csTimer-style "14.34+" / "DNF(12.34)".
+  - "Keys" shows the layout, generated from the key map for the current puzzle. Enter = next scramble, Esc = close.
+- **Code:** `SolveSession` (scripts/cube/solve_session.gd) holds the solving rules as pure data (tests drive it with fake
+  clocks). TwistyModel now names and parses **x/y/z, M/E/S (3×3) and lowercase wide moves** (r = Rw), plus
+  `is_rotation()`/`layer_count()`. PuzzleView3D got a manual mode: `show_state(moves)`, `turn(move)`, `flash()` and a
+  `turn_time` (the station uses 0.055 s). `Num.solve_time()`. Theme: TimerLabel/TimerWaiting/TimerDone (Inter bold with
+  tabular figures), ScrambleLabel, SidePanel.
+- **No economy effect yet:** hand solves don't pay anything until S.3 (and D13). Session times aren't saved until S.2.
+- Screenshot tool: `SOLVE=inspecting|solving|done`. Screenshots in `docs/screenshots/S.1-solve-station/`.
+- Tests (1608 checks, `All good.`): every key's move on a 3×3 against csTimer's table, 2×2 edge cases, 5×5 hands
+  (shift, clamp, reset); notation round trips and what x/M/E/S actually do to the stickers; scramble length; rotation
+  during inspection; the timer from first turn to solve; solved upside down; +2/DNF; inspection off; averages with DNFs;
+  time formatting; the station end to end (real key event, Space/Enter tap blocked, a full keyboard solve, Enter, Esc).
+- **Next:** S.2 (records + save v5). Owner: please answer **D13** (PLAN §7) before S.3, and try the station. Tell us
+  if any key feels different from your csTimer, or if turns should animate faster or slower.
+
 ## 2026-11-03 — Task 5.1: the method chain (save v4)
 - **Methods are a chain of their own** (`Content.METHODS`): Beginner Method (free, everyone starts with it) → CFOP (200) →
   Roux (25K) → ZZ (50M) → God's Number (30B), each ×0.7 moves per solve on every puzzle. Only the next one can be learned;

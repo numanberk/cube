@@ -171,16 +171,47 @@ const METHODS: Array[Dictionary] = [
 ## gain. Starting curve from PLAN §4.1, for the simulator to tune (task 4.7).
 ##   id (also the PuzzleShapes id), name, moves_per_solve, min_moves_per_solve (the floor that methods and perks can't
 ##   push below: a fifth of moves_per_solve, a quarter on the tiny 2×2, where every method plus mastery reaches it),
-##   solve_value (Solves per solve),
+##   scramble_length (random moves in a Solve Station scramble, task S.1; WCA-like), solve_value (Solves per solve),
 ##   unlock_cost (Solves; 0 = owned from the start), requires_prestige (only after the first World Championship).
 const PUZZLES := [
-	{"id": "2x2", "name": "2×2", "moves_per_solve": 8.0, "min_moves_per_solve": 2.0, "solve_value": 1.0, "unlock_cost": 0.0, "requires_prestige": false},
-	{"id": "3x3", "name": "3×3", "moves_per_solve": 20.0, "min_moves_per_solve": 4.0, "solve_value": 4.0, "unlock_cost": 150.0, "requires_prestige": false},
-	{"id": "4x4", "name": "4×4", "moves_per_solve": 60.0, "min_moves_per_solve": 12.0, "solve_value": 18.0, "unlock_cost": 400000.0, "requires_prestige": false},
-	{"id": "5x5", "name": "5×5", "moves_per_solve": 120.0, "min_moves_per_solve": 24.0, "solve_value": 50.0, "unlock_cost": 3e8, "requires_prestige": false},
-	{"id": "7x7", "name": "7×7", "moves_per_solve": 300.0, "min_moves_per_solve": 60.0, "solve_value": 200.0, "unlock_cost": 5e8, "requires_prestige": true},
-	{"id": "megaminx", "name": "Megaminx", "moves_per_solve": 700.0, "min_moves_per_solve": 140.0, "solve_value": 800.0, "unlock_cost": 2e11, "requires_prestige": true},
+	{"id": "2x2", "name": "2×2", "moves_per_solve": 8.0, "min_moves_per_solve": 2.0, "scramble_length": 11, "solve_value": 1.0, "unlock_cost": 0.0, "requires_prestige": false},
+	{"id": "3x3", "name": "3×3", "moves_per_solve": 20.0, "min_moves_per_solve": 4.0, "scramble_length": 25, "solve_value": 4.0, "unlock_cost": 150.0, "requires_prestige": false},
+	{"id": "4x4", "name": "4×4", "moves_per_solve": 60.0, "min_moves_per_solve": 12.0, "scramble_length": 40, "solve_value": 18.0, "unlock_cost": 400000.0, "requires_prestige": false},
+	{"id": "5x5", "name": "5×5", "moves_per_solve": 120.0, "min_moves_per_solve": 24.0, "scramble_length": 60, "solve_value": 50.0, "unlock_cost": 3e8, "requires_prestige": false},
+	{"id": "7x7", "name": "7×7", "moves_per_solve": 300.0, "min_moves_per_solve": 60.0, "scramble_length": 100, "solve_value": 200.0, "unlock_cost": 5e8, "requires_prestige": true},
+	{"id": "megaminx", "name": "Megaminx", "moves_per_solve": 700.0, "min_moves_per_solve": 140.0, "scramble_length": 77, "solve_value": 800.0, "unlock_cost": 2e11, "requires_prestige": true},
 ]
+
+## Solve Station keys (task S.1): csTimer's virtual-cube layout, so a speedcuber's muscle memory just works.
+## Keys are physical positions (Godot Key constants, US layout names), so they work on any keyboard layout.
+## Each entry: [first layer, last layer, face, direction], layers counted from that face starting at 1, like csTimer.
+## Layer tokens: a number, "n" (the cube's size), "n-1", or the hands: "l"/"l+1" and "r"/"r+1" (keys 3/4 and 8/7
+## move the left/right hand one layer in/out on big cubes, Space puts both back; csTimer does the same).
+const SOLVE_KEYS := {
+	KEY_I: [1, "r", "R", 1], KEY_K: [1, "r", "R", -1],          # R R'
+	KEY_D: [1, "l", "L", 1], KEY_E: [1, "l", "L", -1],          # L L'
+	KEY_J: [1, 1, "U", 1], KEY_F: [1, 1, "U", -1],              # U U'
+	KEY_S: [1, 1, "D", 1], KEY_L: [1, 1, "D", -1],              # D D'
+	KEY_H: [1, 1, "F", 1], KEY_G: [1, 1, "F", -1],              # F F'
+	KEY_W: [1, 1, "B", 1], KEY_O: [1, 1, "B", -1],              # B B'
+	KEY_U: [1, "r+1", "R", 1], KEY_M: [1, "r+1", "R", -1],      # r r'
+	KEY_V: [1, "l+1", "L", 1], KEY_R: [1, "l+1", "L", -1],      # l l'
+	KEY_COMMA: [1, 2, "U", 1], KEY_C: [1, 2, "U", -1],          # u u'
+	KEY_Z: [1, 2, "D", 1], KEY_SLASH: [1, 2, "D", -1],          # d d'
+	KEY_5: ["l+1", "l+1", "L", 1], KEY_6: ["r+1", "r+1", "R", -1],      # M M
+	KEY_X: ["l+1", "l+1", "L", -1], KEY_PERIOD: ["r+1", "r+1", "R", 1], # M' M'
+	KEY_2: [2, "n-1", "U", -1], KEY_9: [2, "n-1", "U", 1],      # E E'
+	KEY_0: [2, "n-1", "F", 1], KEY_1: [2, "n-1", "F", -1],      # S S'
+	KEY_T: [1, "n", "L", -1], KEY_Y: [1, "n", "R", 1],          # x x
+	KEY_B: [1, "n", "L", 1], KEY_N: [1, "n", "R", -1],          # x' x'
+	KEY_SEMICOLON: [1, "n", "U", 1], KEY_A: [1, "n", "U", -1],  # y y'
+	KEY_P: [1, "n", "F", 1], KEY_Q: [1, "n", "F", -1],          # z z'
+}
+## Hand keys: key -> [hand, step]. Moving a hand in makes I/K, D/E, U/M, V/R and the M keys turn deeper layers.
+const SOLVE_HAND_KEYS := {KEY_3: ["l", -1], KEY_4: ["l", 1], KEY_7: ["r", 1], KEY_8: ["r", -1]}
+const SOLVE_HAND_RESET_KEY := KEY_SPACE
+## WCA inspection: 15 s; starting after that is +2, after 17 s it's a DNF.
+const INSPECTION := {"seconds": 15.0, "plus_two_until": 17.0}
 
 ## Variety (task 4.7): practising several puzzles keeps you sharp. A puzzle that gets share s of the helpers' moves
 ## effectively gets s^exponent of them (with exponent < 1, small shares are boosted: 10 % works like 25 % at 0.6).

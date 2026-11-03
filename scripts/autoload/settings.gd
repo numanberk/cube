@@ -20,6 +20,7 @@ const SPEC := {
 	"quality": {"section": "graphics", "default": "high", "choices": ["high", "low"]},
 	"reduce_motion": {"section": "graphics", "default": false},
 	"notation": {"section": "display", "default": "short", "choices": ["short", "scientific"]},
+	"inspection": {"section": "solve", "default": true},  ## WCA inspection in the Solve Station (task S.1)
 }
 
 ## Set to false before the node enters the tree to skip loading from disk (tests do this).

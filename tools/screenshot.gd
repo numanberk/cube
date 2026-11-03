@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -50,6 +50,8 @@ func _ready() -> void:
 		view.set_puzzle(puzzle)
 	if args.has("settings"):
 		main.get_node("%SettingsPanel").open()
+	if args.has("solve"):
+		_stage_solve(main.get_node("%SolveStation"), String(args["solve"]), puzzle if puzzle != "" else "3x3")
 	if args.has("buy"):
 		main.set_buy_amount(int(args["buy"]))
 	if args.has("tab"):
@@ -86,6 +88,35 @@ func _ready() -> void:
 		return
 	print("Saved %s (%dx%d, preset '%s')" % [out, image.get_width(), image.get_height(), bench_name if bench else preset])
 	_quit(0)
+
+
+## The Solve Station in a repeatable moment: "inspecting" (9 s left), "solving" (half way, clock running) or "done"
+## (just solved, with a few earlier times in the list). The solve is the scramble undone, turned at a steady pace.
+func _stage_solve(station: Node, mode: String, puzzle: String) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = RANDOM_SEED
+	station.open(puzzle)
+	station.frozen_now = 100.0
+	station.new_attempt(rng)
+	var session: SolveSession = station.session
+	if mode != "inspecting":
+		for t: float in [9.84, 11.02, 8.77, 12.41, 10.36]:  # earlier attempts, so the list and averages show
+			session.results.append({"time": t, "penalty": "+2" if t == 12.41 else "", "moves": 58, "scramble": ""})
+	if mode == "inspecting":
+		station.frozen_now = 106.2
+		station.handle_key(KEY_SEMICOLON)  # a y rotation during inspection
+		return
+	var solution := session.model.inverse_sequence(session.scramble)
+	var now := 108.0  # 8 s of inspection
+	var count := solution.size() if mode == "done" else solution.size() / 2
+	for i in count:
+		session.turn(solution[i], now)
+		station.get_node("%View").turn(solution[i])
+		now += 0.37
+	station.frozen_now = now - 0.37 if mode == "done" else now + 0.2
+	if mode == "done":
+		station.get_node("%View").flash()
+	station._refresh()
 
 
 ## Stops sounds and gives the audio thread a moment, so no playback is reported as leaked at exit.

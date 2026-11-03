@@ -33,3 +33,15 @@ static func format_duration(seconds: float) -> String:
 	if s < 3600:
 		return "%dm %ds" % [s / 60, s % 60]
 	return "%dh %dm" % [s / 3600, (s % 3600) / 60]
+
+
+## A speedcubing time as csTimer and the WCA write it: 9.87, 1:02.34. INF (a DNF) gives "DNF".
+static func solve_time(seconds: float) -> String:
+	if is_inf(seconds) or is_nan(seconds):
+		return "DNF"
+	var hundredths := int(floorf(seconds * 100.0 + 0.0001))  # WCA truncates to hundredths
+	var minutes := hundredths / 6000
+	var rest := hundredths % 6000
+	if minutes > 0:
+		return "%d:%02d.%02d" % [minutes, rest / 100, rest % 100]
+	return "%d.%02d" % [rest / 100, rest % 100]

@@ -1781,3 +1781,211 @@ func test_variety_bonus() -> void:
 		top = maxf(top, float(g.get_split()[id]))
 	check(top < 0.99, "...and it really is a mix")
 	g.free()
+
+
+# --- Solve Station (task S.1) -------------------------------------------------------
+
+func test_rotation_and_slice_notation() -> void:
+	var cube := PuzzleShapes.cube(3)
+	var f := cube.face_names
+	check(cube.parse("x") == cube.make_move(f.find("R"), 1, 3), "x is every layer turning like R")
+	check(cube.notation(cube.make_move(f.find("L"), 1, 3)) == "x'", "every layer turning like L is x'")
+	check(cube.notation(cube.make_move(f.find("D"), 2, 3)) == "y2", "...like D twice is y2")
+	check(cube.parse("M") == cube.make_move(f.find("L"), 1, 1, 1), "M is the middle layer turning like L")
+	check(cube.notation(cube.make_move(f.find("R"), 1, 1, 1)) == "M'", "the middle layer turning like R is M'")
+	var round_trip := true
+	for text: String in ["x", "x'", "x2", "y", "y'", "y2", "z", "z'", "z2", "M", "M'", "M2", "E", "E'", "E2", "S", "S'", "S2"]:
+		round_trip = round_trip and cube.notation(cube.parse(text)) == text
+	check(round_trip, "x y z M E S (and primes and doubles) round-trip on a 3×3")
+	check(cube.parse("r") == cube.parse("Rw") and cube.parse("u'") == cube.parse("Uw'"), "lowercase r is Rw")
+	check(PuzzleShapes.cube(4).parse("l2") == PuzzleShapes.cube(4).parse("Lw2"), "...on a 4×4 too")
+	check(PuzzleShapes.cube(2).parse("r").is_empty(), "r on a 2×2 would be a rotation, so it's not a move")
+	check(PuzzleShapes.cube(4).parse("M").is_empty() and PuzzleShapes.cube(2).parse("E").is_empty(), "M/E/S only on the 3×3")
+	check(PuzzleShapes.cube(4).notation(PuzzleShapes.cube(4).parse("y")) == "y", "rotations on big cubes are named too")
+	cube.apply(cube.parse("x"))
+	check(cube.is_solved(), "a rotation doesn't unsolve the cube")
+	check(cube.color_at(Vector3(0, 1, 0), f.find("U")) == cube.face_colors[f.find("F")], "x brings F to the top (like R)")
+	cube.reset()
+	cube.apply(cube.parse("M"))
+	check(cube.color_at(Vector3(0, 0, 1), f.find("F")) == cube.face_colors[f.find("U")], "M brings the U centre to the front (like L)")
+	cube.reset()
+	cube.apply(cube.parse("E"))
+	check(cube.color_at(Vector3(1, 0, 0), f.find("R")) == cube.face_colors[f.find("F")], "E brings the F centre to the right (like D)")
+	cube.reset()
+	cube.apply(cube.parse("S"))
+	check(cube.color_at(Vector3(1, 0, 0), f.find("R")) == cube.face_colors[f.find("U")], "S brings the U centre to the right (like F)")
+
+
+func test_solve_keys_cstimer_layout() -> void:
+	var session := SolveSession.new()
+	session.start("3x3", 0.0)
+	var expected := {
+		KEY_I: "R", KEY_K: "R'", KEY_J: "U", KEY_F: "U'", KEY_H: "F", KEY_G: "F'", KEY_D: "L", KEY_E: "L'",
+		KEY_S: "D", KEY_L: "D'", KEY_W: "B", KEY_O: "B'", KEY_SEMICOLON: "y", KEY_A: "y'", KEY_T: "x", KEY_Y: "x",
+		KEY_B: "x'", KEY_N: "x'", KEY_P: "z", KEY_Q: "z'", KEY_U: "Rw", KEY_M: "Rw'", KEY_V: "Lw", KEY_R: "Lw'",
+		KEY_5: "M", KEY_6: "M", KEY_X: "M'", KEY_PERIOD: "M'", KEY_2: "E", KEY_9: "E'", KEY_0: "S", KEY_1: "S'",
+		KEY_COMMA: "Uw", KEY_C: "Uw'", KEY_Z: "Dw", KEY_SLASH: "Dw'",
+	}
+	var all_match := true
+	for key: int in expected:
+		var got := session.model.notation(session.move_for_key(key))
+		if got != expected[key]:
+			all_match = false
+			print("  key %s: expected %s, got %s" % [OS.get_keycode_string(key), expected[key], got])
+	check(all_match, "every key makes csTimer's move on a 3×3")
+	check(expected.size() == Content.SOLVE_KEYS.size(), "...and every mapped key is checked")
+	check(session.move_for_key(KEY_F1).is_empty(), "unmapped keys do nothing")
+	var small := SolveSession.new()
+	small.start("2x2", 0.0)
+	check(small.move_for_key(KEY_2).is_empty(), "no E slice on a 2×2")
+	check(small.model.notation(small.move_for_key(KEY_U)) == "x", "r on a 2×2 turns the whole cube, like csTimer")
+	var big := SolveSession.new()
+	big.start("5x5", 0.0)
+	check(big.model.notation(big.move_for_key(KEY_I)) == "R", "5×5: I is R with the hand outside")
+	big.press_key(KEY_7, 0.0)
+	check(big.right_hand == 2 and big.model.notation(big.move_for_key(KEY_I)) == "Rw", "7 moves the right hand in: I is now Rw")
+	check(big.model.notation(big.move_for_key(KEY_PERIOD)) == "3R", "...and . turns the third layer")
+	big.press_key(KEY_4, 0.0)
+	check(big.left_hand == 2 and big.model.notation(big.move_for_key(KEY_E)) == "Lw'", "4 moves the left hand in")
+	for i in 6:
+		big.press_key(KEY_7, 0.0)
+	check(big.right_hand == 4, "hands stop one layer short of the far side")
+	big.press_key(KEY_SPACE, 0.0)
+	check(big.left_hand == 1 and big.right_hand == 1, "Space puts both hands back")
+	check(big.press_key(KEY_8, 0.0).is_empty() and big.right_hand == 1, "hand keys don't turn anything, and stop at the outside")
+
+
+func test_solve_session() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	var session := SolveSession.new()
+	check(not session.start("megaminx", 0.0), "the Megaminx isn't in the station yet")
+	check(session.start("3x3", 0.0, rng), "start a 3×3 attempt")
+	check(session.scramble.size() == int(Content.get_puzzle("3x3")["scramble_length"]), "the scramble has the 3×3's length")
+	check(not session.model.is_solved() and session.state == "inspecting", "scrambled, inspection running")
+	check(session.scramble_text().split(" ").size() == session.scramble.size(), "the scramble reads as WCA notation")
+	session.press_key(KEY_SEMICOLON, 3.0)
+	check(session.state == "inspecting" and session.moves == 0, "a rotation during inspection doesn't start the timer")
+	check_near(session.inspection_left(5.0), 10.0, "inspection counts down from 15 s")
+	# Undo the rotation, then the scramble, one turn every 0.5 s from 5 s.
+	session.press_key(KEY_A, 4.0)
+	var solution := session.model.inverse_sequence(session.scramble)
+	var now := 5.0
+	for move: Dictionary in solution:
+		session.turn(move, now)
+		now += 0.5
+		if session.state == "done" and move != solution.back():
+			check(false, "done before the last turn")
+	check(session.state == "done", "solving the puzzle stops the timer")
+	check_near(session.elapsed(100.0), 0.5 * (solution.size() - 1), "the time runs from the first turn to the solving one")
+	check(session.moves == solution.size() and session.penalty == "", "every turn is counted; started in time, no penalty")
+	check(session.results.size() == 1 and session.results[0]["scramble"] == session.scramble_text(), "the result is recorded")
+	check_near(session.tps(100.0), solution.size() / session.elapsed(100.0), "TPS = moves / time")
+	session.turn(session.model.parse("R"), 120.0)
+	check(session.results.size() == 1 and session.state == "done", "turning after the solve changes nothing")
+	# Solved in another orientation still counts.
+	session.start("3x3", 200.0, rng)
+	var m := session.model
+	m.reset()
+	m.apply(m.parse("x"))
+	m.apply(m.parse("R"))
+	m.apply(m.parse("U"))
+	session.turn(m.parse("U'"), 201.0)
+	check(session.state == "solving", "one turn left")
+	session.turn(m.parse("R'"), 203.0)
+	check(session.state == "done" and is_equal_approx(session.elapsed(0.0), 2.0), "solved upside down still stops the timer")
+
+
+func test_solve_inspection_and_averages() -> void:
+	check(SolveSession.inspection_penalty(15.0) == "", "starting at 15 s is fine")
+	check(SolveSession.inspection_penalty(16.0) == "+2", "after 15 s: +2")
+	check(SolveSession.inspection_penalty(17.5) == "DNF", "after 17 s: DNF")
+	var session := SolveSession.new()
+	session.start("2x2", 0.0)
+	session.turn(session.model.parse("R"), 16.0)
+	check(session.penalty == "+2" and session.state == "solving", "a late start is +2")
+	session.start("2x2", 100.0)
+	session.update(118.0)
+	check(session.penalty == "DNF" and session.inspection_left(118.0) < 0.0, "sitting in inspection past 17 s is a DNF")
+	session.inspection = false
+	session.start("2x2", 200.0)
+	check(session.state == "ready", "with inspection off the attempt is just ready")
+	session.update(300.0)
+	session.turn(session.model.parse("R"), 300.0)
+	check(session.penalty == "" and session.state == "solving", "...and never gets a penalty")
+	check(is_inf(SolveSession.final_time({"time": 9.0, "penalty": "DNF"})), "a DNF counts as infinitely slow")
+	check_near(SolveSession.final_time({"time": 9.0, "penalty": "+2"}), 11.0, "+2 adds 2 s")
+	session.results.clear()
+	check(session.average(5) < 0.0, "no ao5 before 5 solves")
+	for t: float in [10.0, 12.0, 11.0, 9.0, 13.0]:
+		session.results.append({"time": t, "penalty": "", "moves": 50})
+	check_near(session.average(5), 11.0, "ao5 drops the best and worst: (10 + 11 + 12) / 3")
+	check_near(session.best(), 9.0, "best single")
+	session.results.append({"time": 8.0, "penalty": "DNF", "moves": 50})
+	check_near(session.average(5), 12.0, "one DNF is dropped as the worst (12, 11, 13 counted)")
+	session.results.append({"time": 8.0, "penalty": "DNF", "moves": 50})
+	check(is_inf(session.average(5)), "two DNFs make the average a DNF")
+	check_near(SolveSession.trimmed_average([10.0, 10.0, 10.01, 10.0, 10.0] as Array[float]), 10.0, "averages round to the hundredth")
+	check(Num.solve_time(9.876) == "9.87", "singles are truncated: 9.876 -> 9.87")
+	check(Num.solve_time(62.345) == "1:02.34" and Num.solve_time(10.0) == "10.00", "minutes and trailing zeros")
+	check(Num.solve_time(INF) == "DNF", "INF reads DNF")
+
+
+func test_solve_station() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	root.get_node("Settings").persistence_enabled = false
+	root.get_node("Settings").set_value("inspection", true)
+	game.cheat_add_solves(1000.0)
+	game.unlock_puzzle("3x3")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var station: Node = main.get_node("%SolveStation")
+	check(not station.visible, "the station starts closed")
+	(main.get_node("%SolveButton") as Button).pressed.emit()
+	check(station.visible and station.session.puzzle_id == game.get_focused_puzzle_id(), "Solve it yourself opens it on the focused puzzle")
+	check(station._picker_buttons.size() == 2, "the picker offers the unlocked cubes")
+	station.select_puzzle("3x3")
+	var view: PuzzleView3D = station.get_node("%View")
+	check(view.model.orientations == station.session.model.orientations, "the view shows the session's scrambled cube")
+	check((station.get_node("%ScrambleLabel") as Label).text == station.session.scramble_text(), "the scramble is shown")
+	check(station.keys_help_text().contains("R I") and station.keys_help_text().contains("M 5/6"), "the key help is generated from the key map")
+	# A real key event (physical key) turns the cube, and never reaches the main screen's tap.
+	var before_moves := game.total_moves
+	var event := InputEventKey.new()
+	event.physical_keycode = KEY_J
+	event.pressed = true
+	station._input(event)
+	view.finish_animations()
+	check(station.session.moves == 1 and station.session.state == "solving", "pressing J (U) starts the solve")
+	check(view.model.orientations == station.session.model.orientations, "the view follows the turn")
+	var tap := InputEventAction.new()
+	tap.action = &"tap"
+	tap.pressed = true
+	main._unhandled_input(tap)
+	check(game.total_moves == before_moves, "Space/Enter taps don't reach the idle game while the station is open")
+	# Solve it with keys: undo U, then the scramble, quarter turns only.
+	var key_for := {}
+	for key: int in Content.SOLVE_KEYS:
+		var name: String = station.session.model.notation(station.session.move_for_key(key))
+		if not key_for.has(name):
+			key_for[name] = key
+	var keys: Array[int] = [KEY_F]
+	for move: Dictionary in station.session.model.inverse_sequence(station.session.scramble):
+		var quarter: Dictionary = station.session.model.make_move(int(move["face"]), signi(int(move["turns"])))
+		for i in absi(int(move["turns"])):
+			keys.append(key_for[station.session.model.notation(quarter)])
+	for key in keys:
+		station.handle_key(key)
+	view.finish_animations()
+	check(station.session.state == "done", "solving with the keyboard finishes the attempt")
+	check((station.get_node("%TimerLabel") as Label).theme_type_variation == &"TimerDone", "the timer turns green")
+	check((station.get_node("%TimesList") as Label).text.begins_with("1."), "the time goes in the session list")
+	check(view.model.is_solved(), "the view shows it solved")
+	station.handle_key(KEY_ENTER)
+	check(station.session.state == "inspecting" and not station.session.model.is_solved(), "Enter scrambles the next attempt")
+	station.handle_key(KEY_ESCAPE)
+	check(not station.visible, "Esc closes the station")
+	main.free()
+	game.reset_state()

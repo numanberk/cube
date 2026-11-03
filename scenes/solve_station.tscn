@@ -1,0 +1,171 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/solve_station.gd" id="1_station"]
+[ext_resource type="PackedScene" path="res://scenes/puzzle_view_3d.tscn" id="2_puzzle"]
+
+[node name="SolveStation" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_station")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.086, 0.094, 0.114, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"PageMargin"
+
+[node name="Rows" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_type_variation = &"StackBox"
+
+[node name="Header" type="HBoxContainer" parent="Margin/Rows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Margin/Rows/Header"]
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "Solve Station"
+
+[node name="PuzzlePicker" type="HBoxContainer" parent="Margin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+alignment = 1
+
+[node name="InspectionToggle" type="Button" parent="Margin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+toggle_mode = true
+button_pressed = true
+text = "WCA inspection"
+
+[node name="KeysToggle" type="Button" parent="Margin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+toggle_mode = true
+text = "Keys"
+
+[node name="CloseButton" type="Button" parent="Margin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+text = "Close (Esc)"
+
+[node name="ScrambleLabel" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_type_variation = &"ScrambleLabel"
+text = "R U R' U'"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Body" type="HBoxContainer" parent="Margin/Rows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ColumnsBox"
+
+[node name="Stage" type="VBoxContainer" parent="Margin/Rows/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="View" parent="Margin/Rows/Body/Stage" instance=ExtResource("2_puzzle")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 260)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TimerLabel" type="Label" parent="Margin/Rows/Body/Stage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TimerWaiting"
+text = "0.00"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Margin/Rows/Body/Stage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = " "
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="HandLabel" type="Label" parent="Margin/Rows/Body/Stage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FaintLabel"
+text = " "
+horizontal_alignment = 1
+
+[node name="Side" type="PanelContainer" parent="Margin/Rows/Body"]
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+theme_type_variation = &"SidePanel"
+
+[node name="SideBox" type="VBoxContainer" parent="Margin/Rows/Body/Side"]
+layout_mode = 2
+
+[node name="SessionTitle" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
+layout_mode = 2
+theme_type_variation = &"CardTitle"
+text = "This session"
+
+[node name="SessionStats" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"CardLine"
+text = "Best —  ·  ao5 —  ·  ao12 —"
+
+[node name="TimesScroll" type="ScrollContainer" parent="Margin/Rows/Body/Side/SideBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="TimesList" type="Label" parent="Margin/Rows/Body/Side/SideBox/TimesScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"DimLabel"
+text = "No solves yet."
+autowrap_mode = 3
+
+[node name="KeysHelp" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"FaintLabel"
+text = "Keys"
+autowrap_mode = 3
+
+[node name="FooterHint" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
+layout_mode = 2
+theme_type_variation = &"HintLabel"
+text = "csTimer keys  ·  Enter: new scramble  ·  Esc: close"
+autowrap_mode = 3

@@ -140,7 +140,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is an almost
 professional speedcuber**. So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
 records and drills, and your real skill feeds the idle economy. Do S.1–S.6 before the rest of Phase 5 (5.2 onward).
-- [ ] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
+- [x] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
       using **csTimer's virtual-cube layout** (I/K = R/R', J/F = U/U', H/G = F/F', D/E = L/L', S/L = D/D', W/O = B/B',
       ;/A = y/y', T/Y = x, B/N = x', P/Q = z/z', U/M = r/r', V/R = l/l', 5/6 = M, X/. = M', 2/9 = E/E', 0/1 = S/S',
       Z// = d/d', ,/C = u/u', 3/4/7/8 move the hands on big cubes), by physical key so it works on any keyboard layout.
