@@ -140,7 +140,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is an almost
 professional speedcuber**. So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
 records and drills, and your real skill feeds the idle economy. Do S.1–S.6 before the rest of Phase 5 (5.2 onward).
-**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1–R.4 ✅** (readable main screen, below) → S.6 → S.3 (needs D13) → S.4, S.5,
+**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1–R.4 ✅** (readable main screen, below) → S.6 ✅ → S.3 (needs D13) → S.4, S.5,
 S.7, S.8 → R.5, R.6. Then the rest of Phase 5.
 - [x] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
       using **csTimer's virtual-cube layout** (I/K = R/R', J/F = U/U', H/G = F/F', D/E = L/L', S/L = D/D', W/O = B/B',
@@ -216,7 +216,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
 - [ ] **S.5 Daily scramble and FMC:** one date-seeded scramble per puzzle per day (same for everyone), and a Fewest Moves
       mode (count moves, rotations free, no timer pressure). Best results saved; a small daily reward.
       *Done when:* tests cover the seeding, the move count and the once-a-day reward, and there's a screenshot.
-- [ ] **S.6 Golden Scramble (was 8.1):** every 2–5 min a golden sticker glows on the main puzzle for 12 s. Clicking it opens a
+- [x] **S.6 Golden Scramble (was 8.1):** every 2–5 min a golden sticker glows on the main puzzle for 12 s. Clicking it opens a
       quick case: the focused puzzle 2–5 moves from solved; solve it within 10 s for a random buff (×7 moves for 30 s, or
       15 minutes' worth of Solves). Timing and buff logic in `GameState`.
       *Done when:* tests cover the spawn timer, the buff math and expiry, a buff survives save/load, and there's a screenshot.
@@ -260,9 +260,10 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
 - [ ] **6.1 Trophy formula and Compete screen:** `floor(sqrt(run_solves / 1e6))` to start, each unspent trophy +2 % all moves.
       The Compete screen shows the trophies you'll get, the new bonus, and exactly what you keep and lose. It plays "Finals".
       *Done when:* there's a screenshot and tests cover the formula.
-- [ ] **6.2 Reset logic + save v6:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
+- [ ] **6.2 Reset logic + save v7:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
       upgrades, puzzles and methods. 7×7 and Megaminx become unlockable after the first championship.
-      *Done when:* tests check what resets and what stays, and there's a v5 → v6 migration test.
+      *Done when:* tests check what resets and what stays, and there's a v6 → v7 migration test. (Save v6 is S.6's
+      Golden Scramble; a running buff should survive prestige or end, decide when building it.)
 - [ ] **6.3 Trophy perk tree (PR):** permanent perks as data, arranged in 4 branches: Practice (start with 3×3, +offline cap),
       Team (start with 10 Friends, helper boosts), Competition (unlocks Competitions 8.3, medal bonuses) and Automation
       (unlocks 6.3b). As in Idle Skilling, **the first node of each branch unlocks a system**. Nodes need their parent.
@@ -276,10 +277,10 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
 
 ## Phase 7 — Goals
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
-      all moves, with a toast when earned. Save v7. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
+      all moves, with a toast when earned. Save v8. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
       so they work as a map of the game, like Revolution Idle's.
-      *Done when:* there are tests for the conditions and the v6 → v7 migration, and a screenshot of the tab and toast.
+      *Done when:* there are tests for the conditions and the v7 → v8 migration, and a screenshot of the tab and toast.
 - [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
 

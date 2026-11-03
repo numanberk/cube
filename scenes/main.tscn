@@ -72,6 +72,14 @@ size_flags_vertical = 4
 theme_type_variation = &"SubtitleLabel"
 text = "0 solves/s"
 
+[node name="BuffLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"BuffLabel"
+text = "Frenzy ×7 · 30s"
+
 [node name="SolveButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -413,6 +421,16 @@ scale_amount_min = 5.0
 scale_amount_max = 9.0
 color_ramp = SubResource("Gradient_fade")
 color_initial_ramp = SubResource("Gradient_cube_colors")
+
+[node name="GoldenButton" type="Button" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_right = 220.0
+offset_bottom = 36.0
+focus_mode = 0
+theme_type_variation = &"GoldenButton"
+text = "Golden Scramble!"
 
 [node name="SolveStation" parent="." instance=ExtResource("7_station")]
 unique_name_in_owner = true

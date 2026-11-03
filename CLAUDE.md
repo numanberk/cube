@@ -91,8 +91,8 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    PrimaryButton, SubtleButton, PageMargin, ColumnsBox, StackBox, TopBar, GoalStrip, ShopCard, IconTile, CardMargin,
    TightBox, CardTitle, CardLine, CardOwned, CostAffordable, CostUnaffordable, UpgradeGrid, ToggleChip, PopTap,
    PopSolve, TimerLabel, TimerWaiting, TimerDone, ScrambleLabel, SidePanel, StageChip, StageChipActive, StageChipDone,
-   StageChipRow, TickerText, KeyHint, GoalBar, GoalLabel, GoalLabelDim, NewsPanel, NewsNew, NewsOld), or add a new
-   variation.
+   StageChipRow, TickerText, KeyHint, GoalBar, GoalLabel, GoalLabelDim, NewsPanel, NewsNew, NewsOld, GoldenButton,
+   BuffLabel, TimerGolden), or add a new variation.
 9. **Taps:** clicking the puzzle or the `tap` input action (Space / Enter, no repeat when held). Shop and other
    buttons use `focus_mode = none`, so Space never presses a focused button by accident.
    One accent colour: green `#3ccf8e` (dim `#2a9d6c`). Every new asset gets a line in `assets/CREDITS.md`.
@@ -130,6 +130,7 @@ SHOWCASE=20 bash tools/screenshot.sh /tmp/shots mid               # main cube's 
 METHOD=beginner SHOWCASE=40 bash tools/screenshot.sh /tmp/shots mid  # ...with another method -> mid_showcase40_beginner.png
 KEYS=simple SOLVE=solving bash tools/screenshot.sh /tmp/shots mid    # Solve Station with simple keys -> mid_solvesolving_keyssimple.png
 NEWS=1 bash tools/screenshot.sh /tmp/shots mid                    # a few news feed lines -> mid_news.png
+GOLDEN=glow bash tools/screenshot.sh /tmp/shots mid               # Golden Scramble: glow | case | buff -> mid_goldenglow.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

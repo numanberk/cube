@@ -32,13 +32,15 @@ var _finished_at := 0.0
 
 
 ## Scrambles a new attempt on a cube ("2x2" ... "7x7"). Returns false for anything else (the Megaminx comes later).
-func start(id: String, now: float, rng: RandomNumberGenerator = null) -> bool:
+## `length` > 0 scrambles that many moves instead (the Golden Scramble's short cases).
+func start(id: String, now: float, rng: RandomNumberGenerator = null, length: int = -1) -> bool:
 	var new_model := PuzzleShapes.from_id(id)
 	if new_model == null or new_model.size == 0:
 		return false
 	puzzle_id = id
 	model = new_model
-	var length := int(Content.get_puzzle(id).get("scramble_length", 25))
+	if length <= 0:
+		length = int(Content.get_puzzle(id).get("scramble_length", 25))
 	scramble = model.scramble(length, rng)
 	while model.is_solved():  # vanishingly rare, but a solved scramble would be silly
 		scramble.append_array(model.scramble(1, rng))

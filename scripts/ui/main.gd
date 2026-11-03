@@ -19,6 +19,8 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var move_ticker: RichTextLabel = %MoveTicker
 @onready var stage_chips: HBoxContainer = %StageChips
 @onready var news_list: VBoxContainer = %NewsList
+@onready var buff_label: Label = %BuffLabel
+@onready var golden_button: Button = %GoldenButton
 @onready var hint_label: Label = %HintLabel
 @onready var settings_button: Button = %SettingsButton
 @onready var settings_panel: SettingsPanel = %SettingsPanel
@@ -78,6 +80,11 @@ func _ready() -> void:
 	Game.mastery_level_up.connect(_on_mastery_level_up)
 	Game.time_tier_reached.connect(_on_time_tier_reached)
 	_connect_news()
+	Game.golden_spawned.connect(_on_golden_spawned)
+	Game.golden_expired.connect(_on_golden_gone)
+	Game.golden_finished.connect(_on_golden_finished)
+	puzzle_view.golden_clicked.connect(open_golden)
+	golden_button.pressed.connect(open_golden)
 	_build_puzzle_row()
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	for id: String in StagedSolver.PUZZLES:  # builds the solver's tables now (~0.3 s, cached), not mid-game
@@ -111,6 +118,7 @@ func _process(delta: float) -> void:
 	_pop_solves(delta)
 	if news.advance(delta) != "":
 		_show_news()
+	_refresh_golden()
 	_refresh_timer += delta
 	if _refresh_timer >= UI_REFRESH_INTERVAL:
 		_refresh_timer = 0.0
@@ -710,6 +718,58 @@ func _show_news() -> void:
 		label.tooltip_text = news.history[i]
 		label.mouse_filter = Control.MOUSE_FILTER_PASS
 		news_list.add_child(label)
+
+
+# --- Golden Scramble (task S.6) ------------------------------------------------------
+
+func _on_golden_spawned() -> void:
+	puzzle_view.set_golden(true)
+	Audio.play_unlock()
+	_refresh_golden()
+
+
+func _on_golden_gone() -> void:
+	puzzle_view.set_golden(false)
+	_refresh_golden()
+
+
+## Clicking the golden sticker or the button: start the 10 s case in the Solve Station (on the focused puzzle, or the
+## biggest cube the player has when the focused puzzle isn't a cube).
+func open_golden() -> void:
+	if solve_station.visible or not Game.claim_golden():
+		return
+	_on_golden_gone()
+	solve_station.open_golden(Game.get_focused_puzzle_id(), Game.roll_golden_case_moves())
+
+
+func _on_golden_finished(success: bool, buff: Dictionary) -> void:
+	if success:
+		news.push("golden", "Golden Scramble solved! %s" % buff.get("text", ""))
+		fx.pop(String(buff.get("text", "")), buff_label.get_global_rect().get_center() + Vector2(0, 40), &"PopSolve", 2.0)
+	else:
+		news.push("golden", "The golden case got away.")
+
+
+## The golden button sits at the bottom of the big cube's area while a sticker glows ("Golden Scramble! 9s"); the top bar shows
+## a running buff ("Frenzy ×7 · 24s").
+func _refresh_golden() -> void:
+	var glowing := Game.golden_glow_left > 0.0 and not solve_station.visible
+	golden_button.visible = glowing
+	if glowing:
+		golden_button.text = "Golden Scramble!  %ds" % ceili(Game.golden_glow_left)
+		golden_button.size = golden_button.get_combined_minimum_size()
+		var rect := puzzle_view.get_global_rect()
+		golden_button.global_position = Vector2(rect.get_center().x - golden_button.size.x / 2.0,
+				rect.end.y - golden_button.size.y - 6.0)  # under the cube, so the golden sticker on top stays visible
+	if puzzle_view.is_golden_shown() != glowing and not solve_station.visible:
+		puzzle_view.set_golden(glowing)
+	buff_label.visible = not Game.buff.is_empty()
+	if buff_label.visible:
+		var buff_name := String(Game.buff["id"])
+		for def: Dictionary in Content.GOLDEN["buffs"]:
+			if def["id"] == Game.buff["id"]:
+				buff_name = def["name"]
+		buff_label.text = "%s ×%s  ·  %ds" % [buff_name, Num.format(float(Game.buff["mult"])), ceili(float(Game.buff["left"]))]
 
 
 func _on_state_reset() -> void:

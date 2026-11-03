@@ -15,10 +15,15 @@ signal solve_records_changed(puzzle_id: String)
 ## News feed events (task R.4); like the tiers they're derived, never saved, and never fire for what a load restores.
 signal helper_best_time(building_id: String, puzzle_id: String, seconds: float, first: bool)  ## a helper kind got faster
 signal solves_milestone(amount: float)  ## lifetime Solves passed a power of ten (100, 1K, 10K, ...)
-signal hand_solve_pb(puzzle_id: String, single: bool, averages: Array, seconds: float)  ## a Solve Station PB  ## a hand solve was recorded, edited or deleted (Solve Station)
+signal hand_solve_pb(puzzle_id: String, single: bool, averages: Array, seconds: float)  ## a Solve Station PB
+## Golden Scramble (task S.6): a sticker starts glowing, stops glowing unclaimed, an attempt ends (buff = {} on a miss).
+signal golden_spawned
+signal golden_expired
+signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 5  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records
+const SAVE_VERSION := 6  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+                         ## v6 (S.6): Golden Scramble timer + active buff
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0
 const MIN_OFFLINE_SECONDS := 10.0
@@ -61,6 +66,12 @@ var _autosave_timer := 0.0
 var _tier_reached: Dictionary = {}         ## puzzle id -> index of the best time tier reached (derived, not saved)
 var _helper_best: Dictionary = {}          ## building id -> [puzzle id, best solve time reported] (news feed, not saved)
 var _next_solves_milestone := 100.0        ## lifetime Solves at which solves_milestone fires next (derived)
+var golden_next := 0.0                     ## seconds until the next golden sticker (saved)
+var golden_glow_left := 0.0                ## > 0 while a golden sticker glows and can be clicked
+var golden_attempt_left := 0.0             ## > 0 while a claimed Golden Scramble case is being solved
+var buff: Dictionary = {}                  ## the active buff: {id, mult, left} (saved; paused while closed), or {}
+var golden_rng := RandomNumberGenerator.new()
+var _offline_catch_up := false             ## true while offline progress is added: buffs don't count then
 
 
 func _init() -> void:
@@ -82,6 +93,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	add_helper_moves(delta)
+	update_golden(delta)
 	if persistence_enabled:
 		_autosave_timer += delta
 		if _autosave_timer >= AUTOSAVE_INTERVAL:
@@ -125,7 +137,7 @@ func add_moves(amount: float) -> void:
 func add_moves_to(puzzle_id: String, amount: float) -> void:
 	if amount <= 0.0 or not puzzle_progress.has(puzzle_id):
 		return
-	amount *= get_puzzle_moves_mult(puzzle_id)
+	amount *= get_puzzle_moves_mult(puzzle_id) * get_buff_mult()
 	total_moves += amount
 	var progress := float(puzzle_progress[puzzle_id]) + amount
 	var needed := get_moves_per_solve(puzzle_id)
@@ -816,6 +828,113 @@ func check_time_tiers(emit: bool = true) -> void:
 			time_tier_reached.emit(id, tier["name"], get_team_solve_time(id))
 
 
+# --- Golden Scramble (task S.6) ------------------------------------------------------
+
+## Runs the golden sticker's clock, the attempt's clock and the buff's clock (from _process; tests call it).
+func update_golden(delta: float) -> void:
+	if delta <= 0.0:
+		return
+	if not buff.is_empty():
+		buff["left"] = float(buff["left"]) - delta
+		if float(buff["left"]) <= 0.0:
+			buff = {}
+	if golden_attempt_left > 0.0:
+		golden_attempt_left -= delta
+		if golden_attempt_left <= 0.0:
+			golden_attempt_left = 0.0
+			golden_finished.emit(false, {})
+		return  # no new sticker while a case is being solved
+	if golden_glow_left > 0.0:
+		golden_glow_left -= delta
+		if golden_glow_left <= 0.0:
+			golden_glow_left = 0.0
+			golden_next = _roll_golden_wait()
+			golden_expired.emit()
+		return
+	golden_next -= delta
+	if golden_next <= 0.0:
+		golden_next = 0.0
+		golden_glow_left = float(Content.GOLDEN["glow"])
+		golden_spawned.emit()
+
+
+## Clicking the glowing sticker: starts the timed case. Returns false if nothing glows.
+func claim_golden() -> bool:
+	if golden_glow_left <= 0.0 or golden_attempt_left > 0.0:
+		return false
+	golden_glow_left = 0.0
+	golden_attempt_left = float(Content.GOLDEN["solve_seconds"])
+	return true
+
+
+## How many moves from solved the next golden case is (Content.GOLDEN case_moves_min..max).
+func roll_golden_case_moves() -> int:
+	return golden_rng.randi_range(int(Content.GOLDEN["case_moves_min"]), int(Content.GOLDEN["case_moves_max"]))
+
+
+## The case is over: solved in time (success) or not. A success rolls a buff and applies it; returns
+## {id, name, text, mult, seconds | solves} ({} on a miss or with no attempt running). Emits golden_finished.
+func finish_golden(success: bool) -> Dictionary:
+	if golden_attempt_left <= 0.0:
+		return {}
+	golden_attempt_left = 0.0
+	golden_next = _roll_golden_wait()
+	if not success:
+		golden_finished.emit(false, {})
+		return {}
+	var result := _apply_golden_buff(_roll_golden_buff())
+	golden_finished.emit(true, result)
+	return result
+
+
+## ×N on every move while a Frenzy runs (not during offline catch-up), else 1.
+func get_buff_mult() -> float:
+	if buff.is_empty() or _offline_catch_up:
+		return 1.0
+	return float(buff.get("mult", 1.0))
+
+
+## Applies a buff from Content.GOLDEN["buffs"] (tests call it with a chosen one).
+func _apply_golden_buff(def: Dictionary) -> Dictionary:
+	match String(def.get("id", "")):
+		"frenzy":
+			buff = {"id": "frenzy", "mult": float(def["mult"]), "left": float(def["seconds"])}
+			return {"id": "frenzy", "name": def["name"], "mult": float(def["mult"]), "seconds": float(def["seconds"]),
+					"text": "%s: ×%s moves for %ds" % [def["name"], Num.format(float(def["mult"])), int(def["seconds"])]}
+		"lucky":
+			var amount := maxf(get_solves_per_second() * float(def["minutes"]) * 60.0,
+					float(def["min_solves_value"]) * get_solve_value(focused_puzzle))
+			solves += amount
+			total_solves += amount
+			return {"id": "lucky", "name": def["name"], "solves": amount,
+					"text": "%s: +%s Solves (%d minutes' worth)" % [def["name"], Num.format(amount), int(def["minutes"])]}
+	return {}
+
+
+func _roll_golden_buff() -> Dictionary:
+	var buffs: Array = Content.GOLDEN["buffs"]
+	var total := 0.0
+	for def: Dictionary in buffs:
+		total += float(def["weight"])
+	var pick := golden_rng.randf() * total
+	for def: Dictionary in buffs:
+		pick -= float(def["weight"])
+		if pick <= 0.0:
+			return def
+	return buffs.back()
+
+
+func _golden_buff_def(id: String) -> Dictionary:
+	for def: Dictionary in Content.GOLDEN["buffs"]:
+		if def["id"] == id:
+			return def
+	return {}
+
+
+func _roll_golden_wait() -> float:
+	return golden_rng.randf_range(float(Content.GOLDEN["spawn_min"]), float(Content.GOLDEN["spawn_max"]))
+
+
 ## Emits helper_best_time for each helper kind whose solve time on the focused puzzle is new (its first copy) or at least
 ## 5 % faster than the last one reported. emit = false just notes the current times (after a load or a focus change).
 func check_helper_times(emit: bool = true) -> void:
@@ -963,6 +1082,11 @@ func reset_state() -> void:
 	_helper_best.clear()
 	check_helper_times(false)
 	_next_solves_milestone = _milestone_above(total_solves)
+	buff = {}
+	golden_glow_left = 0.0
+	golden_attempt_left = 0.0
+	golden_rng.randomize()
+	golden_next = _roll_golden_wait()
 
 
 func get_save_data() -> Dictionary:
@@ -983,6 +1107,7 @@ func get_save_data() -> Dictionary:
 		"upgrades": upgrades.keys(),
 		"method": method,
 		"solve_records": solve_records.duplicate(true),
+		"golden": {"next": golden_next, "buff": buff.duplicate()},
 	}
 
 
@@ -1121,6 +1246,15 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		history = history.slice(maxi(0, history.size() - SOLVE_HISTORY_LIMIT))
 		solve_records[id] = {"history": history, "count": maxi(history.size(), int((saved_records[id] as Dictionary).get("count", 0)))}
 
+	var saved_golden: Dictionary = data.get("golden", {})
+	golden_next = clampf(float(saved_golden.get("next", golden_next)), 0.0, float(Content.GOLDEN["spawn_max"]))
+	golden_glow_left = 0.0
+	golden_attempt_left = 0.0
+	buff = {}
+	var saved_buff: Dictionary = saved_golden.get("buff", {})
+	if _golden_buff_def(String(saved_buff.get("id", ""))).size() > 0 and float(saved_buff.get("left", 0.0)) > 0.0:
+		buff = {"id": String(saved_buff["id"]), "mult": maxf(1.0, float(saved_buff.get("mult", 1.0))),
+				"left": float(saved_buff["left"])}
 	_tier_reached.clear()
 	check_time_tiers(false)  # tiers reached before don't pop again
 	_helper_best.clear()
@@ -1130,7 +1264,9 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	var elapsed := clampf(now - saved_at, 0.0, MAX_OFFLINE_SECONDS)
 	if elapsed >= MIN_OFFLINE_SECONDS:
 		var before := total_solves
+		_offline_catch_up = true  # a buff pauses while the game is closed
 		add_helper_moves(elapsed)
+		_offline_catch_up = false
 		if total_solves > before:
 			offline_report = {"seconds": elapsed, "solves": total_solves - before}
 
@@ -1179,6 +1315,11 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("solve_records"):
 			data["solve_records"] = {}
 		data["version"] = 5
+	if int(data["version"]) < 6:
+		# v6 adds the Golden Scramble: the first one comes after the longest wait, and nobody has a buff yet.
+		if not data.has("golden"):
+			data["golden"] = {"next": float(Content.GOLDEN["spawn_max"]), "buff": {}}
+		data["version"] = 6
 	return data
 
 

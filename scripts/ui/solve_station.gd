@@ -36,6 +36,10 @@ var _puzzle := "3x3"
 var _records_dirty := true
 var last_info: Dictionary = {}       ## what Game.record_hand_solve() said about the last solve (PBs)
 var _hint_labels: Dictionary = {}    ## face index -> Label (key hints on the cube)
+var golden_mode := false             ## a Golden Scramble case (S.6): short scramble, 10 s clock, not a record
+var golden_result := ""              ## what the case gave ("" while it runs)
+const GOLDEN_CLOSE_DELAY := 2.2      ## seconds the result shows before the station closes by itself
+var _golden_close_left := 0.0
 
 
 func _ready() -> void:
@@ -50,6 +54,7 @@ func _ready() -> void:
 		_build_hints())
 	_view.drag_turns = true
 	_view.drag_turned.connect(play_move)
+	Game.golden_finished.connect(_on_golden_finished)
 	Game.solve_records_changed.connect(func(_id: String) -> void: _records_dirty = true)
 	set_process(false)
 
@@ -71,8 +76,39 @@ func open(puzzle_id: String = "") -> void:
 
 
 func close() -> void:
+	if golden_mode and Game.golden_attempt_left > 0.0:
+		Game.finish_golden(false)  # walking away from a golden case is a miss
+	golden_mode = false
+	_puzzle_picker.visible = true
 	visible = false
 	set_process(false)
+
+
+## Opens a Golden Scramble case (S.6): the puzzle `moves` turns from solved, no inspection, solved against the 10 s
+## clock that GameState runs (claim_golden() must have started it). Not a record.
+func open_golden(puzzle_id: String, moves: int) -> void:
+	open(puzzle_id)
+	golden_mode = true
+	golden_result = ""
+	_golden_close_left = 0.0
+	_puzzle_picker.visible = false
+	session.inspection = false
+	session.start(_puzzle, _now(), null, moves)
+	last_info = {}
+	_view.show_state(session.scramble)
+	_scramble_label.text = "Golden Scramble:  %s" % session.scramble_text()
+	_build_hints()
+	_refresh()
+
+
+func _on_golden_finished(success: bool, buff: Dictionary) -> void:
+	if not golden_mode or not visible:
+		return
+	golden_result = String(buff.get("text", "")) if success else "Too slow: the golden case got away. Next time!"
+	_golden_close_left = GOLDEN_CLOSE_DELAY
+	if success:
+		_view.flash()
+	_refresh()
 
 
 ## Switches puzzle and scrambles a new attempt.
@@ -262,6 +298,10 @@ func handle_key(code: int, shift: bool = false) -> void:
 			close()
 			return
 		KEY_ENTER, KEY_KP_ENTER:
+			if golden_mode:
+				if golden_result != "":
+					close()
+				return
 			new_attempt()
 			return
 	var was_done := session.state == "done"
@@ -284,6 +324,11 @@ func play_move(move: Dictionary) -> void:
 
 
 func _after_turn(was_done: bool) -> void:
+	if golden_mode:
+		if session.state == "done" and not was_done and golden_result == "":
+			Game.finish_golden(true)  # golden_finished shows the buff
+			Audio.play_solve()
+		return
 	if session.state == "done" and not was_done:
 		var result: Dictionary = session.results.back()
 		last_info = Game.record_hand_solve(session.puzzle_id, float(result["time"]), String(result["penalty"]),
@@ -300,7 +345,12 @@ func _on_inspection_toggled(on: bool) -> void:
 
 # --- Display ---------------------------------------------------------------------
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if golden_mode and _golden_close_left > 0.0:
+		_golden_close_left -= delta
+		if _golden_close_left <= 0.0:
+			close()
+			return
 	session.update(_now())
 	_refresh_clock()
 	_place_hints()
@@ -326,6 +376,16 @@ func _refresh() -> void:
 
 func _refresh_clock() -> void:
 	var now := _now()
+	if golden_mode:
+		if golden_result != "":
+			_timer_label.text = Num.solve_time(session.elapsed(now)) if session.state == "done" else "0.0"
+			_timer_label.theme_type_variation = &"TimerDone" if session.state == "done" else &"TimerWaiting"
+			_status_label.text = golden_result
+		else:
+			_timer_label.text = "%.1f" % maxf(0.0, Game.golden_attempt_left)
+			_timer_label.theme_type_variation = &"TimerGolden"
+			_status_label.text = "Golden Scramble: %d moves from solved. Solve it before the clock runs out!" % session.scramble.size()
+		return
 	match session.state:
 		"inspecting":
 			var left := session.inspection_left(now)

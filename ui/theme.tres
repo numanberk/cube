@@ -657,6 +657,38 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_golden"]
+content_margin_left = 16.0
+content_margin_top = 6.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+bg_color = Color(0.2275, 0.1804, 0.0627, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.9608, 0.7725, 0.2588, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_golden_hover"]
+content_margin_left = 16.0
+content_margin_top = 6.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+bg_color = Color(0.3412, 0.2706, 0.0824, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.851, 0.4, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -877,3 +909,19 @@ NewsNew/font_sizes/font_size = 13
 NewsOld/base_type = &"Label"
 NewsOld/colors/font_color = Color(0.4863, 0.5137, 0.5725, 1)
 NewsOld/font_sizes/font_size = 13
+GoldenButton/base_type = &"Button"
+GoldenButton/colors/font_color = Color(0.9608, 0.7725, 0.2588, 1)
+GoldenButton/colors/font_hover_color = Color(1, 0.851, 0.4, 1)
+GoldenButton/colors/font_pressed_color = Color(1, 0.851, 0.4, 1)
+GoldenButton/font_sizes/font_size = 16
+GoldenButton/fonts/font = SubResource("FontVariation_2j8s8")
+GoldenButton/styles/normal = SubResource("StyleBoxFlat_golden")
+GoldenButton/styles/hover = SubResource("StyleBoxFlat_golden_hover")
+GoldenButton/styles/pressed = SubResource("StyleBoxFlat_golden_hover")
+GoldenButton/styles/focus = SubResource("StyleBoxEmpty_card_focus")
+BuffLabel/base_type = &"Label"
+BuffLabel/colors/font_color = Color(0.9608, 0.7725, 0.2588, 1)
+BuffLabel/font_sizes/font_size = 16
+BuffLabel/fonts/font = SubResource("FontVariation_2j8s8")
+TimerGolden/base_type = &"TimerLabel"
+TimerGolden/colors/font_color = Color(0.9608, 0.7725, 0.2588, 1)

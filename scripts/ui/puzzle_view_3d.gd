@@ -27,6 +27,7 @@ extends SubViewportContainer
 
 signal tapped(at: Vector2)  ## global position of the click
 signal drag_turned(move: Dictionary)  ## with drag_turns on: a drag across the puzzle asked for this layer turn
+signal golden_clicked  ## a click landed on the glowing golden sticker (S.6), instead of a tap
 
 const DEFAULT_PUZZLE := "3x3"
 const BODY_COLOR := Color("#14161b")
@@ -141,6 +142,9 @@ var turn_time := TURN_TIME          ## seconds for a quarter turn with an empty 
 var drag_turns := false             ## Solve Station (S.8): a drag that starts on the puzzle turns that layer, not the view
 var _press_hit := {}                ## where the press landed on the puzzle ({normal, point} in model space), or {}
 var _drag_turn_done := false
+var _golden: MeshInstance3D           ## the Golden Scramble sticker (S.6), or null; sits on the top face
+var _golden_material: StandardMaterial3D
+const GOLDEN_COLOR := Color("#ffb300")
 
 
 func _ready() -> void:
@@ -196,6 +200,8 @@ func set_puzzle(id: String) -> void:
 	_solved_timer = 0.0
 	_build_instances()
 	_frame_camera()
+	if _golden != null:  # keep a glowing golden sticker on the new puzzle (or drop it on a non-cube)
+		set_golden(true)
 	for i in maxi(model.size * START_MOVES_PER_SIZE, 16):
 		_last_move = model.random_move(_rng, _last_move)
 		model.apply(_last_move)
@@ -596,7 +602,62 @@ func _draw_piece(piece: int, t: Transform3D) -> void:
 		_stickers.multimesh.set_instance_transform(sticker, sticker_transform)
 
 
+# --- Golden Scramble sticker (S.6) ------------------------------------------------------
+
+## Shows (or hides) a glowing gold sticker on the middle of the top face. Clicking it emits golden_clicked.
+## Cubes only (the Megaminx has no sticker for it yet; the main screen's golden button works for every puzzle).
+func set_golden(on: bool) -> void:
+	if not on or model == null or model.size <= 0:
+		if _golden != null:
+			_golden.queue_free()
+			_golden = null
+		return
+	if _golden == null:
+		_golden_material = StandardMaterial3D.new()
+		_golden_material.albedo_color = GOLDEN_COLOR
+		_golden_material.emission_enabled = true
+		_golden_material.emission = GOLDEN_COLOR
+		_golden_material.emission_energy_multiplier = 1.4
+		_golden_material.roughness = 0.15
+		_golden_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # always bright, whatever the light
+		_golden = MeshInstance3D.new()
+		_golden.mesh = PuzzleMeshes.rounded_rect(STICKER_HALF * 1.06, STICKER_RADIUS)
+		_golden.material_override = _golden_material
+		_turntable.add_child(_golden)
+	_golden.transform = _golden_transform()
+
+
+func is_golden_shown() -> bool:
+	return _golden != null
+
+
+## The golden sticker's centre on the top face (model space): the middle sticker, or one next to the middle on even cubes.
+func golden_point() -> Vector3:
+	var offset := 0.0 if model.size % 2 == 1 else 0.5
+	return Vector3(offset, model.size / 2.0, offset)
+
+
+func _golden_transform() -> Transform3D:
+	var basis := Basis(Vector3.RIGHT, Vector3(0, 0, -1), Vector3.UP)  # the sticker mesh faces +z; turn that to face up
+	return Transform3D(basis, golden_point() + Vector3.UP * (STICKER_LIFT * 3.0))
+
+
+## True if a click at `at` (local pixels) lands on the golden sticker.
+func hits_golden(at: Vector2) -> bool:
+	if _golden == null:
+		return false
+	var hit := pick(at)
+	if hit.is_empty() or (hit["normal"] as Vector3).y < 0.5:
+		return false
+	var point: Vector3 = hit["point"]
+	var center := golden_point()
+	return absf(point.x - center.x) < 0.55 and absf(point.z - center.z) < 0.55
+
+
 func _animate_effects(delta: float) -> void:
+	if _golden != null and _golden_material != null:
+		var pulse := 1.0 if reduce_motion else 0.5 + 0.5 * sin(_clock * 6.0)
+		_golden_material.albedo_color = GOLDEN_COLOR.lerp(Color(1.0, 0.95, 0.7), pulse * 0.6)
 	var target_wobble := 1.0 if speed_mode and not reduce_motion else 0.0
 	_wobble = move_toward(_wobble, target_wobble, delta * 3.0)
 	if not _pressing:  # a released drag springs back
@@ -677,7 +738,10 @@ func _gui_input(event: InputEvent) -> void:
 		_pressing = false
 		_press_hit = {}
 		if not _dragging and button.position.distance_to(_press_position) <= TAP_SLOP:
-			tapped.emit(get_global_transform() * button.position)
+			if hits_golden(button.position):
+				golden_clicked.emit()
+			else:
+				tapped.emit(get_global_transform() * button.position)
 		_dragging = false
 	accept_event()
 

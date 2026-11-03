@@ -2065,7 +2065,7 @@ func test_save_v4_to_v5_migration() -> void:
 	check(g.method == "cfop" and g.buildings["friend"] == 4, "a v4 save loads")
 	check(g.get_solve_history("3x3").is_empty() and g.get_hand_solve_count("3x3") == 0, "with no hand solves yet")
 	var data := g.get_save_data()
-	check(int(data["version"]) == 5 and data.has("solve_records"), "it saves as v5")
+	check(int(data["version"]) >= 5 and data.has("solve_records"), "it saves as v5 (or later)")
 	var junk := data.duplicate(true)
 	junk["solve_records"] = {"3x3": {"history": [{"t": 8.5, "p": "+7", "m": 40}, "bad", {"t": -1.0}], "count": 1}, "pyraminx": {}}
 	g.apply_save_data(junk, float(data["saved_at"]))
@@ -2712,5 +2712,146 @@ func test_news_on_main_screen() -> void:
 	main._process(float(Content.NEWS["interval"]))
 	check(list.get_child_count() == 2 and (list.get_child(0) as Label).text.contains("team: "), "...then its time tier")
 	check((list.get_child(0) as Label).theme_type_variation == &"NewsNew", "the newest line is bright")
+	main.free()
+	game.reset_state()
+
+
+# --- Golden Scramble (task S.6) ------------------------------------------------------
+
+func test_golden_scramble_timing() -> void:
+	var g := new_game()
+	var data: Dictionary = Content.GOLDEN
+	check(g.golden_next >= float(data["spawn_min"]) and g.golden_next <= float(data["spawn_max"]), "the first one comes in 2-5 min")
+	var events: Array = []
+	g.golden_spawned.connect(func() -> void: events.append("spawned"))
+	g.golden_expired.connect(func() -> void: events.append("expired"))
+	g.golden_finished.connect(func(success: bool, buff: Dictionary) -> void: events.append("hit" if success else "miss"))
+	check(not g.claim_golden(), "nothing to claim before it glows")
+	g.update_golden(g.golden_next - 1.0)
+	check(events.is_empty() and g.golden_glow_left == 0.0, "not yet")
+	g.update_golden(2.0)
+	check(events == ["spawned"] and is_equal_approx(g.golden_glow_left, float(data["glow"])), "then it glows for 12 s")
+	g.update_golden(float(data["glow"]) + 0.1)
+	check(events == ["spawned", "expired"], "unclaimed, it goes away")
+	check(g.golden_next >= float(data["spawn_min"]) and g.golden_next <= float(data["spawn_max"]), "...and the next one is 2-5 min off")
+	# Claimed: 10 s to solve; no new sticker meanwhile; running out is a miss.
+	g.update_golden(g.golden_next + 0.01)
+	check(g.claim_golden() and is_equal_approx(g.golden_attempt_left, float(data["solve_seconds"])), "claiming starts a 10 s clock")
+	check(not g.claim_golden(), "you can't claim it twice")
+	g.update_golden(float(data["solve_seconds"]) + 0.1)
+	check(events.back() == "miss" and g.golden_attempt_left == 0.0, "too slow is a miss")
+	check(g.finish_golden(true).is_empty() and g.buff.is_empty(), "finishing after the clock ran out gives nothing")
+	# In time: a buff (rolled by weight from the data).
+	g.update_golden(g.golden_next + 0.01)
+	g.claim_golden()
+	g.update_golden(3.0)
+	var result := g.finish_golden(true)
+	check(events.back() == "hit" and String(result.get("id", "")) in ["frenzy", "lucky"], "in time: a buff (%s)" % result)
+	var case_moves := g.roll_golden_case_moves()
+	check(case_moves >= int(data["case_moves_min"]) and case_moves <= int(data["case_moves_max"]), "the case is 2-5 moves from solved")
+	g.free()
+
+
+func test_golden_buffs() -> void:
+	var g := new_game()
+	var frenzy: Dictionary = Content.GOLDEN["buffs"][0]
+	var lucky: Dictionary = Content.GOLDEN["buffs"][1]
+	g.add_moves_to("2x2", 4.0)
+	var plain := g.total_moves
+	var result := g._apply_golden_buff(frenzy)
+	check_near(g.get_buff_mult(), float(frenzy["mult"]), "Frenzy: ×7 moves")
+	check(result["text"] == "Frenzy: ×7 moves for 30s", "...and says so: %s" % result["text"])
+	g.add_moves_to("2x2", 4.0)
+	check_near(g.total_moves - plain, 4.0 * float(frenzy["mult"]), "every move counts 7 times")
+	g.update_golden(float(frenzy["seconds"]) - 1.0)
+	check(not g.buff.is_empty(), "it lasts 30 s")
+	g.update_golden(1.1)
+	check(g.buff.is_empty() and g.get_buff_mult() == 1.0, "then it's over")
+	# Lucky: 15 minutes of Solves/s, at least 10 solves' worth.
+	var before := g.solves
+	result = g._apply_golden_buff(lucky)
+	check_near(g.solves - before, float(lucky["min_solves_value"]) * g.get_solve_value(), "with no helpers: the minimum (10 solves' worth)")
+	g.cheat_add_solves(1e4)
+	g.buy_building("club")
+	before = g.solves
+	g._apply_golden_buff(lucky)
+	check_near(g.solves - before, g.get_solves_per_second() * float(lucky["minutes"]) * 60.0, "with helpers: 15 minutes of Solves/s")
+	# A buff survives save/load (it pauses while closed) and never counts for offline progress.
+	g._apply_golden_buff(frenzy)
+	g.buff["left"] = 12.5
+	var next_before := g.golden_next
+	var data := g.get_save_data()
+	check(int(data["version"]) == 6 and data["golden"]["buff"]["id"] == "frenzy", "the buff is saved (save v6)")
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.buff.get("id", "") == "frenzy" and is_equal_approx(float(loaded.buff["left"]), 12.5), "it's still running after a load")
+	check(is_equal_approx(loaded.golden_next, next_before), "and the next golden sticker keeps its time")
+	var away_with := new_game()
+	away_with.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]) + 3600.0)
+	var no_buff: Dictionary = JSON.parse_string(JSON.stringify(data))
+	no_buff["golden"]["buff"] = {}
+	var away_without := new_game()
+	away_without.apply_save_data(no_buff, float(data["saved_at"]) + 3600.0)
+	check_near(away_with.total_moves, away_without.total_moves, "an hour away earns the same with or without a buff")
+	check(is_equal_approx(float(away_with.buff["left"]), 12.5), "...and the buff waited (12.5 s left)")
+	# v5 saves get a Golden Scramble timer.
+	var v5 := data.duplicate(true)
+	v5.erase("golden")
+	v5["version"] = 5
+	var migrated := new_game()
+	migrated.apply_save_data(v5, float(data["saved_at"]))
+	check(migrated.buff.is_empty() and is_equal_approx(migrated.golden_next, float(Content.GOLDEN["spawn_max"])), "a v5 save: no buff, first golden in 5 min")
+	g.free()
+	loaded.free()
+	away_with.free()
+	away_without.free()
+	migrated.free()
+
+
+func test_golden_scramble_on_screen() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	root.get_node("Settings").persistence_enabled = false
+	game.cheat_add_solves(1000.0)
+	game.unlock_puzzle("3x3")
+	game.set_focus("3x3")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var view: PuzzleView3D = main.get_node("%PuzzleView")
+	var station: Node = main.get_node("%SolveStation")
+	var button: Button = main.get_node("%GoldenButton")
+	await process_frame
+	game.golden_next = 0.0
+	game.update_golden(0.01)
+	main._refresh_golden()
+	check(view.is_golden_shown() and button.visible, "a golden sticker glows on the cube and the button shows")
+	# Clicking the golden sticker opens the case (a click elsewhere on the cube would just tap).
+	var at := view.screen_position(view.golden_point())
+	check(view.hits_golden(at), "the click lands on the golden sticker")
+	var moves_before := game.total_moves
+	view._gui_input(mouse_button(true, at))
+	view._gui_input(mouse_button(false, at))
+	check(station.visible and station.golden_mode and game.golden_attempt_left > 0.0, "it opens the 10 s case")
+	check(is_equal_approx(game.total_moves, moves_before), "that click wasn't a tap")
+	check(not view.is_golden_shown() and not button.visible, "the sticker is gone once claimed")
+	var case_size: int = station.session.scramble.size()
+	check(case_size >= 2 and case_size <= 5 and not station.session.model.is_solved(), "the case is a few moves from solved")
+	# Solve it: the buff comes, and it's not a record.
+	var count_before := game.get_hand_solve_count("3x3")
+	var solves_before := game.solves
+	for move in station.session.model.inverse_sequence(station.session.scramble):
+		station.play_move(move)
+	check(station.golden_result != "" and (not game.buff.is_empty() or game.solves > solves_before), "solving it in time gives a buff: %s" % station.golden_result)
+	check(game.get_hand_solve_count("3x3") == count_before, "a golden case isn't a hand-solve record")
+	station._process(float(station.GOLDEN_CLOSE_DELAY) + 0.1)  # untyped: SolveStation uses the autoloads by name
+	check(not station.visible, "the station closes by itself after showing the buff")
+	# Esc on a case is a miss.
+	game.update_golden(game.golden_next + 0.01)
+	main.open_golden()
+	var missed := []
+	game.golden_finished.connect(func(success: bool, _buff: Dictionary) -> void: missed.append(success), CONNECT_ONE_SHOT)
+	station.handle_key(KEY_ESCAPE)
+	check(missed == [false] and not station.visible, "Esc walks away from the case: a miss")
 	main.free()
 	game.reset_state()

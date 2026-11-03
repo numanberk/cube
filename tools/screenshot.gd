@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -78,6 +78,20 @@ func _ready() -> void:
 		for i in 10:
 			feed.advance(10.0)
 		main._show_news()
+	if args.has("golden"):  # Golden Scramble: glow (sticker + button) | case (the 10 s case open) | buff (Frenzy running)
+		var mode := String(args["golden"])
+		Game.golden_rng.seed = RANDOM_SEED
+		if mode == "buff":
+			Game._apply_golden_buff(Content.GOLDEN["buffs"][0])
+			Game.buff["left"] = 24.0
+		else:
+			Game.golden_next = 0.0
+			Game.update_golden(0.01)
+			Game.golden_glow_left = 9.0
+			if mode == "case":
+				main.open_golden()
+				Game.golden_attempt_left = 7.4
+		main._refresh_golden()
 	if args.has("showcase"):  # the showcase solve held N moves in
 		main.pose_showcase(int(args["showcase"]))
 	var pose: String = args.get("pose", "")

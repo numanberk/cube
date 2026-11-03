@@ -2,6 +2,34 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task S.6: Golden Scramble (save v6)
+- **Every 2–5 min a golden sticker glows on the main cube for 12 s** (the middle of the top face, pulsing amber/cream;
+  unshaded so it's always bright), with a gold **"Golden Scramble! 9s"** button under the cube for any puzzle (also the
+  Megaminx, which has no golden sticker). Clicking the sticker (`PuzzleView3D.hits_golden` → `golden_clicked`, not a tap)
+  or the button claims it: the Solve Station opens a **case 2–5 moves from solved** on the focused cube (or your biggest
+  cube), no inspection, a gold 10 s countdown. Solve it in time for a random buff; Esc, closing or the clock running out
+  is a miss. The station shows the result ~2 s and closes itself. Golden cases are **not** hand-solve records.
+- **Buffs** (`Content.GOLDEN`, by weight 1:1): **Frenzy** = every move ×7 for 30 s (taps and helpers, in `add_moves_to`;
+  "Frenzy ×7 · 24s" in the top bar), **Lucky solve** = 15 minutes of the current Solves/s at once (at least 10 solves'
+  worth of the focused puzzle). A news line and a pop for each.
+- **GameState** (all the timing): `update_golden(delta)` (from `_process`) runs the spawn wait, the 12 s glow, the 10 s
+  attempt and the buff; `claim_golden()`, `finish_golden(success)`, `roll_golden_case_moves()`, `get_buff_mult()`; signals
+  `golden_spawned`, `golden_expired`, `golden_finished(success, buff)`. `golden_rng` (tests seed it).
+- **Save v6** (`"golden": {next, buff}`): the next spawn time and a running buff are saved; the buff **pauses while the game
+  is closed** and never counts for offline progress (`_offline_catch_up`). v5 saves get the first golden in 5 min and no
+  buff. Planned save numbers moved: **v7 prestige (6.2), v8 achievements (7.1)** (PLAN §6, ROADMAP updated; 6.2 should
+  decide whether a running buff survives a prestige).
+- `SolveSession.start(..., length)` scrambles a given number of moves; `SolveStation.open_golden(puzzle, moves)`.
+  Theme: GoldenButton, BuffLabel, TimerGolden. Screenshot tool: `GOLDEN=glow|case|buff`; shots in
+  `docs/screenshots/S.6-golden/`.
+- Tests (2077 checks, `All good.`): spawn wait in range, glow and expiry, claim (once), the 10 s clock and the miss, a hit
+  rolls a buff, case length; Frenzy ×7 on every move and its expiry, Lucky's two amounts; save/load keeps the buff and the
+  timer, an hour away earns the same with or without a buff (and the buff waited), v5 → v6; on screen: sticker + button,
+  clicking the sticker opens the case (not a tap), solving gives a buff and no record, the station closes itself, Esc = miss.
+- Not in the simulator (it never claims goldens), so pacing is unchanged.
+- **Next: S.3 rewards** (D13 = 2–3×). Ask the owner for the player's real csTimer averages first (S.2 handoff has the
+  suggested design).
+
 ## 2026-11-03 — Task R.4: the news feed
 - **A small "News" panel under the shop** (bottom of the right column, ~5 lines, scrolls back through the last 20; newest
   first and bright, older dim; tooltips hold the full line). The left column had no room left, so it lives on the right.

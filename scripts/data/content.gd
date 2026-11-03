@@ -262,6 +262,21 @@ const NEWS := {
 }
 
 
+## Golden Scramble (task S.6, was 8.1): every spawn_min..spawn_max seconds a golden sticker glows on the main puzzle
+## for `glow` seconds. Clicking it opens a quick case (the puzzle case_moves_min..max moves from solved) to solve within
+## `solve_seconds` for a random buff (by weight). "frenzy": all moves ×mult for `seconds`; "lucky": `minutes` of the
+## current Solves/s at once (at least `min_solves_value` solves' worth of the focused puzzle, so it's never nothing).
+## Buffs pause while the game is closed and never count for offline progress.
+const GOLDEN := {
+	"spawn_min": 120.0, "spawn_max": 300.0, "glow": 12.0, "solve_seconds": 10.0,
+	"case_moves_min": 2, "case_moves_max": 5,
+	"buffs": [
+		{"id": "frenzy", "name": "Frenzy", "weight": 1.0, "mult": 7.0, "seconds": 30.0},
+		{"id": "lucky", "name": "Lucky solve", "weight": 1.0, "minutes": 15.0, "min_solves_value": 10.0},
+	],
+}
+
+
 ## Showcase solve (task R.2): the main cube plays one real solve (StagedSolver) at a speed you can follow, instead of
 ## showing every move. Visual only: it never changes a number. Turns per second come from the learned method plus a bit
 ## per 10× more moves/s of the focused puzzle (owner, 2026-11-03: ~3 TPS Beginner up to ~10–12 with CFOP and many
