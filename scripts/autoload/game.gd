@@ -11,7 +11,11 @@ signal focus_changed(puzzle_id: String)
 signal split_changed
 signal mastery_level_up(puzzle_id: String, level: int)
 signal time_tier_reached(puzzle_id: String, tier: String, seconds: float)  ## the team's best time crossed a tier (R.3)
-signal solve_records_changed(puzzle_id: String)  ## a hand solve was recorded, edited or deleted (Solve Station)
+signal solve_records_changed(puzzle_id: String)
+## News feed events (task R.4); like the tiers they're derived, never saved, and never fire for what a load restores.
+signal helper_best_time(building_id: String, puzzle_id: String, seconds: float, first: bool)  ## a helper kind got faster
+signal solves_milestone(amount: float)  ## lifetime Solves passed a power of ten (100, 1K, 10K, ...)
+signal hand_solve_pb(puzzle_id: String, single: bool, averages: Array, seconds: float)  ## a Solve Station PB  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
 const SAVE_VERSION := 5  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records
@@ -55,12 +59,19 @@ var load_notice := ""  ## Set when the save was damaged and a backup (or nothing
 
 var _autosave_timer := 0.0
 var _tier_reached: Dictionary = {}         ## puzzle id -> index of the best time tier reached (derived, not saved)
+var _helper_best: Dictionary = {}          ## building id -> [puzzle id, best solve time reported] (news feed, not saved)
+var _next_solves_milestone := 100.0        ## lifetime Solves at which solves_milestone fires next (derived)
 
 
 func _init() -> void:
 	# Anything that can speed a helper up can cross a time tier.
-	purchased.connect(func(_kind: String, _id: String) -> void: check_time_tiers())
-	mastery_level_up.connect(func(_id: String, _level: int) -> void: check_time_tiers())
+	purchased.connect(func(_kind: String, _id: String) -> void:
+		check_helper_times()  # "Robot Unit 7 joins the team" reads best before "3×3 team: WR pace!"
+		check_time_tiers())
+	mastery_level_up.connect(func(_id: String, _level: int) -> void:
+		check_helper_times()
+		check_time_tiers())
+	focus_changed.connect(func(_id: String) -> void: check_helper_times(false))
 
 
 func _ready() -> void:
@@ -124,6 +135,12 @@ func add_moves_to(puzzle_id: String, amount: float) -> void:
 		var reward := count * get_solve_value(puzzle_id)
 		solves += reward
 		total_solves += reward
+		if total_solves >= _next_solves_milestone:
+			var passed := _next_solves_milestone
+			while total_solves >= passed * 10.0:
+				passed *= 10.0
+			_next_solves_milestone = passed * 10.0
+			solves_milestone.emit(passed)
 		puzzle_progress[puzzle_id] = progress
 		_add_mastery_xp(puzzle_id, count * get_mastery_xp_per_solve(puzzle_id))
 		solved.emit(int(count), puzzle_id)
@@ -370,6 +387,8 @@ func record_hand_solve(puzzle_id: String, seconds: float, penalty: String, moves
 			bests[size] = current
 			(info["pb_averages"] as Array).append(size)
 	solve_records_changed.emit(puzzle_id)
+	if info["pb_single"] or not (info["pb_averages"] as Array).is_empty():
+		hand_solve_pb.emit(puzzle_id, info["pb_single"], info["pb_averages"], final)
 	return info
 
 
@@ -797,6 +816,30 @@ func check_time_tiers(emit: bool = true) -> void:
 			time_tier_reached.emit(id, tier["name"], get_team_solve_time(id))
 
 
+## Emits helper_best_time for each helper kind whose solve time on the focused puzzle is new (its first copy) or at least
+## 5 % faster than the last one reported. emit = false just notes the current times (after a load or a focus change).
+func check_helper_times(emit: bool = true) -> void:
+	for def: Dictionary in Content.BUILDINGS:
+		var id: String = def["id"]
+		if int(buildings.get(id, 0)) <= 0:
+			continue
+		var time := get_helper_solve_time(id, focused_puzzle)
+		var known: Array = _helper_best.get(id, [])
+		var first := known.is_empty()
+		if not emit or first or known[0] != focused_puzzle or time < float(known[1]) * 0.95:
+			_helper_best[id] = [focused_puzzle, time]
+			if emit and (first or known[0] == focused_puzzle):
+				helper_best_time.emit(id, focused_puzzle, time, first)
+
+
+## The first power of ten (from 100) above an amount of lifetime Solves.
+func _milestone_above(amount: float) -> float:
+	var next := 100.0
+	while next <= amount:
+		next *= 10.0
+	return next
+
+
 ## Solves a puzzle completes each second (a count, not Solves earned).
 func get_puzzle_solve_rate(puzzle_id: String = "") -> float:
 	var id := _or_focused(puzzle_id)
@@ -917,6 +960,9 @@ func reset_state() -> void:
 	offline_report = {}
 	_tier_reached.clear()
 	check_time_tiers(false)
+	_helper_best.clear()
+	check_helper_times(false)
+	_next_solves_milestone = _milestone_above(total_solves)
 
 
 func get_save_data() -> Dictionary:
@@ -1077,6 +1123,9 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 
 	_tier_reached.clear()
 	check_time_tiers(false)  # tiers reached before don't pop again
+	_helper_best.clear()
+	check_helper_times(false)
+	_next_solves_milestone = _milestone_above(total_solves)
 	var saved_at := float(data.get("saved_at", now))
 	var elapsed := clampf(now - saved_at, 0.0, MAX_OFFLINE_SECONDS)
 	if elapsed >= MIN_OFFLINE_SECONDS:

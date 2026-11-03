@@ -2,6 +2,31 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task R.4: the news feed
+- **A small "News" panel under the shop** (bottom of the right column, ~5 lines, scrolls back through the last 20; newest
+  first and bright, older dim; tooltips hold the full line). The left column had no room left, so it lives on the right.
+- **Lines** (`NewsFeed`, `scripts/ui/news_feed.gd`, pure data; main.gd connects the signals and draws `history`):
+  - a helper kind's first copy: "Robot Nova-2 joins the team: 0.21 s a 3×3"; a helper kind at least 5 % faster on the
+    focused puzzle (an upgrade, a method, mastery): "Club member Lucas: 0.87 s 3×3 single!"
+  - mastery: every level up to 10, then every 5th, and milestones with what they give ("2×2 Mastery 5: +10 % moves…")
+  - "Your team learned CFOP. Cross, F2L, OLL, PLL." · "New puzzle: 4×4. Your helpers start on it now."
+  - time tiers ("3×3 team: Robot record pace! 0.21 s"), "1.00M lifetime Solves!", and the player's own Solve Station
+    PBs ("Your new 3×3 PB: single 8.77, ao5").
+- **Rate limit:** one line per 1.2 s (`Content.NEWS`), lines of the same kind waiting together are merged (newest kept),
+  at most 6 wait (oldest dropped). Names are data (`Content.NEWS`: a title per helper and pools of people's names / machine
+  codes), picked by a seeded hash so a member keeps its name.
+- **New GameState signals** (derived, never saved, silent after a load or a focus change): `helper_best_time(building,
+  puzzle, seconds, first)` via `check_helper_times()` (after purchases and mastery level-ups, before the tier check),
+  `solves_milestone(amount)` (lifetime Solves passing 100, 1K, 10K…; one line for the highest passed),
+  `hand_solve_pb(puzzle, single, averages, seconds)` from `record_hand_solve`. No save change.
+- Screenshot tool: `NEWS=1` (a few typical lines through the real feed). Shots: `docs/screenshots/R.4-news/`.
+- Tests (2040 checks, `All good.`): the rate limit, merging, queue cap, 20-line history, the mastery filter, the text of
+  every kind of line (buying a helper or upgrade alone makes none), stable names, robots get codes; GameState events
+  (first helper, no line for an equally fast copy, upgrade → faster, milestones once and highest only, nothing after a
+  load, PBs only for faster solves); and the main screen (first Friend → "joins the team", then its tier).
+- **The R.1–R.4 block ("readable main screen") is done.** Next in the roadmap order: **S.6 Golden Scramble**, then S.3
+  rewards (D13 = 2–3× answered; ask the owner for the player's real csTimer times first, see the S.2 handoff), then S.4….
+
 ## 2026-11-03 — Task R.3: cube times and real goals
 - **Solve times, a cuber's way to read speed.** `GameState.get_helper_solve_time(helper, puzzle)` = moves per solve ÷ one
   helper's moves/s on that puzzle (upgrades and the puzzle's mastery bonus count); `get_team_solve_time(puzzle)` = the

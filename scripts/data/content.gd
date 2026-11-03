@@ -244,6 +244,24 @@ const TIME_TIERS := {
 const GOAL_BAR_SOLVES_PER_SECOND := 10.0
 
 
+## News feed (task R.4): who does what. Each helper kind has a title and a name pool ("people" or "codes" for machines);
+## a member's name is picked by a seeded hash, so the same Club member keeps the same name. The feed shows one line
+## every `interval` seconds at most, merges repeats of the same kind of news, and keeps the last `history` lines.
+const NEWS := {
+	"interval": 1.2,
+	"queue": 6,
+	"history": 20,
+	"who": {
+		"friend": ["Your friend", "people"], "club": ["Club member", "people"], "robot": ["Robot", "codes"],
+		"competition": ["Competitor", "people"], "factory": ["Factory line", "codes"], "lab": ["Researcher", "people"],
+	},
+	"people": ["Ana", "Kenji", "Lena", "Mateo", "Priya", "Omar", "Sofia", "Lucas", "Mei", "Yusuf", "Elif", "Noah",
+			"Aiko", "Diego", "Zara", "Ivan", "Chloe", "Arjun", "Nora", "Emre", "Hana", "Leo", "Amara", "Felix",
+			"Ines", "Tariq", "Maya", "Jonas", "Selin", "Kofi"],
+	"codes": ["Unit 7", "CB-3", "Turbo-9", "Model K", "Quad-12", "Spinner 4", "R-21", "Axis-5", "Twister 8", "Nova-2"],
+}
+
+
 ## Showcase solve (task R.2): the main cube plays one real solve (StagedSolver) at a speed you can follow, instead of
 ## showing every move. Visual only: it never changes a number. Turns per second come from the learned method plus a bit
 ## per 10× more moves/s of the focused puzzle (owner, 2026-11-03: ~3 TPS Beginner up to ~10–12 with CFOP and many

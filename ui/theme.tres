@@ -641,6 +641,22 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_news"]
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0.1020, 0.1137, 0.1373, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.1961, 0.2196, 0.2745, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -853,3 +869,11 @@ GoalLabel/font_sizes/font_size = 14
 GoalLabelDim/base_type = &"Label"
 GoalLabelDim/colors/font_color = Color(0.6667, 0.6902, 0.7412, 1)
 GoalLabelDim/font_sizes/font_size = 14
+NewsPanel/base_type = &"PanelContainer"
+NewsPanel/styles/panel = SubResource("StyleBoxFlat_news")
+NewsNew/base_type = &"Label"
+NewsNew/colors/font_color = Color(0.9255, 0.9333, 0.949, 1)
+NewsNew/font_sizes/font_size = 13
+NewsOld/base_type = &"Label"
+NewsOld/colors/font_color = Color(0.4863, 0.5137, 0.5725, 1)
+NewsOld/font_sizes/font_size = 13

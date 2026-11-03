@@ -2587,3 +2587,130 @@ func test_goal_bar_on_main_screen() -> void:
 	fresh._refresh()
 	check((fresh.get_node("%ProgressLabel") as Label).text.contains("moves"), "a new game keeps the moves-to-next-solve bar")
 	fresh.free()
+
+
+# --- News feed (task R.4) ---------------------------------------------------------------
+
+func test_news_feed_rules() -> void:
+	var feed := NewsFeed.new()
+	var interval := float(Content.NEWS["interval"])
+	feed.push("a", "first")
+	feed.push("b", "second")
+	feed.push("c", "third")
+	check(feed.advance(0.0) == "first", "the first line shows at once")
+	check(feed.advance(interval * 0.5) == "", "the next waits for the interval")
+	check(feed.advance(interval * 0.6) == "second", "...then it shows")
+	check(feed.history == ["second", "first"] and feed.pending() == 1, "history is newest first")
+	# Same kind while waiting: merged, only the newest kept.
+	feed.push("mastery:3x3", "3×3 Mastery 11")
+	feed.push("mastery:3x3", "3×3 Mastery 12")
+	check(feed.pending() == 2, "two mastery level-ups waiting together make one line")
+	feed.advance(interval)
+	check(feed.advance(interval) == "3×3 Mastery 12", "...the newest")
+	# The queue is capped; the history keeps the last 20.
+	for i in 30:
+		feed.push("k%d" % i, "line %d" % i)
+	check(feed.pending() == int(Content.NEWS["queue"]), "the waiting queue is capped (oldest dropped)")
+	for i in 40:
+		feed.advance(interval)
+		feed.push("x%d" % i, "more %d" % i)
+	check(feed.history.size() == int(Content.NEWS["history"]), "the list keeps the last 20 lines")
+	var levels := NewsFeed.new()
+	for level in [2, 9, 11, 12, 15, 25, 33]:
+		levels.on_mastery_level_up("2x2", level)
+		levels.advance(interval)
+	check(levels.history == ["2×2 Mastery 25: +25 % Solves per solve", "2×2 Mastery 15", "2×2 Mastery 9", "2×2 Mastery 2"],
+			"mastery lines: every level to 10, then every 5th and milestones (%s)" % [levels.history])
+	# Lines for each kind of event.
+	var lines := NewsFeed.new()
+	var out: Array[String] = []
+	var events: Array[Callable] = [
+		lines.on_helper_best_time.bind("club", "3x3", 9.876, false, 8),
+		lines.on_helper_best_time.bind("robot", "3x3", 0.21, true, 1),
+		lines.on_mastery_level_up.bind("3x3", 25),
+		lines.on_purchased.bind("method", "cfop"),
+		lines.on_purchased.bind("puzzle", "4x4"),
+		lines.on_purchased.bind("building", "friend"),
+		lines.on_purchased.bind("upgrade", "lube"),
+		lines.on_time_tier.bind("3x3", "Sub-10", 9.87),
+		lines.on_solves_milestone.bind(1e6),
+		lines.on_hand_pb.bind("3x3", true, [5, 12], 8.77),
+	]
+	for event in events:
+		event.call()
+		var text := lines.advance(interval)
+		if text != "":
+			out.append(text)
+	check(out.size() == 8, "8 events make 8 lines; buying a helper or an upgrade makes none on its own (%d)" % out.size())
+	check(out[0].begins_with("Club member ") and out[0].ends_with(": 9.87 s 3×3 single!"), "a helper's best: %s" % out[0])
+	check(out[1].begins_with("Robot ") and out[1].contains("joins the team: 0.21 s a 3×3"), "a new helper kind: %s" % out[1])
+	check(out[2] == "3×3 Mastery 25: +25 % Solves per solve", "a milestone level says what it gives: %s" % out[2])
+	check(out[3].begins_with("Your team learned CFOP."), "a method: %s" % out[3])
+	check(out[4].begins_with("New puzzle: 4×4"), "a puzzle: %s" % out[4])
+	check(out[5] == "3×3 team: Sub-10! 9.87 s" and out[6] == "1.00M lifetime Solves!", "a tier and a milestone")
+	check(out[7] == "Your new 3×3 PB: single 8.77, ao5, ao12", "your own PBs: %s" % out[7])
+	check(NewsFeed.member_name("club", 8) == NewsFeed.member_name("club", 8), "a member keeps the same name")
+	check(NewsFeed.member_name("robot", 3).begins_with("Robot ") and not NewsFeed.member_name("robot", 3).contains("Ana"), "robots get codes, not people's names")
+
+
+func test_news_events_from_game() -> void:
+	var g := new_game()
+	var helper_events: Array = []
+	var milestones: Array = []
+	var pbs: Array = []
+	g.helper_best_time.connect(func(id: String, puzzle: String, seconds: float, first: bool) -> void: helper_events.append([id, puzzle, seconds, first]))
+	g.solves_milestone.connect(func(amount: float) -> void: milestones.append(amount))
+	g.hand_solve_pb.connect(func(puzzle: String, single: bool, averages: Array, seconds: float) -> void: pbs.append([puzzle, single, averages]))
+	g.cheat_add_solves(5.0)
+	g.buy_building("friend")
+	check(helper_events.size() == 1 and helper_events[0][0] == "friend" and helper_events[0][3], "the first Friend joins (first = true)")
+	g.cheat_add_solves(100.0)
+	g.buy_building("friend")
+	check(helper_events.size() == 1, "a second Friend is no faster: no line")
+	g.cheat_add_solves(1e5)
+	for def: Dictionary in Content.UPGRADES:
+		var effect: Dictionary = def["effect"]
+		if effect["type"] == "building_mult" and effect.get("target", "") == "friend":
+			g.buy_upgrade(def["id"])
+	if helper_events.size() > 1:
+		check(helper_events[-1][0] == "friend" and not helper_events[-1][3], "a Friend upgrade makes Friends faster: a new best")
+	# Milestones: once per power of ten, the highest one passed (a fresh game: cheats skip the milestone check).
+	g.free()
+	g = new_game()
+	g.solves_milestone.connect(func(amount: float) -> void: milestones.append(amount))
+	g.helper_best_time.connect(func(id: String, puzzle: String, seconds: float, first: bool) -> void: helper_events.append([id, puzzle, seconds, first]))
+	g.hand_solve_pb.connect(func(puzzle: String, single: bool, averages: Array, seconds: float) -> void: pbs.append([puzzle, single, averages]))
+	g.add_moves_to("2x2", g.get_moves_per_solve("2x2") * 150.0)
+	check(milestones == [100.0], "passing 100 lifetime Solves is a milestone (%s)" % [milestones])
+	g.add_moves_to("2x2", g.get_moves_per_solve("2x2") * 20000.0)
+	check(milestones == [100.0, 10000.0], "jumping past 1K and 10K at once gives one line, for 10K (%s)" % [milestones])
+	# Nothing fires again for what a load restores.
+	var data := g.get_save_data()
+	g.apply_save_data(data, float(data["saved_at"]))
+	var before := helper_events.size()
+	g.add_moves_to("2x2", g.get_moves_per_solve("2x2"))
+	check(milestones.size() == 2 and helper_events.size() == before, "after a load: no repeats")
+	# Hand-solve PBs.
+	g.record_hand_solve("3x3", 12.0, "", 50)
+	g.record_hand_solve("3x3", 14.0, "", 50)
+	g.record_hand_solve("3x3", 11.0, "", 50)
+	check(pbs.size() == 2 and pbs[0][1] and pbs[1][1], "a first solve and a faster one are PBs; a slower one isn't (%s)" % [pbs])
+	g.free()
+
+
+func test_news_on_main_screen() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	game.cheat_add_solves(5.0)
+	game.buy_building("friend")
+	main._process(0.016)
+	var list: VBoxContainer = main.get_node("%NewsList")
+	check(list.get_child_count() == 1 and (list.get_child(0) as Label).text.contains("joins the team"), "buying the first Friend makes a news line: it joins the team")
+	main._process(float(Content.NEWS["interval"]))
+	check(list.get_child_count() == 2 and (list.get_child(0) as Label).text.contains("team: "), "...then its time tier")
+	check((list.get_child(0) as Label).theme_type_variation == &"NewsNew", "the newest line is bright")
+	main.free()
+	game.reset_state()

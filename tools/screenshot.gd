@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -67,6 +67,17 @@ func _ready() -> void:
 	if bench:
 		for quality: String in ["low", "high"]:  # high last, so the saved PNG shows it
 			await _bench(view, quality, bench_name)
+	if args.has("news"):  # a few typical news lines, through the real feed
+		var feed: NewsFeed = main.news
+		feed.on_solves_milestone(1000.0)
+		feed.on_helper_best_time("robot", "3x3", 0.21, true, 2)
+		feed.on_time_tier("3x3", "Robot record pace", 0.21)
+		feed.on_mastery_level_up("2x2", 5)
+		feed.on_hand_pb("3x3", true, [5], 8.77)
+		feed.on_helper_best_time("club", "3x3", 0.87, false, 8)
+		for i in 10:
+			feed.advance(10.0)
+		main._show_news()
 	if args.has("showcase"):  # the showcase solve held N moves in
 		main.pose_showcase(int(args["showcase"]))
 	var pose: String = args.get("pose", "")

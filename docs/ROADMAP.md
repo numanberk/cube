@@ -140,7 +140,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is an almost
 professional speedcuber**. So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
 records and drills, and your real skill feeds the idle economy. Do S.1–S.6 before the rest of Phase 5 (5.2 onward).
-**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1 ✅ → R.2 ✅ → R.3 ✅ → R.4** (readable main screen, below) → S.6 → S.3 (needs D13) → S.4, S.5,
+**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1–R.4 ✅** (readable main screen, below) → S.6 → S.3 (needs D13) → S.4, S.5,
 S.7, S.8 → R.5, R.6. Then the rest of Phase 5.
 - [x] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
       using **csTimer's virtual-cube layout** (I/K = R/R', J/F = U/U', H/G = F/F', D/E = L/L', S/L = D/D', W/O = B/B',
@@ -191,7 +191,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       unlock, method, mastery milestone or helper, with an ETA), and the goal strip shows the top 2–3 goals with progress bars
       instead of "another Cubing Friend". The numbers come from `GameState` (new read-only getters).
       *Done when:* tests cover the solve-time math, the tier crossing and the goal picking/ETA, and there's a screenshot.
-- [ ] **R.4 News feed:** a small feed under the stage with short, rate-limited lines for things that already happen:
+- [x] **R.4 News feed:** a small feed under the stage with short, rate-limited lines for things that already happen:
       a helper's new best time ("Club member Ana: 9.87 s 3×3 single!"; names seeded, as data), mastery level-ups, a method
       learned, a puzzle unlocked, a time tier crossed, ×10 Solves milestones, and the player's own Solve Station PBs (S.2).
       Events come from `GameState` signals; the feed only formats them. The last ~20 lines can be scrolled.

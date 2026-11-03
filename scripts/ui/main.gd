@@ -18,6 +18,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var puzzle_view: PuzzleView3D = %PuzzleView
 @onready var move_ticker: RichTextLabel = %MoveTicker
 @onready var stage_chips: HBoxContainer = %StageChips
+@onready var news_list: VBoxContainer = %NewsList
 @onready var hint_label: Label = %HintLabel
 @onready var settings_button: Button = %SettingsButton
 @onready var settings_panel: SettingsPanel = %SettingsPanel
@@ -57,6 +58,7 @@ var _locked_chip: PuzzleChip         ## the next puzzle to unlock
 var _hold_counter := false        ## keeps the counter still while the Welcome back panel is open
 var _showcase: ShowcaseSolve      ## the real solve the big cube plays (task R.2); null for puzzles without one yet
 var showcase_paused := false       ## screenshots freeze the showcase at a chosen move
+var news := NewsFeed.new()          ## the news feed (task R.4): GameState events in, a line every ~1.2 s out
 
 
 func _ready() -> void:
@@ -75,6 +77,7 @@ func _ready() -> void:
 	Game.puzzle_unlocked.connect(_on_puzzle_unlocked)
 	Game.mastery_level_up.connect(_on_mastery_level_up)
 	Game.time_tier_reached.connect(_on_time_tier_reached)
+	_connect_news()
 	_build_puzzle_row()
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	for id: String in StagedSolver.PUZZLES:  # builds the solver's tables now (~0.3 s, cached), not mid-game
@@ -106,6 +109,8 @@ func _process(delta: float) -> void:
 		(_chips[id] as PuzzleChip).advance(delta, Game.get_puzzle_moves_per_second(id))
 	_animate_counter(delta)
 	_pop_solves(delta)
+	if news.advance(delta) != "":
+		_show_news()
 	_refresh_timer += delta
 	if _refresh_timer >= UI_REFRESH_INTERVAL:
 		_refresh_timer = 0.0
@@ -680,7 +685,35 @@ func _on_unlock_pressed(puzzle_id: String) -> void:
 	Game.unlock_puzzle(puzzle_id)
 
 
+# --- News feed (task R.4) ------------------------------------------------------------
+
+func _connect_news() -> void:
+	Game.helper_best_time.connect(func(id: String, puzzle: String, seconds: float, first: bool) -> void:
+		news.on_helper_best_time(id, puzzle, seconds, first, int(Game.buildings.get(id, 1))))
+	Game.mastery_level_up.connect(news.on_mastery_level_up)
+	Game.purchased.connect(news.on_purchased)
+	Game.time_tier_reached.connect(news.on_time_tier)
+	Game.solves_milestone.connect(news.on_solves_milestone)
+	Game.hand_solve_pb.connect(news.on_hand_pb)
+
+
+## The list under the shop: newest first and bright, older ones dim; it scrolls back through the last 20.
+func _show_news() -> void:
+	for child in news_list.get_children():
+		news_list.remove_child(child)
+		child.queue_free()
+	for i in news.history.size():
+		var label := Label.new()
+		label.theme_type_variation = &"NewsNew" if i == 0 else &"NewsOld"
+		label.text = news.history[i]
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		label.tooltip_text = news.history[i]
+		label.mouse_filter = Control.MOUSE_FILTER_PASS
+		news_list.add_child(label)
+
+
 func _on_state_reset() -> void:
+	news = NewsFeed.new()
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	_start_showcase()
 	_build_puzzle_row()
