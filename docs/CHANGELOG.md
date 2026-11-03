@@ -2,6 +2,17 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task 4.1: puzzle data
+- `Content.PUZZLES`: 2×2 → 3×3 → 4×4 → 5×5 → 7×7 → Megaminx with `moves_per_solve`, `solve_value`, `unlock_cost` and
+  `requires_prestige`, using PLAN §4.1's starting curve (8/1/free, 20/4/150, 60/18/25K, 120/50/1.5M, and for after
+  prestige 300/200/5e8 and 700/800/2e11, the last two placeholders until Phase 6). Solves per move rise every tier
+  (0.125 → 0.2 → 0.3 → 0.42 → 0.67 → 1.14). `Content.get_puzzle(id)`. Puzzle ids are also the `PuzzleShapes` ids
+  (`megaminx` arrives in 4.4).
+- Tracks were already linked by their `unlock` field; a test now checks every track points at a real puzzle (or
+  "championship") and every puzzle has a track.
+- Not used by the game yet; 4.2 makes them run. 1227 checks, `All good.`
+- **Next:** task 4.2 (parallel puzzles + save v2).
+
 ## 2026-11-02 — Task 3.6: Welcome back panel (Phase 3 done)
 - **`scenes/welcome_panel.tscn` (`WelcomePanel`)** replaces the default AcceptDialog. It's a dimmed overlay with
   "Welcome back!", "You were away for 2h 15m.", a big green **"+220.6K Solves"** (new theme variation `BigAccentLabel`),

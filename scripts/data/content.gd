@@ -134,6 +134,20 @@ const UPGRADES := [
 ]
 
 
+## Puzzles (PLAN §4.1): the ladder 2×2 → Megaminx. With D9 every unlocked puzzle runs at once, each with its own
+## moves per solve and Solves per solve. Higher tiers take more moves but pay more per move, so moving up is always a
+## gain. Starting curve from PLAN §4.1, for the simulator to tune (task 4.7).
+##   id (also the PuzzleShapes id), name, moves_per_solve, solve_value (Solves per solve),
+##   unlock_cost (Solves; 0 = owned from the start), requires_prestige (only after the first World Championship).
+const PUZZLES := [
+	{"id": "2x2", "name": "2×2", "moves_per_solve": 8.0, "solve_value": 1.0, "unlock_cost": 0.0, "requires_prestige": false},
+	{"id": "3x3", "name": "3×3", "moves_per_solve": 20.0, "solve_value": 4.0, "unlock_cost": 150.0, "requires_prestige": false},
+	{"id": "4x4", "name": "4×4", "moves_per_solve": 60.0, "solve_value": 18.0, "unlock_cost": 25000.0, "requires_prestige": false},
+	{"id": "5x5", "name": "5×5", "moves_per_solve": 120.0, "solve_value": 50.0, "unlock_cost": 1.5e6, "requires_prestige": false},
+	{"id": "7x7", "name": "7×7", "moves_per_solve": 300.0, "solve_value": 200.0, "unlock_cost": 5e8, "requires_prestige": true},
+	{"id": "megaminx", "name": "Megaminx", "moves_per_solve": 700.0, "solve_value": 800.0, "unlock_cost": 2e11, "requires_prestige": true},
+]
+
 ## Music (PLAN §4.3): one track per puzzle tier plus "Finals". `unlock` is the puzzle id that unlocks the track
 ## ("championship" = the first World Championship). `file` is "" until the track exists (task 4.5 / decision D8);
 ## tracks without a file are skipped by the player. License must be CC0 or CC-BY (credited in assets/CREDITS.md).
@@ -156,6 +170,13 @@ const LOCKED_ICON := "locked"
 ## The icon texture for a content entry's "icon" field (assets/icons/<name>.svg).
 static func icon(name: String) -> Texture2D:
 	return load(ICON_DIR + name + ".svg")
+
+
+static func get_puzzle(id: String) -> Dictionary:
+	for def: Dictionary in PUZZLES:
+		if def["id"] == id:
+			return def
+	return {}
 
 
 static func get_track(id: String) -> Dictionary:

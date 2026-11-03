@@ -1251,3 +1251,29 @@ func test_welcome_panel() -> void:
 	main.free()
 	game.set_process(true)
 	game.reset_state()
+
+
+# --- Puzzles (Phase 4) -----------------------------------------------------------------
+
+func test_puzzle_data() -> void:
+	var previous_rate := 0.0
+	var previous_cost := -1.0
+	var ids := {}
+	for def: Dictionary in Content.PUZZLES:
+		for field: String in ["id", "name", "moves_per_solve", "solve_value", "unlock_cost", "requires_prestige"]:
+			check(def.has(field), "puzzle %s has '%s'" % [def.get("id", "?"), field])
+		check(not ids.has(def["id"]), "puzzle id %s is unique" % def["id"])
+		ids[def["id"]] = true
+		var rate := float(def["solve_value"]) / float(def["moves_per_solve"])
+		check(rate > previous_rate, "%s earns more Solves per move than the puzzle before it" % def["id"])
+		check(float(def["unlock_cost"]) > previous_cost, "%s costs more to unlock than the one before it" % def["id"])
+		previous_rate = rate
+		previous_cost = float(def["unlock_cost"])
+	check(float(Content.PUZZLES[0]["unlock_cost"]) == 0.0, "the first puzzle is free")
+	for def: Dictionary in Content.TRACKS:
+		check(def["unlock"] == "championship" or ids.has(def["unlock"]), "track %s is linked to a real puzzle" % def["id"])
+	for def: Dictionary in Content.PUZZLES:
+		var linked := false
+		for track: Dictionary in Content.TRACKS:
+			linked = linked or track["unlock"] == def["id"]
+		check(linked, "puzzle %s has a track" % def["id"])

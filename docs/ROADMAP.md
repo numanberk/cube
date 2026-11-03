@@ -96,7 +96,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       *Done when:* there's a screenshot, and there's no panel when nothing was earned.
 
 ## Phase 4 — Puzzles (D9: all unlocked puzzles run at once)
-- [ ] **4.1 Puzzle data:** `Content.PUZZLES` (id, name, shape, `moves_per_solve`, `solve_value`, `unlock_cost`, `requires_prestige`)
+- [x] **4.1 Puzzle data:** `Content.PUZZLES` (id, name, shape, `moves_per_solve`, `solve_value`, `unlock_cost`, `requires_prestige`)
       using the starting curve in PLAN §4.1, and each track linked to its puzzle.
       *Done when:* a test checks each puzzle earns more Solves per move than the one before it.
 - [ ] **4.2 Parallel puzzles + save v2 [D9]:** `GameState` stores the unlocked puzzles, each with its own move progress,
