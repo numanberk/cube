@@ -251,10 +251,11 @@ Each phase ends with something playable. Task details and "Done when" are in the
 | 2 | **Look** | The UI around the cube: theme, layout, shop cards, juice. | 4 |
 | 3 | **Sound and feel** | SFX, the music system (D5), Buy ×N, settings, keyboard, offline panel. | 6 |
 | 4 | **Puzzles** | The main progression axis. All unlocked puzzles run at once (D9) with a shared helper team split across them; each has a mastery bar. | 8 |
+| S | **Solve Station** (owner, 2026-11-03: before the rest of Phase 5) | The player is an almost-pro speedcuber and idling alone was "just looking at the screen". Solve the puzzles yourself with csTimer keys, WCA inspection, records, algorithm drills, daily scrambles; real skill pays into the idle game. Golden Scramble and tap scaling moved here. | 8 |
 | 5 | **Depth** | Fills the first hour so something new arrives every few minutes. The Algorithm Lab finishes research while you're away. | 8 |
 | 6 | **Prestige: World Championship** | Gives the long loop. 7×7, Megaminx and the "Finals" track sit behind it. A perk tree whose branches unlock systems; auto-buyers. | 5 |
 | 7 | **Goals** | Long-term targets between prestiges: ~100 achievements, stats, the Cube Collection and the Comp Kit loadout. | 4 |
-| 8 | **Active play + Hall of Fame** | Golden Scramble, Competitions, Challenge runs, Coach rules, and the second prestige layer (D12). | 8 |
+| 8 | **Active play + Hall of Fame** | Competitions, Challenge runs, Coach rules, and the second prestige layer (D12). | 8 |
 | 9 | **Polish** | Resolution pass, first-time hints, credits screen, final music. | 4 |
 | 10 | **Release** | Windows export, itch.io, Steam (optional), launch checklist. | 4 |
 | 11 | **After launch** | Bug fixes, Pyraminx/Skewb/Square-1, seasonal events, a third layer if players want it. | — |
@@ -282,8 +283,8 @@ docs/BALANCE.md, docs/screenshots/
 - **The simulator drives the real `GameState`**, never a copy of the formulas, so it can't drift from the game.
 - Content stays as data (`Content.PUZZLES`, `Content.TRACKS`, `Content.ACHIEVEMENTS`, …). If `content.gd` gets huge,
   split it into `content_helpers.gd`, `content_upgrades.gd`, and so on.
-- **Save versions:** v1 → **v2 puzzles** (4.2) → **v3 mastery** (4.6) → **v4 methods** (5.1) → **v5 prestige** (6.2) →
-  **v6 achievements** (7.1).
+- **Save versions:** v1 → **v2 puzzles** (4.2) → **v3 mastery** (4.6) → **v4 methods** (5.1) → **v5 solve records** (S.2) →
+  **v6 prestige** (6.2) → **v7 achievements** (7.1).
   Every bump has a `_migrate()` step and a test that loads the older format. Saves are written to a temp file then
   renamed, with `save.bak` kept (task 0.4).
 - Settings live in `user://settings.cfg`, separate from the save, so a reset never wipes volume or graphics choices.
@@ -312,6 +313,10 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
 - **D12 Second prestige layer:** **before 1.0**. The Hall of Fame is tasks 8.6–8.8.
 
 ### Open
+- **D13 Hand-solve rewards** (needed by S.3): how much should solving the puzzles yourself be worth compared with idling?
+  *Recommended:* an active player earns about **2–3×** an idle one over a session (short Flow buffs per solve, bigger for
+  faster tiers), plus permanent per-puzzle bonuses for reaching time targets, so practice always pays but idling is never
+  pointless. Alternatives: (a) small (≈1.2×, mostly cosmetic records), (b) large (≈5–10×, the station becomes the main game).
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?
 - **D4 Price** (needed by 10.2): free, pay-what-you-want on itch, or paid on Steam?
   *Either way, only CC0/CC-BY assets, so a paid release stays possible.*

@@ -13,6 +13,10 @@ idle games, by hours played:
 
 (tModLoader is in the list too but isn't an idle game, so it's left out.)
 
+**The player is also an almost professional speedcuber** (owner, 2026-11-03). They know csTimer, WCA rules, methods and
+algorithm sets, so the game should respect real cubing: real notation, real scrambles, real inspection and averages,
+and a way to use their actual skill (the Solve Station, ROADMAP Phase S). Never dumb the cubing down.
+
 **What the numbers say:** this player isn't a casual idler. 804 hours in one game, and 140+ hours in a game with
 *mixed* reviews (Idle Pins), means they stay for **systems depth, collecting and optimising**, more than for polish.
 The top two games are the most *system-rich* ones on the list.

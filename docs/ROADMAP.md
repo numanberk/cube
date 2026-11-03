@@ -132,17 +132,60 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       *Done when:* the first helper, first upgrade and 3×3 targets pass as real (not expected-failure) pacing tests, **and the
       bot's best split at 30 min is a real mix** (no puzzle above ~70 %), so splitting is a real choice (PLAN §4.1 design risk).
 
-## Phase 5 — Depth
+## Phase 5 — Depth (5.1 done; continue with 5.2 after Phase S)
 - [x] **5.1 Method chain:** Beginner → CFOP → Roux → ZZ → God's Number, each ×0.7 moves per solve, with a per-puzzle floor.
       Replaces the hand-written `cfop`/`roux` upgrades (migrate their ids).
       *Done when:* tests cover the floor and the old-id migration.
+## Phase S — Solve Station: hands-on cubing (owner, 2026-11-03: do this next)
+The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is an almost
+professional speedcuber**. So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
+records and drills, and your real skill feeds the idle economy. Do S.1–S.6 before the rest of Phase 5 (5.2 onward).
+- [ ] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
+      using **csTimer's virtual-cube layout** (I/K = R/R', J/F = U/U', H/G = F/F', D/E = L/L', S/L = D/D', W/O = B/B',
+      ;/A = y/y', T/Y = x, B/N = x', P/Q = z/z', U/M = r/r', V/R = l/l', 5/6 = M, X/. = M', 2/9 = E/E', 0/1 = S/S',
+      Z// = d/d', ,/C = u/u', 3/4/7/8 move the hands on big cubes), by physical key so it works on any keyboard layout.
+      TwistyModel learns rotations, slices and lowercase wide moves. Random-move scrambles in WCA notation (lengths as
+      data), 15 s WCA inspection (+2 after 15 s, DNF after 17 s; can be turned off), the timer runs from the first turn
+      to solved, then shows time, moves and TPS, plus a session list with best and ao5. Cubes 2×2–7×7 (Megaminx later).
+      The solving rules are a pure class (`SolveSession`), testable without the UI.
+      *Done when:* tests cover the key map (incl. hand shifts), the new notation, scrambles, inspection penalties and the
+      timer stopping on a solved puzzle (also when solved in another orientation), and there's a screenshot.
+- [ ] **S.2 Records and save v5:** per puzzle: PB single, ao5/ao12/ao50/ao100 (WCA rules: trimmed mean, 1 DNF is dropped,
+      2 make the average DNF), best averages, the last 100 times (with +2/DNF/delete), kept through prestige.
+      A Times panel in the station. Save v5 (prestige becomes v6, achievements v7).
+      *Done when:* tests cover the averages with DNFs and the v4 → v5 migration, and there's a screenshot.
+- [ ] **S.3 Rewards [D13]:** hand solves pay into the idle game. Per-puzzle **time targets** as data (e.g. 3×3: 60/40/25/
+      15/10 s, bronze → "WR pace"); reaching a tier for the first time gives a permanent bonus on that puzzle, every solve
+      gives a short **Flow** buff (more moves for a few minutes, bigger for better tiers), PBs give mastery XP.
+      The sim gets an "active" profile.
+      *Done when:* each reward has a test and BALANCE.md shows the active profile against the idle one.
+- [ ] **S.4 Algorithm drills (PR):** PLL (21) and OLL (57) cases as data (setup = inverse of a standard algorithm with a
+      random AUF), then 2×2 CLL and more. Timed recognition + execution, per-case best times, a case counts as "learned"
+      after N clean solves under a target. Learned sets speed up the Algorithm Lab (5.6) and count as research there.
+      *Done when:* a test proves every algorithm in the data really solves its case on the model, plus tests for the
+      learned rule, and there's a screenshot.
+- [ ] **S.5 Daily scramble and FMC:** one date-seeded scramble per puzzle per day (same for everyone), and a Fewest Moves
+      mode (count moves, rotations free, no timer pressure). Best results saved; a small daily reward.
+      *Done when:* tests cover the seeding, the move count and the once-a-day reward, and there's a screenshot.
+- [ ] **S.6 Golden Scramble (was 8.1):** every 2–5 min a golden sticker glows on the main puzzle for 12 s. Clicking it opens a
+      quick case: the focused puzzle 2–5 moves from solved; solve it within 10 s for a random buff (×7 moves for 30 s, or
+      15 minutes' worth of Solves). Timing and buff logic in `GameState`.
+      *Done when:* tests cover the spawn timer, the buff math and expiry, a buff survives save/load, and there's a screenshot.
+- [ ] **S.7 Turns are taps + TPS streak (was 5.4):** on the main screen the same keys turn the focused puzzle and each turn is a
+      tap. Taps add a % of moves/s, and a TPS streak meter builds a multiplier while you keep turning steadily.
+      *Done when:* the sim shows taps give ≥ 10 % of income at 30 min at 3 turns/s, and tests cover the streak.
+- [ ] **S.8 Mouse turning (optional):** drag across a sticker to turn its layer (drag on the background still turns the view).
+      *Done when:* tests map drags to moves on 3×3 and 4×4.
+- Later ideas (Phase 11): Bluetooth smart-cube support (needs a plugin; GAN/MoYu protocols), relays, blindfolded mode,
+  one-handed mode, a replay viewer for PB solves.
+
+## Phase 5 (continued)
 - [ ] **5.2 Generated helper milestones:** ×2 at 1/10/25/50/100/150/200 owned, generated from one table in `content.gd`.
       *Done when:* adding a helper automatically gets its milestones, and a test checks this.
 - [ ] **5.3 Synergies and solve value:** e.g. "Club Coaching" (each Club gives Friends +1 %), and upgrades that use
       `solve_value_mult` ("Sponsorship deal", "Prize money"). New effect types go in `Content.EFFECT_TYPES` and `GameState`.
       *Done when:* each new effect type has a test.
-- [ ] **5.4 Tap scaling:** tap upgrades that add a % of moves/s to each tap.
-      *Done when:* the sim shows taps still give ≥ 10 % of income at 30 min when tapping 3/s.
+- [x] **5.4 Tap scaling:** moved to **S.7** (turns are taps + TPS streak).
 - [ ] **5.5 Six more helpers** past the Lab (e.g. Pro Team, Cubing Federation, Cube Museum, AI Solver, Orbital Cube Station,
       Quantum Solver), so costs reach ~1e15, each with an icon.
       *Done when:* they're in the data, their milestones are generated, and there's a screenshot of the shop.
@@ -163,9 +206,9 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [ ] **6.1 Trophy formula and Compete screen:** `floor(sqrt(run_solves / 1e6))` to start, each unspent trophy +2 % all moves.
       The Compete screen shows the trophies you'll get, the new bonus, and exactly what you keep and lose. It plays "Finals".
       *Done when:* there's a screenshot and tests cover the formula.
-- [ ] **6.2 Reset logic + save v5:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
+- [ ] **6.2 Reset logic + save v6:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
       upgrades, puzzles and methods. 7×7 and Megaminx become unlockable after the first championship.
-      *Done when:* tests check what resets and what stays, and there's a v4 → v5 migration test.
+      *Done when:* tests check what resets and what stays, and there's a v5 → v6 migration test.
 - [ ] **6.3 Trophy perk tree (PR):** permanent perks as data, arranged in 4 branches: Practice (start with 3×3, +offline cap),
       Team (start with 10 Friends, helper boosts), Competition (unlocks Competitions 8.3, medal bonuses) and Automation
       (unlocks 6.3b). As in Idle Skilling, **the first node of each branch unlocks a system**. Nodes need their parent.
@@ -179,10 +222,10 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 
 ## Phase 7 — Goals
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
-      all moves, with a toast when earned. Save v6. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
+      all moves, with a toast when earned. Save v7. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
       so they work as a map of the game, like Revolution Idle's.
-      *Done when:* there are tests for the conditions and the v5 → v6 migration, and a screenshot of the tab and toast.
+      *Done when:* there are tests for the conditions and the v6 → v7 migration, and a screenshot of the tab and toast.
 - [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
 
@@ -197,10 +240,10 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       *Done when:* tests cover slot types, set bonuses and swapping, and there's a screenshot.
 
 ## Phase 8 — Active play and Hall of Fame (D12: before 1.0)
-- [ ] **8.1 Golden Scramble:** a small golden 3D cube flies across the stage every 2–5 min for 12 s. Clicking it gives a random buff
+- [x] **8.1 Golden Scramble:** moved to **S.6** (now a quick solve). Old text: a small golden 3D cube flies across the stage every 2–5 min for 12 s. Clicking it gives a random buff
       (×7 moves for 30 s, or 15 minutes' worth of Solves instantly). The timing and buff logic live in `GameState`.
       *Done when:* tests cover the buff math and expiry, a buff survives save/load, and there's a screenshot.
-- [ ] **8.2 Scramble Challenge:** an optional 10-second burst where taps count ×10, with a result card. Never required.
+- [x] **8.2 Scramble Challenge:** replaced by the Solve Station (S.1–S.5). Old text: an optional 10-second burst where taps count ×10, with a result card. Never required.
       *Done when:* there are tests and a screenshot.
 
 - [ ] **8.3 Competitions (PR):** timed events like Idle Skilling's raids: Local → Regional → National → Continental → Worlds.

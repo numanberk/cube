@@ -18,6 +18,13 @@ Template (newest first under "Open"):
 - (none)
 
 ## Handled
+- 2026-11-03 — "How can we make the gameplay more fun? It's just looking at the screen while it shuffles most of the time."
+  Then: "go harder on [hands-on solving] since the game is for an almost professional solver; reorder things and start
+  building." → Measured: after ~5 min a tap is worth ~4 moves against 100K+ moves/s, and content had a 30-min gap.
+  New ROADMAP **Phase S — Solve Station** (S.1–S.8: keyboard solving with csTimer keys, WCA inspection, records,
+  rewards, PLL/OLL drills, daily scramble + FMC, Golden Scramble as a quick solve, turns-as-taps + TPS streak), done
+  before the rest of Phase 5. Tap scaling (5.4) and Golden Scramble (8.1/8.2) moved there. New open decision **D13**
+  (how much hand solves pay) for S.3. Player persona noted in PLAYER_RESEARCH.md.
 - 2026-11-02 — Owner shared the player's Steam library (Idle Skilling, The Perfect Tower II, Idle Pins, Revolution Idle,
   Zero IDLE) → `docs/PLAYER_RESEARCH.md` and (PR) roadmap tasks. Decisions: **D9** all unlocked puzzles run at once
   (shared helper team split across puzzles; big focused puzzle + a row of small ones), **D10** random drops with pity,
