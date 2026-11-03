@@ -90,14 +90,6 @@ const UPGRADES := [
 		"requires": {"friend": 1},
 	},
 	{
-		"id": "cfop",
-		"icon": "cfop",
-		"name": "Learn CFOP",
-		"description": "Solves take 30% fewer moves.",
-		"cost": 200,
-		"effect": {"type": "solve_moves_mult", "value": 0.7},
-	},
-	{
 		"id": "club_snacks",
 		"icon": "club_snacks",
 		"name": "Club Snacks",
@@ -123,13 +115,53 @@ const UPGRADES := [
 		"effect": {"type": "building_mult", "target": "robot", "value": 2.0},
 		"requires": {"robot": 1},
 	},
+]
+
+## Methods (PLAN §4.1, task 5.1): a chain learned in order, Beginner → CFOP → Roux → ZZ → God's Number. Everyone starts
+## with the first (cost 0). Each learned method multiplies moves per solve on every puzzle by its `mult`, down to that
+## puzzle's floor (`min_moves_per_solve` in PUZZLES), so no puzzle ever becomes trivial.
+## (Until save v4 CFOP and Roux were ordinary upgrades with the ids "cfop" and "roux"; GameState._migrate converts them.)
+##   id, icon, name, description, cost (Solves), mult (moves per solve multiplier, < 1 is good)
+const METHODS: Array[Dictionary] = [
+	{
+		"id": "beginner",
+		"icon": "beginner",
+		"name": "Beginner Method",
+		"description": "Layer by layer, one piece at a time. Where every cuber starts.",
+		"cost": 0,
+		"mult": 1.0,
+	},
+	{
+		"id": "cfop",
+		"icon": "cfop",
+		"name": "Learn CFOP",
+		"description": "Cross, F2L, OLL, PLL. Solves take 30% fewer moves.",
+		"cost": 200,
+		"mult": 0.7,
+	},
 	{
 		"id": "roux",
 		"icon": "roux",
 		"name": "Learn Roux",
-		"description": "Solves take 20% fewer moves.",
+		"description": "Build blocks, finish with the middle slice. Solves take another 30% fewer moves.",
 		"cost": 25000,
-		"effect": {"type": "solve_moves_mult", "value": 0.8},
+		"mult": 0.7,
+	},
+	{
+		"id": "zz",
+		"icon": "zz",
+		"name": "Learn ZZ",
+		"description": "Orient the edges first, then never rotate. Solves take another 30% fewer moves.",
+		"cost": 5.0e7,
+		"mult": 0.7,
+	},
+	{
+		"id": "gods_number",
+		"icon": "gods_number",
+		"name": "God's Number",
+		"description": "Every scramble solved in the fewest moves there are. Solves take another 30% fewer moves.",
+		"cost": 3.0e10,
+		"mult": 0.7,
 	},
 ]
 
@@ -137,15 +169,17 @@ const UPGRADES := [
 ## Puzzles (PLAN §4.1): the ladder 2×2 → Megaminx. With D9 every unlocked puzzle runs at once, each with its own
 ## moves per solve and Solves per solve. Higher tiers take more moves but pay more per move, so moving up is always a
 ## gain. Starting curve from PLAN §4.1, for the simulator to tune (task 4.7).
-##   id (also the PuzzleShapes id), name, moves_per_solve, solve_value (Solves per solve),
+##   id (also the PuzzleShapes id), name, moves_per_solve, min_moves_per_solve (the floor that methods and perks can't
+##   push below: a fifth of moves_per_solve, a quarter on the tiny 2×2, where every method plus mastery reaches it),
+##   solve_value (Solves per solve),
 ##   unlock_cost (Solves; 0 = owned from the start), requires_prestige (only after the first World Championship).
 const PUZZLES := [
-	{"id": "2x2", "name": "2×2", "moves_per_solve": 8.0, "solve_value": 1.0, "unlock_cost": 0.0, "requires_prestige": false},
-	{"id": "3x3", "name": "3×3", "moves_per_solve": 20.0, "solve_value": 4.0, "unlock_cost": 150.0, "requires_prestige": false},
-	{"id": "4x4", "name": "4×4", "moves_per_solve": 60.0, "solve_value": 18.0, "unlock_cost": 400000.0, "requires_prestige": false},
-	{"id": "5x5", "name": "5×5", "moves_per_solve": 120.0, "solve_value": 50.0, "unlock_cost": 3e8, "requires_prestige": false},
-	{"id": "7x7", "name": "7×7", "moves_per_solve": 300.0, "solve_value": 200.0, "unlock_cost": 5e8, "requires_prestige": true},
-	{"id": "megaminx", "name": "Megaminx", "moves_per_solve": 700.0, "solve_value": 800.0, "unlock_cost": 2e11, "requires_prestige": true},
+	{"id": "2x2", "name": "2×2", "moves_per_solve": 8.0, "min_moves_per_solve": 2.0, "solve_value": 1.0, "unlock_cost": 0.0, "requires_prestige": false},
+	{"id": "3x3", "name": "3×3", "moves_per_solve": 20.0, "min_moves_per_solve": 4.0, "solve_value": 4.0, "unlock_cost": 150.0, "requires_prestige": false},
+	{"id": "4x4", "name": "4×4", "moves_per_solve": 60.0, "min_moves_per_solve": 12.0, "solve_value": 18.0, "unlock_cost": 400000.0, "requires_prestige": false},
+	{"id": "5x5", "name": "5×5", "moves_per_solve": 120.0, "min_moves_per_solve": 24.0, "solve_value": 50.0, "unlock_cost": 3e8, "requires_prestige": false},
+	{"id": "7x7", "name": "7×7", "moves_per_solve": 300.0, "min_moves_per_solve": 60.0, "solve_value": 200.0, "unlock_cost": 5e8, "requires_prestige": true},
+	{"id": "megaminx", "name": "Megaminx", "moves_per_solve": 700.0, "min_moves_per_solve": 140.0, "solve_value": 800.0, "unlock_cost": 2e11, "requires_prestige": true},
 ]
 
 ## Variety (task 4.7): practising several puzzles keeps you sharp. A puzzle that gets share s of the helpers' moves
@@ -222,6 +256,21 @@ static func get_building(id: String) -> Dictionary:
 		if def["id"] == id:
 			return def
 	return {}
+
+
+static func get_method(id: String) -> Dictionary:
+	for def: Dictionary in METHODS:
+		if def["id"] == id:
+			return def
+	return {}
+
+
+## Position of a method in the chain (0 = Beginner), or -1 for an unknown id.
+static func get_method_index(id: String) -> int:
+	for i in METHODS.size():
+		if METHODS[i]["id"] == id:
+			return i
+	return -1
 
 
 static func get_upgrade(id: String) -> Dictionary:

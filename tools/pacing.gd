@@ -33,12 +33,12 @@ const TARGETS: Array[Dictionary] = [
 	{
 		"id": "new_every_3_min", "text": "Something new every ≤ 3 min in the first hour", "profile": "tapping",
 		"type": "max_gap", "from": 0.0, "to": 3600.0, "max": 180.0,
-		"expected_failure": "Only 13 items exist; gaps up to 16 min. Needs puzzles, methods and milestones (Phases 4–5).",
+		"expected_failure": "18 items; nothing new from the 5×5 (~21 min) to God's Number (~51 min). Needs milestones, more upgrades and helpers (5.2–5.5, 5.8).",
 	},
 	{
 		"id": "new_every_10_min", "text": "Something new every ≤ 10 min after the first hour", "profile": "tapping",
 		"type": "max_gap", "from": 3600.0, "to": 7200.0, "max": 600.0,
-		"expected_failure": "All content is owned by ~52 min. Needs more helpers and prestige (Phases 5–6).",
+		"expected_failure": "Everything is owned by ~51 min. Needs more helpers and prestige (5.5, Phase 6).",
 	},
 	{
 		"id": "puzzle_3x3", "text": "3×3 unlocked at ~5 min (4–6 min)", "profile": "tapping",
@@ -48,17 +48,17 @@ const TARGETS: Array[Dictionary] = [
 	{
 		"id": "robot", "text": "Solving Robot at ~10 min (8–12 min)", "profile": "tapping",
 		"type": "item_between", "kind": "helper", "item": "robot", "min": 480.0, "max": 720.0,
-		"expected_failure": "Robot comes at ~15 min. Phase 4 rebalance.",
+		"expected_failure": "Robot comes too early (~7 min). Rebalance in 5.8.",
 	},
 	{
 		"id": "puzzle_4x4", "text": "4×4 unlocked at ~30 min (25–35 min)", "profile": "tapping",
 		"type": "item_between", "kind": "puzzle", "item": "4x4", "min": 1500.0, "max": 2100.0,
-		"expected_failure": "Puzzles don't exist yet (task 4.1–4.2).",
+		"expected_failure": "The 4×4 comes too early (~11 min). Rebalance in 5.8.",
 	},
 	{
 		"id": "puzzle_5x5", "text": "5×5 unlocked at ~60 min (50–70 min)", "profile": "tapping",
 		"type": "item_between", "kind": "puzzle", "item": "5x5", "min": 3000.0, "max": 4200.0,
-		"expected_failure": "Puzzles don't exist yet (task 4.1–4.2).",
+		"expected_failure": "The 5×5 comes too early (~21 min). Rebalance in 5.8.",
 	},
 	{
 		"id": "first_prestige", "text": "First World Championship at ~90 min (80–100 min, D6)", "profile": "tapping",
@@ -83,7 +83,7 @@ const TARGETS: Array[Dictionary] = [
 	{
 		"id": "idle_progress", "text": "Never tapping still buys something within 5 min", "profile": "idle",
 		"type": "first_by", "kind": "", "max": 300.0,
-		"expected_failure": "With no taps there's no income at all. Phase 4 (free first Friend or a trickle).",
+		"expected_failure": "With no taps there's no income at all. Needs a free first Friend or a trickle (5.8 or later).",
 	},
 ]
 

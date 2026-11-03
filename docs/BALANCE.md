@@ -15,16 +15,16 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 |---|---|---|
 | First helper ≤ 20 s | Cubing Friend at 0:13 | pass |
 | First upgrade < 1 min | Cube Lube at 0:48 | pass |
-| Something new every ≤ 3 min in the first hour | longest 33:37 (after 5×5, until 1:00:00) | expected failure |
-| Something new every ≤ 10 min after the first hour | longest 1:00:00 (after 5×5, until 2:00:00) | expected failure |
+| Something new every ≤ 3 min in the first hour | longest 30:01 (after 5×5, before God's Number) | expected failure |
+| Something new every ≤ 10 min after the first hour | longest 1:00:00 (after God's Number, until 2:00:00) | expected failure |
 | 3×3 unlocked at ~5 min (4–6 min) | 4:18 | pass |
 | Solving Robot at ~10 min (8–12 min) | 7:24 | expected failure |
-| 4×4 unlocked at ~30 min (25–35 min) | 11:19 | expected failure |
-| 5×5 unlocked at ~60 min (50–70 min) | 26:23 | expected failure |
+| 4×4 unlocked at ~30 min (25–35 min) | 11:04 | expected failure |
+| 5×5 unlocked at ~60 min (50–70 min) | 21:24 | expected failure |
 | First World Championship at ~90 min (80–100 min, D6) | never (in 2:00:00) | expected failure |
 | 7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
 | Second run reaches the same point in ≤ 50 % of the time | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
-| The bot's best split at 30 min is a real mix (no puzzle above 70 %) | 2×2 0 % · 3×3 25 % · 4×4 50 % · 5×5 25 % | pass |
+| The bot's best split at 30 min is a real mix (no puzzle above 70 %) | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % | pass |
 | Never tapping still buys something within 5 min | nothing bought in 2:00:00 | expected failure |
 
 ### Expected failures
@@ -32,21 +32,21 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 Targets today's content can't meet yet. They print in the tests but don't fail them.
 Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 
-- **Something new every ≤ 3 min in the first hour** — Only 13 items exist; gaps up to 16 min. Needs puzzles, methods and milestones (Phases 4–5).
-- **Something new every ≤ 10 min after the first hour** — All content is owned by ~52 min. Needs more helpers and prestige (Phases 5–6).
-- **Solving Robot at ~10 min (8–12 min)** — Robot comes at ~15 min. Phase 4 rebalance.
-- **4×4 unlocked at ~30 min (25–35 min)** — Puzzles don't exist yet (task 4.1–4.2).
-- **5×5 unlocked at ~60 min (50–70 min)** — Puzzles don't exist yet (task 4.1–4.2).
+- **Something new every ≤ 3 min in the first hour** — 18 items; nothing new from the 5×5 (~21 min) to God's Number (~51 min). Needs milestones, more upgrades and helpers (5.2–5.5, 5.8).
+- **Something new every ≤ 10 min after the first hour** — Everything is owned by ~51 min. Needs more helpers and prestige (5.5, Phase 6).
+- **Solving Robot at ~10 min (8–12 min)** — Robot comes too early (~7 min). Rebalance in 5.8.
+- **4×4 unlocked at ~30 min (25–35 min)** — The 4×4 comes too early (~11 min). Rebalance in 5.8.
+- **5×5 unlocked at ~60 min (50–70 min)** — The 5×5 comes too early (~21 min). Rebalance in 5.8.
 - **First World Championship at ~90 min (80–100 min, D6)** — Prestige doesn't exist yet (Phase 6); the bot must learn to Compete (6.4).
 - **7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run** — Needs prestige and multi-run simulation (6.2, 6.4).
 - **Second run reaches the same point in ≤ 50 % of the time** — Needs prestige and multi-run simulation (6.2, 6.4).
-- **Never tapping still buys something within 5 min** — With no taps there's no income at all. Phase 4 (free first Friend or a trickle).
+- **Never tapping still buys something within 5 min** — With no taps there's no income at all. Needs a free first Friend or a trickle (5.8 or later).
 
 ## Tapping (3 taps/s, 120 min)
 
-- Items bought: 453 (16 different)
-- Every helper and upgrade owned at: 26:23
-- Longest wait for something new: 1:33:37 (after 5×5, until 2:00:00)
+- Items bought: 485 (18 different)
+- Every helper, upgrade, method and puzzle owned at: 51:25
+- Longest wait for something new: 1:08:35 (after God's Number, until 2:00:00)
 
 ### First purchase of each item
 
@@ -57,17 +57,19 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 2:16 | helper | Cubing Club | 60 | +1:28 |
 | 3:20 | upgrade | Stackmat Timer | 50 | +1:05 |
 | 4:18 | puzzle | 3×3 | 150 | +0:57 |
-| 5:05 | upgrade | Learn CFOP | 200 | +0:47 |
+| 5:05 | method | Learn CFOP | 200 | +0:47 |
 | 6:12 | upgrade | Club Snacks | 600 | +1:07 |
 | 6:58 | upgrade | Magnetic Cube | 1.50K | +0:46 |
 | 7:24 | helper | Solving Robot | 1.50K | +0:26 |
 | 8:14 | helper | Local Competition | 9.00K | +0:50 |
-| 9:05 | upgrade | Robot Firmware v2 | 8.00K | +0:51 |
-| 9:19 | upgrade | Learn Roux | 25.00K | +0:14 |
-| 10:00 | helper | Cube Factory | 120.0K | +0:41 |
-| 11:19 | puzzle | 4×4 | 400.0K | +1:20 |
-| 11:46 | helper | Speedcubing Lab | 1.80M | +0:26 |
-| 26:23 | puzzle | 5×5 | 300.0M | +14:37 |
+| 9:05 | method | Learn Roux | 25.00K | +0:51 |
+| 9:15 | upgrade | Robot Firmware v2 | 8.00K | +0:10 |
+| 9:54 | helper | Cube Factory | 120.0K | +0:39 |
+| 11:04 | puzzle | 4×4 | 400.0K | +1:10 |
+| 11:27 | helper | Speedcubing Lab | 1.80M | +0:23 |
+| 13:43 | method | Learn ZZ | 50.00M | +2:16 |
+| 21:24 | puzzle | 5×5 | 300.0M | +7:41 |
+| 51:25 | method | God's Number | 30.00B | +30:01 |
 
 ### Income over time
 
@@ -75,15 +77,15 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 |---|---|---|---|---|---|
 | 1 | 0.9 | 7 | 4 | 30 | 2×2 100 % |
 | 5 | 7.3 | 29 | 161 | 712 | 2×2 40 % · 3×3 60 % |
-| 15 | 1.81M | 803.4K | 7.34M | 192.0M | 2×2 10 % · 3×3 25 % · 4×4 65 % |
-| 30 | 9.53M | 1.74M | 235.9M | 5.43B | 2×2 0 % · 3×3 25 % · 4×4 50 % · 5×5 25 % |
-| 60 | 16.53M | 2.27M | 1.64B | 32.10B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
-| 120 | 18.91M | 2.60M | 3.93B | 96.53B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
+| 15 | 3.45M | 921.8K | 350.3K | 333.1M | 2×2 10 % · 3×3 25 % · 4×4 65 % |
+| 30 | 24.08M | 2.03M | 232.9M | 13.62B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
+| 60 | 38.56M | 2.27M | 3.66B | 64.17B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
+| 120 | 47.57M | 2.81M | 7.47B | 223.5B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
 
 ## Never tapping (0 taps/s, 120 min)
 
 - Items bought: 0 (0 different)
-- Every helper and upgrade owned at: never
+- Every helper, upgrade, method and puzzle owned at: never
 - Longest wait for something new: 2:00:00 (after the start, until 2:00:00)
 
 ### First purchase of each item

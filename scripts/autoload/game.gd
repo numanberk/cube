@@ -12,7 +12,7 @@ signal split_changed
 signal mastery_level_up(puzzle_id: String, level: int)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 3  ## v2 (task 4.2): parallel puzzles; v3 (task 4.6): puzzle mastery
+const SAVE_VERSION := 4  ## v2 (task 4.2): parallel puzzles; v3 (task 4.6): puzzle mastery; v4 (task 5.1): methods
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0
 const MIN_OFFLINE_SECONDS := 10.0
@@ -40,6 +40,7 @@ var mastery_xp: Dictionary = {}            ## puzzle id -> mastery XP (task 4.6)
 var _mastery_levels: Dictionary = {}       ## puzzle id -> level, cached from mastery_xp
 var buildings: Dictionary = {}  ## building id -> owned count
 var upgrades: Dictionary = {}   ## upgrade id -> true (owned)
+var method := "beginner"        ## id of the newest method learned (Content.METHODS); every earlier one is learned too
 var offline_report: Dictionary = {}  ## {"seconds", "solves"} after loading, if anything was earned
 var load_notice := ""  ## Set when the save was damaged and a backup (or nothing) was loaded; the UI shows it once.
 
@@ -114,11 +115,20 @@ func add_moves_to(puzzle_id: String, amount: float) -> void:
 		puzzle_progress[puzzle_id] = progress
 
 
-## Moves needed for one solve on a puzzle (the focused one by default), after method upgrades.
+## Moves needed for one solve on a puzzle (the focused one by default), after methods, upgrades and mastery,
+## but never below the puzzle's floor (get_moves_floor).
 func get_moves_per_solve(puzzle_id: String = "") -> float:
 	var id := _or_focused(puzzle_id)
 	var def := Content.get_puzzle(id)
-	return maxf(1.0, float(def.get("moves_per_solve", 1.0)) * _upgrade_mult("solve_moves_mult") * _mastery_mult(id, "solve_moves"))
+	var moves := float(def.get("moves_per_solve", 1.0)) * get_method_mult() * _upgrade_mult("solve_moves_mult") \
+			* _mastery_mult(id, "solve_moves")
+	return maxf(get_moves_floor(id), moves)
+
+
+## The fewest moves a solve can ever take on a puzzle (the focused one by default), at least 1.
+func get_moves_floor(puzzle_id: String = "") -> float:
+	var def := Content.get_puzzle(_or_focused(puzzle_id))
+	return maxf(1.0, float(def.get("min_moves_per_solve", 1.0)))
 
 
 ## Solves earned per solve on a puzzle (the focused one by default).
@@ -255,7 +265,7 @@ func is_upgrade_available(id: String) -> bool:
 	if upgrades.has(id):
 		return false
 	var def := Content.get_upgrade(id)
-	if total_solves < float(def["cost"]) * 0.5:
+	if def.is_empty() or total_solves < float(def["cost"]) * 0.5:
 		return false
 	var requires: Dictionary = def.get("requires", {})
 	for building_id: String in requires:
@@ -274,6 +284,51 @@ func buy_upgrade(id: String) -> bool:
 	upgrades[id] = true
 	purchased.emit("upgrade", id)
 	return true
+
+
+# --- Methods (task 5.1) -------------------------------------------------------------
+
+## The newest method learned (Content.METHODS entry).
+func get_method() -> Dictionary:
+	return Content.get_method(method)
+
+
+## The next method in the chain, or {} once God's Number is learned.
+func get_next_method() -> Dictionary:
+	var index := Content.get_method_index(method) + 1
+	return Content.METHODS[index] if index < Content.METHODS.size() else {}
+
+
+## True for the current method and every one before it.
+func is_method_learned(id: String) -> bool:
+	var index := Content.get_method_index(id)
+	return index >= 0 and index <= Content.get_method_index(method)
+
+
+## Only the next method in the chain can be learned, and it shows up (like an upgrade) at half its cost in lifetime Solves.
+func is_method_available(id: String) -> bool:
+	var next := get_next_method()
+	return not next.is_empty() and next["id"] == id and total_solves >= float(next["cost"]) * 0.5
+
+
+func buy_method(id: String) -> bool:
+	if not is_method_available(id):
+		return false
+	var cost := float(Content.get_method(id)["cost"])
+	if solves < cost:
+		return false
+	solves -= cost
+	method = id
+	purchased.emit("method", id)
+	return true
+
+
+## Moves-per-solve multiplier from every learned method (before the puzzle floor).
+func get_method_mult() -> float:
+	var mult := 1.0
+	for i in Content.get_method_index(method) + 1:
+		mult *= float(Content.METHODS[i]["mult"])
+	return mult
 
 
 # --- Puzzles (D9) -------------------------------------------------------------------
@@ -534,7 +589,8 @@ func get_track_for_puzzle(puzzle_id: String) -> String:
 ## The next new thing to aim for (the "Next goal" strip): the cheapest helper not owned yet, or upgrade not bought
 ## yet whose requirements are met. If everything is owned, the cheapest next copy of a helper (`more` = true).
 ## Returns {kind, id, name, cost, missing (Solves still needed, 0 = can buy now), seconds (at the current
-## helper rate; INF without helpers), more}. The next puzzle (kind "puzzle") is one of the candidates.
+## helper rate; INF without helpers), more}. The next method (kind "method") and the next puzzle (kind "puzzle")
+## are candidates too.
 func get_next_goal() -> Dictionary:
 	var candidates: Array[Dictionary] = []
 	for def: Dictionary in Content.BUILDINGS:
@@ -544,6 +600,10 @@ func get_next_goal() -> Dictionary:
 		if upgrades.has(def["id"]) or not _upgrade_requirements_met(def):
 			continue
 		candidates.append({"kind": "upgrade", "id": def["id"], "name": def["name"], "cost": float(def["cost"]), "more": false})
+	var next_method := get_next_method()
+	if not next_method.is_empty():
+		candidates.append({"kind": "method", "id": next_method["id"], "name": next_method["name"],
+				"cost": float(next_method["cost"]), "more": false})
 	var next_puzzle := get_next_locked_puzzle()
 	if next_puzzle != "":
 		candidates.append({"kind": "puzzle", "id": next_puzzle, "name": Content.get_puzzle(next_puzzle)["name"],
@@ -603,6 +663,7 @@ func reset_state() -> void:
 	for def: Dictionary in Content.BUILDINGS:
 		buildings[def["id"]] = 0
 	upgrades.clear()
+	method = Content.METHODS[0]["id"]
 	offline_report = {}
 
 
@@ -622,6 +683,7 @@ func get_save_data() -> Dictionary:
 		"mastery": mastery_xp.duplicate(),
 		"buildings": buildings.duplicate(),
 		"upgrades": upgrades.keys(),
+		"method": method,
 	}
 
 
@@ -744,6 +806,9 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	for id: String in data.get("upgrades", []):
 		if not Content.get_upgrade(id).is_empty():
 			upgrades[id] = true
+	var saved_method := str(data.get("method", ""))
+	if Content.get_method_index(saved_method) >= 0:  # an unknown id (removed from Content) keeps the Beginner Method
+		method = saved_method
 
 	var saved_at := float(data.get("saved_at", now))
 	var elapsed := clampf(now - saved_at, 0.0, MAX_OFFLINE_SECONDS)
@@ -779,6 +844,20 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("mastery"):
 			data["mastery"] = {}
 		data["version"] = 3
+	if int(data["version"]) < 4:
+		# v4 made methods a chain of their own. CFOP and Roux used to be ordinary upgrades ("cfop" ×0.7, "roux" ×0.8,
+		# buyable in any order); they leave the upgrade list and become the method: Roux if it was owned (CFOP comes
+		# with it, since the chain is learned in order), else CFOP, else the Beginner Method.
+		var old_upgrades: Array = data.get("upgrades", [])
+		var learned := "beginner"
+		if old_upgrades.has("roux"):
+			learned = "roux"
+		elif old_upgrades.has("cfop"):
+			learned = "cfop"
+		data["upgrades"] = old_upgrades.filter(func(id: Variant) -> bool: return str(id) != "cfop" and str(id) != "roux")
+		if not data.has("method"):
+			data["method"] = learned
+		data["version"] = 4
 	return data
 
 

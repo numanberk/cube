@@ -2,6 +2,35 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task 5.1: the method chain (save v4)
+- **Methods are a chain of their own** (`Content.METHODS`): Beginner Method (free, everyone starts with it) → CFOP (200) →
+  Roux (25K) → ZZ (50M) → God's Number (30B), each ×0.7 moves per solve on every puzzle. Only the next one can be learned;
+  it shows up at half its cost in lifetime Solves, like upgrades. The hand-written `cfop` (×0.7) and `roux` (×0.8)
+  upgrades are gone from `Content.UPGRADES`.
+- **Per-puzzle floor:** `min_moves_per_solve` in `Content.PUZZLES` (2×2: 2, 3×3: 4, 4×4: 12, 5×5: 24, 7×7: 60,
+  Megaminx: 140). `GameState.get_moves_per_solve()` = base × methods × upgrades × mastery, never below
+  `get_moves_floor(id)`. Today only the 2×2 reaches it (all four methods: 8 → 1.92 → floored to 2); the Algorithm Lab
+  (5.6) and trophies will push the others toward theirs.
+- **GameState:** `method` (newest learned id), `get_method()`, `get_next_method()`, `is_method_learned()`,
+  `is_method_available()`, `buy_method()` (emits `purchased("method", id)`), `get_method_mult()`. The next method is a
+  "Next goal" candidate. `is_upgrade_available()` now returns false for unknown ids instead of erroring.
+- **Save v4** adds `"method"`. `_migrate()` v3 → v4: the old `cfop`/`roux` upgrade ids leave the upgrade list and become the
+  method (Roux if owned, with CFOP implied since the chain is in order; else CFOP; else Beginner). An unknown method id
+  loads as Beginner. **The planned save numbers moved up one:** prestige is now v5 (6.2), achievements v6 (7.1)
+  (PLAN §6 and ROADMAP updated).
+- **UI:** the next method is an icon tile at the front of the Upgrades grid; learned methods stay as Owned tiles. Its
+  tooltip says what it does to the focused puzzle ("2×2: 8 → 5.6 moves per solve (never below 2)").
+  New icons: `beginner` (stairs), `zz` (lightning-helix), `gods_number` (crown), game-icons.net CC BY 3.0, credited.
+  Screenshot: `docs/screenshots/5.1-methods/late_tab1.png`.
+- **Simulator:** knows the "method" kind. Content now lasts to **51 min** (was 26): CFOP 5:05, Roux 9:05, ZZ 13:43,
+  5×5 21:24, God's Number 51:25. The longest first-hour gap is 30 min (5×5 → God's Number), down from 34. Same passing
+  targets as before; the stale expected-failure notes in `tools/pacing.gd` now describe today's numbers.
+- Tests: method chain order, cost, signal, save/load and unknown ids; the floor (2×2 with every method and mastery Lv 10,
+  solves taking exactly the floor's moves); v3 → v4 migration (CFOP only, Roux without CFOP, neither, and v1 all the way);
+  method tiles in the grid; content validity for methods and floors. Screenshot presets still use `cfop`/`roux` in their
+  old upgrade lists on purpose: they exercise the migration. 1514 checks, `All good.`
+- **Next:** task 5.2 (generated helper milestones).
+
 ## 2026-11-03 — Task 4.7: early-game rebalance + the variety bonus (Phase 4 done)
 - **The design risk was real:** with linear income, "everything on the top puzzle" always won. Fixed with a
   **variety bonus** (`Content.VARIETY`, exponent 0.5): a puzzle with share *s* gets *s*^0.5 of the helpers' moves. One puzzle is

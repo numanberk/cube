@@ -29,7 +29,7 @@ const CHECKPOINT_MINUTES: Array[float] = [1.0, 5.0, 15.0, 30.0, 60.0, 120.0]
 ##   events:      [{t, kind, id, name, cost}]  first purchase of each item, in order
 ##   purchases:   int                          total items bought
 ##   checkpoints: [{minute, solves_per_sec, moves_per_sec, solves, total_solves}]
-##   all_bought_at: seconds when every helper and upgrade was owned at least once, or -1
+##   all_bought_at: seconds when every helper, upgrade, method and pre-prestige puzzle was owned at least once, or -1
 func run(taps_per_sec: float, minutes: float) -> Dictionary:
 	_puzzle_gain_cache.clear()
 	_now = 0.0
@@ -45,7 +45,7 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 	var next_checkpoint := 0
 	var purchases := 0
 	var all_bought_at := -1.0
-	var item_count := Content.BUILDINGS.size() + Content.UPGRADES.size()
+	var item_count := Content.BUILDINGS.size() + Content.UPGRADES.size() + Content.METHODS.size() - 1  # Beginner is free
 	for def: Dictionary in Content.PUZZLES:
 		if float(def["unlock_cost"]) > 0.0 and not def["requires_prestige"]:
 			item_count += 1  # puzzles you can buy before prestige
@@ -175,6 +175,9 @@ func _candidates(g: GameState) -> Array[Dictionary]:
 	for def: Dictionary in Content.UPGRADES:
 		if g.is_upgrade_available(def["id"]):
 			items.append({"kind": "upgrade", "id": def["id"]})
+	var next_method := g.get_next_method()
+	if not next_method.is_empty() and g.is_method_available(next_method["id"]):
+		items.append({"kind": "method", "id": next_method["id"]})
 	var next_puzzle := g.get_next_locked_puzzle()
 	if next_puzzle != "":
 		items.append({"kind": "puzzle", "id": next_puzzle})
@@ -194,6 +197,12 @@ func _income_gain(g: GameState, item: Dictionary, taps_per_sec: float, base: flo
 			g.upgrades[id] = true
 			var with_it := income(g, taps_per_sec)
 			g.upgrades.erase(id)
+			return with_it - base
+		"method":
+			var current := g.method
+			g.method = id
+			var with_it := income(g, taps_per_sec)
+			g.method = current
 			return with_it - base
 		"puzzle":
 			var cached: Dictionary = _puzzle_gain_cache.get(id, {})
@@ -225,6 +234,8 @@ func _cost(g: GameState, item: Dictionary) -> float:
 			return g.get_building_cost(item["id"])
 		"upgrade":
 			return float(Content.get_upgrade(item["id"])["cost"])
+		"method":
+			return float(Content.get_method(item["id"])["cost"])
 		"puzzle":
 			return g.get_puzzle_unlock_cost(item["id"])
 	return INF
@@ -236,6 +247,8 @@ func _buy(g: GameState, item: Dictionary) -> bool:
 			return g.buy_building(item["id"])
 		"upgrade":
 			return g.buy_upgrade(item["id"])
+		"method":
+			return g.buy_method(item["id"])
 		"puzzle":
 			return g.unlock_puzzle(item["id"])
 	return false
@@ -247,6 +260,8 @@ func _item_name(item: Dictionary) -> String:
 			return Content.get_building(item["id"])["name"]
 		"upgrade":
 			return Content.get_upgrade(item["id"])["name"]
+		"method":
+			return Content.get_method(item["id"])["name"]
 		"puzzle":
 			return Content.get_puzzle(item["id"])["name"]
 	return item["id"]
@@ -265,7 +280,7 @@ static func to_markdown(result: Dictionary) -> String:
 	var events: Array = result["events"]
 	var all_at: float = result["all_bought_at"]
 	lines.append("- Items bought: %d (%d different)" % [result["purchases"], events.size()])
-	lines.append("- Every helper and upgrade owned at: %s" % ("never" if all_at < 0.0 else _clock(all_at)))
+	lines.append("- Every helper, upgrade, method and puzzle owned at: %s" % ("never" if all_at < 0.0 else _clock(all_at)))
 	var gap := Pacing.longest_gap(events, 0.0, float(result["minutes"]) * 60.0)
 	lines.append("- Longest wait for something new: %s (%s)" % [_clock(gap["length"]), gap["where"]])
 	lines.append("")

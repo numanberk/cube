@@ -128,8 +128,10 @@ For a specific task, replace the second sentence with e.g. "Do task 4.2."
   | 5×5 | 120 | 50 | ~1.5M |
   | 7×7 | 300 | 200 | after prestige |
   | Megaminx | 700 | 800 | after prestige |
-- Methods (Beginner → CFOP → Roux → ZZ → God's Number) multiply moves per solve by ×0.7 each,
-  with a **floor per puzzle** (e.g. 20 on 3×3, "God's Number"), so a puzzle never becomes trivial.
+- Methods (Beginner → CFOP → Roux → ZZ → God's Number, `Content.METHODS`, task 5.1) are learned in order and multiply
+  moves per solve by ×0.7 each, with a **floor per puzzle** (`min_moves_per_solve`: a fifth of its moves per solve, a quarter
+  on the 2×2), so a puzzle never becomes trivial. All four learned methods plus mastery reach the floor only on the 2×2;
+  later perks (the Algorithm Lab, trophies) are what push the bigger puzzles down to it.
 - **Puzzle mastery** (task 4.6): solves on each puzzle level up its own mastery, so every running puzzle has its own bar
   (the Idle Skilling "many skills" feeling). Mastery gives permanent perks and survives prestige.
 
@@ -280,7 +282,8 @@ docs/BALANCE.md, docs/screenshots/
 - **The simulator drives the real `GameState`**, never a copy of the formulas, so it can't drift from the game.
 - Content stays as data (`Content.PUZZLES`, `Content.TRACKS`, `Content.ACHIEVEMENTS`, …). If `content.gd` gets huge,
   split it into `content_helpers.gd`, `content_upgrades.gd`, and so on.
-- **Save versions:** v1 → **v2 puzzles** (4.2) → **v3 mastery** (4.6) → **v4 prestige** (6.2) → **v5 achievements** (7.1).
+- **Save versions:** v1 → **v2 puzzles** (4.2) → **v3 mastery** (4.6) → **v4 methods** (5.1) → **v5 prestige** (6.2) →
+  **v6 achievements** (7.1).
   Every bump has a `_migrate()` step and a test that loads the older format. Saves are written to a temp file then
   renamed, with `save.bak` kept (task 0.4).
 - Settings live in `user://settings.cfg`, separate from the save, so a reset never wipes volume or graphics choices.

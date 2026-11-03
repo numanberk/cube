@@ -57,4 +57,7 @@ The black background square was removed so the game can tint them; no other chan
 | `assets/icons/magnets.svg` | magnet | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/magnet.html |
 | `assets/icons/firmware.svg` | processor | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/processor.html |
 | `assets/icons/roux.svg` | open-book | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/open-book.html |
+| `assets/icons/beginner.svg` | stairs | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/stairs.html |
+| `assets/icons/zz.svg` | lightning-helix | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/lightning-helix.html |
+| `assets/icons/gods_number.svg` | crown | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/crown.html |
 | `assets/icons/locked.svg` | padlock | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/padlock.html |

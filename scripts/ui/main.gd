@@ -38,6 +38,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 
 var _helper_cards: Dictionary = {}    ## building id -> ShopCard
 var _upgrade_tiles: Dictionary = {}   ## upgrade id -> UpgradeTile
+var _method_tiles: Dictionary = {}    ## method id -> UpgradeTile (every method after the Beginner Method)
 var _refresh_timer := 0.0
 var _visual_move_timer := 0.0
 var _shown_solves := 0.0          ## what the counter shows; eases towards Game.solves
@@ -124,6 +125,11 @@ func _build_shop() -> void:
 		tile.pressed.connect(Game.buy_upgrade.bind(def["id"]))
 		upgrade_list.add_child(tile)
 		_upgrade_tiles[def["id"]] = tile
+	for def: Dictionary in Content.METHODS.slice(1):  # everyone starts with the Beginner Method
+		var tile: UpgradeTile = UpgradeTileScene.instantiate()
+		tile.pressed.connect(Game.buy_method.bind(def["id"]))
+		upgrade_list.add_child(tile)
+		_method_tiles[def["id"]] = tile
 
 
 # --- Refreshing --------------------------------------------------------------
@@ -216,10 +222,31 @@ func _on_helper_card_pressed(id: String) -> void:
 
 
 ## Upgrades are a grid of icon tiles (details in each tile's tooltip): ones you can buy, then a dimmer "Owned" tile for
-## each one bought. The tab title shows how many are affordable.
+## each one bought. The next method in the chain is a tile here too (first), and learned methods count as owned.
+## The tab title shows how many are affordable.
 func _refresh_upgrade_tiles() -> void:
 	var any_visible := false
 	var affordable_count := 0
+	var order: Array[UpgradeTile] = []      # buyable tiles, in order
+	var owned_order: Array[UpgradeTile] = []
+	for def: Dictionary in Content.METHODS.slice(1):
+		var id: String = def["id"]
+		var tile: UpgradeTile = _method_tiles[id]
+		var learned := Game.is_method_learned(id)
+		tile.visible = learned or Game.is_method_available(id)
+		if not tile.visible:
+			continue
+		any_visible = true
+		var cost := float(def["cost"])
+		var can_buy := not learned and Game.solves >= cost
+		if can_buy:
+			affordable_count += 1
+		tile.set_view({
+			"icon": Content.icon(def["icon"]), "title": def["name"],
+			"description": "%s\n%s" % [def["description"], _method_effect_text(def, learned)],
+			"cost": Num.format(cost), "affordable": can_buy, "owned": learned,
+		})
+		(owned_order if learned else order).append(tile)
 	for def: Dictionary in Content.UPGRADES:
 		var id: String = def["id"]
 		var tile: UpgradeTile = _upgrade_tiles[id]
@@ -236,15 +263,26 @@ func _refresh_upgrade_tiles() -> void:
 			"icon": Content.icon(def["icon"]), "title": def["name"], "description": def["description"],
 			"cost": Num.format(cost), "affordable": can_buy, "owned": owned,
 		})
-	# Buyable upgrades first (in content order), then the owned ones.
-	var index := 0
-	for owned_pass: bool in [false, true]:
-		for def: Dictionary in Content.UPGRADES:
-			if Game.upgrades.has(def["id"]) == owned_pass:
-				upgrade_list.move_child(_upgrade_tiles[def["id"]], index)
-				index += 1
+	# Buyable tiles first (the next method, then upgrades in content order), then the owned ones the same way.
+	for def: Dictionary in Content.UPGRADES:
+		(owned_order if Game.upgrades.has(def["id"]) else order).append(_upgrade_tiles[def["id"]])
+	order.append_array(owned_order)
+	for index in order.size():
+		upgrade_list.move_child(order[index], index)
 	upgrade_empty.visible = not any_visible
 	tabs.set_tab_title(UPGRADES_TAB, "Upgrades (%d)" % affordable_count if affordable_count > 0 else "Upgrades")
+
+
+## What a method does to the focused puzzle: "3×3: 20 → 14 moves per solve" (or the floor note once it's reached).
+func _method_effect_text(def: Dictionary, learned: bool) -> String:
+	var focus := Game.get_focused_puzzle_id()
+	var puzzle_name: String = Content.get_puzzle(focus)["name"]
+	var now := Game.get_moves_per_solve(focus)
+	var floor_moves := Game.get_moves_floor(focus)
+	if learned:
+		return "Learned. %s: %s moves per solve (never below %s)." % [puzzle_name, Num.format(now), Num.format(floor_moves)]
+	var after := maxf(floor_moves, now * float(def["mult"]))
+	return "%s: %s → %s moves per solve (never below %s)." % [puzzle_name, Num.format(now), Num.format(after), Num.format(floor_moves)]
 
 
 ## The Solves counter counts up smoothly instead of jumping; spending snaps it down at once.

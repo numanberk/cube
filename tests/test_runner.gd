@@ -83,8 +83,7 @@ func test_upgrades() -> void:
 	check(g.buy_upgrade("lube"), "buy Cube Lube")
 	check_near(g.get_tap_moves(), 2.0, "lube doubles tap moves")
 	check(not g.buy_upgrade("lube"), "can't buy an upgrade twice")
-	check(g.buy_upgrade("cfop"), "buy CFOP")
-	check_near(g.get_moves_per_solve(), 8.0 * 0.7, "CFOP cuts moves per solve by 30%")
+	check(Content.get_upgrade("cfop").is_empty() and not g.buy_upgrade("cfop"), "CFOP is a method now, not an upgrade")
 	check(not g.is_upgrade_available("stackmat"), "Stackmat needs a friend first")
 	g.buy_building("friend")
 	check(g.is_upgrade_available("stackmat"), "Stackmat available after owning a friend")
@@ -134,6 +133,20 @@ func test_content_is_valid() -> void:
 			check(not Content.get_building(effect.get("target", "")).is_empty(), "upgrade %s targets a real helper" % def["id"])
 		for building_id: String in def.get("requires", {}):
 			check(not Content.get_building(building_id).is_empty(), "upgrade %s requires a real helper" % def["id"])
+	for i in Content.METHODS.size():
+		var def: Dictionary = Content.METHODS[i]
+		for field: String in ["id", "icon", "name", "description", "cost", "mult"]:
+			check(def.has(field), "method %s has '%s'" % [def.get("id", "?"), field])
+		check(not ids.has(def["id"]), "id '%s' is unique" % def["id"])
+		ids[def["id"]] = true
+		if i == 0:
+			check(float(def["cost"]) == 0.0 and float(def["mult"]) == 1.0, "the first method is free and changes nothing")
+		else:
+			check(float(def["mult"]) > 0.0 and float(def["mult"]) < 1.0, "method %s cuts moves per solve" % def["id"])
+			check(float(def["cost"]) > float(Content.METHODS[i - 1]["cost"]), "method %s costs more than the one before" % def["id"])
+	for def: Dictionary in Content.PUZZLES:
+		var floor_moves := float(def.get("min_moves_per_solve", 0.0))
+		check(floor_moves >= 1.0 and floor_moves < float(def["moves_per_solve"]), "puzzle %s has a floor below its moves per solve" % def["id"])
 
 
 func test_number_formatting() -> void:
@@ -161,7 +174,10 @@ func test_screenshot_presets_still_load() -> void:
 		for id: String in saved_buildings:
 			check(int(g.buildings.get(id, -1)) == int(saved_buildings[id]), "preset '%s' keeps helper '%s'" % [name, id])
 		for id: String in data.get("upgrades", []):
-			check(g.upgrades.has(id), "preset '%s' keeps upgrade '%s'" % [name, id])
+			if not Content.get_method(id).is_empty():  # "cfop"/"roux" were upgrades before save v4
+				check(g.is_method_learned(id), "preset '%s' keeps method '%s'" % [name, id])
+			else:
+				check(g.upgrades.has(id), "preset '%s' keeps upgrade '%s'" % [name, id])
 		check(g.offline_report.is_empty(), "preset '%s' grants no offline progress" % name)
 		g.free()
 
@@ -841,6 +857,10 @@ func test_next_goal() -> void:
 	while g.get_next_locked_puzzle() != "":
 		g.unlock_puzzle(g.get_next_locked_puzzle())
 	goal = g.get_next_goal()
+	check(goal["kind"] == "method" and goal["id"] == "cfop", "then at the next method")
+	while not g.get_next_method().is_empty():
+		g.buy_method(g.get_next_method()["id"])
+	goal = g.get_next_goal()
 	check(goal["more"] and goal["kind"] == "helper", "with everything owned it aims at another helper")
 	g.free()
 
@@ -880,7 +900,7 @@ func test_layout_and_keyboard_tap() -> void:
 # --- Shop cards (task 2.3) ---------------------------------------------------------
 
 func test_content_icons_exist() -> void:
-	for def: Dictionary in Content.BUILDINGS + Content.UPGRADES:
+	for def: Dictionary in Content.BUILDINGS + Content.UPGRADES + Content.METHODS:
 		check(def.has("icon") and ResourceLoader.exists(Content.ICON_DIR + def["icon"] + ".svg"), "%s has an icon file" % def["id"])
 	check(ResourceLoader.exists(Content.ICON_DIR + Content.LOCKED_ICON + ".svg"), "there's a locked icon")
 	var credits := FileAccess.get_file_as_string("res://assets/CREDITS.md")
@@ -929,7 +949,8 @@ func test_upgrade_tiles_show_owned() -> void:
 	root.add_child(main)
 	var lube: UpgradeTile = main._upgrade_tiles["lube"]
 	check(lube.visible and lube.owned and lube.disabled and lube._cost.text == "Owned", "a bought upgrade stays as an Owned tile")
-	check(not main._upgrade_tiles["roux"].visible, "upgrades far out of reach stay hidden")
+	check(not main._upgrade_tiles["firmware"].visible, "upgrades far out of reach stay hidden")
+	check(not main._method_tiles["roux"].visible, "methods after the next one stay hidden")
 	main.free()
 	game.reset_state()
 
@@ -1621,8 +1642,116 @@ func test_save_v2_to_v3_migration() -> void:
 	g.apply_save_data(v2.duplicate(true), 1000.0)
 	check(g.get_unlocked_puzzle_ids() == (["2x2", "3x3"] as Array[String]) and g.get_focused_puzzle_id() == "3x3", "v2 puzzles load into v3")
 	check(g.get_mastery_level("2x2") == 1 and g.get_mastery_level("3x3") == 1, "v2 players start at mastery level 1")
-	check(int(g.get_save_data()["version"]) == 3, "it saves as v3")
+	check(int(g.get_save_data()["version"]) == GameState.SAVE_VERSION, "it saves as the current version")
 	g.free()
+
+
+# --- Methods (task 5.1) -------------------------------------------------------------
+
+func test_method_chain() -> void:
+	var g := new_game()
+	check(g.method == "beginner" and g.is_method_learned("beginner") and not g.is_method_learned("cfop"), "everyone starts with the Beginner Method")
+	check_near(g.get_method_mult(), 1.0, "the Beginner Method changes nothing")
+	check(g.get_next_method()["id"] == "cfop", "CFOP is next")
+	check(not g.is_method_available("cfop"), "CFOP is hidden until half its cost is earned")
+	g.cheat_add_solves(1e12)
+	check(not g.is_method_available("roux") and not g.buy_method("roux"), "Roux can't be learned before CFOP")
+	var bought := []
+	g.purchased.connect(func(kind: String, id: String) -> void: bought.append([kind, id]))
+	check(g.buy_method("cfop"), "learn CFOP")
+	check(bought == [["method", "cfop"]], "learning a method is signalled as kind 'method'")
+	check(not g.buy_method("cfop"), "a method can't be learned twice")
+	check_near(g.solves, 1e12 - 200.0, "CFOP costs 200 Solves")
+	check_near(g.get_moves_per_solve("2x2"), 8.0 * 0.7, "CFOP: 30 % fewer moves per solve")
+	check(g.is_method_learned("beginner") and g.is_method_learned("cfop") and g.get_next_method()["id"] == "roux", "Roux is next")
+	for id: String in ["roux", "zz", "gods_number"]:
+		check(g.buy_method(id), "learn %s in order" % id)
+	check(g.method == "gods_number" and g.get_next_method().is_empty(), "God's Number ends the chain")
+	check_near(g.get_method_mult(), pow(0.7, 4), "four methods: ×0.7 each")
+	g.unlock_puzzle("3x3")
+	check_near(g.get_moves_per_solve("3x3"), 20.0 * pow(0.7, 4), "the 3×3 isn't at its floor yet")
+	# Save round trip, and an unknown id
+	var data := g.get_save_data()
+	check(data["method"] == "gods_number", "the method is saved")
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.method == "gods_number", "the method survives save/load")
+	data["method"] = "blindfolded"
+	loaded.apply_save_data(data, float(data["saved_at"]))
+	check(loaded.method == "beginner", "an unknown method id falls back to the Beginner Method")
+	g.free()
+	loaded.free()
+
+
+func test_method_floor() -> void:
+	var g := new_game()
+	g.cheat_add_solves(1e12)
+	for def: Dictionary in Content.METHODS.slice(1):
+		g.buy_method(def["id"])
+	check_near(g.get_moves_floor("2x2"), 2.0, "the 2×2 can't go below 2 moves per solve")
+	check(8.0 * g.get_method_mult() < 2.0, "...and every method together would push it below that")
+	check_near(g.get_moves_per_solve("2x2"), 2.0, "so it stops at the floor")
+	var xp_10 := 0.0
+	for l in range(1, 10):
+		xp_10 += g.get_mastery_xp_for_level(l)
+	g._add_mastery_xp("2x2", xp_10)
+	check_near(g.get_moves_per_solve("2x2"), 2.0, "mastery's fewer-moves perk can't break the floor either")
+	var solves_before := g.total_solves
+	g.add_moves_to("2x2", 21.0 / g.get_puzzle_moves_mult("2x2"))  # 21 real moves = 10 solves at the floor
+	check_near(g.total_solves - solves_before, 10.0 * g.get_solve_value("2x2"), "solves at the floor take exactly the floor's moves")
+	check_near(g.get_moves_floor("megaminx"), 140.0, "every puzzle has its own floor")
+	g.free()
+
+
+func test_save_v3_to_v4_migration() -> void:
+	var v3 := {"version": 3, "saved_at": 1000.0, "solves": 10.0, "total_solves": 90000.0, "total_moves": 9000.0,
+		"puzzles": {"unlocked": ["2x2", "3x3"], "progress": {"3x3": 5.0}, "focus": "3x3", "split": {"3x3": 1.0}},
+		"mastery": {}, "buildings": {"friend": 4}, "upgrades": ["lube", "cfop", "magnets"]}
+	var g := new_game()
+	g.apply_save_data(v3.duplicate(true), 1000.0)
+	check(g.method == "cfop", "the old CFOP upgrade becomes the CFOP method")
+	check(g.upgrades.has("lube") and g.upgrades.has("magnets") and not g.upgrades.has("cfop"), "...and leaves the upgrade list; other upgrades stay")
+	check_near(g.get_moves_per_solve("3x3"), 20.0 * 0.7, "a migrated CFOP player has 30 % fewer moves per solve")
+	var data := g.get_save_data()
+	check(int(data["version"]) == GameState.SAVE_VERSION and data["method"] == "cfop" and not (data["upgrades"] as Array).has("cfop"), "it saves as v4")
+	var roux_only := v3.duplicate(true)
+	roux_only["upgrades"] = ["roux"]  # v3 let you buy Roux without CFOP
+	g.apply_save_data(roux_only, 1000.0)
+	check(g.method == "roux" and g.is_method_learned("cfop") and g.upgrades.is_empty(), "the old Roux upgrade becomes Roux, with CFOP learned too")
+	var neither := v3.duplicate(true)
+	neither["upgrades"] = ["lube"]
+	g.apply_save_data(neither, 1000.0)
+	check(g.method == "beginner" and g.upgrades.has("lube"), "without either it's the Beginner Method")
+	var v1 := {"version": 1, "saved_at": 1000.0, "solves": 5.0, "total_solves": 50.0, "move_progress": 3.0, "buildings": {}, "upgrades": ["cfop", "roux"]}
+	g.apply_save_data(v1, 1000.0)
+	check(g.method == "roux" and g.upgrades.is_empty(), "a v1 save migrates all the way to v4")
+	g.free()
+
+
+func test_method_tiles() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var cfop: UpgradeTile = main._method_tiles["cfop"]
+	check(not cfop.visible, "no method tile at the start")
+	check(not main._method_tiles.has("beginner"), "the Beginner Method has no tile (everyone has it)")
+	game.cheat_add_solves(300.0)
+	main._refresh()
+	check(cfop.visible and not cfop.owned and not cfop.disabled, "CFOP shows up as a buyable tile once it's in reach")
+	var first_visible: UpgradeTile = null
+	for child in (main.get_node("%UpgradeList") as GridContainer).get_children():
+		if (child as UpgradeTile).visible:
+			first_visible = child
+			break
+	check(first_visible == cfop, "the next method comes first in the grid")
+	check(cfop._description.contains("2×2: 8 → 5.6 moves per solve"), "its tooltip says what it does to the focused puzzle")
+	cfop.pressed.emit()
+	check(game.method == "cfop" and cfop.owned and cfop._cost.text == "Owned", "pressing the tile learns CFOP; it stays as an Owned tile")
+	check(not main._method_tiles["roux"].visible, "Roux stays hidden until it's in reach")
+	main.free()
+	game.reset_state()
 
 
 
