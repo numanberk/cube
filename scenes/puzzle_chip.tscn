@@ -36,6 +36,15 @@ theme_type_variation = &"CardTitle"
 text = "3×3"
 horizontal_alignment = 1
 
+[node name="MasteryBar" type="ProgressBar" parent="Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(84, 5)
+layout_mode = 2
+size_flags_horizontal = 4
+max_value = 1.0
+step = 0.0
+show_percentage = false
+
 [node name="ChipRate" type="Label" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2

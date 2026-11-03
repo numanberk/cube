@@ -9,9 +9,10 @@ signal state_reset
 signal puzzle_unlocked(puzzle_id: String)
 signal focus_changed(puzzle_id: String)
 signal split_changed
+signal mastery_level_up(puzzle_id: String, level: int)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 2  ## v2 (task 4.2): parallel puzzles
+const SAVE_VERSION := 3  ## v2 (task 4.2): parallel puzzles; v3 (task 4.6): puzzle mastery
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0
 const MIN_OFFLINE_SECONDS := 10.0
@@ -35,6 +36,8 @@ var unlocked_puzzles: Array[String] = []  ## in ladder order
 var puzzle_progress: Dictionary = {}       ## puzzle id -> moves made toward its current solve
 var focused_puzzle := ""
 var split: Dictionary = {}                 ## puzzle id -> weight (>= 0)
+var mastery_xp: Dictionary = {}            ## puzzle id -> mastery XP (task 4.6); kept through prestige
+var _mastery_levels: Dictionary = {}       ## puzzle id -> level, cached from mastery_xp
 var buildings: Dictionary = {}  ## building id -> owned count
 var upgrades: Dictionary = {}   ## upgrade id -> true (owned)
 var offline_report: Dictionary = {}  ## {"seconds", "solves"} after loading, if anything was earned
@@ -83,6 +86,7 @@ func add_moves(amount: float) -> void:
 func add_moves_to(puzzle_id: String, amount: float) -> void:
 	if amount <= 0.0 or not puzzle_progress.has(puzzle_id):
 		return
+	amount *= get_puzzle_moves_mult(puzzle_id)
 	total_moves += amount
 	var progress := float(puzzle_progress[puzzle_id]) + amount
 	var needed := get_moves_per_solve(puzzle_id)
@@ -93,6 +97,7 @@ func add_moves_to(puzzle_id: String, amount: float) -> void:
 		solves += reward
 		total_solves += reward
 		puzzle_progress[puzzle_id] = progress
+		_add_mastery_xp(puzzle_id, count * get_mastery_xp_per_solve(puzzle_id))
 		solved.emit(int(count), puzzle_id)
 	else:
 		puzzle_progress[puzzle_id] = progress
@@ -100,14 +105,16 @@ func add_moves_to(puzzle_id: String, amount: float) -> void:
 
 ## Moves needed for one solve on a puzzle (the focused one by default), after method upgrades.
 func get_moves_per_solve(puzzle_id: String = "") -> float:
-	var def := Content.get_puzzle(_or_focused(puzzle_id))
-	return maxf(1.0, float(def.get("moves_per_solve", 1.0)) * _upgrade_mult("solve_moves_mult"))
+	var id := _or_focused(puzzle_id)
+	var def := Content.get_puzzle(id)
+	return maxf(1.0, float(def.get("moves_per_solve", 1.0)) * _upgrade_mult("solve_moves_mult") * _mastery_mult(id, "solve_moves"))
 
 
 ## Solves earned per solve on a puzzle (the focused one by default).
 func get_solve_value(puzzle_id: String = "") -> float:
-	var def := Content.get_puzzle(_or_focused(puzzle_id))
-	return float(def.get("solve_value", 1.0)) * _upgrade_mult("solve_value_mult")
+	var id := _or_focused(puzzle_id)
+	var def := Content.get_puzzle(id)
+	return float(def.get("solve_value", 1.0)) * _upgrade_mult("solve_value_mult") * _mastery_mult(id, "solve_value")
 
 
 ## Moves made toward the next solve on a puzzle (the focused one by default).
@@ -134,9 +141,9 @@ func get_moves_per_second() -> float:
 	return total
 
 
-## Helper moves per second going to one puzzle.
+## Helper moves per second going to one puzzle (after its mastery bonus).
 func get_puzzle_moves_per_second(puzzle_id: String) -> float:
-	return get_moves_per_second() * get_puzzle_share(puzzle_id)
+	return get_moves_per_second() * get_puzzle_share(puzzle_id) * get_puzzle_moves_mult(puzzle_id)
 
 
 func get_puzzle_solves_per_second(puzzle_id: String) -> float:
@@ -391,6 +398,93 @@ func _add_puzzle(puzzle_id: String) -> void:
 	puzzle_progress[puzzle_id] = 0.0
 
 
+# --- Puzzle Mastery (task 4.6) -----------------------------------------------------
+
+func get_mastery_xp(puzzle_id: String) -> float:
+	return float(mastery_xp.get(puzzle_id, 0.0))
+
+
+func get_mastery_level(puzzle_id: String) -> int:
+	return int(_mastery_levels.get(puzzle_id, 1))
+
+
+## XP needed to go from `level` to the next one.
+func get_mastery_xp_for_level(level: int) -> float:
+	return ceilf(float(Content.MASTERY["xp_first_level"]) * pow(float(Content.MASTERY["xp_growth"]), level - 1))
+
+
+## XP a solve on this puzzle gives (bigger puzzles give more, so XP per move is the same everywhere).
+func get_mastery_xp_per_solve(puzzle_id: String) -> float:
+	return float(Content.get_puzzle(puzzle_id).get("moves_per_solve", 8.0)) / float(Content.MASTERY["xp_per_solve_moves"])
+
+
+## Progress through the current level, 0..1 (1 at the max level).
+func get_mastery_progress(puzzle_id: String) -> float:
+	var level := get_mastery_level(puzzle_id)
+	if level >= int(Content.MASTERY["max_level"]):
+		return 1.0
+	return clampf((get_mastery_xp(puzzle_id) - _mastery_xp_at(level)) / get_mastery_xp_for_level(level), 0.0, 1.0)
+
+
+## The next milestone a puzzle can reach: {level, text} or {} at the top.
+func get_next_mastery_milestone(puzzle_id: String) -> Dictionary:
+	var level := get_mastery_level(puzzle_id)
+	for milestone: Dictionary in Content.MASTERY["milestones"]:
+		if int(milestone["level"]) > level:
+			return milestone
+	return {}
+
+
+## Moves on a puzzle are multiplied by its level bonus, its "moves" milestones and every "all_moves" milestone.
+func get_puzzle_moves_mult(puzzle_id: String) -> float:
+	var per_level := 1.0 + float(Content.MASTERY["per_level_moves"]) * (get_mastery_level(puzzle_id) - 1)
+	var everywhere := 1.0
+	for id in unlocked_puzzles:
+		everywhere *= _milestone_mult(id, "all_moves")
+	return per_level * _milestone_mult(puzzle_id, "moves") * everywhere
+
+
+func _mastery_mult(puzzle_id: String, effect_type: String) -> float:
+	return _milestone_mult(puzzle_id, effect_type)
+
+
+func _milestone_mult(puzzle_id: String, effect_type: String) -> float:
+	var level := get_mastery_level(puzzle_id)
+	var mult := 1.0
+	for milestone: Dictionary in Content.MASTERY["milestones"]:
+		if milestone["type"] == effect_type and level >= int(milestone["level"]):
+			mult *= float(milestone["value"])
+	return mult
+
+
+## Total XP needed to reach `level` from level 1.
+func _mastery_xp_at(level: int) -> float:
+	var total := 0.0
+	for l in range(1, level):
+		total += get_mastery_xp_for_level(l)
+	return total
+
+
+func _add_mastery_xp(puzzle_id: String, xp: float) -> void:
+	mastery_xp[puzzle_id] = get_mastery_xp(puzzle_id) + xp
+	var old_level := get_mastery_level(puzzle_id)
+	var level := _level_for_xp(mastery_xp[puzzle_id])
+	_mastery_levels[puzzle_id] = level
+	for l in range(old_level + 1, level + 1):
+		mastery_level_up.emit(puzzle_id, l)
+
+
+func _level_for_xp(xp: float) -> int:
+	var level := 1
+	var needed := get_mastery_xp_for_level(1)
+	var max_level := int(Content.MASTERY["max_level"])
+	while level < max_level and xp >= needed:
+		xp -= needed
+		level += 1
+		needed = get_mastery_xp_for_level(level)
+	return level
+
+
 func _or_focused(puzzle_id: String) -> String:
 	return focused_puzzle if puzzle_id == "" else puzzle_id
 
@@ -479,6 +573,8 @@ func reset_state() -> void:
 	_add_puzzle(Content.PUZZLES[0]["id"])
 	focused_puzzle = Content.PUZZLES[0]["id"]
 	split = {focused_puzzle: 1.0}
+	mastery_xp.clear()
+	_mastery_levels.clear()
 	buildings.clear()
 	for def: Dictionary in Content.BUILDINGS:
 		buildings[def["id"]] = 0
@@ -499,6 +595,7 @@ func get_save_data() -> Dictionary:
 			"focus": focused_puzzle,
 			"split": split.duplicate(),
 		},
+		"mastery": mastery_xp.duplicate(),
 		"buildings": buildings.duplicate(),
 		"upgrades": upgrades.keys(),
 	}
@@ -600,6 +697,11 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	solves = float(data.get("solves", 0.0))
 	total_solves = float(data.get("total_solves", 0.0))
 	total_moves = float(data.get("total_moves", 0.0))
+	var saved_mastery: Dictionary = data.get("mastery", {})
+	for id: String in saved_mastery:
+		if not Content.get_puzzle(id).is_empty():
+			mastery_xp[id] = maxf(0.0, float(saved_mastery[id]))
+			_mastery_levels[id] = _level_for_xp(mastery_xp[id])
 	var saved_puzzles: Dictionary = data.get("puzzles", {})
 	for id in saved_puzzles.get("unlocked", []):
 		_add_puzzle(str(id))  # unknown ids (removed from Content) are skipped
@@ -632,6 +734,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 ## the shape of get_save_data() changes, so existing players keep their progress.
 func _migrate(data: Dictionary) -> Dictionary:
 	var version := int(data.get("version", 1))
+	data["version"] = version
 	if version < 2:
 		# v1 had one 15-move solve and no puzzles. Old players start with the 2×2, plus the 3×3 if they had bought
 		# any upgrade (they were past the start); the newest is focused and gets the whole split.
@@ -647,6 +750,11 @@ func _migrate(data: Dictionary) -> Dictionary:
 		}
 		data.erase("move_progress")
 		data["version"] = 2
+	if int(data["version"]) < 3:
+		# v3 added puzzle mastery: everyone starts at level 1.
+		if not data.has("mastery"):
+			data["mastery"] = {}
+		data["version"] = 3
 	return data
 
 

@@ -34,7 +34,8 @@ const PRESETS := {
 
 	# Three puzzles running (v2 save): 2x2, 3x3 and 4x4, focused on the 4x4, helpers spread over all three.
 	"row3": {
-		"version": 2,
+		"version": 3,
+		"mastery": {"2x2": 640.0, "3x3": 230.0, "4x4": 40.0},
 		"solves": 18000.0,
 		"total_solves": 260000.0,
 		"total_moves": 2.2e6,

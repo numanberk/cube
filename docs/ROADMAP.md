@@ -123,7 +123,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] **4.5 More placeholder tracks:** one per remaining puzzle tier plus "Finals" (or candidates listed for the owner).
       *Done when:* every `Content.TRACKS` entry has a file or an explicit "owner to supply" note in CREDITS, and the
       Jukebox shows them correctly locked/unlocked.
-- [ ] **4.6 Puzzle Mastery (PR):** each puzzle gains mastery XP from its own solves, so every running puzzle levels in parallel
+- [x] **4.6 Puzzle Mastery (PR):** each puzzle gains mastery XP from its own solves, so every running puzzle levels in parallel
       (levels 1–100, XP curve as data),
       with milestone perks at 5/10/25/50/100 (e.g. +10 % moves on that puzzle, −1 move per solve, +1 % all moves).
       Kept through prestige. A mastery bar on every puzzle in the row. Save change → bump the save version with a migration.
@@ -163,9 +163,9 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [ ] **6.1 Trophy formula and Compete screen:** `floor(sqrt(run_solves / 1e6))` to start, each unspent trophy +2 % all moves.
       The Compete screen shows the trophies you'll get, the new bonus, and exactly what you keep and lose. It plays "Finals".
       *Done when:* there's a screenshot and tests cover the formula.
-- [ ] **6.2 Reset logic + save v3:** keeps trophies, achievements, unlocked tracks and settings; resets Solves, helpers,
+- [ ] **6.2 Reset logic + save v4:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
       upgrades, puzzles and methods. 7×7 and Megaminx become unlockable after the first championship.
-      *Done when:* tests check what resets and what stays, and there's a v2 → v3 migration test.
+      *Done when:* tests check what resets and what stays, and there's a v3 → v4 migration test.
 - [ ] **6.3 Trophy perk tree (PR):** permanent perks as data, arranged in 4 branches: Practice (start with 3×3, +offline cap),
       Team (start with 10 Friends, helper boosts), Competition (unlocks Competitions 8.3, medal bonuses) and Automation
       (unlocks 6.3b). As in Idle Skilling, **the first node of each branch unlocks a system**. Nodes need their parent.
@@ -179,10 +179,10 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 
 ## Phase 7 — Goals
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
-      all moves, with a toast when earned. Save v4. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
+      all moves, with a toast when earned. Save v5. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
       so they work as a map of the game, like Revolution Idle's.
-      *Done when:* there are tests for the conditions and the v3 → v4 migration, and a screenshot of the tab and toast.
+      *Done when:* there are tests for the conditions and the v4 → v5 migration, and a screenshot of the tab and toast.
 - [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
 

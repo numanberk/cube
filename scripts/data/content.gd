@@ -148,6 +148,26 @@ const PUZZLES := [
 	{"id": "megaminx", "name": "Megaminx", "moves_per_solve": 700.0, "solve_value": 800.0, "unlock_cost": 2e11, "requires_prestige": true},
 ]
 
+## Puzzle Mastery (task 4.6, PLAYER_RESEARCH): every puzzle levels up from its own solves, in parallel.
+## A solve gives moves_per_solve / xp_per_solve_moves XP, so XP per move is the same on every puzzle.
+## Level L -> L+1 needs xp_first_level × xp_growth^(L-1) XP. Each level above 1 gives +per_level_moves moves on
+## that puzzle; milestones add perks. Types: "moves" (× moves on that puzzle), "solve_moves" (× moves per solve on it),
+## "solve_value" (× Solves per solve on it), "all_moves" (× moves on every puzzle). Kept through prestige (Phase 6).
+const MASTERY := {
+	"max_level": 100,
+	"xp_first_level": 25.0,
+	"xp_growth": 1.15,
+	"xp_per_solve_moves": 8.0,
+	"per_level_moves": 0.01,
+	"milestones": [
+		{"level": 5, "type": "moves", "value": 1.10, "text": "+10 % moves on this puzzle"},
+		{"level": 10, "type": "solve_moves", "value": 0.9, "text": "10 % fewer moves per solve"},
+		{"level": 25, "type": "solve_value", "value": 1.25, "text": "+25 % Solves per solve"},
+		{"level": 50, "type": "all_moves", "value": 1.05, "text": "+5 % moves on every puzzle"},
+		{"level": 100, "type": "solve_value", "value": 2.0, "text": "×2 Solves per solve"},
+	],
+}
+
 ## Music (PLAN §4.3): one track per puzzle tier plus "Finals". `unlock` is the puzzle id that unlocks the track
 ## ("championship" = the first World Championship). `file` is "" until the track exists (task 4.5 / decision D8);
 ## tracks without a file are skipped by the player. License must be CC0 or CC-BY (credited in assets/CREDITS.md).

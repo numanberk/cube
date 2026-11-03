@@ -276,7 +276,7 @@ docs/BALANCE.md, docs/screenshots/
 - **The simulator drives the real `GameState`**, never a copy of the formulas, so it can't drift from the game.
 - Content stays as data (`Content.PUZZLES`, `Content.TRACKS`, `Content.ACHIEVEMENTS`, …). If `content.gd` gets huge,
   split it into `content_helpers.gd`, `content_upgrades.gd`, and so on.
-- **Save versions:** v1 now → **v2 puzzles** (incl. unlocked tracks) → **v3 prestige** → **v4 achievements**.
+- **Save versions:** v1 → **v2 puzzles** (4.2) → **v3 mastery** (4.6) → **v4 prestige** (6.2) → **v5 achievements** (7.1).
   Every bump has a `_migrate()` step and a test that loads the older format. Saves are written to a temp file then
   renamed, with `save.bak` kept (task 0.4).
 - Settings live in `user://settings.cfg`, separate from the save, so a reset never wipes volume or graphics choices.

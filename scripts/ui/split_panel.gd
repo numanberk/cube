@@ -62,8 +62,8 @@ func refresh() -> void:
 		var labels: Dictionary = _row_labels[id]
 		var share := Game.get_puzzle_share(id)
 		(labels["share"] as Label).text = "%d%%" % roundi(share * 100.0)
-		(labels["info"] as Label).text = "%s moves/s  ·  +%s Solves/s" % [
-			Num.format(Game.get_puzzle_moves_per_second(id)), Num.format(Game.get_puzzle_solves_per_second(id)),
+		(labels["info"] as Label).text = "Lv %d  ·  %s moves/s  ·  +%s Solves/s" % [
+			Game.get_mastery_level(id), Num.format(Game.get_puzzle_moves_per_second(id)), Num.format(Game.get_puzzle_solves_per_second(id)),
 		]
 		(labels["minus"] as Button).disabled = not several or share <= 0.0
 		(labels["plus"] as Button).disabled = not several or share >= 1.0

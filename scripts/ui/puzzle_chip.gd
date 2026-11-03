@@ -15,9 +15,11 @@ const MAX_VISUAL_MOVES := 4.0   ## small puzzles turn at most this many times a 
 @onready var _name: Label = %ChipName
 @onready var _rate: Label = %ChipRate
 @onready var _unlock: Button = %UnlockButton
+@onready var _mastery: ProgressBar = %MasteryBar
 
 var puzzle_id := ""
 var locked := false
+var _base_name := ""
 var _move_timer := 0.0
 
 
@@ -40,10 +42,12 @@ func show_running(id: String, name: String) -> void:
 	if puzzle_id != id:
 		view.set_puzzle(id)
 	puzzle_id = id
+	_base_name = name
 	_name.text = name
 	view.visible = true
 	_lock.visible = false
 	_unlock.visible = false
+	_mastery.visible = true
 
 
 ## The next locked puzzle: padlock, cost and an Unlock button (enabled when affordable).
@@ -53,6 +57,7 @@ func show_locked(id: String, name: String, cost_text: String, affordable: bool) 
 	view.visible = false
 	_lock.visible = true
 	_unlock.visible = true
+	_mastery.visible = false
 	_unlock.disabled = not affordable
 	_unlock.text = "Unlock" if affordable else "Locked"
 	_name.text = name
@@ -61,7 +66,10 @@ func show_locked(id: String, name: String, cost_text: String, affordable: bool) 
 
 
 ## Every frame for a running chip: its Solves/s text and how fast its little puzzle turns.
-func update_running(solves_text: String) -> void:
+## A running chip's texts: "2×2 · Lv 12", its rate line, and the mastery bar (progress through the level, 0..1).
+func update_running(solves_text: String, mastery_level: int = 1, mastery_progress: float = 0.0) -> void:
+	_name.text = "%s  ·  Lv %d" % [_base_name, mastery_level]
+	_mastery.value = mastery_progress
 	_rate.text = solves_text
 	_rate.theme_type_variation = &"CardLine"
 

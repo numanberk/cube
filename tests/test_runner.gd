@@ -1560,3 +1560,62 @@ func test_jukebox_locks() -> void:
 	main.free()
 	settings.persistence_enabled = true
 	game.reset_state()
+
+
+# --- Puzzle Mastery (task 4.6) -------------------------------------------------------
+
+func test_mastery() -> void:
+	var g := new_game()
+	check(g.get_mastery_level("2x2") == 1 and g.get_mastery_xp("2x2") == 0.0, "puzzles start at mastery level 1")
+	check_near(g.get_mastery_xp_per_solve("2x2"), 1.0, "a 2x2 solve gives 1 XP")
+	check_near(g.get_mastery_xp_per_solve("4x4"), 7.5, "a 4x4 solve gives 7.5 XP (same XP per move)")
+	check_near(g.get_mastery_xp_for_level(1), 25.0, "level 1 -> 2 needs 25 XP")
+	var levels := []
+	g.mastery_level_up.connect(func(id: String, level: int) -> void: levels.append([id, level]))
+	g.add_moves_to("2x2", 8.0 * 25.0)  # 25 solves = 25 XP
+	check(g.get_mastery_level("2x2") == 2, "25 XP reaches level 2")
+	check(levels == [["2x2", 2]], "the level-up is signalled")
+	check_near(g.get_puzzle_moves_mult("2x2"), 1.01, "level 2 gives +1 % moves on that puzzle")
+	# Jump to level 10: milestones at 5 (+10 % moves) and 10 (-10 % moves per solve).
+	var xp_10 := 0.0
+	for l in range(1, 10):
+		xp_10 += g.get_mastery_xp_for_level(l)
+	g._add_mastery_xp("2x2", xp_10 - g.get_mastery_xp("2x2"))
+	check(g.get_mastery_level("2x2") == 10, "enough XP reaches level 10")
+	check(levels.size() == 9 and levels.back() == ["2x2", 10], "every level on the way is signalled once")
+	check_near(g.get_puzzle_moves_mult("2x2"), (1.0 + 0.09) * 1.10, "level 10: +9 % per level and the level-5 +10 % moves")
+	check_near(g.get_moves_per_solve("2x2"), 8.0 * 0.9, "level 10: 10 % fewer moves per solve")
+	var before := g.total_moves
+	g.add_moves_to("2x2", 10.0)
+	check_near(g.total_moves - before, 10.0 * 1.09 * 1.10, "moves on a mastered puzzle are multiplied")
+	check(g.get_next_mastery_milestone("2x2")["level"] == 25, "the next milestone is level 25")
+	check(g.get_mastery_progress("2x2") >= 0.0 and g.get_mastery_progress("2x2") < 1.0, "progress through the level is 0..1")
+	# Other puzzles are independent, except "all moves" milestones.
+	g.cheat_add_solves(150.0)
+	g.unlock_puzzle("3x3")
+	check(g.get_mastery_level("3x3") == 1 and is_equal_approx(g.get_puzzle_moves_mult("3x3"), 1.0), "each puzzle has its own mastery")
+	var xp_50 := 0.0
+	for l in range(1, 50):
+		xp_50 += g.get_mastery_xp_for_level(l)
+	g._add_mastery_xp("2x2", xp_50 - g.get_mastery_xp("2x2"))
+	check_near(g.get_puzzle_moves_mult("3x3"), 1.05, "a level-50 puzzle gives +5 % moves on every puzzle")
+	check_near(g.get_solve_value("2x2"), 1.25, "level 25: +25 % Solves per solve")
+	# Save round trip
+	var data := g.get_save_data()
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.get_mastery_level("2x2") == 50 and is_equal_approx(loaded.get_mastery_xp("2x2"), g.get_mastery_xp("2x2")), "mastery survives save/load")
+	g.free()
+	loaded.free()
+
+
+func test_save_v2_to_v3_migration() -> void:
+	var v2 := {"version": 2, "saved_at": 1000.0, "solves": 10.0, "total_solves": 900.0, "total_moves": 9000.0,
+		"puzzles": {"unlocked": ["2x2", "3x3"], "progress": {"3x3": 5.0}, "focus": "3x3", "split": {"3x3": 1.0}},
+		"buildings": {"friend": 4}, "upgrades": ["lube"]}
+	var g := new_game()
+	g.apply_save_data(v2.duplicate(true), 1000.0)
+	check(g.get_unlocked_puzzle_ids() == (["2x2", "3x3"] as Array[String]) and g.get_focused_puzzle_id() == "3x3", "v2 puzzles load into v3")
+	check(g.get_mastery_level("2x2") == 1 and g.get_mastery_level("3x3") == 1, "v2 players start at mastery level 1")
+	check(int(g.get_save_data()["version"]) == 3, "it saves as v3")
+	g.free()

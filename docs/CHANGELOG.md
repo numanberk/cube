@@ -2,6 +2,29 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task 4.6: Puzzle Mastery (save v3)
+- **`Content.MASTERY`** (data): levels 1–100; level L → L+1 needs `25 × 1.15^(L−1)` XP; a solve gives `moves_per_solve ÷ 8` XP
+  (so XP per move is equal on every puzzle: a 2×2 solve = 1 XP, a 4×4 solve = 7.5); +1 % moves on that puzzle per level.
+  **Milestones:** Lv 5 +10 % moves on the puzzle, Lv 10 −10 % moves per solve, Lv 25 +25 % Solves per solve, **Lv 50 +5 % moves
+  on every puzzle**, Lv 100 ×2 Solves per solve. Effect types: moves / solve_moves / solve_value / all_moves.
+- **`GameState`:** `mastery_xp` per puzzle (levels cached), XP added on every solve of that puzzle, so all running puzzles level in
+  parallel (the Idle Skilling pattern). Moves arriving at a puzzle (taps and helpers) × `get_puzzle_moves_mult(id)`;
+  `get_moves_per_solve(id)` and `get_solve_value(id)` include its milestones. Getters: level, XP, XP for a level, XP per
+  solve, progress 0..1, next milestone. Signal `mastery_level_up(id, level)` (once per level, even when several at once).
+  **Meant to be kept through prestige** (6.2 must keep `mastery_xp`).
+- **Save v3:** a `mastery` block; **migration v2 → v3** starts everyone at level 1. The version schedule moves on:
+  **v4 prestige (6.2), v5 achievements (7.1)**; ROADMAP and PLAN are updated.
+- **UI:** every puzzle card shows "2×2 · Lv 12" and a thin mastery bar; the Puzzles tab rows start with "Lv N"; under the
+  progress bar, "4×4 mastery Lv 2 (Lv 5: +10 % moves on this puzzle)". Reaching a milestone pops
+  "2×2 Mastery 5: +10 % moves on this puzzle" over that puzzle, with the unlock sting.
+- Screenshot: [mastery in the row](screenshots/puzzles/mastery.png) (the `row3` preset is now v3 with mastery XP).
+- Tests: start at level 1; XP per solve (2×2 = 1, 4×4 = 7.5); 25 XP → level 2 (signalled); +1 %/level; level 10 has both
+  milestones (moves × 1.09 × 1.10, moves per solve × 0.9) and every level on the way is signalled once; moves really
+  multiplied; next milestone; independent per puzzle; a level-50 2×2 gives +5 % on the 3×3; level 25's Solves bonus; save round
+  trip; **v2 → v3 migration**. 1421 checks, `All good.`
+- **Balance:** not tuned yet; mastery makes the already-too-fast economy faster. Task 4.7 tunes everything together.
+- **Next:** task 4.7 (rebalance the early game, and make the split a real choice).
+
 ## 2026-11-03 — Task 4.5: the rest of the placeholder tracks
 - `tools/make_music.py` now makes all 7 tracks (`python3 tools/make_music.py [file.wav ...]`; ~25 s for all), adding
   plucked guitar (Karplus-Strong), kalimba, a soft synth lead and a `melody()` helper. Flavours from PLAN §4.3:

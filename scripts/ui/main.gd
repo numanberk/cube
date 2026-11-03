@@ -64,6 +64,7 @@ func _ready() -> void:
 	Game.state_reset.connect(_on_state_reset)
 	Game.focus_changed.connect(_on_focus_changed)
 	Game.puzzle_unlocked.connect(_on_puzzle_unlocked)
+	Game.mastery_level_up.connect(_on_mastery_level_up)
 	_build_puzzle_row()
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	_shown_solves = Game.solves
@@ -132,9 +133,12 @@ func _refresh() -> void:
 		Num.format(Game.get_solves_per_second()),
 		Num.format(Game.get_moves_per_second()),
 	]
-	progress_label.text = "%s / %s moves to next solve" % [
-		Num.format(Game.get_move_progress()),
-		Num.format(Game.get_moves_per_solve()),
+	var focus := Game.get_focused_puzzle_id()
+	var next_milestone := Game.get_next_mastery_milestone(focus)
+	progress_label.text = "%s / %s moves to next solve   ·   %s mastery Lv %d%s" % [
+		Num.format(Game.get_move_progress()), Num.format(Game.get_moves_per_solve()),
+		Content.get_puzzle(focus)["name"], Game.get_mastery_level(focus),
+		"" if next_milestone.is_empty() else "  (Lv %d: %s)" % [next_milestone["level"], next_milestone["text"]],
 	]
 	var tap_moves := Game.get_tap_moves()
 	hint_label.text = "Click the cube or press Space: +%s %s   ·   drag to look around" % [
@@ -337,6 +341,17 @@ func _on_focus_changed(puzzle_id: String) -> void:
 	_refresh_puzzle_row()
 
 
+## Milestone levels get a pop and the unlock sting; other level-ups just move the bar.
+func _on_mastery_level_up(puzzle_id: String, level: int) -> void:
+	for milestone: Dictionary in Content.MASTERY["milestones"]:
+		if int(milestone["level"]) == level:
+			var at := puzzle_view.get_global_rect().get_center()
+			if puzzle_id != Game.get_focused_puzzle_id() and _chips.has(puzzle_id):
+				at = (_chips[puzzle_id] as PuzzleChip).get_global_rect().get_center()
+			fx.pop("%s Mastery %d: %s" % [Content.get_puzzle(puzzle_id)["name"], level, milestone["text"]], at, &"PopSolve", 2.0)
+			Audio.play_unlock()
+
+
 func _on_puzzle_unlocked(_puzzle_id: String) -> void:
 	_build_puzzle_row()
 	puzzle_view.drop_in()
@@ -373,7 +388,8 @@ func _refresh_puzzle_row() -> void:
 	for id: String in _chips:
 		var chip: PuzzleChip = _chips[id]
 		chip.visible = id != focused
-		chip.update_running("+%s/s  ·  %d%%" % [Num.format(Game.get_puzzle_solves_per_second(id)), roundi(Game.get_puzzle_share(id) * 100.0)])
+		chip.update_running("+%s/s  ·  %d%%" % [Num.format(Game.get_puzzle_solves_per_second(id)), roundi(Game.get_puzzle_share(id) * 100.0)],
+				Game.get_mastery_level(id), Game.get_mastery_progress(id))
 	if _locked_chip == null:
 		return
 	var next := Game.get_next_locked_puzzle()
