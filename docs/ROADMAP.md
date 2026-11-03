@@ -152,12 +152,12 @@ S.7, S.8 → R.5, R.6. Then the rest of Phase 5.
       The solving rules are a pure class (`SolveSession`), testable without the UI.
       *Done when:* tests cover the key map (incl. hand shifts), the new notation, scrambles, inspection penalties and the
       timer stopping on a solved puzzle (also when solved in another orientation), and there's a screenshot.
-- [ ] **S.2 Records and save v5:** per puzzle: PB single, ao5/ao12/ao50/ao100 (WCA rules: trimmed mean, 1 DNF is dropped,
+- [x] **S.2 Records and save v5:** per puzzle: PB single, ao5/ao12/ao50/ao100 (WCA rules: trimmed mean, 1 DNF is dropped,
       2 make the average DNF), best averages, the last 100 times (with +2/DNF/delete), kept through prestige.
       A Times panel in the station. Save v5 (prestige becomes v6, achievements v7).
       *Done when:* tests cover the averages with DNFs and the v4 → v5 migration, and there's a screenshot.
 
-### Readable main screen (owner, 2026-11-03: do R.1–R.4 right after S.2, then S.6, then S.3 once D13 is answered)
+### Readable main screen (owner, 2026-11-03: do R.1–R.4 right after S.2, then S.6, then S.3; D13 is answered: ~2–3×)
 The owner: *"it's just some random scrambles… I can't even understand what's going on after some point, and besides
 that nothing happens."* Measured: every helper move is a random face turn and a "solve" is that history rewound, so the
 main cube never really solves. Above 12 moves/s it only wobbles, the "moves to next solve" bar fills thousands of times a
@@ -202,7 +202,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       stage on even cubes), so the showcase works on every cube. Megaminx stays on scramble + rewind (Phase 11).
       *Done when:* tests solve random scrambles on 4×4 and 5×5 with the stage goals checked, and the showcase holds the bench.
 
-- [ ] **S.3 Rewards [D13]:** hand solves pay into the idle game. Per-puzzle **time targets** as data (e.g. 3×3: 60/40/25/
+- [ ] **S.3 Rewards [D13 = ~2–3×]:** hand solves pay into the idle game. Per-puzzle **time targets** as data (e.g. 3×3: 60/40/25/
       15/10 s, bronze → "WR pace"); reaching a tier for the first time gives a permanent bonus on that puzzle, every solve
       gives a short **Flow** buff (more moves for a few minutes, bigger for better tiers), PBs give mastery XP.
       The sim gets an "active" profile.

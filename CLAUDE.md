@@ -35,7 +35,8 @@ scripts/autoload/settings.gd  class GameSettings ("Settings"): every setting in 
 scenes/welcome_panel.tscn  class WelcomePanel: "Welcome back" (time away, +Solves, Collect) and damaged-save notices
 scenes/settings_panel.tscn class SettingsPanel: sound, music mode, Jukebox, graphics, reduce motion, notation, reset save
 scenes/solve_station.tscn  class SolveStation (scripts/ui/solve_station.gd): the "Solve it yourself" overlay: keyboard
-                           solving with csTimer keys, scramble, inspection, timer, session times (Phase S)
+                           solving with csTimer keys, scramble, inspection, timer, records panel (Phase S; records
+                           themselves live in GameState: record_hand_solve, get_solve_bests, ...)
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
 scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only

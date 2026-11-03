@@ -10,9 +10,10 @@ signal puzzle_unlocked(puzzle_id: String)
 signal focus_changed(puzzle_id: String)
 signal split_changed
 signal mastery_level_up(puzzle_id: String, level: int)
+signal solve_records_changed(puzzle_id: String)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 4  ## v2 (task 4.2): parallel puzzles; v3 (task 4.6): puzzle mastery; v4 (task 5.1): methods
+const SAVE_VERSION := 5  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0
 const MIN_OFFLINE_SECONDS := 10.0
@@ -20,6 +21,9 @@ const BASE_TAP_MOVES := 1.0
 const COST_GROWTH := 1.15
 const BUY_MAX := -1              ## pass as `count` to buy as many as you can afford
 const BULK_LIMIT := 10000        ## safety cap for bulk cost loops
+const SOLVE_HISTORY_LIMIT := 1000  ## hand solves kept per puzzle (records and averages are over these)
+const AVERAGE_SIZES: Array[int] = [5, 12, 50, 100]
+const PENALTIES: Array[String] = ["", "+2", "DNF"]
 
 ## Set to false before the node enters the tree to skip loading/saving (tests do this).
 var persistence_enabled := true
@@ -40,6 +44,10 @@ var mastery_xp: Dictionary = {}            ## puzzle id -> mastery XP (task 4.6)
 var _mastery_levels: Dictionary = {}       ## puzzle id -> level, cached from mastery_xp
 var buildings: Dictionary = {}  ## building id -> owned count
 var upgrades: Dictionary = {}   ## upgrade id -> true (owned)
+## Hand solves from the Solve Station (task S.2), kept through prestige:
+## puzzle id -> {"history": [{"t": seconds, "p": penalty, "m": moves, "d": unix time}, ... oldest first], "count": all ever}
+var solve_records: Dictionary = {}
+var _solve_bests: Dictionary = {}  ## puzzle id -> {"single": s, 5: s, 12: s, ...}; INF = none/DNF. Cached, not saved.
 var method := "beginner"        ## id of the newest method learned (Content.METHODS); every earlier one is learned too
 var offline_report: Dictionary = {}  ## {"seconds", "solves"} after loading, if anything was earned
 var load_notice := ""  ## Set when the save was damaged and a backup (or nothing) was loaded; the UI shows it once.
@@ -329,6 +337,110 @@ func get_method_mult() -> float:
 	for i in Content.get_method_index(method) + 1:
 		mult *= float(Content.METHODS[i]["mult"])
 	return mult
+
+
+# --- Hand solves: records (task S.2) ---------------------------------------------------
+
+## Records a finished Solve Station attempt. Returns {"final" (seconds with penalty, INF = DNF), "pb_single": bool,
+## "pb_averages": [sizes that just set a new best]}.
+func record_hand_solve(puzzle_id: String, seconds: float, penalty: String, moves: int) -> Dictionary:
+	if Content.get_puzzle(puzzle_id).is_empty() or seconds <= 0.0 or not PENALTIES.has(penalty):
+		return {}
+	var record := _solve_record(puzzle_id)
+	var bests := get_solve_bests(puzzle_id)  # before adding this solve
+	var history: Array = record["history"]
+	history.append({"t": seconds, "p": penalty, "m": moves, "d": Time.get_unix_time_from_system()})
+	while history.size() > SOLVE_HISTORY_LIMIT:
+		history.pop_front()
+	record["count"] = int(record["count"]) + 1
+	var final := final_solve_time(history.back())
+	var info := {"final": final, "pb_single": final < float(bests["single"]), "pb_averages": []}
+	bests["single"] = minf(float(bests["single"]), final)
+	for size: int in AVERAGE_SIZES:
+		var current := get_current_average(puzzle_id, size)
+		if current >= 0.0 and current < float(bests[size]):
+			bests[size] = current
+			(info["pb_averages"] as Array).append(size)
+	solve_records_changed.emit(puzzle_id)
+	return info
+
+
+## Sets a recorded solve's penalty ("", "+2", "DNF"); index into get_solve_history(). Bests are recomputed.
+func set_hand_solve_penalty(puzzle_id: String, index: int, penalty: String) -> bool:
+	var history := get_solve_history(puzzle_id)
+	if index < 0 or index >= history.size() or not PENALTIES.has(penalty):
+		return false
+	(history[index] as Dictionary)["p"] = penalty
+	_recompute_solve_bests(puzzle_id)
+	solve_records_changed.emit(puzzle_id)
+	return true
+
+
+func delete_hand_solve(puzzle_id: String, index: int) -> bool:
+	var history := get_solve_history(puzzle_id)
+	if index < 0 or index >= history.size():
+		return false
+	history.remove_at(index)
+	_recompute_solve_bests(puzzle_id)
+	solve_records_changed.emit(puzzle_id)
+	return true
+
+
+## Recorded hand solves on a puzzle, oldest first (the live array; change it only through the methods above).
+func get_solve_history(puzzle_id: String) -> Array:
+	return solve_records.get(puzzle_id, {}).get("history", [])
+
+
+## Hand solves ever recorded on a puzzle (deleted ones included; the history only keeps the last 1000).
+func get_hand_solve_count(puzzle_id: String) -> int:
+	return int(solve_records.get(puzzle_id, {}).get("count", 0))
+
+
+## {"single": seconds, 5: seconds, 12: ..., 50: ..., 100: ...}; INF = no record yet (or only DNFs).
+func get_solve_bests(puzzle_id: String) -> Dictionary:
+	if not _solve_bests.has(puzzle_id):
+		_recompute_solve_bests(puzzle_id)
+	return _solve_bests[puzzle_id]
+
+
+## The average of the last `size` solves (WCA trimming), -1 if there aren't that many, INF if it's a DNF.
+func get_current_average(puzzle_id: String, size: int) -> float:
+	var history := get_solve_history(puzzle_id)
+	if history.size() < size:
+		return -1.0
+	return _average_at(history, history.size() - size, size)
+
+
+## A recorded solve's time with its penalty (+2 adds 2 s, DNF = INF).
+static func final_solve_time(entry: Dictionary) -> float:
+	return SolveSession.final_time({"time": float(entry.get("t", 0.0)), "penalty": String(entry.get("p", ""))})
+
+
+func _average_at(history: Array, start: int, size: int) -> float:
+	var times: Array[float] = []
+	for i in range(start, start + size):
+		times.append(final_solve_time(history[i]))
+	return SolveSession.trimmed_average(times, SolveSession.trim_count(size))
+
+
+func _solve_record(puzzle_id: String) -> Dictionary:
+	if not solve_records.has(puzzle_id):
+		solve_records[puzzle_id] = {"history": [], "count": 0}
+	return solve_records[puzzle_id]
+
+
+## Bests over the kept history (after an edit, a delete or a load).
+func _recompute_solve_bests(puzzle_id: String) -> void:
+	var history := get_solve_history(puzzle_id)
+	var bests := {"single": INF}
+	for entry: Dictionary in history:
+		bests["single"] = minf(float(bests["single"]), final_solve_time(entry))
+	for size: int in AVERAGE_SIZES:
+		var best := INF
+		for start in history.size() - size + 1:
+			best = minf(best, _average_at(history, start, size))
+		bests[size] = best
+	_solve_bests[puzzle_id] = bests
 
 
 # --- Puzzles (D9) -------------------------------------------------------------------
@@ -664,6 +776,8 @@ func reset_state() -> void:
 		buildings[def["id"]] = 0
 	upgrades.clear()
 	method = Content.METHODS[0]["id"]
+	solve_records.clear()
+	_solve_bests.clear()
 	offline_report = {}
 
 
@@ -684,6 +798,7 @@ func get_save_data() -> Dictionary:
 		"buildings": buildings.duplicate(),
 		"upgrades": upgrades.keys(),
 		"method": method,
+		"solve_records": solve_records.duplicate(true),
 	}
 
 
@@ -809,6 +924,18 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	var saved_method := str(data.get("method", ""))
 	if Content.get_method_index(saved_method) >= 0:  # an unknown id (removed from Content) keeps the Beginner Method
 		method = saved_method
+	var saved_records: Dictionary = data.get("solve_records", {})
+	for id: String in saved_records:
+		if Content.get_puzzle(id).is_empty():
+			continue
+		var history: Array = []
+		for entry: Variant in (saved_records[id] as Dictionary).get("history", []):
+			if typeof(entry) == TYPE_DICTIONARY and float((entry as Dictionary).get("t", 0.0)) > 0.0:
+				var penalty := String((entry as Dictionary).get("p", ""))
+				history.append({"t": float(entry["t"]), "p": penalty if PENALTIES.has(penalty) else "",
+						"m": int((entry as Dictionary).get("m", 0)), "d": float((entry as Dictionary).get("d", 0.0))})
+		history = history.slice(maxi(0, history.size() - SOLVE_HISTORY_LIMIT))
+		solve_records[id] = {"history": history, "count": maxi(history.size(), int((saved_records[id] as Dictionary).get("count", 0)))}
 
 	var saved_at := float(data.get("saved_at", now))
 	var elapsed := clampf(now - saved_at, 0.0, MAX_OFFLINE_SECONDS)
@@ -858,6 +985,11 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("method"):
 			data["method"] = learned
 		data["version"] = 4
+	if int(data["version"]) < 5:
+		# v5 keeps hand solves from the Solve Station; nobody had any before.
+		if not data.has("solve_records"):
+			data["solve_records"] = {}
+		data["version"] = 5
 	return data
 
 

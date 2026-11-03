@@ -1981,7 +1981,15 @@ func test_solve_station() -> void:
 	view.finish_animations()
 	check(station.session.state == "done", "solving with the keyboard finishes the attempt")
 	check((station.get_node("%TimerLabel") as Label).theme_type_variation == &"TimerDone", "the timer turns green")
-	check((station.get_node("%TimesList") as Label).text.begins_with("1."), "the time goes in the session list")
+	check(game.get_solve_history("3x3").size() == 1 and game.get_hand_solve_count("3x3") == 1, "the solve is recorded in GameState")
+	check(station.last_info.get("pb_single", false), "the first solve is a PB single")
+	var rows := station.get_node("%TimesRows") as VBoxContainer
+	check(rows.get_child_count() == 1 and (rows.get_child(0).get_child(0) as Label).text.begins_with("1."), "it shows in the times list")
+	(rows.get_child(0).get_child(2) as Button).pressed.emit()  # DNF
+	check(game.get_solve_history("3x3")[0]["p"] == "DNF", "the row's DNF button sets the penalty")
+	station._refresh()
+	(rows.get_child(0).get_child(3) as Button).pressed.emit()  # ×
+	check(game.get_solve_history("3x3").is_empty(), "the × button deletes the time")
 	check(view.model.is_solved(), "the view shows it solved")
 	station.handle_key(KEY_ENTER)
 	check(station.session.state == "inspecting" and not station.session.model.is_solved(), "Enter scrambles the next attempt")
@@ -1989,3 +1997,73 @@ func test_solve_station() -> void:
 	check(not station.visible, "Esc closes the station")
 	main.free()
 	game.reset_state()
+
+
+# --- Solve records (task S.2) -------------------------------------------------------
+
+func test_solve_records() -> void:
+	var g := new_game()
+	var changes := []
+	g.solve_records_changed.connect(func(id: String) -> void: changes.append(id))
+	check(g.get_solve_history("3x3").is_empty() and is_inf(float(g.get_solve_bests("3x3")["single"])), "no records at the start")
+	check(g.record_hand_solve("nope", 10.0, "", 50).is_empty() and g.record_hand_solve("3x3", 10.0, "+3", 50).is_empty(), "bad input is ignored")
+	var info := g.record_hand_solve("3x3", 12.0, "", 50)
+	check(info["pb_single"] and is_equal_approx(float(info["final"]), 12.0), "the first solve is a PB")
+	check(changes == ["3x3"], "recording is signalled")
+	check(not g.record_hand_solve("3x3", 13.0, "", 50)["pb_single"], "a slower solve isn't")
+	check(g.record_hand_solve("3x3", 11.0, "+2", 50)["pb_single"] == false, "11 + 2 = 13 isn't a PB either")
+	check(g.record_hand_solve("3x3", 9.0, "", 50)["pb_single"], "9 is")
+	info = g.record_hand_solve("3x3", 10.0, "", 50)
+	check(info["pb_averages"] == [5], "the fifth solve sets the first ao5")
+	check_near(g.get_current_average("3x3", 5), 11.67, "ao5 of 12, 13, 13 (+2), 9, 10 = (10 + 12 + 13) / 3, rounded")
+	check(g.get_current_average("3x3", 12) < 0.0, "no ao12 yet")
+	check(g.set_hand_solve_penalty("3x3", 3, "DNF"), "mark the 9 as a DNF")
+	check_near(float(g.get_solve_bests("3x3")["single"]), 10.0, "the PB single is recomputed without it")
+	check_near(g.get_current_average("3x3", 5), 12.67, "one DNF is dropped as the worst: (12 + 13 + 13) / 3")
+	check(g.delete_hand_solve("3x3", 0) and g.get_solve_history("3x3").size() == 4, "delete a time")
+	check(g.get_hand_solve_count("3x3") == 5, "the all-time count keeps deleted solves")
+	check(not g.set_hand_solve_penalty("3x3", 99, "") and not g.delete_hand_solve("3x3", -1), "bad indices are refused")
+	# ao50 trims 3 each side (csTimer): 47 good times and 3 DNFs is still an average, 4 DNFs isn't.
+	var times: Array[float] = []
+	for i in 47:
+		times.append(10.0)
+	for i in 3:
+		times.append(INF)
+	check_near(SolveSession.trimmed_average(times, SolveSession.trim_count(50)), 10.0, "ao50 survives 3 DNFs")
+	times[0] = INF
+	check(is_inf(SolveSession.trimmed_average(times, SolveSession.trim_count(50))), "...but not 4")
+	check(SolveSession.trim_count(5) == 1 and SolveSession.trim_count(12) == 1 and SolveSession.trim_count(100) == 5, "trim sizes")
+	# History cap: bests set before old solves drop off are kept.
+	var capped := new_game()
+	capped.record_hand_solve("2x2", 1.5, "", 10)
+	for i in GameState.SOLVE_HISTORY_LIMIT:
+		capped.record_hand_solve("2x2", 5.0, "", 10)
+	check(capped.get_solve_history("2x2").size() == GameState.SOLVE_HISTORY_LIMIT, "the history keeps the last 1000 solves")
+	check_near(float(capped.get_solve_bests("2x2")["single"]), 1.5, "an old PB survives dropping out of the history")
+	# Save round trip
+	var data := g.get_save_data()
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.get_solve_history("3x3").size() == 4 and loaded.get_hand_solve_count("3x3") == 5, "records survive save/load")
+	check(loaded.get_solve_history("3x3")[2]["p"] == "DNF", "...penalties too")
+	check_near(float(loaded.get_solve_bests("3x3")["single"]), float(g.get_solve_bests("3x3")["single"]), "...and the bests are rebuilt")
+	g.free()
+	capped.free()
+	loaded.free()
+
+
+func test_save_v4_to_v5_migration() -> void:
+	var v4 := {"version": 4, "saved_at": 1000.0, "solves": 10.0, "total_solves": 900.0, "total_moves": 9000.0,
+		"puzzles": {"unlocked": ["2x2", "3x3"], "progress": {}, "focus": "3x3", "split": {"3x3": 1.0}},
+		"mastery": {}, "buildings": {"friend": 4}, "upgrades": ["lube"], "method": "cfop"}
+	var g := new_game()
+	g.apply_save_data(v4.duplicate(true), 1000.0)
+	check(g.method == "cfop" and g.buildings["friend"] == 4, "a v4 save loads")
+	check(g.get_solve_history("3x3").is_empty() and g.get_hand_solve_count("3x3") == 0, "with no hand solves yet")
+	var data := g.get_save_data()
+	check(int(data["version"]) == 5 and data.has("solve_records"), "it saves as v5")
+	var junk := data.duplicate(true)
+	junk["solve_records"] = {"3x3": {"history": [{"t": 8.5, "p": "+7", "m": 40}, "bad", {"t": -1.0}], "count": 1}, "pyraminx": {}}
+	g.apply_save_data(junk, float(data["saved_at"]))
+	check(g.get_solve_history("3x3").size() == 1 and g.get_solve_history("3x3")[0]["p"] == "", "damaged entries are cleaned up")
+	g.free()

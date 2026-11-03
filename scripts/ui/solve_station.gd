@@ -2,19 +2,22 @@ class_name SolveStation
 extends Control
 ## The Solve Station (task S.1): solve the puzzles yourself, csTimer-style. A full-screen overlay with its own 3D puzzle,
 ## turned with the keyboard (Content.SOLVE_KEYS, by physical key), a WCA scramble, inspection, a big timer and this
-## session's times. The rules live in SolveSession; this script only shows them and forwards keys.
-## Records and rewards come in S.2/S.3 (through GameState). Uses Game/Settings/Audio by name, so tests use it untyped.
+## puzzle's records (S.2: PBs, current averages, the times with +2/DNF/delete). The solving rules live in SolveSession,
+## the records in GameState; this script only shows them and forwards keys.
+## Uses Game/Settings/Audio by name, so tests use it untyped.
 
 const TURN_TIME := 0.055      ## quarter-turn animation here: snappy enough for 8+ TPS
-const LIST_LENGTH := 50       ## times shown in the list
+const LIST_LENGTH := 50       ## times shown in the list (the newest)
 
 @onready var _view: PuzzleView3D = %View
 @onready var _scramble_label: Label = %ScrambleLabel
 @onready var _timer_label: Label = %TimerLabel
 @onready var _status_label: Label = %StatusLabel
 @onready var _hand_label: Label = %HandLabel
-@onready var _session_stats: Label = %SessionStats
-@onready var _times_list: Label = %TimesList
+@onready var _records_title: Label = %RecordsTitle
+@onready var _bests_label: Label = %BestsLabel
+@onready var _current_label: Label = %CurrentLabel
+@onready var _times_rows: VBoxContainer = %TimesRows
 @onready var _keys_help: Label = %KeysHelp
 @onready var _puzzle_picker: HBoxContainer = %PuzzlePicker
 @onready var _inspection_toggle: Button = %InspectionToggle
@@ -25,7 +28,8 @@ var session := SolveSession.new()
 var frozen_now := -1.0     ## screenshots: show the clock at this time instead of the real one
 var _picker_buttons: Dictionary = {}  ## puzzle id -> Button
 var _puzzle := "3x3"
-var _shown_results := -1
+var _records_dirty := true
+var last_info: Dictionary = {}       ## what Game.record_hand_solve() said about the last solve (PBs)
 
 
 func _ready() -> void:
@@ -34,6 +38,7 @@ func _ready() -> void:
 	_close_button.pressed.connect(close)
 	_keys_toggle.toggled.connect(func(on: bool) -> void: _keys_help.visible = on)
 	_inspection_toggle.toggled.connect(_on_inspection_toggled)
+	Game.solve_records_changed.connect(func(_id: String) -> void: _records_dirty = true)
 	set_process(false)
 
 
@@ -60,7 +65,7 @@ func select_puzzle(puzzle_id: String) -> void:
 	_puzzle = puzzle_id
 	if session.puzzle_id != puzzle_id:
 		session.results.clear()
-		_shown_results = -1
+	_records_dirty = true
 	for id: String in _picker_buttons:
 		(_picker_buttons[id] as Button).set_pressed_no_signal(id == puzzle_id)
 	if _view.puzzle_id != puzzle_id:
@@ -72,6 +77,7 @@ func select_puzzle(puzzle_id: String) -> void:
 func new_attempt(rng: RandomNumberGenerator = null) -> void:
 	session.inspection = bool(Settings.get_value("inspection"))
 	session.start(_puzzle, _now(), rng)
+	last_info = {}
 	_view.show_state(session.scramble)
 	_scramble_label.text = session.scramble_text()
 	_keys_help.text = keys_help_text()
@@ -141,6 +147,9 @@ func handle_key(code: int) -> void:
 	if not move.is_empty():
 		_view.turn(move)
 		if session.state == "done" and not was_done:
+			var result: Dictionary = session.results.back()
+			last_info = Game.record_hand_solve(session.puzzle_id, float(result["time"]), String(result["penalty"]),
+					int(result["moves"]))
 			_view.flash()
 			Audio.play_solve()
 	_refresh()
@@ -163,9 +172,9 @@ func _refresh() -> void:
 	_refresh_clock()
 	var hands := session.model != null and session.model.size > 3
 	_hand_label.text = "Hands: left %d · right %d" % [session.left_hand, session.right_hand] if hands else " "
-	if _shown_results != session.results.size():
-		_shown_results = session.results.size()
-		_refresh_times()
+	if _records_dirty:
+		_records_dirty = false
+		_refresh_records()
 
 
 func _refresh_clock() -> void:
@@ -188,30 +197,84 @@ func _refresh_clock() -> void:
 			var result: Dictionary = session.results.back()
 			_timer_label.text = result_text(result)
 			_timer_label.theme_type_variation = &"TimerDone"
-			_status_label.text = "Solved!  %d moves  ·  %.2f TPS%s  ·  Enter: next scramble" % [
-				int(result["moves"]), session.tps(now), "  ·  new session best" if _is_session_best(result) else ""]
+			_status_label.text = "%s  %d moves  ·  %.2f TPS  ·  Enter: next scramble" % [
+				pb_text(last_info), int(result["moves"]), session.tps(now)]
 		_:
 			_timer_label.text = "0.00"
 			_status_label.text = " "
 
 
-func _refresh_times() -> void:
-	var avg5 := session.average(5)
-	var avg12 := session.average(12)
-	_session_stats.text = "Best %s  ·  ao5 %s  ·  ao12 %s" % [
-		"—" if session.results.is_empty() else Num.solve_time(session.best()),
-		"—" if avg5 < 0.0 else Num.solve_time(avg5),
-		"—" if avg12 < 0.0 else Num.solve_time(avg12),
-	]
-	if session.results.is_empty():
-		_times_list.text = "No solves yet. Scramble's ready: inspect, then turn."
+func _refresh_records() -> void:
+	var id := _puzzle
+	_records_title.text = "%s records  ·  %d solves" % [Content.get_puzzle(id)["name"], Game.get_hand_solve_count(id)]
+	var bests: Dictionary = Game.get_solve_bests(id)
+	var best_parts := PackedStringArray(["single %s" % _time_or_dash(float(bests["single"]))])
+	var now_parts := PackedStringArray()
+	for size: int in Game.AVERAGE_SIZES:
+		best_parts.append("ao%d %s" % [size, _time_or_dash(float(bests[size]))])
+		var current: float = Game.get_current_average(id, size)
+		now_parts.append("ao%d %s" % [size, "—" if current < 0.0 else Num.solve_time(current)])
+	_bests_label.text = "PB   " + "  ·  ".join(best_parts)
+	_current_label.text = "Now  " + "  ·  ".join(now_parts)
+	for child in _times_rows.get_children():
+		_times_rows.remove_child(child)
+		child.queue_free()
+	var history: Array = Game.get_solve_history(id)
+	if history.is_empty():
+		var empty := Label.new()
+		empty.theme_type_variation = &"DimLabel"
+		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		empty.text = "No solves yet. Inspect, then turn: your times are saved here."
+		_times_rows.add_child(empty)
 		return
-	var lines := PackedStringArray()
-	var count := session.results.size()
-	for i in range(count - 1, maxi(-1, count - 1 - LIST_LENGTH), -1):
-		var result: Dictionary = session.results[i]
-		lines.append("%d.  %s   (%d moves)" % [i + 1, result_text(result), int(result["moves"])])
-	_times_list.text = "\n".join(lines)
+	for i in range(history.size() - 1, maxi(-1, history.size() - 1 - LIST_LENGTH), -1):
+		_times_rows.add_child(_time_row(id, i, history[i]))
+
+
+## One line of the times list: "34.  12.34+   52 moves" and +2 / DNF / × buttons.
+func _time_row(id: String, index: int, entry: Dictionary) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	var label := Label.new()
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.theme_type_variation = &"CardLine"
+	label.text = "%d.  %s   %d moves" % [index + 1, result_text({"time": entry["t"], "penalty": entry["p"]}), int(entry["m"])]
+	row.add_child(label)
+	for penalty: String in ["+2", "DNF"]:
+		var toggle := _row_button(penalty, &"ToggleChip")
+		toggle.toggle_mode = true
+		toggle.set_pressed_no_signal(entry["p"] == penalty)
+		toggle.pressed.connect(func() -> void:
+			Game.set_hand_solve_penalty(id, index, "" if entry["p"] == penalty else penalty))
+		row.add_child(toggle)
+	var delete := _row_button("×", &"SubtleButton")
+	delete.tooltip_text = "Delete this time"
+	delete.pressed.connect(func() -> void: Game.delete_hand_solve(id, index))
+	row.add_child(delete)
+	return row
+
+
+func _row_button(text: String, variation: StringName) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.focus_mode = Control.FOCUS_NONE
+	button.theme_type_variation = variation
+	return button
+
+
+static func _time_or_dash(seconds: float) -> String:
+	return "—" if is_inf(seconds) else Num.solve_time(seconds)
+
+
+## "Solved!" or the PBs the last solve set ("New PB single and ao5!").
+static func pb_text(info: Dictionary) -> String:
+	var parts := PackedStringArray()
+	if info.get("pb_single", false):
+		parts.append("single")
+	for size: int in info.get("pb_averages", []):
+		parts.append("ao%d" % size)
+	if parts.is_empty():
+		return "Solved!"
+	return "New PB %s!" % " and ".join(parts) if parts.size() <= 2 else "New PB %s!" % ", ".join(parts)
 
 
 ## "12.34", "14.34+" (a +2) or "DNF(12.34)", as csTimer writes them.
@@ -222,11 +285,6 @@ static func result_text(result: Dictionary) -> String:
 		"+2":
 			return Num.solve_time(SolveSession.final_time(result)) + "+"
 	return Num.solve_time(float(result["time"]))
-
-
-func _is_session_best(result: Dictionary) -> bool:
-	return session.results.size() > 1 and not is_inf(SolveSession.final_time(result)) \
-			and is_equal_approx(SolveSession.final_time(result), session.best())
 
 
 func _build_picker() -> void:

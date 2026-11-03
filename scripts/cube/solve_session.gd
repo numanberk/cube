@@ -201,10 +201,17 @@ func average(count: int) -> float:
 	return SolveSession.trimmed_average(times)
 
 
-static func trimmed_average(times: Array[float]) -> float:
+## How many of the best and of the worst times an average drops: 1 up to ao12 (WCA), then 5 % each side (csTimer:
+## ao50 drops 3, ao100 drops 5).
+static func trim_count(size: int) -> int:
+	return 1 if size <= 12 else ceili(size * 0.05)
+
+
+## Mean after dropping `trim` best and `trim` worst times. More DNFs (INF) than `trim` make it a DNF (INF).
+static func trimmed_average(times: Array[float], trim: int = 1) -> float:
 	var sorted := times.duplicate()
 	sorted.sort()
-	var counted := sorted.slice(1, sorted.size() - 1)
+	var counted := sorted.slice(trim, sorted.size() - trim)
 	var total := 0.0
 	for t: float in counted:
 		if is_inf(t):

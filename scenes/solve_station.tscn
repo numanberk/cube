@@ -131,16 +131,25 @@ theme_type_variation = &"SidePanel"
 [node name="SideBox" type="VBoxContainer" parent="Margin/Rows/Body/Side"]
 layout_mode = 2
 
-[node name="SessionTitle" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
+[node name="RecordsTitle" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"CardTitle"
-text = "This session"
+text = "3×3 records"
 
-[node name="SessionStats" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
+[node name="BestsLabel" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"CardLine"
-text = "Best —  ·  ao5 —  ·  ao12 —"
+text = "PB  single —"
+autowrap_mode = 3
+
+[node name="CurrentLabel" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"CardLine"
+text = "Now  ao5 —"
+autowrap_mode = 3
 
 [node name="TimesScroll" type="ScrollContainer" parent="Margin/Rows/Body/Side/SideBox"]
 unique_name_in_owner = true
@@ -148,13 +157,10 @@ layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="TimesList" type="Label" parent="Margin/Rows/Body/Side/SideBox/TimesScroll"]
+[node name="TimesRows" type="VBoxContainer" parent="Margin/Rows/Body/Side/SideBox/TimesScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"DimLabel"
-text = "No solves yet."
-autowrap_mode = 3
 
 [node name="KeysHelp" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
 unique_name_in_owner = true

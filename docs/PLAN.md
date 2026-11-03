@@ -319,11 +319,11 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
 - **D11 Automation depth:** **toggles + menu-based Coach rules** (no scripting language).
 - **D12 Second prestige layer:** **before 1.0**. The Hall of Fame is tasks 8.6–8.8.
 
+- **D13 Hand-solve rewards:** **~2–3×** (owner, 2026-11-03): an active player who keeps solving in the Solve Station earns
+  about 2–3× an idle one (short Flow boosts per solve, bigger for faster tiers, plus permanent per-puzzle bonuses for
+  time targets). Idling is never pointless. Built in S.3; the sim's "active" profile checks it.
+
 ### Open
-- **D13 Hand-solve rewards** (needed by S.3): how much should solving the puzzles yourself be worth compared with idling?
-  *Recommended:* an active player earns about **2–3×** an idle one over a session (short Flow buffs per solve, bigger for
-  faster tiers), plus permanent per-puzzle bonuses for reaching time targets, so practice always pays but idling is never
-  pointless. Alternatives: (a) small (≈1.2×, mostly cosmetic records), (b) large (≈5–10×, the station becomes the main game).
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?
 - **D4 Price** (needed by 10.2): free, pay-what-you-want on itch, or paid on Steam?
   *Either way, only CC0/CC-BY assets, so a paid release stays possible.*

@@ -100,8 +100,8 @@ func _stage_solve(station: Node, mode: String, puzzle: String) -> void:
 	station.new_attempt(rng)
 	var session: SolveSession = station.session
 	if mode != "inspecting":
-		for t: float in [9.84, 11.02, 8.77, 12.41, 10.36]:  # earlier attempts, so the list and averages show
-			session.results.append({"time": t, "penalty": "+2" if t == 12.41 else "", "moves": 58, "scramble": ""})
+		for t: float in [9.84, 11.02, 8.77, 12.41, 10.36, 9.95, 11.48]:  # earlier solves, so the records show
+			Game.record_hand_solve(puzzle, t, "+2" if t == 12.41 else "", 58)
 	if mode == "inspecting":
 		station.frozen_now = 106.2
 		station.handle_key(KEY_SEMICOLON)  # a y rotation during inspection
@@ -115,6 +115,8 @@ func _stage_solve(station: Node, mode: String, puzzle: String) -> void:
 		now += 0.37
 	station.frozen_now = now - 0.37 if mode == "done" else now + 0.2
 	if mode == "done":
+		var result: Dictionary = session.results.back()
+		station.last_info = Game.record_hand_solve(puzzle, float(result["time"]), String(result["penalty"]), int(result["moves"]))
 		station.get_node("%View").flash()
 	station._refresh()
 

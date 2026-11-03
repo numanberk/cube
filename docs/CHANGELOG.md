@@ -2,6 +2,49 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task S.2: solve records (save v5) + D13 answered + handoff notes
+- **D13 answered by the owner: ~2–3×.** An active player who keeps solving earns about 2–3× an idle one (PLAN §7).
+- **Records in GameState** (rule 1): `record_hand_solve(id, seconds, penalty, moves)` returns
+  {final, pb_single, pb_averages}; `set_hand_solve_penalty()`, `delete_hand_solve()`, `get_solve_history()`,
+  `get_hand_solve_count()`, `get_solve_bests()` ({single, 5, 12, 50, 100}, INF = none), `get_current_average()`,
+  signal `solve_records_changed`. Averages: WCA trim 1 up to ao12, then 5 % each side (ao50 drops 3, ao100 drops 5);
+  more DNFs than the trim = DNF; averages rounded, singles truncated (`SolveSession.trim_count/trimmed_average`).
+  The last 1000 solves per puzzle are kept; bests are cached and only fully recomputed after an edit/delete/load (so a
+  PB older than the last 1000 survives until you edit a time). Kept through prestige (6.2 must not reset `solve_records`).
+- **Save v5** adds `solve_records` (puzzle id -> {history: [{t, p, m, d}], count}); damaged entries are cleaned on load.
+  Planned: v6 prestige, v7 achievements.
+- **Station:** the side panel is now "3×3 records · N solves": PB single/ao5/ao12/ao50/ao100, current averages, and the
+  last 50 times with +2 / DNF toggles and × delete. The status line says "New PB single and ao5!".
+- Tests (1640 checks, `All good.`): PB detection, penalties changing bests, delete, all-time count, ao50 DNF rule,
+  trim sizes, history cap keeping an old PB, save/load, v4 → v5 migration with junk entries, station buttons.
+  Screenshot: `docs/screenshots/S.2-records/mid_solvedone.png`.
+
+### Handoff: where things stand and what to do next (written for the next chat)
+- **Order from here** (a parallel session added R.1–R.6, see the entry below): **R.1 staged solver → R.2 showcase solve →
+  R.3 cube times + goals → R.4 news feed → S.6 Golden Scramble → S.3 rewards → S.4 …**. The owner's two complaints were
+  "nothing to do" (Phase S) and "the main cube is just random scrambles" (R.*); R.1–R.4 fix the second and are next.
+  R.1 is the hard one: a real staged solver (Beginner + CFOP) as a pure class; use TwistyModel (exact, tested) and keep
+  algorithms as data shared with S.4. R.2 should use PuzzleView3D's manual mode from S.1 (`show_state`, `turn`, `turn_time`).
+- **S.3 Rewards (D13 = ~2–3×), when you get there.** Suggested design, all as data in `content.gd` and logic in `GameState`:
+  - `SOLVE_TARGETS` per puzzle: tier times for *keyboard* solving (keyboard is slower than a real cube; elite csTimer
+    keyboard 3×3 is ~8–10 s). Starting guess (s): 2×2 30/20/12/8/5/3, 3×3 90/60/40/25/15/10, 4×4 240/150/100/70/50/35,
+    5×5 420/270/180/120/90/65, 7×7 1200/800/550/400/300/220, tiers Bronze/Silver/Gold/Platinum/Diamond/Master.
+    Ask the owner what the player's real csTimer averages are and tune so Gold is "good for them", Master is a stretch.
+  - **Flow buff:** every non-DNF hand solve sets all moves ×F for ~120 s (refreshes, doesn't stack); F from the solve's
+    tier, about ×1.5 untiered up to ×3 at Master, so continuous solving lands at 2–3×. Don't save Flow (it ends on quit),
+    and never apply it to offline progress.
+  - **Permanent:** the best tier reached on a puzzle (derived from the PB single) gives +5 % moves on that puzzle per tier.
+  - **Mastery XP:** a hand solve gives the XP of ~10 idle solves on that puzzle; a PB single ×5.
+  - Add an "active" profile to `tools/simulator.gd` (e.g. a 3×3 Gold solve every 45 s) and a pacing target in
+    `tools/pacing.gd` that active/idle income at 30 min is between 2× and 3×. Show the Flow timer on the main screen.
+- **After S.3: S.4–S.8** in roadmap order (then R.5/R.6). S.4 (PLL/OLL drills) is the most "pro" feature: put algorithms in data and add a
+  test that applies each algorithm to its generated case and checks the cube ends solved (TwistyModel can do this today).
+  Then back to Phase 5 (5.2 milestones, 5.3, 5.5, 5.6 Algorithm Lab, 5.8 rebalance), which fixes the 30-min content gap.
+- **Things to watch:** the economy runs out of new content at ~51 min (BALANCE.md); 5.8 is what fixes pacing, but the
+  Robot/4×4/5×5 still come too early. `_recompute_solve_bests` is O(history × size) (~0.1 s for 1000 solves on ao100);
+  fine now, optimise if edits feel slow. Station key handling is in `_input` and marks every key handled while open.
+- **Ask the owner:** the player's real csTimer times (for S.3 targets); whether turn animation (0.055 s) feels right;
+  whether any key differs from their csTimer setup (some players remap; a key-rebinding option could be added).
 ## 2026-11-03 — Roadmap: "Readable main screen" (R.1–R.6), docs only
 - **Owner feedback:** the main cube is "just some random scrambles", hard to follow, and "nothing happens". Measured: helper
   moves are random face turns and a solve is the history rewound; past 12 moves/s it only wobbles; the moves-to-next-solve
