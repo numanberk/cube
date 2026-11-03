@@ -1099,7 +1099,9 @@ func test_tracks_data() -> void:
 	g.unlock_puzzle("3x3")
 	check(g.get_unlocked_track_ids() == (["practice_room", "first_sub_20"] as Array[String]), "unlocking the 3x3 unlocks its track")
 	check(g.get_track_for_puzzle("3x3") == "first_sub_20", "3x3's track is First Sub-20")
-	check(g.get_track_for_puzzle("4x4") == "", "a track without a file isn't offered")
+	check(g.get_track_for_puzzle("4x4") == "parity", "the 4x4's track is Parity")
+	for def: Dictionary in Content.TRACKS:
+		check(def["file"] != "", "track %s has a file (placeholder until D8)" % def["id"])
 	g.free()
 
 
@@ -1523,3 +1525,38 @@ func test_megaminx_view() -> void:
 	view.set_puzzle("3x3")
 	check(view._mega_pieces.is_empty() and view._bodies.multimesh != null, "switching back to a cube uses the MultiMeshes again")
 	view.free()
+
+
+
+func test_jukebox_locks() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var settings: GameSettings = root.get_node("Settings")
+	settings.persistence_enabled = false
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var panel: Control = main.get_node("%SettingsPanel")
+	panel.open()
+	var rows: Array = panel._jukebox.get_children()
+	check(rows.size() == Content.TRACKS.size(), "a Jukebox row per track")
+	check(rows[0] is Button, "Practice Room (2x2) is playable from the start")
+	check(rows[1] is Label and (rows[1] as Label).text.contains("Unlock 3×3 to hear this"), "First Sub-20 says unlock the 3x3")
+	check((rows[5] as Label).text.contains("Unlock Megaminx"), "Twelve Faces says unlock the Megaminx")
+	check((rows[6] as Label).text.contains("World Championship"), "Finals says win a World Championship")
+	game.cheat_add_solves(2e6)
+	game.unlock_puzzle("3x3")
+	game.unlock_puzzle("4x4")
+	game.unlock_puzzle("5x5")
+	panel.sync()
+	rows = panel._jukebox.get_children()
+	var playable := 0
+	for row in rows:
+		if row is Button:
+			playable += 1
+	check(playable == 4, "after unlocking up to the 5x5, four tracks are playable")
+	check(rows[4] is Label and (rows[4] as Label).text.contains("Unlock 7×7"), "Long Solve still needs the 7x7")
+	panel.close()
+	main.free()
+	settings.persistence_enabled = true
+	game.reset_state()

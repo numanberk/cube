@@ -156,11 +156,16 @@ const TRACKS := [
 		"file": "res://assets/audio/music/practice_room.wav", "unlock": "2x2"},
 	{"id": "first_sub_20", "title": "First Sub-20", "artist": "Cube Idle (placeholder)", "license": "CC0",
 		"file": "res://assets/audio/music/first_sub_20.wav", "unlock": "3x3"},
-	{"id": "parity", "title": "Parity", "artist": "", "license": "", "file": "", "unlock": "4x4"},
-	{"id": "big_cube_energy", "title": "Big Cube Energy", "artist": "", "license": "", "file": "", "unlock": "5x5"},
-	{"id": "long_solve", "title": "Long Solve", "artist": "", "license": "", "file": "", "unlock": "7x7"},
-	{"id": "twelve_faces", "title": "Twelve Faces", "artist": "", "license": "", "file": "", "unlock": "megaminx"},
-	{"id": "finals", "title": "Finals", "artist": "", "license": "", "file": "", "unlock": "championship"},
+	{"id": "parity", "title": "Parity", "artist": "Cube Idle (placeholder)", "license": "CC0",
+		"file": "res://assets/audio/music/parity.wav", "unlock": "4x4"},
+	{"id": "big_cube_energy", "title": "Big Cube Energy", "artist": "Cube Idle (placeholder)", "license": "CC0",
+		"file": "res://assets/audio/music/big_cube_energy.wav", "unlock": "5x5"},
+	{"id": "long_solve", "title": "Long Solve", "artist": "Cube Idle (placeholder)", "license": "CC0",
+		"file": "res://assets/audio/music/long_solve.wav", "unlock": "7x7"},
+	{"id": "twelve_faces", "title": "Twelve Faces", "artist": "Cube Idle (placeholder)", "license": "CC0",
+		"file": "res://assets/audio/music/twelve_faces.wav", "unlock": "megaminx"},
+	{"id": "finals", "title": "Finals", "artist": "Cube Idle (placeholder)", "license": "CC0",
+		"file": "res://assets/audio/music/finals.wav", "unlock": "championship"},
 ]
 
 const ICON_DIR := "res://assets/icons/"

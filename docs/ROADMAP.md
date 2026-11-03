@@ -120,7 +120,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] **4.4 Megaminx:** `PuzzleShapes.megaminx()` (12 faces, 72° turns, Pochmann notation `R++ D-- U`), with the view rendering
       pentagonal pieces.
       *Done when:* model tests cover a move applied 5× = solved and scramble + inverse = solved, and there's a screenshot.
-- [ ] **4.5 More placeholder tracks:** one per remaining puzzle tier plus "Finals" (or candidates listed for the owner).
+- [x] **4.5 More placeholder tracks:** one per remaining puzzle tier plus "Finals" (or candidates listed for the owner).
       *Done when:* every `Content.TRACKS` entry has a file or an explicit "owner to supply" note in CREDITS, and the
       Jukebox shows them correctly locked/unlocked.
 - [ ] **4.6 Puzzle Mastery (PR):** each puzzle gains mastery XP from its own solves, so every running puzzle levels in parallel

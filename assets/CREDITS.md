@@ -29,6 +29,14 @@ filtered noise). Released as **CC0** by the project; no third-party material.
 |---|---|---|---|
 | `assets/audio/music/practice_room.wav` | Practice Room (2×2), 70 BPM, Fmaj7–Em7–Dm7–Cmaj7 | Cube Idle (placeholder) | CC0 |
 | `assets/audio/music/first_sub_20.wav` | First Sub-20 (3×3), 80 BPM, Dm9–G13–Cmaj9–A7b9 | Cube Idle (placeholder) | CC0 |
+| `assets/audio/music/parity.wav` | Parity (4×4), 84 BPM, walking bass, plucked licks | Cube Idle (placeholder) | CC0 |
+| `assets/audio/music/big_cube_energy.wav` | Big Cube Energy (5×5), 92 BPM, brighter drums, synth lead | Cube Idle (placeholder) | CC0 |
+| `assets/audio/music/long_solve.wav` | Long Solve (7×7), 66 BPM, ambient pads, rain | Cube Idle (placeholder) | CC0 |
+| `assets/audio/music/twelve_faces.wav` | Twelve Faces (Megaminx), 78 BPM, kalimba melody | Cube Idle (placeholder) | CC0 |
+| `assets/audio/music/finals.wav` | Finals (World Championship), 88 BPM, celebratory, lead + kalimba hook | Cube Idle (placeholder) | CC0 |
+
+**Owner to supply:** the final soundtrack (open decision D8). Replace a file here and its `Content.TRACKS` entry
+(title, artist, license, file) together; only CC0 or CC-BY.
 
 ## Images
 Icons from [game-icons.net](https://game-icons.net) (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/).

@@ -2,6 +2,23 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task 4.5: the rest of the placeholder tracks
+- `tools/make_music.py` now makes all 7 tracks (`python3 tools/make_music.py [file.wav ...]`; ~25 s for all), adding
+  plucked guitar (Karplus-Strong), kalimba, a soft synth lead and a `melody()` helper. Flavours from PLAN §4.3:
+  **Parity** (4×4, 84 BPM, walking bass and plucked licks), **Big Cube Energy** (5×5, 92 BPM, brighter drums and synth lead),
+  **Long Solve** (7×7, 66 BPM, ambient pads and rain), **Twelve Faces** (Megaminx, 78 BPM, kalimba melody) and **Finals**
+  (World Championship, 88 BPM, lead + kalimba hook, fuller groove). All 21–29 s loops at −20 dBFS RMS; 7.5 MB total.
+- **Seamless loops fixed for every track:** the final low-pass filter now pre-rolls with the loop's end, so it no longer
+  starts from silence at sample 0. The seam jump is now ≤ the track's own largest step; for two tracks that's the kick on
+  beat 1. All tracks were regenerated (Practice Room and First Sub-20 change slightly).
+- `Content.TRACKS`: every entry now has a file (CC0, "Cube Idle (placeholder)"). `assets/CREDITS.md` lists them all, with an
+  "Owner to supply" note: the final soundtrack is still decision D8.
+- Tests: every track has a file, is credited, CC0/CC-BY and loops; the 4×4's track is Parity. **Jukebox locks:** a fresh game
+  can play only Practice Room; First Sub-20 says "Unlock 3×3…", Twelve Faces "Unlock Megaminx…", Finals "Win a World
+  Championship…"; after unlocking up to the 5×5 four are playable and Long Solve still needs the 7×7. 1400 checks, `All good.`
+- **Owner:** none of these have been listened to (no speakers in the container). Please give them a listen in the Jukebox.
+- **Next:** task 4.6 (Puzzle Mastery).
+
 ## 2026-11-03 — Test fix: sound checks no longer depend on timing
 - The 4.4 commit was merged after a run that printed "1 failed" (my commit command checked that the run printed, not that
   it said `All good`). Six reruns were clean, and the likely culprit was one of the tests that count sounds (the 0.5 s
