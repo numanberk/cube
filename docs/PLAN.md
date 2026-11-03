@@ -107,8 +107,12 @@ For a specific task, replace the second sentence with e.g. "Do task 4.2."
 - **Helpers are one shared team, and the player splits its moves across puzzles** (e.g. 50 % 3×3, 30 % 4×4, 20 % 2×2),
   with quick presets (*Focus newest*, *Spread evenly*). A newly unlocked puzzle starts with everything moved onto it, so
   a player who never touches the split plays like the old ladder. Spreading is worth it because mastery (task 4.6),
-  achievements, competitions and collection drops are per puzzle. **Design risk:** if "everything on the top puzzle"
-  is always best, the split is a fake choice. The rebalance (4.7) must show the simulator's best split is a real mix.
+  achievements, competitions and collection drops are per puzzle.
+- **The variety bonus (task 4.7) makes the split a real choice.** A puzzle with share *s* of the helpers effectively
+  gets *s*^0.5 of their moves (`Content.VARIETY`): with one puzzle nothing changes, but smaller shares are boosted
+  ("practising several puzzles keeps you sharp"), so the best split is a mix: each puzzle's best share is proportional
+  to its (Solves per move)². The balance bot plays that split, and a pacing test checks that at 30 min no puzzle
+  has more than 70 %. *(This answers the old design risk: without it, "everything on the top puzzle" was always best.)*
 - **Taps go to the focused puzzle**, the big one on the stage.
 - **Screen:** one big 3D puzzle in focus, plus a row of small 3D puzzles under it, each turning at the speed of its own
   share and showing its solves/s. Clicking a small one brings it into focus. Unlocking a puzzle drops it into the row

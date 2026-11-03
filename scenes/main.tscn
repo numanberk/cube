@@ -129,6 +129,7 @@ layout_mode = 2
 theme_type_variation = &"DimLabel"
 text = "0 / 15 moves to next solve"
 horizontal_alignment = 1
+text_overrun_behavior = 3
 
 [node name="NextGoal" type="PanelContainer" parent="Margin/Rows/Columns/Stage"]
 layout_mode = 2

@@ -135,10 +135,10 @@ func _refresh() -> void:
 	]
 	var focus := Game.get_focused_puzzle_id()
 	var next_milestone := Game.get_next_mastery_milestone(focus)
-	progress_label.text = "%s / %s moves to next solve   ·   %s mastery Lv %d%s" % [
+	progress_label.text = "%s / %s moves  ·  %s mastery Lv %d%s" % [
 		Num.format(Game.get_move_progress()), Num.format(Game.get_moves_per_solve()),
 		Content.get_puzzle(focus)["name"], Game.get_mastery_level(focus),
-		"" if next_milestone.is_empty() else "  (Lv %d: %s)" % [next_milestone["level"], next_milestone["text"]],
+		"" if next_milestone.is_empty() else " → Lv %d: %s" % [next_milestone["level"], next_milestone["text"]],
 	]
 	var tap_moves := Game.get_tap_moves()
 	hint_label.text = "Click the cube or press Space: +%s %s   ·   drag to look around" % [

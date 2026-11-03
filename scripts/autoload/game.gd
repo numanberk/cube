@@ -53,7 +53,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	add_moves(get_moves_per_second() * delta)
+	add_helper_moves(delta)
 	if persistence_enabled:
 		_autosave_timer += delta
 		if _autosave_timer >= AUTOSAVE_INTERVAL:
@@ -72,7 +72,18 @@ func tap() -> void:
 	add_moves_to(focused_puzzle, get_tap_moves())
 
 
-## Helper moves (or offline moves): divided across the unlocked puzzles by the split.
+## `seconds` of helper work: each puzzle gets its share of helper moves/s, with the variety bonus (Content.VARIETY).
+## Used every frame and for offline progress.
+func add_helper_moves(seconds: float) -> void:
+	if seconds <= 0.0:
+		return
+	for id in unlocked_puzzles:
+		var rate := _helper_rate(id)
+		if rate > 0.0:
+			add_moves_to(id, rate * seconds)
+
+
+## Raw moves divided across the unlocked puzzles by the split, with no pace limit (tests and debugging).
 func add_moves(amount: float) -> void:
 	if amount <= 0.0:
 		return
@@ -141,9 +152,22 @@ func get_moves_per_second() -> float:
 	return total
 
 
-## Helper moves per second going to one puzzle (after its mastery bonus).
+## Helper moves per second going to one puzzle, after the variety bonus and its mastery bonus.
 func get_puzzle_moves_per_second(puzzle_id: String) -> float:
-	return get_moves_per_second() * get_puzzle_share(puzzle_id) * get_puzzle_moves_mult(puzzle_id)
+	return _helper_rate(puzzle_id) * get_puzzle_moves_mult(puzzle_id)
+
+
+## The variety bonus on a puzzle's share of helper moves: ×1 with a single puzzle, more for smaller shares.
+## (share^exponent / share; a 10 % share at exponent 0.6 does the work of 25 %, a ×2.5 bonus.)
+func get_puzzle_variety_bonus(puzzle_id: String) -> float:
+	var share := get_puzzle_share(puzzle_id)
+	return 0.0 if share <= 0.0 else pow(share, float(Content.VARIETY["exponent"])) / share
+
+
+## Helper moves/s a puzzle gets before its mastery bonus: all helpers' moves × share^exponent.
+func _helper_rate(puzzle_id: String) -> float:
+	var share := get_puzzle_share(puzzle_id)
+	return 0.0 if share <= 0.0 else get_moves_per_second() * pow(share, float(Content.VARIETY["exponent"]))
 
 
 func get_puzzle_solves_per_second(puzzle_id: String) -> float:
@@ -725,7 +749,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	var elapsed := clampf(now - saved_at, 0.0, MAX_OFFLINE_SECONDS)
 	if elapsed >= MIN_OFFLINE_SECONDS:
 		var before := total_solves
-		add_moves(get_moves_per_second() * elapsed)
+		add_helper_moves(elapsed)
 		if total_solves > before:
 			offline_report = {"seconds": elapsed, "solves": total_solves - before}
 

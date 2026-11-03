@@ -45,6 +45,7 @@ func rebuild() -> void:
 		row.add_child(plus)
 		var info := _label("", &"CardLine")
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # long numbers must never widen the page
 		info.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		row.add_child(info)
 		_rows.add_child(row)
@@ -54,16 +55,19 @@ func rebuild() -> void:
 
 func refresh() -> void:
 	var several := Game.get_unlocked_puzzle_ids().size() > 1
-	_hint.text = ("Your helpers' moves are shared between your puzzles. Each puzzle solves on its own, and higher puzzles "
-			+ "pay more per move.") if several else "Unlock the 3×3 to share your helpers between two puzzles."
+	_hint.text = ("Your helpers' moves are shared between your puzzles. Higher puzzles pay more per move, but practising "
+			+ "several keeps you sharp: a smaller share gets a variety bonus (shown as ×).") if several \
+			else "Unlock the 3×3 to share your helpers between two puzzles."
 	_newest.disabled = not several
 	_even.disabled = not several
 	for id: String in _row_labels:
 		var labels: Dictionary = _row_labels[id]
 		var share := Game.get_puzzle_share(id)
 		(labels["share"] as Label).text = "%d%%" % roundi(share * 100.0)
-		(labels["info"] as Label).text = "Lv %d  ·  %s moves/s  ·  +%s Solves/s" % [
-			Game.get_mastery_level(id), Num.format(Game.get_puzzle_moves_per_second(id)), Num.format(Game.get_puzzle_solves_per_second(id)),
+		var bonus := Game.get_puzzle_variety_bonus(id)
+		(labels["info"] as Label).text = "Lv %d%s\n%s moves/s  ·  +%s Solves/s" % [
+			Game.get_mastery_level(id), "" if bonus <= 1.001 or share <= 0.0 else "  ·  ×%.1f variety" % bonus,
+			Num.format(Game.get_puzzle_moves_per_second(id)), Num.format(Game.get_puzzle_solves_per_second(id)),
 		]
 		(labels["minus"] as Button).disabled = not several or share <= 0.0
 		(labels["plus"] as Button).disabled = not several or share >= 1.0

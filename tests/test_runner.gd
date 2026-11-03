@@ -1337,7 +1337,9 @@ func test_parallel_puzzles() -> void:
 	# Rates
 	g.cheat_add_solves(5.0)
 	g.buy_building("friend")
-	check_near(g.get_puzzle_moves_per_second("2x2") + g.get_puzzle_moves_per_second("3x3"), g.get_moves_per_second(), "per-puzzle moves/s add up")
+	var e := float(Content.VARIETY["exponent"])
+	check_near(g.get_puzzle_moves_per_second("2x2") + g.get_puzzle_moves_per_second("3x3"), g.get_moves_per_second() * 2.0 * pow(0.5, e),
+			"per-puzzle moves/s = helper moves × share^exponent each (the variety bonus)")
 	check_near(g.get_solves_per_second(), g.get_puzzle_solves_per_second("2x2") + g.get_puzzle_solves_per_second("3x3"), "total Solves/s = sum of puzzles")
 	check(not g.can_unlock_puzzle("7x7"), "7x7 needs a World Championship")
 	# Save round trip
@@ -1454,6 +1456,8 @@ func test_split_controls() -> void:
 	check_near(game.get_puzzle_share("3x3"), 0.9, "− takes 10 % off")
 	check_near(game.get_puzzle_share("2x2"), 0.1, "...and gives it to the other puzzle")
 	check((labels["3x3"]["share"] as Label).text == "90%", "the row shows the new share")
+	var margin: Control = main.get_node("Margin")
+	check(margin.get_combined_minimum_size().x <= 1280.0, "long numbers never make the page wider than 1280 px (min %.0f)" % margin.get_combined_minimum_size().x)
 	(main.get_node("%PresetEven") as Button).pressed.emit()
 	check_near(game.get_puzzle_share("2x2"), 0.5, "the Spread evenly button splits 50/50")
 	check((labels["2x2"]["info"] as Label).text.contains("Solves/s"), "each row shows moves/s and Solves/s")
@@ -1544,7 +1548,7 @@ func test_jukebox_locks() -> void:
 	check(rows[1] is Label and (rows[1] as Label).text.contains("Unlock 3×3 to hear this"), "First Sub-20 says unlock the 3x3")
 	check((rows[5] as Label).text.contains("Unlock Megaminx"), "Twelve Faces says unlock the Megaminx")
 	check((rows[6] as Label).text.contains("World Championship"), "Finals says win a World Championship")
-	game.cheat_add_solves(2e6)
+	game.cheat_add_solves(1e9)
 	game.unlock_puzzle("3x3")
 	game.unlock_puzzle("4x4")
 	game.unlock_puzzle("5x5")
@@ -1618,4 +1622,33 @@ func test_save_v2_to_v3_migration() -> void:
 	check(g.get_unlocked_puzzle_ids() == (["2x2", "3x3"] as Array[String]) and g.get_focused_puzzle_id() == "3x3", "v2 puzzles load into v3")
 	check(g.get_mastery_level("2x2") == 1 and g.get_mastery_level("3x3") == 1, "v2 players start at mastery level 1")
 	check(int(g.get_save_data()["version"]) == 3, "it saves as v3")
+	g.free()
+
+
+
+func test_variety_bonus() -> void:
+	var g := new_game()
+	g.cheat_add_solves(5.0)
+	g.buy_building("friend")
+	check_near(g.get_puzzle_moves_per_second("2x2"), g.get_moves_per_second(), "one puzzle: no bonus, all helper moves")
+	check_near(g.get_puzzle_variety_bonus("2x2"), 1.0, "...a ×1 variety bonus")
+	g.cheat_add_solves(1e6)
+	g.unlock_puzzle("3x3")
+	g.set_split({"2x2": 0.1, "3x3": 0.9})
+	var e := float(Content.VARIETY["exponent"])
+	check_near(g.get_puzzle_variety_bonus("2x2"), pow(0.1, e) / 0.1, "a 10 %% share gets a ×%.1f bonus" % (pow(0.1, e) / 0.1))
+	check(g.get_puzzle_variety_bonus("2x2") > g.get_puzzle_variety_bonus("3x3"), "smaller shares get bigger bonuses")
+	var before := g.total_moves
+	g.add_helper_moves(10.0)
+	check_near(g.total_moves - before, g.get_moves_per_second() * 10.0 * (pow(0.1, e) + pow(0.9, e)), "10 s of helpers adds share^exponent of the moves to each puzzle")
+	# Spreading beats focusing for income once there's more than one puzzle (the point of task 4.7).
+	g.set_split_preset("newest")
+	var focused := g.get_solves_per_second()
+	var sim: RefCounted = load("res://tools/simulator.gd").new()
+	sim.choose_split(g)
+	check(g.get_solves_per_second() > focused, "the bot's mixed split earns more than everything on the newest puzzle")
+	var top := 0.0
+	for id: String in g.get_split():
+		top = maxf(top, float(g.get_split()[id]))
+	check(top < 0.99, "...and it really is a mix")
 	g.free()

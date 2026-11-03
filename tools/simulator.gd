@@ -14,6 +14,13 @@ const Pacing := preload("res://tools/pacing.gd")
 
 const STEP := 0.1             ## simulated seconds per tick
 const REPLAN_INTERVAL := 1.0  ## re-pick the target this often (and after every purchase)
+const SPLIT_INTERVAL := 30.0  ## re-choose the helper split this often (and after a puzzle unlock)
+const SPLIT_CHUNKS := 20      ## the split is chosen in 5 % steps
+const PUZZLE_GAIN_REFRESH := 15.0  ## re-estimate what unlocking the next puzzle is worth this often (it's slow)
+
+var _now := 0.0
+var _purchases := 0
+var _puzzle_gain_cache := {}  ## puzzle id -> {at, purchases, gain}
 const CHECKPOINT_MINUTES: Array[float] = [1.0, 5.0, 15.0, 30.0, 60.0, 120.0]
 
 
@@ -24,6 +31,9 @@ const CHECKPOINT_MINUTES: Array[float] = [1.0, 5.0, 15.0, 30.0, 60.0, 120.0]
 ##   checkpoints: [{minute, solves_per_sec, moves_per_sec, solves, total_solves}]
 ##   all_bought_at: seconds when every helper and upgrade was owned at least once, or -1
 func run(taps_per_sec: float, minutes: float) -> Dictionary:
+	_puzzle_gain_cache.clear()
+	_now = 0.0
+	_purchases = 0
 	var g := GameState.new()
 	g.persistence_enabled = false
 	g.reset_state()
@@ -43,6 +53,7 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 	var t := 0.0
 	var tap_credit := 0.0
 	var replan_timer := 0.0
+	var split_timer := 0.0
 	var target := {}
 
 	while t < duration:
@@ -51,8 +62,14 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 		while tap_credit >= 1.0:
 			tap_credit -= 1.0
 			g.tap()
-		g.add_moves(g.get_moves_per_second() * STEP)
+		g.add_helper_moves(STEP)
 		t += STEP
+		_now = t
+		_purchases = purchases
+		split_timer -= STEP
+		if split_timer <= 0.0:
+			choose_split(g)
+			split_timer = SPLIT_INTERVAL
 
 		# Spend.
 		replan_timer -= STEP
@@ -64,6 +81,9 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 			if not _buy(g, target):
 				break
 			purchases += 1
+			if target["kind"] == "puzzle":
+				choose_split(g)
+				split_timer = SPLIT_INTERVAL
 			var key := "%s:%s" % [target["kind"], target["id"]]
 			if not seen.has(key):
 				seen[key] = true
@@ -84,6 +104,7 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 					"moves_per_sec": g.get_moves_per_second() + taps_per_sec * g.get_tap_moves(),
 					"solves": g.solves,
 					"total_solves": g.total_solves,
+					"split": g.get_split(),
 				})
 			next_checkpoint += 1
 
@@ -96,6 +117,26 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 		"checkpoints": checkpoints,
 		"all_bought_at": all_bought_at,
 	}
+
+
+## The bot's helper split: the best one for income. With the variety bonus (Content.VARIETY) each puzzle's income is
+## v × mps × share^e (v = Solves per move incl. mastery), so the best shares are proportional to v^(1 / (1 - e)).
+## Rounded to 5 % steps like the in-game controls. Sets it directly (no signals).
+func choose_split(g: GameState) -> void:
+	var ids := g.get_unlocked_puzzle_ids()
+	if ids.size() <= 1:
+		return
+	var power := 1.0 / (1.0 - float(Content.VARIETY["exponent"]))
+	var weights := {}
+	var total := 0.0
+	for id in ids:
+		var value := g.get_puzzle_moves_mult(id) / g.get_moves_per_solve(id) * g.get_solve_value(id)
+		weights[id] = pow(value, power)
+		total += weights[id]
+	for id: String in weights:
+		weights[id] = snappedf(weights[id] / total, 1.0 / SPLIT_CHUNKS)
+	g.split = weights
+	g.set_split(weights)  # normalises after rounding (and signals, harmlessly)
 
 
 ## Solves per second from helpers plus tapping at `taps_per_sec`.
@@ -155,6 +196,9 @@ func _income_gain(g: GameState, item: Dictionary, taps_per_sec: float, base: flo
 			g.upgrades.erase(id)
 			return with_it - base
 		"puzzle":
+			var cached: Dictionary = _puzzle_gain_cache.get(id, {})
+			if not cached.is_empty() and cached["purchases"] == _purchases and _now - float(cached["at"]) < PUZZLE_GAIN_REFRESH:
+				return cached["gain"]
 			# Unlocking focuses the new puzzle and moves the whole split onto it (the default, kept for now: task 4.7
 			# teaches the bot to choose a split). Measure that, then put everything back.
 			var unlocked := g.unlocked_puzzles.duplicate()
@@ -164,11 +208,13 @@ func _income_gain(g: GameState, item: Dictionary, taps_per_sec: float, base: flo
 			g._add_puzzle(id)
 			g.split = {id: 1.0}
 			g.focused_puzzle = id
+			choose_split(g)  # the bot will re-split after unlocking, so value it that way
 			var with_it := income(g, taps_per_sec)
 			g.unlocked_puzzles = unlocked
 			g.puzzle_progress = progress
 			g.split = split
 			g.focused_puzzle = focus
+			_puzzle_gain_cache[id] = {"at": _now, "purchases": _purchases, "gain": with_it - base}
 			return with_it - base
 	return 0.0
 
@@ -239,15 +285,23 @@ static func to_markdown(result: Dictionary) -> String:
 	lines.append("")
 	lines.append("### Income over time")
 	lines.append("")
-	lines.append("| Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves |")
-	lines.append("|---|---|---|---|---|")
+	lines.append("| Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves | Bot's split |")
+	lines.append("|---|---|---|---|---|---|")
 	for c: Dictionary in result["checkpoints"]:
-		lines.append("| %s | %s | %s | %s | %s |" % [
+		lines.append("| %s | %s | %s | %s | %s | %s |" % [
 			_num(c["minute"]), Num.format(c["solves_per_sec"]), Num.format(c["moves_per_sec"]),
-			Num.format(c["solves"]), Num.format(c["total_solves"]),
+			Num.format(c["solves"]), Num.format(c["total_solves"]), split_text(c.get("split", {})),
 		])
 	lines.append("")
 	return "\n".join(lines)
+
+
+## "2×2 10 % · 3×3 25 % · 4×4 65 %"
+static func split_text(split: Dictionary) -> String:
+	var parts := PackedStringArray()
+	for id: String in split:
+		parts.append("%s %d %%" % [Content.get_puzzle(id)["name"], roundi(float(split[id]) * 100.0)])
+	return " · ".join(parts)
 
 
 ## Seconds as m:ss (or h:mm:ss).

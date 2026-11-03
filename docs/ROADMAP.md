@@ -95,7 +95,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] **3.6 Offline panel:** a styled "Welcome back" panel (time away, Solves earned, a Collect button) replaces the default AcceptDialog.
       *Done when:* there's a screenshot, and there's no panel when nothing was earned.
 
-## Phase 4 — Puzzles (D9: all unlocked puzzles run at once)
+## Phase 4 — Puzzles (D9: all unlocked puzzles run at once) ✅
 - [x] **4.1 Puzzle data:** `Content.PUZZLES` (id, name, shape, `moves_per_solve`, `solve_value`, `unlock_cost`, `requires_prestige`)
       using the starting curve in PLAN §4.1, and each track linked to its puzzle.
       *Done when:* a test checks each puzzle earns more Solves per move than the one before it.
@@ -128,7 +128,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       with milestone perks at 5/10/25/50/100 (e.g. +10 % moves on that puzzle, −1 move per solve, +1 % all moves).
       Kept through prestige. A mastery bar on every puzzle in the row. Save change → bump the save version with a migration.
       *Done when:* tests cover XP gain, level-ups, perk effects and the migration, and mastery shows in a screenshot.
-- [ ] **4.7 Rebalance (early game):** tune puzzles, helpers and mastery with the simulator. The bot learns to choose a split.
+- [x] **4.7 Rebalance (early game):** tune puzzles, helpers and mastery with the simulator. The bot learns to choose a split.
       *Done when:* the first helper, first upgrade and 3×3 targets pass as real (not expected-failure) pacing tests, **and the
       bot's best split at 30 min is a real mix** (no puzzle above ~70 %), so splitting is a real choice (PLAN §4.1 design risk).
 

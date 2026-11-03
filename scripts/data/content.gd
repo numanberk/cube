@@ -42,7 +42,7 @@ const BUILDINGS := [
 		"icon": "robot",
 		"name": "Solving Robot",
 		"description": "Never gets tired. Never drops a piece.",
-		"base_cost": 700,
+		"base_cost": 1500,
 		"mps": 32.0,
 	},
 	{
@@ -142,11 +142,17 @@ const UPGRADES := [
 const PUZZLES := [
 	{"id": "2x2", "name": "2×2", "moves_per_solve": 8.0, "solve_value": 1.0, "unlock_cost": 0.0, "requires_prestige": false},
 	{"id": "3x3", "name": "3×3", "moves_per_solve": 20.0, "solve_value": 4.0, "unlock_cost": 150.0, "requires_prestige": false},
-	{"id": "4x4", "name": "4×4", "moves_per_solve": 60.0, "solve_value": 18.0, "unlock_cost": 25000.0, "requires_prestige": false},
-	{"id": "5x5", "name": "5×5", "moves_per_solve": 120.0, "solve_value": 50.0, "unlock_cost": 1.5e6, "requires_prestige": false},
+	{"id": "4x4", "name": "4×4", "moves_per_solve": 60.0, "solve_value": 18.0, "unlock_cost": 400000.0, "requires_prestige": false},
+	{"id": "5x5", "name": "5×5", "moves_per_solve": 120.0, "solve_value": 50.0, "unlock_cost": 3e8, "requires_prestige": false},
 	{"id": "7x7", "name": "7×7", "moves_per_solve": 300.0, "solve_value": 200.0, "unlock_cost": 5e8, "requires_prestige": true},
 	{"id": "megaminx", "name": "Megaminx", "moves_per_solve": 700.0, "solve_value": 800.0, "unlock_cost": 2e11, "requires_prestige": true},
 ]
+
+## Variety (task 4.7): practising several puzzles keeps you sharp. A puzzle that gets share s of the helpers' moves
+## effectively gets s^exponent of them (with exponent < 1, small shares are boosted: 10 % works like 25 % at 0.6).
+## With one puzzle (s = 1) nothing changes; spreading pays, and the best split is a real mix (PLAN §4.1's design risk):
+## each puzzle's best share is proportional to (Solves per move)^(1 / (1 - exponent)). Taps aren't affected.
+const VARIETY := {"exponent": 0.5}
 
 ## Puzzle Mastery (task 4.6, PLAYER_RESEARCH): every puzzle levels up from its own solves, in parallel.
 ## A solve gives moves_per_solve / xp_per_solve_moves XP, so XP per move is the same on every puzzle.

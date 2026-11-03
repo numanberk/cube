@@ -15,15 +15,16 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 |---|---|---|
 | First helper ≤ 20 s | Cubing Friend at 0:13 | pass |
 | First upgrade < 1 min | Cube Lube at 0:48 | pass |
-| Something new every ≤ 3 min in the first hour | longest 42:05 (after 5×5, until 1:00:00) | expected failure |
+| Something new every ≤ 3 min in the first hour | longest 33:37 (after 5×5, until 1:00:00) | expected failure |
 | Something new every ≤ 10 min after the first hour | longest 1:00:00 (after 5×5, until 2:00:00) | expected failure |
-| 3×3 unlocked at ~5 min (4–6 min) | 4:38 | pass |
-| Solving Robot at ~10 min (8–12 min) | 7:15 | expected failure |
-| 4×4 unlocked at ~30 min (25–35 min) | 12:01 | expected failure |
-| 5×5 unlocked at ~60 min (50–70 min) | 17:55 | expected failure |
+| 3×3 unlocked at ~5 min (4–6 min) | 4:18 | pass |
+| Solving Robot at ~10 min (8–12 min) | 7:24 | expected failure |
+| 4×4 unlocked at ~30 min (25–35 min) | 11:19 | expected failure |
+| 5×5 unlocked at ~60 min (50–70 min) | 26:23 | expected failure |
 | First World Championship at ~90 min (80–100 min, D6) | never (in 2:00:00) | expected failure |
 | 7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
 | Second run reaches the same point in ≤ 50 % of the time | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
+| The bot's best split at 30 min is a real mix (no puzzle above 70 %) | 2×2 0 % · 3×3 25 % · 4×4 50 % · 5×5 25 % | pass |
 | Never tapping still buys something within 5 min | nothing bought in 2:00:00 | expected failure |
 
 ### Expected failures
@@ -43,9 +44,9 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 
 ## Tapping (3 taps/s, 120 min)
 
-- Items bought: 343 (16 different)
-- Every helper and upgrade owned at: 17:55
-- Longest wait for something new: 1:42:05 (after 5×5, until 2:00:00)
+- Items bought: 453 (16 different)
+- Every helper and upgrade owned at: 26:23
+- Longest wait for something new: 1:33:37 (after 5×5, until 2:00:00)
 
 ### First purchase of each item
 
@@ -53,31 +54,31 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 |---|---|---|---|---|
 | 0:13 | helper | Cubing Friend | 5 | +0:13 |
 | 0:48 | upgrade | Cube Lube | 15 | +0:34 |
-| 2:17 | helper | Cubing Club | 60 | +1:30 |
-| 3:30 | upgrade | Stackmat Timer | 50 | +1:13 |
-| 4:38 | puzzle | 3×3 | 150 | +1:08 |
-| 5:38 | upgrade | Learn CFOP | 200 | +0:59 |
-| 7:15 | helper | Solving Robot | 700 | +1:38 |
-| 7:42 | upgrade | Club Snacks | 600 | +0:27 |
-| 8:40 | upgrade | Magnetic Cube | 1.50K | +0:58 |
-| 10:28 | upgrade | Robot Firmware v2 | 8.00K | +1:48 |
-| 11:05 | helper | Local Competition | 9.00K | +0:37 |
-| 12:01 | puzzle | 4×4 | 25.00K | +0:56 |
-| 12:37 | upgrade | Learn Roux | 25.00K | +0:36 |
-| 13:42 | helper | Cube Factory | 120.0K | +1:05 |
-| 17:20 | helper | Speedcubing Lab | 1.80M | +3:38 |
-| 17:55 | puzzle | 5×5 | 1.50M | +0:35 |
+| 2:16 | helper | Cubing Club | 60 | +1:28 |
+| 3:20 | upgrade | Stackmat Timer | 50 | +1:05 |
+| 4:18 | puzzle | 3×3 | 150 | +0:57 |
+| 5:05 | upgrade | Learn CFOP | 200 | +0:47 |
+| 6:12 | upgrade | Club Snacks | 600 | +1:07 |
+| 6:58 | upgrade | Magnetic Cube | 1.50K | +0:46 |
+| 7:24 | helper | Solving Robot | 1.50K | +0:26 |
+| 8:14 | helper | Local Competition | 9.00K | +0:50 |
+| 9:05 | upgrade | Robot Firmware v2 | 8.00K | +0:51 |
+| 9:19 | upgrade | Learn Roux | 25.00K | +0:14 |
+| 10:00 | helper | Cube Factory | 120.0K | +0:41 |
+| 11:19 | puzzle | 4×4 | 400.0K | +1:20 |
+| 11:46 | helper | Speedcubing Lab | 1.80M | +0:26 |
+| 26:23 | puzzle | 5×5 | 300.0M | +14:37 |
 
 ### Income over time
 
-| Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves |
-|---|---|---|---|---|
-| 1 | 0.9 | 7 | 4 | 30 |
-| 5 | 5 | 25 | 65 | 536 |
-| 15 | 12.88K | 24.03K | 125.6K | 989.0K |
-| 30 | 689.5K | 926.7K | 17.43M | 305.9M |
-| 60 | 1.08M | 1.46M | 156.8M | 1.99B |
-| 120 | 1.36M | 1.82M | 71.28M | 6.45B |
+| Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves | Bot's split |
+|---|---|---|---|---|---|
+| 1 | 0.9 | 7 | 4 | 30 | 2×2 100 % |
+| 5 | 7.3 | 29 | 161 | 712 | 2×2 40 % · 3×3 60 % |
+| 15 | 1.81M | 803.4K | 7.34M | 192.0M | 2×2 10 % · 3×3 25 % · 4×4 65 % |
+| 30 | 9.53M | 1.74M | 235.9M | 5.43B | 2×2 0 % · 3×3 25 % · 4×4 50 % · 5×5 25 % |
+| 60 | 16.53M | 2.27M | 1.64B | 32.10B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
+| 120 | 18.91M | 2.60M | 3.93B | 96.53B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
 
 ## Never tapping (0 taps/s, 120 min)
 
@@ -91,11 +92,11 @@ Nothing was bought.
 
 ### Income over time
 
-| Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves |
-|---|---|---|---|---|
-| 1 | 0 | 0 | 0 | 0 |
-| 5 | 0 | 0 | 0 | 0 |
-| 15 | 0 | 0 | 0 | 0 |
-| 30 | 0 | 0 | 0 | 0 |
-| 60 | 0 | 0 | 0 | 0 |
-| 120 | 0 | 0 | 0 | 0 |
+| Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves | Bot's split |
+|---|---|---|---|---|---|
+| 1 | 0 | 0 | 0 | 0 | 2×2 100 % |
+| 5 | 0 | 0 | 0 | 0 | 2×2 100 % |
+| 15 | 0 | 0 | 0 | 0 | 2×2 100 % |
+| 30 | 0 | 0 | 0 | 0 | 2×2 100 % |
+| 60 | 0 | 0 | 0 | 0 | 2×2 100 % |
+| 120 | 0 | 0 | 0 | 0 | 2×2 100 % |

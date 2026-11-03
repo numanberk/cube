@@ -2,6 +2,32 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task 4.7: early-game rebalance + the variety bonus (Phase 4 done)
+- **The design risk was real:** with linear income, "everything on the top puzzle" always won. Fixed with a
+  **variety bonus** (`Content.VARIETY`, exponent 0.5): a puzzle with share *s* gets *s*^0.5 of the helpers' moves. One puzzle is
+  unchanged; smaller shares are boosted (10 % → ×3.2), so the best split is a mix ∝ (Solves per move)², at any scale.
+  `GameState.add_helper_moves(seconds)` (used every frame and for offline progress) applies it; `add_moves(amount)` stays
+  the raw split for tests. `get_puzzle_variety_bonus(id)`. Taps aren't affected.
+  - First I tried an absolute "pace" per puzzle (moves beyond it counted for less). That failed: late-game helper output
+    swamps any fixed pace, so income only grew with √helpers, which fights exponential costs. Variety is relative, so it scales.
+- **The bot chooses its split:** `Simulator.choose_split()` sets each share ∝ value^(1/(1−e)), rounded to 5 %, every 30 sim
+  seconds and after unlocks; the value of a puzzle unlock is estimated with that split (cached for 15 s, since it's slow).
+  Checkpoints record the split; `BALANCE.md` shows it per checkpoint.
+- **New pacing target `split_mix`:** at 30 min the bot's split uses 2+ puzzles and none above 70 %. Result:
+  **3×3 25 % · 4×4 50 % · 5×5 25 %** ✓. Still passing: first helper 0:13 ✓, first upgrade 0:48 ✓, 3×3 4:18 ✓.
+- **Tuning** (data only): Solving Robot base cost 700 → 1,500; 4×4 unlock 25K → 400K; 5×5 unlock 1.5M → 300M. Before tuning,
+  variety + mastery finished all content at 12 min; now it's **26 min** (Robot 7:24, 4×4 11:19, 5×5 26:23). The Robot, 4×4
+  and 5×5 windows (and "something new every 3 min") stay expected failures: **Phase 5 adds the content** that lets the
+  first hour reach them (task 5.8). Income now explodes between minutes 5 and 15, then flattens when content runs out.
+- **UI:** the Puzzles tab explains the bonus and shows "Lv 12 · ×2.2 variety" over "2.75K moves/s · +545 Solves/s" per
+  puzzle. **Layout bug fixed:** long numbers widened the right column past the window; info lines and the progress line now
+  shorten with an ellipsis instead (`text_overrun_behavior`), and a test checks the page's minimum width stays ≤ 1280 px.
+  The progress line is shorter: "30 / 42 moves · 4×4 mastery Lv 2 → Lv 5: +10 % moves on this puzzle".
+- Tests: a single puzzle gets no bonus; 10 % gets ×10^0.5; `add_helper_moves` adds share^e; the bot's mix earns more than
+  focusing on the newest puzzle; the page-width guard. 1431 checks, `All good.` `docs/BALANCE.md` regenerated.
+- **Phase 4 is complete.** Owner: a good point to play: unlock puzzles, try the split and the presets, and watch mastery levels.
+- **Next:** Phase 5, task 5.1 (method chain).
+
 ## 2026-11-03 — Task 4.6: Puzzle Mastery (save v3)
 - **`Content.MASTERY`** (data): levels 1–100; level L → L+1 needs `25 × 1.15^(L−1)` XP; a solve gives `moves_per_solve ÷ 8` XP
   (so XP per move is equal on every puzzle: a 2×2 solve = 1 XP, a 4×4 solve = 7.5); +1 % moves on that puzzle per level.
