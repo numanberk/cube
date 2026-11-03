@@ -55,6 +55,9 @@ scripts/cube/solve_session.gd  class SolveSession: Solve Station rules (scramble
 scripts/cube/staged_solver.gd  class StagedSolver: solves a 2×2/3×3 like a person, in named stages (Beginner, CFOP:
                            cross, F2L 1-4, OLL, PLL) for the showcase solve (R.2). Pure data; algorithms are
                            Content.ALGORITHMS (shared with S.4). Call StagedSolver.warm_up() before the first solve
+scripts/cube/showcase_solve.gd class ShowcaseSolve: the main cube's showcase solve (R.2): scramble, inspection, then a
+                           StagedSolver solve one move at a time (advance(delta, tps) / tap()); main.gd feeds the moves to
+                           PuzzleView3D's manual mode and draws the stage chips (%StageChips) + ticker (%MoveTicker)
 scripts/ui/shaders/        stage_backdrop (radial glow) + contact_shadow .gdshader, used by PuzzleView3D
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
@@ -84,7 +87,8 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    `theme_type_variation` instead (TitleLabel, SubtitleLabel, DimLabel, FaintLabel, TickerLabel, HintLabel,
    PrimaryButton, SubtleButton, PageMargin, ColumnsBox, StackBox, TopBar, GoalStrip, ShopCard, IconTile, CardMargin,
    TightBox, CardTitle, CardLine, CardOwned, CostAffordable, CostUnaffordable, UpgradeGrid, ToggleChip, PopTap,
-   PopSolve, TimerLabel, TimerWaiting, TimerDone, ScrambleLabel, SidePanel), or add a new variation.
+   PopSolve, TimerLabel, TimerWaiting, TimerDone, ScrambleLabel, SidePanel, StageChip, StageChipActive, StageChipDone,
+   StageChipRow, TickerText), or add a new variation.
 9. **Taps:** clicking the puzzle or the `tap` input action (Space / Enter, no repeat when held). Shop and other
    buttons use `focus_mode = none`, so Space never presses a focused button by accident.
    One accent colour: green `#3ccf8e` (dim `#2a9d6c`). Every new asset gets a line in `assets/CREDITS.md`.
@@ -118,6 +122,8 @@ JUICE=1 bash tools/screenshot.sh /tmp/shots mid                   # taps + solve
 BUY=10 bash tools/screenshot.sh /tmp/shots mid                    # shop on ×10 (BUY=-1: Max) -> mid_buy10.png
 SETTINGS=1 bash tools/screenshot.sh /tmp/shots mid                # Settings panel open -> mid_settings.png
 SOLVE=done bash tools/screenshot.sh /tmp/shots mid                # Solve Station: inspecting|solving|done -> mid_solvedone.png
+SHOWCASE=20 bash tools/screenshot.sh /tmp/shots mid               # main cube's showcase solve 20 moves in -> mid_showcase20.png
+METHOD=beginner SHOWCASE=40 bash tools/screenshot.sh /tmp/shots mid  # ...with another method -> mid_showcase40_beginner.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

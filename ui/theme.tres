@@ -579,6 +579,38 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stage_chip"]
+content_margin_left = 8.0
+content_margin_top = 2.0
+content_margin_right = 8.0
+content_margin_bottom = 2.0
+bg_color = Color(0.1020, 0.1137, 0.1373, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.1961, 0.2196, 0.2745, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stage_chip_on"]
+content_margin_left = 8.0
+content_margin_top = 2.0
+content_margin_right = 8.0
+content_margin_bottom = 2.0
+bg_color = Color(0.1176, 0.2275, 0.1843, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2353, 0.8118, 0.5569, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -762,3 +794,18 @@ ScrambleLabel/font_sizes/font_size = 19
 ScrambleLabel/fonts/font = SubResource("FontVariation_timer")
 SidePanel/base_type = &"PanelContainer"
 SidePanel/styles/panel = SubResource("StyleBoxFlat_side_panel")
+StageChip/base_type = &"Label"
+StageChip/colors/font_color = Color(0.4863, 0.5137, 0.5725, 1)
+StageChip/font_sizes/font_size = 12
+StageChip/styles/normal = SubResource("StyleBoxFlat_stage_chip")
+StageChipDone/base_type = &"StageChip"
+StageChipDone/colors/font_color = Color(0.1647, 0.6157, 0.4235, 1)
+StageChipActive/base_type = &"StageChip"
+StageChipActive/colors/font_color = Color(0.9255, 0.9333, 0.949, 1)
+StageChipActive/styles/normal = SubResource("StyleBoxFlat_stage_chip_on")
+StageChipRow/base_type = &"HBoxContainer"
+StageChipRow/constants/separation = 6
+TickerText/base_type = &"RichTextLabel"
+TickerText/colors/default_color = Color(0.4863, 0.5137, 0.5725, 1)
+TickerText/font_sizes/normal_font_size = 15
+TickerText/font_sizes/bold_font_size = 15

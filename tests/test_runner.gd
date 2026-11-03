@@ -1035,7 +1035,11 @@ func test_juice_at_high_speed() -> void:
 	check(game.total_solves > solves_before, "the game kept solving during the run")
 	check(most <= FxLayer.POOL_SIZE, "never more than 20 floating texts at high speed")
 	check(most >= 1, "solves show a floating +X Solves")
-	check((main.get_node("%PuzzleView") as PuzzleView3D).speed_mode, "the puzzle is in speed mode")
+	var view := main.get_node("%PuzzleView") as PuzzleView3D
+	if ShowcaseSolve.supports(game.get_focused_puzzle_id()):  # R.2: a staged showcase solve, never speed mode
+		check(not view.speed_mode and main._showcase != null, "the big puzzle plays a showcase solve, not speed mode")
+	else:
+		check(view.speed_mode, "the puzzle is in speed mode")
 	main.free()
 	game.reset_state()
 
@@ -2243,3 +2247,96 @@ func test_algorithm_data() -> void:
 		for i in 6:
 			model.apply_all(model.parse_sequence(Content.get_algorithm(id)["alg"]))
 		check(model.is_solved(), "%s six times is back to solved" % id)
+
+
+# --- Showcase solve (task R.2) -----------------------------------------------------
+
+func test_showcase_solve_rules() -> void:
+	# Speed: from the method, a bit more per 10× moves/s, capped, and never faster than the real moves.
+	check_near(ShowcaseSolve.tps_for("beginner", 0.0), 0.0, "no helpers: the showcase only moves on taps")
+	check_near(ShowcaseSolve.tps_for("beginner", 0.5), 0.5, "one Friend (0.5 moves/s): half a turn a second")
+	check(ShowcaseSolve.tps_for("beginner", 10.0) > 3.0 and ShowcaseSolve.tps_for("beginner", 10.0) < 5.0, "Beginner ~3-4 TPS")
+	check(ShowcaseSolve.tps_for("cfop", 1e5) > ShowcaseSolve.tps_for("beginner", 1e5), "CFOP turns faster than Beginner")
+	check_near(ShowcaseSolve.tps_for("gods_number", 1e30), float(Content.SHOWCASE["max_tps"]), "capped at max_tps")
+	# A whole solve played by time: inspection, every stage, solved, then a new scramble.
+	var show := ShowcaseSolve.new("3x3", "cfop", 3)
+	var events := []
+	show.started.connect(func() -> void: events.append("started"))
+	show.finished.connect(func() -> void: events.append("finished"))
+	var view_model := PuzzleShapes.from_id("3x3")
+	view_model.apply_all(show.scramble)
+	check(show.phase == "inspection" and not view_model.is_solved(), "it starts on a scrambled cube, inspecting")
+	var played := 0
+	for i in 2000:
+		for move in show.advance(0.05, 8.0):
+			view_model.apply(move)
+			played += 1
+		if show.phase == "solved":
+			break
+	check(show.phase == "solved" and events == ["finished"], "playing on finishes the solve")
+	check(view_model.is_solved() and show.model.is_solved(), "the moves it returns really solve the scramble")
+	check(played > 40 and played < 90, "a CFOP showcase is a real-length solve (%d moves incl. inspection)" % played)
+	for i in 40:  # 2 s: past the 1.4 s hold, still inspecting the next one
+		show.advance(0.05, 8.0)
+	check(events == ["finished", "started"] and show.phase == "inspection", "after a moment it starts the next scramble")
+	# Taps: end inspection and play the next move at once, even with no helpers.
+	var tapped := ShowcaseSolve.new("3x3", "beginner", 4)
+	var first := tapped.tap()
+	check(tapped.phase == "solving" and first.size() >= 2, "a tap in inspection does the inspection turns and the first move")
+	check(tapped.advance(10.0, 0.0).is_empty(), "with 0 TPS nothing moves by itself")
+	var before := tapped.move_index
+	check(tapped.tap().size() == 1, "each tap is one move")
+	check(tapped.move_index == before + 1 or tapped.move_index == 0, "...the next one")
+	# A method learned mid-solve is used from the next scramble on.
+	tapped.method = "cfop"
+	check(tapped.current_stage()["id"] in ["cross", "first_layer"], "the current solve keeps its stages")
+	tapped.start_new()
+	check(tapped.stages[-1]["id"] == "pll", "the next solve is CFOP")
+	# 2×2 and the unsupported puzzles.
+	check(ShowcaseSolve.supports("2x2") and not ShowcaseSolve.supports("5x5"), "2×2/3×3 only, for now (R.6)")
+	# Cubers write two-layer moves on a 3×3 in lower case.
+	var m := PuzzleShapes.from_id("3x3")
+	check(ShowcaseSolve.notation(m, m.parse("Rw'")) == "r'" and ShowcaseSolve.notation(m, m.parse("R2")) == "R2", "Rw' -> r'")
+	var big := PuzzleShapes.from_id("5x5")
+	check(ShowcaseSolve.notation(big, big.parse("Rw")) == "Rw", "big cubes keep Rw")
+
+
+## Smoke check: the main screen plays full showcase solves on the 3×3 with two methods, taps turn it, chips follow.
+func test_showcase_on_main_screen() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	game.cheat_add_solves(1000.0)
+	game.unlock_puzzle("3x3")
+	game.set_focus("3x3")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var view: PuzzleView3D = main.get_node("%PuzzleView")
+	var chips: HBoxContainer = main.get_node("%StageChips")
+	for method: String in ["beginner", "cfop"]:
+		game.method = method
+		main._start_showcase()
+		var show: ShowcaseSolve = main._showcase
+		check(show != null and show.method == method, "%s: the 3×3 gets a showcase solve" % method)
+		check(chips.visible and chips.get_child_count() == (7 if method == "beginner" else 4), "%s: one chip per stage (F2L shares one)" % method)
+		var moves_before := game.total_moves
+		var taps := 0
+		while show.phase != "solved" and taps < 400:
+			main._on_tap_pressed()
+			taps += 1
+		view.finish_animations()
+		check(show.phase == "solved", "%s: tapping plays the whole solve (%d taps)" % [method, taps])
+		check(view.model.is_solved(), "%s: the big cube ends solved" % method)
+		check(game.total_moves > moves_before, "%s: the taps still counted as taps" % method)
+		main._process(0.016)
+		var ticker := (main.get_node("%MoveTicker") as RichTextLabel).text
+		check("Solved in" in ticker, "%s: the ticker says it's solved: %s" % [method, ticker])
+		for label: Label in chips.get_children():
+			check(label.theme_type_variation == &"StageChipDone", "%s: every chip is done" % method)
+	# A puzzle without a staged solver yet keeps the old scramble + rewind, and the chips hide.
+	game.cheat_add_solves(1e9)
+	game.unlock_puzzle("4x4")
+	game.set_focus("4x4")
+	check(main._showcase == null and not chips.visible, "the 4×4 has no showcase yet (R.6)")
+	main.free()
+	game.reset_state()

@@ -16,7 +16,8 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var solves_label: Label = %SolvesLabel
 @onready var rate_label: Label = %RateLabel
 @onready var puzzle_view: PuzzleView3D = %PuzzleView
-@onready var move_ticker: Label = %MoveTicker
+@onready var move_ticker: RichTextLabel = %MoveTicker
+@onready var stage_chips: HBoxContainer = %StageChips
 @onready var hint_label: Label = %HintLabel
 @onready var settings_button: Button = %SettingsButton
 @onready var settings_panel: SettingsPanel = %SettingsPanel
@@ -51,7 +52,9 @@ var _buy_amount := 1               ## 1, 10 or GameState.BUY_MAX (the ×1 / ×10
 var _revealed: Dictionary = {}
 var _chips: Dictionary = {}          ## unlocked puzzle id -> PuzzleChip (the focused one is hidden)
 var _locked_chip: PuzzleChip         ## the next puzzle to unlock
-var _hold_counter := false        ## keeps the counter still while the Welcome back panel is open    ## helper ids already shown unlocked (a newly revealed one plays the unlock sound)
+var _hold_counter := false        ## keeps the counter still while the Welcome back panel is open
+var _showcase: ShowcaseSolve      ## the real solve the big cube plays (task R.2); null for puzzles without one yet
+var showcase_paused := false       ## screenshots freeze the showcase at a chosen move
 
 
 func _ready() -> void:
@@ -71,6 +74,9 @@ func _ready() -> void:
 	Game.mastery_level_up.connect(_on_mastery_level_up)
 	_build_puzzle_row()
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
+	for id: String in StagedSolver.PUZZLES:  # builds the solver's tables now (~0.3 s, cached), not mid-game
+		StagedSolver.warm_up(id)
+	_start_showcase()
 	_shown_solves = Game.solves
 	welcome_panel.collected.connect(_on_welcome_collected)
 	_build_shop()
@@ -83,9 +89,12 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	solve_progress.value = Game.get_move_progress() / Game.get_moves_per_solve()
-	var ticker := puzzle_view.ticker_text()
-	move_ticker.text = ticker if ticker != "" else " "  # keep the line's height when empty
-	_animate_helper_moves(delta)
+	if _showcase != null:
+		_play_showcase(delta)
+	else:
+		var ticker := puzzle_view.ticker_text()
+		move_ticker.text = "[center]%s[/center]" % (ticker if ticker != "" else " ")  # keep the line's height when empty
+		_animate_helper_moves(delta)
 	for id: String in _chips:
 		(_chips[id] as PuzzleChip).advance(delta, Game.get_puzzle_moves_per_second(id))
 	_animate_counter(delta)
@@ -360,7 +369,11 @@ func _on_welcome_collected(solves: float) -> void:
 ## A tap from a click (`at` = where, global) or the keyboard (no position: the puzzle's centre).
 func _on_tap_pressed(at: Vector2 = Vector2.INF) -> void:
 	Game.tap()
-	puzzle_view.scramble_step()
+	if _showcase != null:
+		for move in _showcase.tap():  # a tap plays the next move of the showcase solve
+			puzzle_view.turn(move)
+	else:
+		puzzle_view.scramble_step()
 	puzzle_view.squash()
 	var size := 3 if puzzle_view.model == null else (puzzle_view.model.size if puzzle_view.model.size > 0 else 6)
 	Audio.play_click(size)  # the Megaminx (size 0) clicks like a big cube
@@ -371,7 +384,8 @@ func _on_tap_pressed(at: Vector2 = Vector2.INF) -> void:
 
 func _on_solved(count: int, puzzle_id: String) -> void:
 	if puzzle_id == Game.get_focused_puzzle_id():
-		puzzle_view.show_solved()
+		if _showcase == null:  # the showcase solve finishes on its own schedule
+			puzzle_view.show_solved()
 	elif _chips.has(puzzle_id):
 		(_chips[puzzle_id] as PuzzleChip).view.show_solved()
 	Audio.play_solve()
@@ -380,6 +394,7 @@ func _on_solved(count: int, puzzle_id: String) -> void:
 
 func _on_focus_changed(puzzle_id: String) -> void:
 	puzzle_view.set_puzzle(puzzle_id)
+	_start_showcase()
 	_refresh_puzzle_row()
 
 
@@ -398,6 +413,165 @@ func _on_puzzle_unlocked(_puzzle_id: String) -> void:
 	_build_puzzle_row()
 	puzzle_view.drop_in()
 	Audio.play_unlock()
+
+
+# --- Showcase solve (task R.2) -------------------------------------------------------
+
+## The big cube plays one real solve (StagedSolver) of the focused puzzle at a speed you can follow; puzzles without a
+## staged solver yet (4×4+, Megaminx) keep the old scramble + rewind. Visual only: numbers never wait for it.
+func _start_showcase(puzzle_id: String = "") -> void:
+	if puzzle_id == "":
+		puzzle_id = Game.get_focused_puzzle_id()
+	_showcase = null
+	if ShowcaseSolve.supports(puzzle_id):
+		_showcase = ShowcaseSolve.new(puzzle_id, Game.method, randi())
+		_showcase.started.connect(_on_showcase_started)
+		_showcase.stage_changed.connect(_on_showcase_stage)
+		_showcase.finished.connect(puzzle_view.flash)
+		puzzle_view.set_speed(0.0)
+		_on_showcase_started()
+	else:
+		puzzle_view.turn_time = PuzzleView3D.TURN_TIME
+		_build_stage_chips()
+
+
+func _on_showcase_started() -> void:
+	puzzle_view.show_state(_showcase.scramble)
+	_build_stage_chips()
+
+
+func _on_showcase_stage(_index: int) -> void:
+	_refresh_stage_chips()
+
+
+func _play_showcase(delta: float) -> void:
+	var focus := Game.get_focused_puzzle_id()
+	var tps := ShowcaseSolve.tps_for(_showcase.method, Game.get_puzzle_moves_per_second(focus))
+	# Quarter turns a bit quicker than the pace, so a turn always ends before the next starts.
+	puzzle_view.turn_time = clampf(0.7 / maxf(tps, 1.0), 0.05, PuzzleView3D.TURN_TIME)
+	if not showcase_paused:
+		for move in _showcase.advance(delta, tps):
+			puzzle_view.turn(move)
+	move_ticker.text = _showcase_ticker(Game.get_puzzle_solves_per_second(focus))
+
+
+## "F2L 2   U F' U' F R' U2 R": the moves played so far dim, the one just played in the accent colour, the rest faint.
+## With many solves a second, a note says this is one of them.
+func _showcase_ticker(solves_per_second: float) -> String:
+	var text := ""
+	var m := puzzle_view.model
+	match _showcase.phase:
+		"inspection":
+			var turns: Array = _showcase.stages[0]["moves"] if not _showcase.stages.is_empty() \
+					and _showcase.stages[0]["id"] == "inspection" else []
+			text = "[color=#ecedf2]Inspection[/color]   %s" % _moves_text(m, turns, _showcase.move_index if turns.size() > 0 else 0)
+		"solved":
+			var count := 0
+			for stage in _showcase.chip_stages():
+				count += (stage["moves"] as Array).size()
+			text = "[color=#3ccf8e]Solved in %d moves  ·  %s[/color]" % [count, Content.get_method(_showcase.method).get("name", "")]
+		_:
+			var stage := _showcase.current_stage()
+			if not stage.is_empty():
+				text = "[color=#ecedf2]%s[/color]   %s" % [stage["name"], _moves_text(m, stage["moves"], _showcase.move_index)]
+	if solves_per_second >= 2.0:
+		text += "   [color=#5d6370]·  1 of %s solves/s[/color]" % Num.format(solves_per_second)
+	return "[center]%s[/center]" % text
+
+
+## Long stages (a beginner's second layer is ~35 moves) show a window around the current move, so the line stays short.
+const TICKER_BEFORE := 5
+const TICKER_AFTER := 7
+
+func _moves_text(m: TwistyModel, moves: Array, played: int) -> String:
+	var parts := PackedStringArray()
+	var first := maxi(0, played - TICKER_BEFORE)
+	var last := mini(moves.size(), first + TICKER_BEFORE + TICKER_AFTER)
+	first = maxi(0, mini(first, last - TICKER_BEFORE - TICKER_AFTER))
+	if first > 0:
+		parts.append("…")
+	for i in range(first, last):
+		var name := ShowcaseSolve.notation(m, moves[i])
+		if i == played - 1:
+			parts.append("[color=#3ccf8e][b]%s[/b][/color]" % name)
+		elif i < played:
+			parts.append("[color=#aab0bd]%s[/color]" % name)
+		else:
+			parts.append(name)
+	if last < moves.size():
+		parts.append("…")
+	return " ".join(parts)
+
+
+## Chip labels for the stages (F2L 1-4 share one chip, "F2L 2/4" while it plays); short names so a row fits.
+const CHIP_NAMES := {
+	"cross": "Cross", "oll": "OLL", "pll": "PLL", "first_layer": "Layer 1", "second_layer": "Layer 2",
+	"yellow_cross": "Yellow cross", "yellow_edges": "Yellow edges", "corner_cycle": "Corners",
+	"corner_twist": "Twist", "orient": "Orient", "permute": "Permute",
+}
+
+## [{name, ids: [stage ids]}] in order.
+func _chip_groups() -> Array[Dictionary]:
+	var groups: Array[Dictionary] = []
+	if _showcase == null:
+		return groups
+	for stage in _showcase.chip_stages():
+		var id: String = stage["id"]
+		if id.begins_with("f2l_") and not groups.is_empty() and groups[-1]["name"] == "F2L":
+			(groups[-1]["ids"] as Array).append(id)
+		else:
+			groups.append({"name": "F2L" if id.begins_with("f2l_") else CHIP_NAMES.get(id, stage["name"]), "ids": [id]})
+	return groups
+
+
+func _build_stage_chips() -> void:
+	for child in stage_chips.get_children():
+		stage_chips.remove_child(child)
+		child.queue_free()
+	stage_chips.visible = _showcase != null
+	for group in _chip_groups():
+		var label := Label.new()
+		label.theme_type_variation = &"StageChip"
+		label.text = group["name"]
+		stage_chips.add_child(label)
+	_refresh_stage_chips()
+
+
+## Done chips green, the playing one lit (F2L shows which pair), the rest faint.
+func _refresh_stage_chips() -> void:
+	if _showcase == null:
+		return
+	var current := _showcase.current_stage()
+	var current_id: String = current.get("id", "")
+	var done := {}
+	for i in mini(_showcase.stage_index, _showcase.stages.size()):
+		done[_showcase.stages[i]["id"]] = true
+	var solved := _showcase.phase == "solved"
+	var groups := _chip_groups()
+	for i in mini(groups.size(), stage_chips.get_child_count()):
+		var label := stage_chips.get_child(i) as Label
+		var ids: Array = groups[i]["ids"]
+		var all_done := true
+		for id: String in ids:
+			if not done.has(id):
+				all_done = false
+		var playing := not solved and _showcase.phase == "solving" and current_id in ids
+		label.theme_type_variation = &"StageChipActive" if playing else (&"StageChipDone" if all_done or solved else &"StageChip")
+		label.text = groups[i]["name"]
+		if playing and ids.size() > 1:
+			label.text = "%s %d/%d" % [groups[i]["name"], ids.find(current_id) + 1, ids.size()]
+
+
+## Screenshots: plays the showcase `moves` moves in (instantly) and holds it there.
+func pose_showcase(moves: int) -> void:
+	if _showcase == null:
+		return
+	for i in moves:
+		for move in _showcase.tap():
+			puzzle_view.turn(move)
+	puzzle_view.finish_animations()
+	showcase_paused = true
+	_refresh_stage_chips()
 
 
 # --- Puzzle row (D9) --------------------------------------------------------------
@@ -447,6 +621,7 @@ func _on_unlock_pressed(puzzle_id: String) -> void:
 
 func _on_state_reset() -> void:
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
+	_start_showcase()
 	_build_puzzle_row()
 	_shown_solves = Game.solves
 	_revealed.clear()
@@ -456,7 +631,9 @@ func _on_state_reset() -> void:
 	_refresh()
 
 
-func _on_purchased(_kind: String, _id: String) -> void:
+func _on_purchased(kind: String, _id: String) -> void:
+	if kind == "method" and _showcase != null:
+		_showcase.method = Game.method  # the next showcase solve uses it
 	Audio.play_buy()
 	_refresh()
 

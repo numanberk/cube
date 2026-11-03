@@ -2,6 +2,37 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task R.2: the showcase solve on the main cube
+- **The big cube now plays real solves.** For the 2×2 and 3×3 (what StagedSolver supports) the focused cube no longer
+  shows random turns + rewind: it shows a real WCA scramble, ~1.6 s of inspection (the `z2 y` turns play in it), then the
+  learned method's solve one move at a time, holds the solved cube ~1.4 s (flash + bounce), and starts the next one.
+  - **Speed** (`Content.SHOWCASE`, owner OK'd): Beginner 3 TPS, CFOP 5, Roux 6, ZZ 7, God's Number 8, +0.9 TPS per 10×
+    the focused puzzle's moves/s, max 12, and **never faster than the puzzle really gets moves**: with no helpers it only
+    moves when you tap. Turn animation time follows the pace (0.7 / TPS, 0.05–0.12 s), so speed mode never kicks in.
+  - **A tap plays the next move of the solve** (in inspection it does the inspection turns and the first move), and
+    still counts as a normal tap for the economy.
+  - **Stage chips** (`%StageChips`) under the cube: done = green text, playing = lit (F2L shows "F2L 2/4"), rest faint.
+    Beginner: Cross · Layer 1 · Layer 2 · Yellow cross · Yellow edges · Corners · Twist; 2×2: Layer 1 · Orient · Permute.
+  - **Ticker** (`%MoveTicker`, now a RichTextLabel): "F2L 3   F' U2 F U2 **R** U R'": stage name, moves played dim, the
+    one just played in green, the rest faint; long stages show a window with "…". 3×3 wide moves are written `r` (cubers'
+    style, `ShowcaseSolve.notation`). With ≥ 2 solves/s: "· 1 of 81 solves/s". When solved: "Solved in 64 moves · CFOP".
+  - A method learned mid-solve is used from the next scramble. Economy solves no longer rewind the big cube (they still pop
+    "+X Solves" and chime). 4×4+ and Megaminx keep the old scramble + rewind until R.6; the small row cubes are unchanged.
+- **Code:** `ShowcaseSolve` (`scripts/cube/showcase_solve.gd`, pure data, signals started/stage_changed/finished);
+  main.gd `_start_showcase()` (on ready, focus change, reset), `_play_showcase()`, `_showcase_ticker()`, chips,
+  `pose_showcase(n)` for screenshots. main.gd warms StagedSolver up at start (~0.3 s, once). Theme: StageChip,
+  StageChipActive, StageChipDone, StageChipRow, TickerText. The puzzle view's minimum height is 220 (was 300) so the new
+  chip row fits at 1280×720.
+- Screenshot tool: `SHOWCASE=<moves>` (hold the showcase N moves in) and `METHOD=<id>`. Shots in
+  `docs/screenshots/R.2-showcase/`: CFOP in F2L (`mid_showcase22`), CFOP in PLL (`mid_showcase50`), Beginner second
+  layer (`mid_showcase40_beginner`), fresh 2×2 first layer (`fresh_showcase3`).
+- Tests (1829 checks, `All good.`): TPS rules (0 helpers = taps only, caps, CFOP > Beginner), a timed full solve ends
+  solved and starts the next, taps (inspection, one move each, 0 TPS still), method change applies next solve, `r`
+  notation, and a main-screen smoke check: full tapped showcase solves on the 3×3 with Beginner and CFOP (cube solved,
+  chips all done, taps counted), 4×4 falls back. `test_juice_at_high_speed` now expects the showcase, not speed mode.
+- **Next: R.3** (cube times + next-goal bar). Note: the "moves to next solve" bar still shows the economy's moves per
+  solve, which differs from the showcase's move count; R.3 replaces it with a goal bar at high speed.
+
 ## 2026-11-03 — R.1 follow-up: solves look right to a pro (owner answers)
 - **Owner answers:** showcase speed as recommended (~3 TPS Beginner → ~10–12 TPS CFOP; noted in ROADMAP R.2); the solve
   must **look right to a pro**; a 2×2 first layer in any colour is fine.

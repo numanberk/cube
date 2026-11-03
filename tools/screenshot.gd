@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -40,6 +40,8 @@ func _ready() -> void:
 	if bench and single_puzzle:
 		data["puzzles"] = {"unlocked": ["7x7"], "progress": {}, "focus": "7x7", "split": {"7x7": 1.0}}
 	Game.apply_save_data(data, now)
+	if args.has("method"):  # e.g. a Beginner showcase solve on a preset that has CFOP
+		Game.method = String(args["method"])
 	Game.set_process(bench)  # freeze the economy so the numbers match the preset (the bench keeps it running)
 	seed(RANDOM_SEED)
 	var main := MAIN_SCENE.instantiate()
@@ -48,6 +50,7 @@ func _ready() -> void:
 	var view: PuzzleView3D = main.get_node("%PuzzleView")
 	if puzzle != "":
 		view.set_puzzle(puzzle)
+		main._start_showcase(puzzle)
 	if args.has("settings"):
 		main.get_node("%SettingsPanel").open()
 	if args.has("solve"):
@@ -62,6 +65,8 @@ func _ready() -> void:
 	if bench:
 		for quality: String in ["low", "high"]:  # high last, so the saved PNG shows it
 			await _bench(view, quality, bench_name)
+	if args.has("showcase"):  # the showcase solve held N moves in
+		main.pose_showcase(int(args["showcase"]))
 	var pose: String = args.get("pose", "")
 	if pose != "":
 		for i in SETTLE_FRAMES:  # let the starting animations finish first

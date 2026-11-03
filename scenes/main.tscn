@@ -99,22 +99,33 @@ size_flags_stretch_ratio = 1.25
 
 [node name="PuzzleView" parent="Margin/Rows/Columns/Stage" instance=ExtResource("2_puzzle")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 300)
+custom_minimum_size = Vector2(300, 220)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="StageChips" type="HBoxContainer" parent="Margin/Rows/Columns/Stage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StageChipRow"
+alignment = 1
+
+[node name="MoveTicker" type="RichTextLabel" parent="Margin/Rows/Columns/Stage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TickerText"
+bbcode_enabled = true
+text = " "
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
+horizontal_alignment = 1
+mouse_filter = 2
 
 [node name="PuzzleRow" type="HBoxContainer" parent="Margin/Rows/Columns/Stage"]
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 1
-
-[node name="MoveTicker" type="Label" parent="Margin/Rows/Columns/Stage"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"TickerLabel"
-text = " "
-horizontal_alignment = 1
 
 [node name="HintLabel" type="Label" parent="Margin/Rows/Columns/Stage"]
 unique_name_in_owner = true

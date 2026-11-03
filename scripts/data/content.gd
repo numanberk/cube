@@ -220,6 +220,21 @@ const ALGORITHMS: Array[Dictionary] = [
 ]
 
 
+## Showcase solve (task R.2): the main cube plays one real solve (StagedSolver) at a speed you can follow, instead of
+## showing every move. Visual only: it never changes a number. Turns per second come from the learned method plus a bit
+## per 10× more moves/s of the focused puzzle (owner, 2026-11-03: ~3 TPS Beginner up to ~10–12 with CFOP and many
+## helpers), never above max_tps and never faster than the puzzle really gets moves (no helpers: only taps turn it).
+##   inspection: seconds the scramble is shown before the solve (the inspection turns, like z2 y, play in it)
+##   solved_hold: seconds the solved cube stays before the next scramble
+const SHOWCASE := {
+	"tps_by_method": {"beginner": 3.0, "cfop": 5.0, "roux": 6.0, "zz": 7.0, "gods_number": 8.0},
+	"tps_per_decade": 0.9,
+	"max_tps": 12.0,
+	"inspection": 1.6,
+	"solved_hold": 1.4,
+}
+
+
 ## Solve Station keys (task S.1): csTimer's virtual-cube layout, so a speedcuber's muscle memory just works.
 ## Keys are physical positions (Godot Key constants, US layout names), so they work on any keyboard layout.
 ## Each entry: [first layer, last layer, face, direction], layers counted from that face starting at 1, like csTimer.

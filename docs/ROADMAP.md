@@ -140,7 +140,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is an almost
 professional speedcuber**. So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
 records and drills, and your real skill feeds the idle economy. Do S.1–S.6 before the rest of Phase 5 (5.2 onward).
-**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1 ✅ → R.2–R.4** (readable main screen, below) → S.6 → S.3 (needs D13) → S.4, S.5,
+**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1 ✅ → R.2 ✅ → R.3–R.4** (readable main screen, below) → S.6 → S.3 (needs D13) → S.4, S.5,
 S.7, S.8 → R.5, R.6. Then the rest of Phase 5.
 - [x] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
       using **csTimer's virtual-cube layout** (I/K = R/R', J/F = U/U', H/G = F/F', D/E = L/L', S/L = D/D', W/O = B/B',
@@ -172,7 +172,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       background while the current one plays).
       *Done when:* tests solve 200 random scrambles per method (scramble + solution = solved), check each stage's goal holds
       after that stage (e.g. cross solved after "Cross"), and check the time budget.
-- [ ] **R.2 Showcase solve on the main cube:** the big focused puzzle stops showing every move. It plays **one example solve
+- [x] **R.2 Showcase solve on the main cube:** the big focused puzzle stops showing every move. It plays **one example solve
       at a watchable speed**: a real WCA scramble, a short inspection pause, then R.1's solution at a TPS that grows with the
       method and helpers (owner OK'd 2026-11-03: about 3 TPS with Beginner, up to ~10–12 with CFOP and many helpers),
       then the next one. Show 3×3 wide moves the way cubers write algorithms (`r U R' U' r'`, not `Rw`). Above the ticker, stage chips light up as the solve goes

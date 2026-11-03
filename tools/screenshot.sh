@@ -11,6 +11,8 @@
 #   BUY=10 bash tools/screenshot.sh /tmp/shots mid         # shop on x10 (-1 = Max) -> mid_buy10.png
 #   SETTINGS=1 bash tools/screenshot.sh /tmp/shots mid     # with the Settings panel open -> mid_settings.png
 #   SOLVE=done bash tools/screenshot.sh /tmp/shots mid     # Solve Station: inspecting | solving | done -> mid_solvedone.png
+#   SHOWCASE=20 bash tools/screenshot.sh /tmp/shots mid    # the main cube's showcase solve 20 moves in -> mid_showcase20.png
+#   METHOD=beginner SHOWCASE=40 bash tools/screenshot.sh /tmp/shots mid  # ...with another method -> mid_showcase40_beginner.png
 #   bash tools/screenshot.sh /tmp/shots bench              # 7×7 at max speed, 600 frames per quality, logs frame times
 #
 # Presets live in tools/screenshot_presets.gd (fresh, mid, late, ...).
@@ -41,6 +43,8 @@ JUICE="${JUICE:-}"
 BUY="${BUY:-}"
 SETTINGS="${SETTINGS:-}"
 SOLVE="${SOLVE:-}"
+SHOWCASE="${SHOWCASE:-}"
+METHOD="${METHOD:-}"
 
 if [[ $# -gt 0 ]]; then
   PRESETS=("$@")
@@ -71,10 +75,10 @@ fi
 
 failed=0
 for preset in "${PRESETS[@]}"; do
-  out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}${POSE:+_$POSE}${GRAPHICS:+_$GRAPHICS}${TAB:+_tab$TAB}${JUICE:+_juice}${BUY:+_buy$BUY}${SETTINGS:+_settings}${SOLVE:+_solve$SOLVE}.png"
+  out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}${POSE:+_$POSE}${GRAPHICS:+_$GRAPHICS}${TAB:+_tab$TAB}${JUICE:+_juice}${BUY:+_buy$BUY}${SETTINGS:+_settings}${SOLVE:+_solve$SOLVE}${SHOWCASE:+_showcase$SHOWCASE}${METHOD:+_$METHOD}.png"
   rm -f "$out"
   "${RUN[@]}" "$GODOT" --path "$ROOT" --rendering-driver opengl3 --audio-driver Dummy --resolution "$SIZE" \
-    --windowed --position 0,0 res://tools/screenshot.tscn -- --preset "$preset" --out "$out" ${PUZZLE:+--puzzle "$PUZZLE"} ${POSE:+--pose "$POSE"} ${GRAPHICS:+--graphics "$GRAPHICS"} ${TAB:+--tab "$TAB"} ${JUICE:+--juice 1} ${BUY:+--buy "$BUY"} ${SETTINGS:+--settings 1} ${SOLVE:+--solve "$SOLVE"} \
+    --windowed --position 0,0 res://tools/screenshot.tscn -- --preset "$preset" --out "$out" ${PUZZLE:+--puzzle "$PUZZLE"} ${POSE:+--pose "$POSE"} ${GRAPHICS:+--graphics "$GRAPHICS"} ${TAB:+--tab "$TAB"} ${JUICE:+--juice 1} ${BUY:+--buy "$BUY"} ${SETTINGS:+--settings 1} ${SOLVE:+--solve "$SOLVE"} ${SHOWCASE:+--showcase "$SHOWCASE"} ${METHOD:+--method "$METHOD"} \
     >"$LOG" 2>&1 || true
   if [[ -f "$out" ]] && ! grep -qE "SCRIPT ERROR|Parse Error|ERROR:" "$LOG"; then
     grep "^Bench " "$LOG" || true
