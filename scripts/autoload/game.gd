@@ -342,6 +342,35 @@ func set_split(weights: Dictionary) -> void:
 	split_changed.emit()
 
 
+## Sets one puzzle's share (0..1) and rescales the others in proportion, so the shares still add up to 1.
+## If the others were all 0, the rest is shared equally between them.
+func set_share(puzzle_id: String, share: float) -> void:
+	if not unlocked_puzzles.has(puzzle_id):
+		return
+	if unlocked_puzzles.size() == 1:
+		set_split({puzzle_id: 1.0})
+		return
+	share = clampf(share, 0.0, 1.0)
+	var others_total := 0.0
+	for id in unlocked_puzzles:
+		if id != puzzle_id:
+			others_total += get_puzzle_share(id)
+	var weights := {puzzle_id: share}
+	for id in unlocked_puzzles:
+		if id == puzzle_id:
+			continue
+		if others_total > 0.0:
+			weights[id] = get_puzzle_share(id) / others_total * (1.0 - share)
+		else:
+			weights[id] = (1.0 - share) / (unlocked_puzzles.size() - 1)
+	set_split(weights)
+
+
+## Moves one puzzle's share up or down by `delta` (e.g. ±0.1), keeping the total at 100 %. Shares snap to whole percents.
+func adjust_share(puzzle_id: String, delta: float) -> void:
+	set_share(puzzle_id, snappedf(get_puzzle_share(puzzle_id) + delta, 0.01))
+
+
 ## "newest": everything on the newest puzzle; "even": the same share for each unlocked puzzle.
 func set_split_preset(preset: String) -> void:
 	var weights := {}

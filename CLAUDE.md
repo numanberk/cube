@@ -40,6 +40,7 @@ scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper 
 scenes/upgrade_tile.tscn   class UpgradeTile (scripts/ui/upgrade_tile.gd): one upgrade icon tile + tooltip panel
 scenes/puzzle_chip.tscn    class PuzzleChip: one card in the puzzle row (small Low-quality PuzzleView3D, name, Solves/s,
                            share) or the next locked puzzle (padlock, cost, Unlock button)
+scripts/ui/split_panel.gd  class SplitPanel (%SplitPanel, the shop's "Puzzles" tab): per-puzzle share −/+ and presets
 scripts/ui/fx_layer.gd     class FxLayer (%FxLayer in main.tscn): pooled floating "+N" texts (max 20) + solve particle burst
 scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle/set_speed,
                            `tapped`; animated turn queue, solve replay, speed mode (see its header comment)
@@ -104,7 +105,7 @@ SIZE=1920x1080 bash tools/screenshot.sh docs/screenshots/1080p    # another reso
 PUZZLE=7x7 bash tools/screenshot.sh /tmp/shots mid                # another puzzle -> mid_7x7.png
 POSE=turn bash tools/screenshot.sh /tmp/shots mid                 # frozen moment: turn | solved -> mid_turn.png
 GRAPHICS=low bash tools/screenshot.sh /tmp/shots mid              # Graphics: Low -> mid_low.png
-TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 (Upgrades) -> mid_tab1.png
+TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 Upgrades / 2 Puzzles -> mid_tab1.png
 JUICE=1 bash tools/screenshot.sh /tmp/shots mid                   # taps + solve pop mid-animation -> mid_juice.png
 BUY=10 bash tools/screenshot.sh /tmp/shots mid                    # shop on ×10 (BUY=-1: Max) -> mid_buy10.png
 SETTINGS=1 bash tools/screenshot.sh /tmp/shots mid                # Settings panel open -> mid_settings.png

@@ -2,6 +2,22 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task 4.3b: split controls
+- **`GameState.set_share(id, share)`** sets one puzzle's share and rescales the others in proportion; if they were all 0, they
+  get the rest equally. **`adjust_share(id, delta)`** steps it, snapped to whole percents. The total always stays 100 %
+  (`set_split` normalises), and with a single puzzle it's always 100 %.
+- **"Puzzles" shop tab** (`SplitPanel`, `scripts/ui/split_panel.gd`, tab index 2): a short explanation, **Quick split: Focus
+  newest / Spread evenly**, and one row per unlocked puzzle with **− / +** (10 % steps), the share in big type, and
+  "X moves/s · +Y Solves/s". It rebuilds when a puzzle unlocks or the save resets, and refreshes with the main UI and on
+  `split_changed`. With one puzzle it says "Unlock the 3×3 to share your helpers between two puzzles" and disables the controls.
+- Screenshot: [Puzzles tab](screenshots/puzzles/split_tab.png).
+- Tests: set_share rescales in proportion; a share stops at 100 %; −10 % ×3 = 70 % with the rest going to the others;
+  **200 random adjustments keep the total at 100 % with nothing negative**; presets; panel buttons (−, Spread evenly) and
+  texts in the real main scene. 1331 checks, `All good.`
+- Note: `test_puzzle_row`'s "unlock sting plays" check failed once during this work and passed on every run since. Watch it;
+  the likely cause is the 0.5 s unlock-sound rate limit overlapping a helper reveal.
+- **Next:** task 4.4 (Megaminx).
+
 ## 2026-11-03 — Task 4.3a: puzzle row + focus
 - **Puzzle row** (`%PuzzleRow` under the big view): a `PuzzleChip` (`scenes/puzzle_chip.tscn`) for every unlocked puzzle
   except the focused one. Each has a small `PuzzleView3D` (always Graphics Low, never sways, ≤ 4 visible turns/s, speed

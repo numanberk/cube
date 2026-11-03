@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://scripts/ui/fx_layer.gd" id="3_fx"]
 [ext_resource type="PackedScene" path="res://scenes/settings_panel.tscn" id="4_settings"]
 [ext_resource type="PackedScene" path="res://scenes/welcome_panel.tscn" id="5_welcome"]
+[ext_resource type="Script" path="res://scripts/ui/split_panel.gd" id="6_split"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_buy_amount"]
 
@@ -226,6 +227,51 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"UpgradeGrid"
 columns = 5
+
+[node name="Puzzles" type="ScrollContainer" parent="Margin/Rows/Columns/Right/Tabs"]
+visible = false
+layout_mode = 2
+horizontal_scroll_mode = 0
+metadata/_tab_index = 2
+
+[node name="SplitPanel" type="VBoxContainer" parent="Margin/Rows/Columns/Right/Tabs/Puzzles"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("6_split")
+
+[node name="SplitHint" type="Label" parent="Margin/Rows/Columns/Right/Tabs/Puzzles/SplitPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Your helpers' moves are shared between your puzzles."
+autowrap_mode = 3
+
+[node name="Presets" type="HBoxContainer" parent="Margin/Rows/Columns/Right/Tabs/Puzzles/SplitPanel"]
+layout_mode = 2
+
+[node name="PresetLabel" type="Label" parent="Margin/Rows/Columns/Right/Tabs/Puzzles/SplitPanel/Presets"]
+layout_mode = 2
+theme_type_variation = &"FaintLabel"
+text = "Quick split"
+
+[node name="PresetNewest" type="Button" parent="Margin/Rows/Columns/Right/Tabs/Puzzles/SplitPanel/Presets"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+text = "Focus newest"
+
+[node name="PresetEven" type="Button" parent="Margin/Rows/Columns/Right/Tabs/Puzzles/SplitPanel/Presets"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+text = "Spread evenly"
+
+[node name="SplitRows" type="VBoxContainer" parent="Margin/Rows/Columns/Right/Tabs/Puzzles/SplitPanel"]
+unique_name_in_owner = true
+layout_mode = 2
 
 [node name="FxLayer" type="Control" parent="."]
 unique_name_in_owner = true

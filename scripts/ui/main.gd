@@ -29,6 +29,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var tabs: TabContainer = %Tabs
 @onready var fx: FxLayer = %FxLayer
 @onready var puzzle_row: HBoxContainer = %PuzzleRow
+@onready var split_panel: SplitPanel = %SplitPanel
 @onready var buy_one: Button = %BuyOne
 @onready var buy_ten: Button = %BuyTen
 @onready var buy_max: Button = %BuyMax
@@ -149,6 +150,7 @@ func _refresh() -> void:
 	_refresh_helper_cards()
 	_refresh_upgrade_tiles()
 	_refresh_puzzle_row()
+	split_panel.refresh()
 
 
 ## Unlocked helpers show as full cards; the first locked one shows as a "???" card with its requirement

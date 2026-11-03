@@ -1396,3 +1396,58 @@ func test_puzzle_row() -> void:
 	check(chip_2x2.view.graphics_quality == "low" and not chip_2x2.view.sway_enabled, "small views are Low and don't sway")
 	main.free()
 	game.reset_state()
+
+
+func test_split_controls() -> void:
+	var g := new_game()
+	g.cheat_add_solves(1e9)
+	g.unlock_puzzle("3x3")
+	g.unlock_puzzle("4x4")
+	g.set_split_preset("even")
+	g.set_share("2x2", 0.5)
+	check_near(g.get_puzzle_share("2x2"), 0.5, "set_share sets one share")
+	check_near(g.get_puzzle_share("3x3"), 0.25, "...and rescales the others in proportion")
+	check_near(g.get_puzzle_share("4x4"), 0.25, "...both of them")
+	for i in 20:  # push way past 100 %
+		g.adjust_share("4x4", 0.1)
+	check_near(g.get_puzzle_share("4x4"), 1.0, "a share stops at 100 %")
+	for i in 3:
+		g.adjust_share("4x4", -0.1)
+	check_near(g.get_puzzle_share("4x4"), 0.7, "−10 % three times = 70 %")
+	check_near(g.get_puzzle_share("2x2") + g.get_puzzle_share("3x3"), 0.3, "the rest goes to the others")
+	var shares_ok := true
+	var rng := seeded_rng(9)
+	for i in 200:
+		var ids := g.get_unlocked_puzzle_ids()
+		g.adjust_share(ids[rng.randi_range(0, ids.size() - 1)], rng.randf_range(-0.4, 0.4))
+		var total := 0.0
+		for id in ids:
+			total += g.get_puzzle_share(id)
+			shares_ok = shares_ok and g.get_puzzle_share(id) >= -0.0001
+		shares_ok = shares_ok and absf(total - 1.0) < 0.0001
+	check(shares_ok, "after 200 random adjustments the shares still add up to 100 % and none is negative")
+	g.set_split_preset("even")
+	check_near(g.get_puzzle_share("3x3"), 1.0 / 3.0, "Spread evenly gives each a third")
+	g.set_split_preset("newest")
+	check_near(g.get_puzzle_share("4x4"), 1.0, "Focus newest puts everything on the 4x4")
+	g.free()
+	# The panel drives the same calls.
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	game.cheat_add_solves(200.0)
+	game.unlock_puzzle("3x3")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var panel: Node = main.get_node("%SplitPanel")  # untyped: SplitPanel uses the Game autoload by name
+	var labels: Dictionary = panel._row_labels
+	check(labels.size() == 2, "the panel has a row per unlocked puzzle")
+	(labels["3x3"]["minus"] as Button).pressed.emit()
+	check_near(game.get_puzzle_share("3x3"), 0.9, "− takes 10 % off")
+	check_near(game.get_puzzle_share("2x2"), 0.1, "...and gives it to the other puzzle")
+	check((labels["3x3"]["share"] as Label).text == "90%", "the row shows the new share")
+	(main.get_node("%PresetEven") as Button).pressed.emit()
+	check_near(game.get_puzzle_share("2x2"), 0.5, "the Spread evenly button splits 50/50")
+	check((labels["2x2"]["info"] as Label).text.contains("Solves/s"), "each row shows moves/s and Solves/s")
+	main.free()
+	game.reset_state()
