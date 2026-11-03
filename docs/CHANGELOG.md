@@ -2,6 +2,36 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-03 — Task R.1: the staged solver (real Beginner and CFOP solves)
+- **`StagedSolver`** (`scripts/cube/staged_solver.gd`, pure data like TwistyModel): `StagedSolver.solve(model, method)`
+  returns the solve as stages `[{id, name, moves}]` without touching the model; applying them in order solves it.
+  `supports(puzzle_id)` (2×2, 3×3), `warm_up(puzzle_id)`, `is_stage_done(model, stage_id)`, `simplify(model, moves)`.
+  - **CFOP (3×3):** `z2` in inspection (WCA scrambles are white top / green front; z2 gives a white cross and keeps green
+    in front), an **optimal cross** (IDA*, avg 5.8 moves), **F2L pair by pair, easiest first**, with real inserts
+    (`R U R'`, `F' U' F`, … plus U turns; ~6–8 moves a pair), then **2-look OLL and PLL** from the algorithm data
+    (avg 14 + 18). About 64 moves in total, like a 2-look CFOP solver.
+  - **Beginner (3×3):** cross, first-layer corners with repeated `R U R' U'`, second-layer edges with the two classic
+    inserts, yellow cross (`F R U R' U' F'`), yellow edges (Sune), corner cycle (`U R U' L' U R' U' L`) and the
+    `R' D' R D` corner twist. About 124 moves.
+  - **2×2:** first layer (optimal, U/R/F only), then Orient (Sune/Antisune) + Permute (T/Y perm) for Beginner, or
+    OLL + PLL with the 2-look OCLL algorithms for CFOP and later. The first layer is whatever colour the back-bottom-left
+    corner has (the 2×2 has no centres and that corner never moves).
+  - Roux, ZZ and God's Number fall back to CFOP until **R.5**; 4×4+ and Megaminx give `[]` until **R.6**.
+- **Algorithms are data:** `Content.ALGORITHMS` (id, name, set OLL/PLL/Beginner, two_look, alg) + `Content.get_algorithm()`,
+  meant to be shared with the S.4 drills (add the full OLL/PLL sets there; the solver will use them via the same ids).
+- **How it works / speed:** pieces are tracked as slots (position × twist) with move tables built from the model's
+  geometry. The cross uses one 3-edge distance table looked up four times (y-symmetry); every other stage uses cached
+  cost-to-goal tables over a few pieces (F2L pair: 576 states), so a solve just walks downhill. After `warm_up()`
+  (~0.3 s for the 3×3, ~50 ms for the 2×2 in the container) a 3×3 solve takes ~8–10 ms, worst ~20 ms; without warm-up the
+  first solve builds what it needs (~0.5 s). **R.2: call `StagedSolver.warm_up()` at startup (or in a thread).**
+- Tests (1783 checks, `All good.`): 200 random scrambles per method on 3×3 and 2×2, each stage's goal checked after it,
+  the 50 ms budget, stage lists, realistic move counts, z2 + cross ≤ 8, cube held in another orientation, fallbacks,
+  and every algorithm in the data keeps F2L/centres (PLLs also the top colour). The test suite now takes ~57 s (was ~51 s).
+- **Not visual yet:** nothing on screen changes until R.2. Next: **R.2 showcase solve** (use PuzzleView3D's manual mode
+  `show_state`/`turn` from S.1, `StagedSolver.solve(model, Game.method)`, and the stage ids/names for the chips).
+- Known look details for later: F2L sometimes inserts at the back with `B U B'`-style moves instead of a `y` rotation
+  (real solvers usually rotate); the 2×2 first layer isn't always white. Both are fine for a showcase; R.5 could add `y`.
+
 ## 2026-11-03 — Task S.2: solve records (save v5) + D13 answered + handoff notes
 - **D13 answered by the owner: ~2–3×.** An active player who keeps solving earns about 2–3× an idle one (PLAN §7).
 - **Records in GameState** (rule 1): `record_hand_solve(id, seconds, penalty, moves)` returns

@@ -182,6 +182,44 @@ const PUZZLES := [
 	{"id": "megaminx", "name": "Megaminx", "moves_per_solve": 700.0, "min_moves_per_solve": 140.0, "scramble_length": 77, "solve_value": 800.0, "unlock_cost": 2e11, "requires_prestige": true},
 ]
 
+## Algorithms (task R.1, shared with the drills in S.4): real speedcubing algorithms in WCA notation, for the staged
+## solver (StagedSolver) that the main cube's showcase solve plays. Every one is checked by a test: it must keep the
+## first two layers and the centres where they were (and a PLL must keep the last layer's orientation).
+##   id, name, set ("OLL", "PLL" or "Beginner"), two_look (part of 2-look OLL/PLL, what CFOP learners start with), alg
+## S.4 adds the full OLL (57) and PLL (21) sets here; the solver uses a full set once the player has learned it.
+const ALGORITHMS: Array[Dictionary] = [
+	# 2-look OLL, step 1: orient the edges (make the cross on top)
+	{"id": "oll_line", "name": "Line", "set": "OLL", "two_look": true, "alg": "F R U R' U' F'"},
+	{"id": "oll_l_shape", "name": "L shape", "set": "OLL", "two_look": true, "alg": "F U R U' R' F'"},
+	# 2-look OLL, step 2: orient the corners (OCLL)
+	{"id": "oll_sune", "name": "Sune", "set": "OLL", "two_look": true, "alg": "R U R' U R U2 R'"},
+	{"id": "oll_antisune", "name": "Antisune", "set": "OLL", "two_look": true, "alg": "R U2 R' U' R U' R'"},
+	{"id": "oll_h", "name": "H (Double Sune)", "set": "OLL", "two_look": true, "alg": "R U R' U R U' R' U R U2 R'"},
+	{"id": "oll_pi", "name": "Pi (Bruno)", "set": "OLL", "two_look": true, "alg": "R U2 R2 U' R2 U' R2 U2 R"},
+	{"id": "oll_headlights", "name": "Headlights", "set": "OLL", "two_look": true, "alg": "R2 D R' U2 R D' R' U2 R'"},
+	{"id": "oll_chameleon", "name": "Chameleon", "set": "OLL", "two_look": true, "alg": "r U R' U' r' F R F'"},
+	{"id": "oll_bowtie", "name": "Bowtie", "set": "OLL", "two_look": true, "alg": "F R' F' r U R U' r'"},
+	# 2-look PLL, step 1: permute the corners
+	{"id": "pll_aa", "name": "Aa perm", "set": "PLL", "two_look": true, "alg": "R' F R' B2 R F' R' B2 R2"},
+	{"id": "pll_ab", "name": "Ab perm", "set": "PLL", "two_look": true, "alg": "R2 B2 R F R' B2 R F' R"},
+	{"id": "pll_t", "name": "T perm", "set": "PLL", "two_look": true, "alg": "R U R' U' R' F R2 U' R' U' R U R' F'"},
+	{"id": "pll_y", "name": "Y perm", "set": "PLL", "two_look": true, "alg": "F R U' R' U' R U R' F' R U R' U' R' F R F'"},
+	# 2-look PLL, step 2: permute the edges
+	{"id": "pll_ua", "name": "Ua perm", "set": "PLL", "two_look": true, "alg": "R U' R U R U R U' R' U' R2"},
+	{"id": "pll_ub", "name": "Ub perm", "set": "PLL", "two_look": true, "alg": "R2 U R U R' U' R' U' R' U R'"},
+	{"id": "pll_h", "name": "H perm", "set": "PLL", "two_look": true, "alg": "M2 U M2 U2 M2 U M2"},
+	{"id": "pll_z", "name": "Z perm", "set": "PLL", "two_look": true, "alg": "M' U M2 U M2 U M' U2 M2"},
+	# The beginner (layer-by-layer) method. Written for the front/right; the solver turns them to face any side.
+	{"id": "beg_corner", "name": "Corner insert (repeat)", "set": "Beginner", "two_look": false, "alg": "R U R' U'"},
+	{"id": "beg_edge_right", "name": "Edge to the right", "set": "Beginner", "two_look": false, "alg": "U R U' R' U' F' U F"},
+	{"id": "beg_edge_left", "name": "Edge to the left", "set": "Beginner", "two_look": false, "alg": "U' L' U L U F U' F'"},
+	{"id": "beg_yellow_cross", "name": "Yellow cross", "set": "Beginner", "two_look": false, "alg": "F R U R' U' F'"},
+	{"id": "beg_yellow_edges", "name": "Yellow edges", "set": "Beginner", "two_look": false, "alg": "R U R' U R U2 R'"},
+	{"id": "beg_corner_cycle", "name": "Corner cycle", "set": "Beginner", "two_look": false, "alg": "U R U' L' U R' U' L"},
+	{"id": "beg_corner_twist", "name": "Corner twist (repeat)", "set": "Beginner", "two_look": false, "alg": "R' D' R D"},
+]
+
+
 ## Solve Station keys (task S.1): csTimer's virtual-cube layout, so a speedcuber's muscle memory just works.
 ## Keys are physical positions (Godot Key constants, US layout names), so they work on any keyboard layout.
 ## Each entry: [first layer, last layer, face, direction], layers counted from that face starting at 1, like csTimer.
@@ -284,6 +322,13 @@ static func get_track(id: String) -> Dictionary:
 
 static func get_building(id: String) -> Dictionary:
 	for def: Dictionary in BUILDINGS:
+		if def["id"] == id:
+			return def
+	return {}
+
+
+static func get_algorithm(id: String) -> Dictionary:
+	for def: Dictionary in ALGORITHMS:
 		if def["id"] == id:
 			return def
 	return {}

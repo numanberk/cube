@@ -2067,3 +2067,158 @@ func test_save_v4_to_v5_migration() -> void:
 	g.apply_save_data(junk, float(data["saved_at"]))
 	check(g.get_solve_history("3x3").size() == 1 and g.get_solve_history("3x3")[0]["p"] == "", "damaged entries are cleaned up")
 	g.free()
+
+
+# --- Staged solver (task R.1) -----------------------------------------------------
+
+## Scrambles `count` cubes, solves each with `method`, applies the stages one by one and checks every stage's goal and
+## the end. Returns [failures, average solve ms, average moves].
+func _check_staged_solves(puzzle_id: String, method: String, count: int, seed: int) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	var bad := 0
+	var stage_misses := {}
+	var total_usec := 0
+	var total_moves := 0
+	for i in count:
+		var model := PuzzleShapes.from_id(puzzle_id)
+		model.scramble(25, rng)
+		var start := Time.get_ticks_usec()
+		var stages := StagedSolver.solve(model, method)
+		total_usec += Time.get_ticks_usec() - start
+		for stage: Dictionary in stages:
+			model.apply_all(stage["moves"])
+			if stage["id"] != "inspection":
+				total_moves += (stage["moves"] as Array).size()
+				if not StagedSolver.is_stage_done(model, stage["id"]):
+					stage_misses[stage["id"]] = true
+		if not model.is_solved():
+			bad += 1
+	check(stage_misses.is_empty(), "%s %s: every stage reaches its goal (missed: %s)" % [puzzle_id, method, stage_misses.keys()])
+	return [bad, total_usec / 1000.0 / count, float(total_moves) / count]
+
+
+func test_staged_solver_solves() -> void:
+	var start := Time.get_ticks_usec()
+	StagedSolver.warm_up("3x3")
+	StagedSolver.warm_up("2x2")
+	var warm_ms := (Time.get_ticks_usec() - start) / 1000.0
+	check(warm_ms < 3000.0, "warming up the solver takes well under a few seconds (took %.0f ms)" % warm_ms)
+	var expected_stages := {
+		"cfop": ["inspection", "cross", "f2l_1", "f2l_2", "f2l_3", "f2l_4", "oll", "pll"],
+		"beginner": ["inspection", "cross", "first_layer", "second_layer", "yellow_cross", "yellow_edges", "corner_cycle",
+				"corner_twist"],
+	}
+	for method: String in ["cfop", "beginner"]:
+		var result := _check_staged_solves("3x3", method, 200, 11)
+		check(result[0] == 0, "3x3 %s: 200 random scrambles are all solved (%d failed)" % [method, result[0]])
+		check(result[1] < 50.0, "3x3 %s: a solve takes under 50 ms on average after warm-up (%.1f ms)" % [method, result[1]])
+		var model := PuzzleShapes.from_id("3x3")
+		model.scramble(25)
+		var ids := []
+		for stage: Dictionary in StagedSolver.solve(model, method):
+			ids.append(stage["id"])
+			check(stage["name"] != "" and stage["name"] != stage["id"], "stage %s has a display name" % stage["id"])
+		check(ids == expected_stages[method], "3x3 %s has the expected stages (got %s)" % [method, ids])
+	# Realistic lengths: 2-look CFOP is ~55-70 moves, the beginner method ~100-140.
+	var cfop := _check_staged_solves("3x3", "cfop", 30, 12)
+	var beginner := _check_staged_solves("3x3", "beginner", 30, 12)
+	check(cfop[2] > 45.0 and cfop[2] < 75.0, "a CFOP solve is about 55-70 moves (%.1f)" % cfop[2])
+	check(beginner[2] > cfop[2] + 25.0, "the beginner method takes clearly more moves (%.1f)" % beginner[2])
+	for method: String in ["cfop", "beginner"]:
+		var result := _check_staged_solves("2x2", method, 200, 13)
+		check(result[0] == 0, "2x2 %s: 200 random scrambles are all solved (%d failed)" % [method, result[0]])
+		check(result[1] < 50.0, "2x2 %s: under 50 ms on average (%.1f ms)" % [method, result[1]])
+
+
+func test_staged_solver_details() -> void:
+	# WCA scrambles are held white on top, green in front; the solver turns the cube over for a white cross (z2 keeps
+	# green in front), like a real solver in inspection.
+	var model := PuzzleShapes.from_id("3x3")
+	model.scramble(25)
+	var stages := StagedSolver.solve(model, "cfop")
+	check(model.notation_sequence(stages[0]["moves"]) == "z2", "a CFOP solve starts with z2 in inspection")
+	var cross_moves: Array = stages[1]["moves"]
+	check(cross_moves.size() <= 8, "the cross is planned in at most 8 moves (%d)" % cross_moves.size())
+	# The input model is never changed.
+	var copy := model.orientations.duplicate()
+	StagedSolver.solve(model, "beginner")
+	check(model.orientations == copy, "solve() leaves the model alone")
+	# Already solved: every stage is a skip, nothing but the z2.
+	var solved := PuzzleShapes.from_id("3x3")
+	var total := 0
+	for stage: Dictionary in StagedSolver.solve(solved, "cfop"):
+		if stage["id"] != "inspection":
+			total += (stage["moves"] as Array).size()
+	check(total == 0, "a solved cube needs no moves")
+	# Held in another orientation (e.g. after rotations in the Solve Station): still solved.
+	var turned := PuzzleShapes.from_id("3x3")
+	turned.apply_all(turned.parse_sequence("x y'"))
+	turned.scramble(20)
+	for stage: Dictionary in StagedSolver.solve(turned, "cfop"):
+		turned.apply_all(stage["moves"])
+	check(turned.is_solved(), "a cube held in another orientation is solved too")
+	# Methods without their own stages yet fall back to CFOP; unsupported puzzles give nothing.
+	var roux := PuzzleShapes.from_id("3x3")
+	roux.scramble(25)
+	var roux_stages := StagedSolver.solve(roux, "roux")
+	check(roux_stages.size() == 8 and roux_stages[6]["id"] == "oll", "Roux falls back to CFOP until R.5")
+	check(StagedSolver.supports("3x3") and StagedSolver.supports("2x2"), "3x3 and 2x2 are supported")
+	check(not StagedSolver.supports("4x4") and not StagedSolver.supports("megaminx"), "bigger cubes come in R.6")
+	check(StagedSolver.solve(PuzzleShapes.from_id("4x4")).is_empty(), "an unsupported puzzle gives no stages")
+	check(StagedSolver.solve(PuzzleShapes.from_id("megaminx")).is_empty(), "...the Megaminx too")
+	# Beginner's last step is the real R' D' R D corner twist.
+	var b := PuzzleShapes.from_id("3x3")
+	b.scramble(25)
+	var twist := ""
+	for stage: Dictionary in StagedSolver.solve(b, "beginner"):
+		if stage["id"] == "corner_twist":
+			twist = b.notation_sequence(stage["moves"])
+	check(twist == "" or "R' D' R D" in twist, "the beginner corner twist uses R' D' R D (%s)" % twist)
+	# simplify() merges turns of the same layer.
+	var m := PuzzleShapes.from_id("3x3")
+	check(m.notation_sequence(StagedSolver.simplify(m, m.parse_sequence("R R U U' F F F"))) == "R2 F'", "R R U U' F F F -> R2 F'")
+
+
+## Every algorithm in Content.ALGORITHMS parses, and does what its set promises on a solved 3×3 (white on top).
+func test_algorithm_data() -> void:
+	var ids := {}
+	for alg: Dictionary in Content.ALGORITHMS:
+		check(not ids.has(alg["id"]), "algorithm id %s is unique" % alg["id"])
+		ids[alg["id"]] = true
+		check(alg["set"] in ["OLL", "PLL", "Beginner"], "%s has a known set" % alg["id"])
+		var model := PuzzleShapes.from_id("3x3")
+		var moves := model.parse_sequence(alg["alg"])
+		check(not moves.is_empty(), "%s parses: %s" % [alg["id"], alg["alg"]])
+		model.apply_all(moves)
+		var keeps: String = {"OLL": "f2l", "PLL": "f2l_and_top_color", "Beginner": ""}[alg["set"]]
+		match alg["id"]:
+			"beg_yellow_cross", "beg_yellow_edges", "beg_corner_cycle":
+				keeps = "f2l"
+			"beg_edge_right", "beg_edge_left":
+				keeps = "bottom"
+		if keeps == "":
+			continue
+		var kept := true
+		for piece in model.piece_count():
+			var home := model.home_positions[piece]
+			if model.sticker_normals[piece].size() == 1:  # centres: must stay put (spinning in place looks the same)
+				if model.piece_position(piece).distance_to(home) > 0.01:
+					kept = false
+				continue
+			var must_stay := home.y < -0.5 if keeps == "bottom" else home.y < 0.5
+			if must_stay and model.orientations[piece] != 0:
+				kept = false
+		if keeps == "f2l_and_top_color":
+			for piece in model.piece_count():
+				for s in model.sticker_normals[piece].size():
+					var facing := model.piece_basis(piece) * model.sticker_normals[piece][s]
+					if facing.y > 0.99 and model.sticker_colors[piece][s] != PuzzleShapes.COLOR_WHITE:
+						kept = false
+		check(kept, "%s keeps the %s in place" % [alg["id"], keeps.replace("_", " ")])
+	# The two that are used repeatedly: R U R' U' six times, and R' D' R D six times, are back to solved.
+	for id: String in ["beg_corner", "beg_corner_twist"]:
+		var model := PuzzleShapes.from_id("3x3")
+		for i in 6:
+			model.apply_all(model.parse_sequence(Content.get_algorithm(id)["alg"]))
+		check(model.is_solved(), "%s six times is back to solved" % id)

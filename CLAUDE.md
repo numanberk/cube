@@ -52,6 +52,9 @@ scripts/cube/puzzle_shapes.gd  class PuzzleShapes: builds models (from_id("3x3")
 scripts/cube/puzzle_meshes.gd  class PuzzleMeshes: rounded box + rounded sticker (cubes), shaped_piece() (Megaminx)
 scripts/cube/solve_session.gd  class SolveSession: Solve Station rules (scramble, WCA inspection, timer, keys -> moves,
                            big-cube hands, session averages). Pure data; keys are Content.SOLVE_KEYS
+scripts/cube/staged_solver.gd  class StagedSolver: solves a 2×2/3×3 like a person, in named stages (Beginner, CFOP:
+                           cross, F2L 1-4, OLL, PLL) for the showcase solve (R.2). Pure data; algorithms are
+                           Content.ALGORITHMS (shared with S.4). Call StagedSolver.warm_up() before the first solve
 scripts/ui/shaders/        stage_backdrop (radial glow) + contact_shadow .gdshader, used by PuzzleView3D
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)

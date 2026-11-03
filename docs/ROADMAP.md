@@ -140,7 +140,7 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is an almost
 professional speedcuber**. So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
 records and drills, and your real skill feeds the idle economy. Do S.1–S.6 before the rest of Phase 5 (5.2 onward).
-**Order (2026-11-03):** S.1 ✅ → S.2 → **R.1–R.4** (readable main screen, below) → S.6 → S.3 (needs D13) → S.4, S.5,
+**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1 ✅ → R.2–R.4** (readable main screen, below) → S.6 → S.3 (needs D13) → S.4, S.5,
 S.7, S.8 → R.5, R.6. Then the rest of Phase 5.
 - [x] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
       using **csTimer's virtual-cube layout** (I/K = R/R', J/F = U/U', H/G = F/F', D/E = L/L', S/L = D/D', W/O = B/B',
@@ -164,7 +164,7 @@ main cube never really solves. Above 12 moves/s it only wobbles, the "moves to n
 second, and the ticker shows random notation. Phase S gives the player things to *do*, but the main screen (which they
 look at all the time) stays noise. These tasks make it show real cubing. S.1's manual mode in PuzzleView3D
 (`show_state`/`turn`) and S.4's algorithm data are meant to be shared with them; whichever task comes first creates the data.
-- [ ] **R.1 Staged solver (3×3 + 2×2):** a pure class (e.g. `StagedSolver`, `scripts/cube/`) that takes a TwistyModel and
+- [x] **R.1 Staged solver (3×3 + 2×2):** a pure class (e.g. `StagedSolver`, `scripts/cube/`) that takes a TwistyModel and
       returns a real solution split into labelled stages, per method: **Beginner** (cross, first-layer corners, middle edges,
       last-layer steps) and **CFOP** (cross, F2L 1–4, OLL, PLL; 2-look OLL/PLL until S.4's full sets exist, then the full ones).
       2×2: layer by layer (Ortega later). Piece-by-piece with short searches (depth ≤ ~5) plus fixed insert algorithms as data,
