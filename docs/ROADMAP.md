@@ -28,6 +28,9 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       *Done when:* tests pass, and the expected-failure list appears in `docs/BALANCE.md`.
 - [x] **0.4 Safe saves:** write `save.json.tmp` then rename it; keep `save.bak`; if the save is corrupt, load the backup and warn.
       *Done when:* there are tests for a corrupt main save → loads the backup, and a missing save → starts fresh.
+- [x] **0.5 Project subagents (owner, 2026-11-04):** `.claude/agents/` with diff-reviewer (Opus), screenshot-checker and
+      balance-analyst (Sonnet), test-runner (Haiku), fun-designer (Opus). CLAUDE.md says when to use each.
+      *Done when:* the five files exist and CLAUDE.md's "Subagents" section and finish checklist use them.
 
 ## Phase 1 — 3D cube (D3) ✅
 - [x] **1.1 TwistyModel + cube shapes:** `scripts/cube/twisty_model.gd` (`TwistyModel`) and `scripts/cube/puzzle_shapes.gd`

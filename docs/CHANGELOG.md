@@ -30,6 +30,19 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   tab title, ✓). Screenshot tool `LAB=1`; shot in `docs/screenshots/5.6-lab/`.
 - **Next: 5.7b "pick one of two" choices** (5.7 Helper Promotion only if 5.8 needs it), then **5.8 rebalance**.
 
+## 2026-11-04 — Task 0.5: project subagents (tooling only, no game changes)
+- **Owner asked for subagents** to streamline sessions. Five in `.claude/agents/`, each with a model chosen for its job:
+  **diff-reviewer** (Opus, high effort: reviews everything not on `main` against the rules of the code, save migration
+  first), **screenshot-checker** (Sonnet: runs `tools/screenshot.sh`, reports clipped text, layout, colours),
+  **balance-analyst** (Sonnet: runs `tools/simulate.sh`, explains which pacing targets moved and why),
+  **test-runner** (Haiku, low effort: runs `tools/run_tests.sh`, returns only failures), **fun-designer** (Opus, high
+  effort: ranked fun/engagement ideas grounded in PLAYER_RESEARCH; proposals only, no manipulative patterns).
+- All report only and never commit. CLAUDE.md has a new "Subagents" section (when to use which) and the finish checklist
+  now ends with a `diff-reviewer` pass. Ideas from `fun-designer` go to the owner before they become ROADMAP tasks.
+- No addons or game code changed. Next roadmap task is unchanged (5.6 Algorithm Lab, after 5.5 landed).
+- Next session: please actually use them and note in your CHANGELOG entry if one was unhelpful, so its prompt or model
+  can be tuned (they're plain Markdown files; edit the prompt or the `model:` line).
+
 ## 2026-11-04 — Task 5.5: six more helpers (12 in all)
 - **New helpers past the Speedcubing Lab** (`Content.BUILDINGS`, each ~16× the cost of the last and a bit less efficient
   per Solve): **Pro Team** 30M (180K moves/s), **Cubing Federation** 500M (1.8M), **Cube Museum** 8B (17M), **AI Solver**
