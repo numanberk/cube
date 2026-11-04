@@ -53,6 +53,8 @@ var _follow_track_id := ""
 var _loops := 0                  ## loops of the current track
 var _on_detour := false          ## follow mode is playing another track for variety
 var _last_position := 0.0
+var override_track_id := ""      ## a screen's own track, playing instead of the normal choice (the Compete screen: "Finals")
+var _track_before_override := ""  ## what played when the override started, resumed after it (shuffle would keep Finals)
 var music_clock := 0.0           ## seconds since launch, for MUSIC_START_DELAY (tests may set it)
 var _context_ready := false
 
@@ -101,6 +103,9 @@ func set_music_context(unlocked_track_ids: Array[String], follow_track_id: Strin
 	_context_ready = true
 	if not music_enabled or music_clock < MUSIC_START_DELAY:
 		return  # advance_music starts it once the delay has passed
+	if override_track_id != "":
+		play_track(override_track_id)  # a screen's track holds until it's cleared
+		return
 	var wanted := _wanted_track()
 	if current_track_id == "" or not _unlocked_tracks.has(current_track_id) or (music_mode == "loop" and wanted != current_track_id) \
 			or (music_mode == "follow" and not _on_detour and wanted != current_track_id):
@@ -125,6 +130,24 @@ func play_track(track_id: String) -> void:
 	_loops = 0
 	_last_position = 0.0
 	_apply_music_volumes()
+
+
+## Plays a screen's own track instead of the normal choice, unlocked or not (the Compete screen plays "Finals"), and keeps
+## it looping until called with "", which goes back to what the music mode wants.
+func set_music_override(track_id: String) -> void:
+	if track_id == override_track_id:
+		return
+	if track_id != "" and override_track_id == "":
+		_track_before_override = current_track_id
+	override_track_id = track_id
+	_on_detour = false
+	if not music_enabled or music_clock < MUSIC_START_DELAY:
+		return  # set_music_context picks it up once music starts
+	if track_id != "":
+		play_track(track_id)
+	elif _context_ready:
+		var resume := _track_before_override
+		play_track(resume if music_mode == "shuffle" and _unlocked_tracks.has(resume) else _wanted_track())
 
 
 ## Music mode: "follow" (default), "shuffle" or "loop" (loop_track_id, or the follow track).
@@ -174,6 +197,8 @@ func advance_music(delta: float) -> void:
 ## Called when the current track finishes a loop: maybe change track, depending on the mode.
 func on_music_looped() -> void:
 	_loops += 1
+	if override_track_id != "":
+		return  # a screen's track just loops
 	match music_mode:
 		"shuffle":
 			if _loops >= SHUFFLE_LOOPS:

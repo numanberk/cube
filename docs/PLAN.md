@@ -224,8 +224,8 @@ next-goal bar. The small row cubes and the Megaminx keep speed mode / rewind. It
   use the existing `solve_value_mult`.
 - **Taps stay relevant:** later tap upgrades add a % of moves/s to each tap. Hold-to-repeat is **not** allowed.
 - **12 helpers** in total by the end of Phase 5, with costs reaching ~1e15.
-- **Prestige — World Championship:** `trophies = floor(sqrt(run_solves / 1e6))` as the starting formula. Each unspent trophy
-  gives +2 % all moves. The Trophy shop has permanent perks. 7×7 and Megaminx are only reachable after prestige.
+- **Prestige — World Championship:** `trophies = floor(sqrt(run_solves / 4e10))` (task 6.1 picked the divisor from
+  BALANCE.md: ~50 trophies at 90 min, `Content.CHAMPIONSHIP`). Each unspent trophy gives +2 % all moves. The Trophy shop has permanent perks. 7×7 and Megaminx are only reachable after prestige.
 
 ### 4.6 What our player loves (player research)
 The game is made for one player first. Their favourite idle games (Idle Skilling 804 h, The Perfect Tower II 159 h,

@@ -3671,3 +3671,143 @@ func test_lab_tab() -> void:
 	check(card._owned.text == "✓" and not card.affordable, "a done project is ticked")
 	main.free()
 	game.reset_state()
+
+
+# --- World Championship: trophies and the Compete screen (task 6.1) ----------------------
+
+func test_trophy_formula() -> void:
+	var div := float(Content.CHAMPIONSHIP["divisor"])
+	check(GameState.trophies_for(0.0) == 0 and GameState.trophies_for(-5.0) == 0, "no Solves, no trophies")
+	check(GameState.trophies_for(div - 1.0) == 0 and GameState.trophies_for(div) == 1, "the first trophy at exactly one divisor")
+	check(GameState.trophies_for(4.0 * div - 1.0) == 1 and GameState.trophies_for(4.0 * div) == 2, "floor(sqrt): 2 trophies at 4 divisors")
+	check(GameState.trophies_for(100.0 * div) == 10, "10 trophies at 100 divisors")
+	for n: int in [1, 2, 10, 51, 166, 1000]:
+		var at := GameState.solves_for_trophies(n)
+		check(GameState.trophies_for(at) == n and GameState.trophies_for(at * 0.999) == n - 1,
+				"solves_for_trophies(%d) is exactly where trophy %d arrives" % [n, n])
+	# The divisor is picked from BALANCE.md: the tapping bot has ~1e14 lifetime Solves at 90 min (D6).
+	var at_90 := GameState.trophies_for(1.05e14)
+	check(at_90 >= 30 and at_90 <= 80, "a ~90-minute run gives a few dozen trophies, not thousands (got %d)" % at_90)
+	check(GameState.trophies_for(1e13) < at_90 and GameState.trophies_for(1.1e15) > at_90 * 2, "waiting longer gives more, less than linearly")
+	var per := float(Content.CHAMPIONSHIP["bonus_per_trophy"])
+	check_near(per, 0.02, "each unspent trophy is +2 % moves (PLAN §4.4)")
+	check(not (Content.CHAMPIONSHIP["keeps"] as Array).is_empty() and not (Content.CHAMPIONSHIP["resets"] as Array).is_empty(),
+			"the Compete screen has a keep list and a reset list")
+
+	var g := new_game()
+	check(g.get_pending_trophies() == 0 and not g.can_compete() and not g.is_compete_visible(), "a new game can't compete yet")
+	check_near(g.get_trophy_mult(), 1.0, "no trophies: ×1")
+	g.total_solves = div * 0.5
+	check(g.is_compete_visible() and not g.can_compete(), "the Compete button shows at half the first trophy's Solves, like an upgrade")
+	g.total_solves = div
+	check(g.can_compete() and g.get_pending_trophies() == 1, "one trophy to win: competing is possible")
+	check_near(g.get_run_solves(), g.total_solves, "before any championship the run is the whole lifetime")
+	# The bonus applies to every move: helpers and taps.
+	g.buildings["friend"] = 1
+	var helper_rate := g.get_puzzle_moves_per_second("2x2")
+	check(helper_rate > 0.0, "a Friend makes helper moves")
+	var before := g.total_moves
+	g.tap()
+	var tap_moves := g.total_moves - before
+	g.trophies = 10
+	check_near(g.get_trophy_mult(), 1.0 + 10.0 * per, "10 trophies: ×1.2")
+	check_near(g.get_trophy_mult(51), 1.0 + 51.0 * per, "a count can be asked for: 51 trophies ×2.02")
+	check_near(g.get_puzzle_moves_per_second("2x2"), helper_rate * 1.2, "helper moves get the trophy bonus")
+	before = g.total_moves
+	g.tap()
+	check_near(g.total_moves - before, tap_moves * 1.2, "taps get it too")
+	# The preview the Compete screen shows.
+	g.trophies = 3
+	g.total_solves = (GameState.solves_for_trophies(5) + GameState.solves_for_trophies(6)) * 0.5
+	var p := g.get_championship_preview()
+	check(int(p["trophies"]) == 3 and int(p["gain"]) == 5 and int(p["after"]) == 8, "preview: 3 owned + 5 won = 8")
+	check_near(float(p["mult_now"]), 1.0 + 3.0 * per, "preview: the bonus now")
+	check_near(float(p["mult_after"]), 1.0 + 8.0 * per, "preview: the bonus after competing")
+	check_near(float(p["next_at"]), GameState.solves_for_trophies(6), "preview: Solves for the next trophy")
+	check_near(float(p["next_progress"]), 0.5, "preview: halfway from trophy 5 to 6")
+	check(g.is_compete_visible(), "owning trophies keeps the button visible")
+	g.reset_state()
+	check(g.trophies == 0, "wiping the save clears trophies")
+	g.free()
+
+
+func test_music_override() -> void:
+	var audio: AudioManager = root.get_node("Audio")
+	audio.stop_all()
+	audio.set_window_focused(true)
+	audio.set_music_mode("follow")
+	audio.music_clock = AudioManager.MUSIC_START_DELAY
+	var tracks: Array[String] = ["practice_room", "first_sub_20"]
+	audio.set_music_context(tracks, "practice_room")
+	check(audio.current_track_id == "practice_room", "follow mode plays the focused puzzle's track")
+	audio.set_music_override("finals")
+	check(audio.current_track_id == "finals", "a screen's track plays even before it's unlocked (Finals on the Compete screen)")
+	audio.set_music_context(tracks, "first_sub_20")
+	check(audio.current_track_id == "finals", "the game's refresh doesn't take the music back while the screen is open")
+	for i in 10:
+		audio.on_music_looped()
+	check(audio.current_track_id == "finals", "it just loops (no variety detours)")
+	audio.set_music_override("")
+	check(audio.current_track_id == "first_sub_20" and audio.override_track_id == "", "closing the screen goes back to the follow track")
+	# Shuffle mode resumes the track from before, even once Finals is unlocked (it would otherwise keep Finals).
+	var with_finals: Array[String] = ["practice_room", "first_sub_20", "finals"]
+	audio.set_music_context(with_finals, "first_sub_20")
+	audio.set_music_mode("shuffle")
+	var before := audio.current_track_id
+	audio.set_music_override("finals")
+	audio.set_music_override("")
+	check(audio.current_track_id == before and before != "finals", "shuffle: closing the screen resumes the earlier track")
+	audio.set_music_mode("follow")
+	audio.stop_all()
+
+
+func test_compete_panel() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	game.set_process(false)
+	var audio: AudioManager = root.get_node("Audio")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var button: Button = main.get_node("%CompeteButton")
+	var panel: CompetePanel = main.get_node("%CompetePanel")
+	check(not button.visible and not panel.visible, "a new game shows no Compete button")
+	game.total_solves = GameState.solves_for_trophies(51) + 1.0
+	main._refresh()
+	check(button.visible and button.text == "Compete +51" and button.tooltip_text == "World Championship: +51 trophies now.",
+			"the top bar shows what competing gives (short; the tooltip spells it out)")
+	audio.music_clock = AudioManager.MUSIC_START_DELAY
+	button.pressed.emit()
+	check(panel.visible, "the button opens the Compete screen")
+	check(audio.override_track_id == "finals", "the Compete screen plays Finals")
+	check((panel.get_node("%Gain") as Label).text == "+51 trophies", "it shows the trophies you'd win")
+	check((panel.get_node("%Bonus") as Label).text == "Moves on every puzzle: +0 % → +102 %", "and the bonus before and after")
+	check((panel.get_node("%KeepList") as VBoxContainer).get_child_count() == (Content.CHAMPIONSHIP["keeps"] as Array).size()
+			and (panel.get_node("%ResetList") as VBoxContainer).get_child_count() == (Content.CHAMPIONSHIP["resets"] as Array).size(),
+			"it lists everything you keep and everything that starts over")
+	var compete: Button = panel.get_node("%CompeteButton")
+	check(compete.disabled and (panel.get_node("%CompeteHint") as Label).visible, "competing itself is a preview until the reset (6.2)")
+	var moves_before := game.total_moves
+	main._unhandled_input(key_event(KEY_SPACE, true, false))
+	check_near(game.total_moves, moves_before, "Space doesn't tap the cube while the screen is open")
+	game.total_solves = GameState.solves_for_trophies(52)
+	main._refresh()
+	check((panel.get_node("%Gain") as Label).text == "+52 trophies", "the open screen keeps up with the run")
+	var escape := InputEventAction.new()
+	escape.action = &"ui_cancel"
+	escape.pressed = true
+	panel._unhandled_input(escape)
+	check(not panel.visible and audio.override_track_id == "", "Escape closes it and the music goes back")
+	# Wording at the edges: one trophy, none yet, and the enabled button (6.2).
+	panel.compete_enabled = true
+	panel.set_preview({"gain": 1, "mult_now": 1.0, "mult_after": 1.02, "run_solves": 5e10, "next_at": 1.6e11, "next_progress": 0.1})
+	check((panel.get_node("%Gain") as Label).text == "+1 trophy" and compete.text == "Compete for 1 trophy" and not compete.disabled,
+			"one trophy reads singular, and the button works once enabled")
+	panel.set_preview({"gain": 0, "mult_now": 1.0, "mult_after": 1.0, "run_solves": 2e10, "next_at": 4e10, "next_progress": 0.5})
+	check((panel.get_node("%Gain") as Label).text == "No trophies yet" and compete.disabled, "no trophies: nothing to compete for")
+	check((panel.get_node("%NextLabel") as Label).text.ends_with("for your first trophy"), "...and it says what the first one needs")
+	check(CompetePanel.bonus_text(2.02) == "+102 %" and CompetePanel.bonus_text(1.0) == "+0 %", "bonus text")
+	audio.stop_all()
+	main.free()
+	game.set_process(true)
+	game.reset_state()

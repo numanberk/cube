@@ -417,6 +417,33 @@ const PUZZLES := [
 	{"id": "megaminx", "name": "Megaminx", "moves_per_solve": 700.0, "min_moves_per_solve": 140.0, "scramble_length": 77, "solve_value": 800.0, "unlock_cost": 1e14, "requires_prestige": true},
 ]
 
+## World Championship (Phase 6, PLAN §4.4): the prestige. Competing turns this run's Solves into trophies:
+## floor(sqrt(run Solves / divisor)). Each unspent trophy gives +bonus_per_trophy moves on every puzzle (taps and helpers).
+## The divisor comes from BALANCE.md (task 6.1): the tapping bot has ~1e14 lifetime Solves at 90 min, so the first
+## championship there gives ~50 trophies (×2 moves); ~15 at 60 min, ~166 at 120 min (sqrt: waiting pays, less and less).
+## `keeps` / `resets` are what the Compete screen lists; the reset itself (6.2) must match them.
+const CHAMPIONSHIP := {
+	"divisor": 4e10,
+	"bonus_per_trophy": 0.02,
+	"keeps": [
+		"Trophies (+2 % moves each)",
+		"Puzzle mastery levels",
+		"Solve Station records and their bonuses",
+		"Drill and daily results",
+		"Unlocked music",
+		"Lifetime stats and settings",
+	],
+	"resets": [
+		"Solves",
+		"Helpers",
+		"Upgrades (choices open again)",
+		"Puzzles (back to the 2×2)",
+		"Methods and Lab research",
+		"Golden Scramble and Flow buffs",
+	],
+	"unlocks": "After your first championship, the 7×7 and Megaminx can be unlocked.",
+}
+
 ## Algorithm Lab (task 5.6): research that runs in real time, also while the game is closed (capped like offline progress).
 ## One project at a time (a second slot may come with the trophy tree, 6.3). Paid when started, its effect counts when it finishes.
 ## Every method after the Beginner Method is a project too (see get_lab_projects(); learning a method = researching it).

@@ -275,16 +275,27 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       other side of every choice pair; Speed Practice and Deliberate Practice are weak in a run, see the CHANGELOG.)*
 
 ## Phase 6 — Prestige: World Championship
-- [ ] **6.1 Trophy formula and Compete screen:** `floor(sqrt(run_solves / 1e6))` to start, each unspent trophy +2 % all moves.
+- [x] **6.1 Trophy formula and Compete screen:** `floor(sqrt(run_solves / 1e6))` to start, each unspent trophy +2 % all moves.
       *(Note from 5.8: the tapping bot has ~1e14 lifetime Solves at 90 min (9.9T at 60, 1.1Qa at 120), so this formula
       would give ~10K trophies (×200). Pick the divisor from BALANCE.md so the first championship gives a sensible bonus.)*
       The Compete screen shows the trophies you'll get, the new bonus, and exactly what you keep and lose. It plays "Finals".
       *Done when:* there's a screenshot and tests cover the formula.
+      *(Done 2026-11-04: divisor **4e10** (`Content.CHAMPIONSHIP`): ~50 trophies (×2) at 90 min, ~15 at 60, ~166 at 120.
+      The screen's Compete button is a disabled preview until 6.2.)*
 - [ ] **6.2 Reset logic + save v10:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
       upgrades, puzzles and methods. 7×7 and Megaminx become unlockable after the first championship.
       *Done when:* tests check what resets and what stays, and there's a v9 → v10 migration test. (Save v6 is S.6's
       Golden Scramble, v7 S.4's drills, v8 S.5's daily, v9 5.6's Lab — decide whether research survives a prestige; a running buff should survive prestige or end, decide when building it;
       drill records and hand-solve records stay; choice pairs (5.7b) reopen, with a test.)
+      **From 6.1:** save `trophies` (the var exists, +2 % each already applies) and give `get_run_solves()` its own
+      counter (today it returns lifetime `total_solves`), reset by competing; "shows at half its cost" checks
+      (`unlock_at`, upgrades, methods, Lab) use lifetime Solves, so after a reset they'd all show at once: switch them to
+      run Solves. Set `CompetePanel.compete_enabled = true` and connect `compete_pressed`. The screen's lists
+      (`Content.CHAMPIONSHIP` keeps/resets) already promise: **Lab research resets** (methods are research) and **running
+      Golden/Flow buffs end**; mastery, Solve Station records, drills, dailies, unlocked music, lifetime stats and
+      settings stay. Change the lists if 6.2 decides otherwise. The Compete button shows from ~33 min and reads
+      "Compete +1" at ~39 min, far before D6's ~90 min: once competing works, consider showing it later (or not
+      inviting a +2 % reset), and tune with 6.4.
 - [ ] **6.3 Trophy perk tree (PR):** permanent perks as data, arranged in 4 branches: Practice (start with 3×3, +offline cap),
       Team (start with 10 Friends, helper boosts), Competition (unlocks Competitions 8.3, medal bonuses) and Automation
       (unlocks 6.3b). As in Idle Skilling, **the first node of each branch unlocks a system**. Nodes need their parent.

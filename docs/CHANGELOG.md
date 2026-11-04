@@ -2,6 +2,40 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-04 — Task 6.1: trophy formula and Compete screen
+- **Formula** (`Content.CHAMPIONSHIP`, PLAN §4.4): `trophies = floor(sqrt(run Solves / 4e10))`, each unspent trophy
+  +2 % moves on every puzzle (taps and helpers; `get_trophy_mult()` is part of `get_puzzle_moves_mult()`).
+  **The divisor comes from BALANCE.md:** the tapping bot has 9.93T lifetime Solves at 60 min, ~1.05e14 at 90 and 1.11Qa
+  at 120, so a first championship gives **~15 / ~51 / ~166 trophies** (+30 % / ×2.02 / ×4.3); the never-tapping bot ~32
+  at 90 min. sqrt means waiting pays, less and less. The first trophy needs 40B Solves (the tapping bot at ~39 min).
+  6.4 tunes it against "first prestige at 80–100 min" and "second run ≤ 45 min" (note: with income growing ×1000 per
+  half hour, ×2 moves alone saves only a few minutes; the 6.3 perks like "start with the 3×3 / 10 Friends" do the rest).
+- **GameState:** `trophies_for(solves)`, `solves_for_trophies(n)` (static), `get_run_solves()` (= lifetime
+  `total_solves` until 6.2 adds a run counter), `get_pending_trophies()`, `can_compete()`, `is_compete_visible()` (at half
+  the first trophy's Solves, like an upgrade at half its cost), `get_trophy_mult(count)`, `get_championship_preview()`.
+  New `var trophies` (unspent): **not saved yet** and nothing grants it (6.2 does both, save v10). No save change here.
+- **Compete screen** (`scenes/compete_panel.tscn`, `CompetePanel`, display only): the trophies you'd win, "Moves on every
+  puzzle: +0 % → +102 %", a bar to the next trophy, the formula in words, **You keep / Starts over** lists from
+  `Content.CHAMPIONSHIP` and the 7×7/Megaminx unlock line. Opened by a **Compete** button in the top bar ("Compete: +51
+  trophies"), it plays **Finals** while open (new `Audio.set_music_override(track)`: plays a track even if locked, holds
+  through refreshes and loops, "" goes back). Escape / Close / Not yet / a click outside close it; Space doesn't tap meanwhile.
+  **Half-done on purpose:** the Compete button is disabled with a "Preview: … opens in the next update" hint until 6.2
+  (`compete_enabled`, signal `compete_pressed`).
+- **Decided for the screen's lists (6.2 must match or change them):** Lab research resets (methods are research), running
+  Golden/Flow buffs end; mastery, Solve Station records + their bonuses, drills, dailies, unlocked music, lifetime stats
+  and settings stay. ROADMAP 6.2 lists what to wire up (save `trophies`, a run-Solves counter, the "shows at half its cost"
+  checks that read lifetime Solves).
+- Screenshot option `COMPETE=1`; shots in `docs/screenshots/6.1-compete/`. Tests: `test_trophy_formula`,
+  `test_music_override`, `test_compete_panel`.
+- **Review (diff-reviewer):** the top bar overflowed with the Compete button plus a Golden buff and Flow (the whole
+  screen got wider than the window): the button now reads "Compete +51" (tooltip spells it out) and `RateLabel` clips
+  with an ellipsis. Also fixed: a test check that couldn't fail (helper bonus with no helper), and shuffle mode kept
+  Finals after closing the screen (Audio now resumes the track from before the override). Noted for 6.2: the button
+  appears at ~33 min, far before D6's ~90.
+- Agents: `balance-analyst` and `screenshot-checker` hit an API rate limit, so `simulate.sh` (BALANCE.md unchanged)
+  and the screenshots were run directly in the main session.
+- **Next: 6.2** (reset logic + save v10).
+
 ## 2026-11-04 — Task 5.8: first-hour rebalance
 - **Done when met:** the pacing targets "something new every ≤ 3 min in the first hour" (longest wait 2:51), Solving Robot
   (8:34, window 8–12 min), 4×4 (27:53, 25–35) and 5×5 (52:28, 50–70) pass for real; their `expected_failure` marks are

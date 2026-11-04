@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/welcome_panel.tscn" id="5_welcome"]
 [ext_resource type="Script" path="res://scripts/ui/split_panel.gd" id="6_split"]
 [ext_resource type="PackedScene" path="res://scenes/solve_station.tscn" id="7_station"]
+[ext_resource type="PackedScene" path="res://scenes/compete_panel.tscn" id="8_compete"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_buy_amount"]
 
@@ -71,6 +72,8 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_type_variation = &"SubtitleLabel"
 text = "0 solves/s"
+clip_text = true
+text_overrun_behavior = 3
 
 [node name="FlowLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
@@ -87,6 +90,14 @@ layout_mode = 2
 size_flags_vertical = 4
 theme_type_variation = &"BuffLabel"
 text = "Frenzy ×7 · 30s"
+
+[node name="CompeteButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+text = "Compete"
 
 [node name="SolveButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
@@ -476,6 +487,11 @@ visible = false
 layout_mode = 1
 
 [node name="SettingsPanel" parent="." instance=ExtResource("4_settings")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+
+[node name="CompetePanel" parent="." instance=ExtResource("8_compete")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1

@@ -1,0 +1,172 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/compete_panel.gd" id="1_compete"]
+
+[node name="CompetePanel" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_compete")
+
+[node name="Dim" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(640, 0)
+layout_mode = 2
+
+[node name="Box" type="VBoxContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_type_variation = &"StackBox"
+
+[node name="Header" type="HBoxContainer" parent="Center/Panel/Box"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Center/Panel/Box/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TitleLabel"
+text = "World Championship"
+
+[node name="CloseButton" type="Button" parent="Center/Panel/Box/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+text = "Close"
+
+[node name="Intro" type="Label" parent="Center/Panel/Box"]
+custom_minimum_size = Vector2(600, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Take your team to the Worlds. The Solves you earned this run become trophies, and every trophy you keep makes every move count for more, in every run after."
+autowrap_mode = 3
+
+[node name="Gain" type="Label" parent="Center/Panel/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BigAccentLabel"
+text = "+51 trophies"
+horizontal_alignment = 1
+
+[node name="Bonus" type="Label" parent="Center/Panel/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubtitleLabel"
+text = "Moves on every puzzle: +0 % → +102 %"
+horizontal_alignment = 1
+
+[node name="NextLabel" type="Label" parent="Center/Panel/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"GoalLabelDim"
+text = "105.0T / 108.2T Solves this run for trophy 52"
+
+[node name="NextBar" type="ProgressBar" parent="Center/Panel/Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+theme_type_variation = &"GoalBar"
+max_value = 1.0
+step = 0.0
+show_percentage = false
+
+[node name="Formula" type="Label" parent="Center/Panel/Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(600, 0)
+layout_mode = 2
+theme_type_variation = &"FaintLabel"
+text = "Trophies = √(Solves this run ÷ 40.00B), rounded down. Each unspent trophy: +2 % moves."
+autowrap_mode = 3
+
+[node name="Lists" type="HBoxContainer" parent="Center/Panel/Box"]
+layout_mode = 2
+theme_type_variation = &"ColumnsBox"
+
+[node name="Keep" type="VBoxContainer" parent="Center/Panel/Box/Lists"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_type_variation = &"TightBox"
+
+[node name="KeepTitle" type="Label" parent="Center/Panel/Box/Lists/Keep"]
+layout_mode = 2
+theme_type_variation = &"CardTitle"
+text = "You keep"
+
+[node name="KeepList" type="VBoxContainer" parent="Center/Panel/Box/Lists/Keep"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightBox"
+
+[node name="Reset" type="VBoxContainer" parent="Center/Panel/Box/Lists"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_type_variation = &"TightBox"
+
+[node name="ResetTitle" type="Label" parent="Center/Panel/Box/Lists/Reset"]
+layout_mode = 2
+theme_type_variation = &"CardTitle"
+text = "Starts over"
+
+[node name="ResetList" type="VBoxContainer" parent="Center/Panel/Box/Lists/Reset"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TightBox"
+
+[node name="Unlocks" type="Label" parent="Center/Panel/Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(600, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "After your first championship, the 7×7 and Megaminx can be unlocked."
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="Center/Panel/Box"]
+layout_mode = 2
+alignment = 1
+
+[node name="NotYetButton" type="Button" parent="Center/Panel/Box/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"SubtleButton"
+text = "Not yet"
+
+[node name="CompeteButton" type="Button" parent="Center/Panel/Box/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"PrimaryButton"
+disabled = true
+text = "Compete for 51 trophies"
+
+[node name="CompeteHint" type="Label" parent="Center/Panel/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"HintLabel"
+text = "Preview: entering the championship opens in the next update."
+horizontal_alignment = 1

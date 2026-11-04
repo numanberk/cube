@@ -66,6 +66,9 @@ var upgrades: Dictionary = {}   ## upgrade id -> true (owned)
 ## puzzle id -> {"history": [{"t": seconds, "p": penalty, "m": moves, "d": unix time}, ... oldest first], "count": all ever}
 var solve_records: Dictionary = {}
 var _solve_bests: Dictionary = {}  ## puzzle id -> {"single": s, 5: s, 12: s, ...}; INF = none/DNF. Cached, not saved.
+## Unspent trophies from World Championships (Phase 6): each gives Content.CHAMPIONSHIP["bonus_per_trophy"] more moves on
+## every puzzle. Nothing grants them until the championship reset (6.2), which also saves them (save v10).
+var trophies := 0
 var method := "beginner"        ## id of the newest method learned (Content.METHODS); every earlier one is learned too
 var offline_report: Dictionary = {}  ## {"seconds", "solves"} after loading, if anything was earned
 var load_notice := ""  ## Set when the save was damaged and a backup (or nothing) was loaded; the UI shows it once.
@@ -557,6 +560,63 @@ func has_won_championship() -> bool:
 	return false
 
 
+# --- World Championship (Phase 6) ------------------------------------------------
+
+## Trophies a championship gives for this many Solves earned in the run: floor(sqrt(solves / divisor)).
+static func trophies_for(run_solves: float) -> int:
+	return floori(sqrt(maxf(0.0, run_solves) / float(Content.CHAMPIONSHIP["divisor"])))
+
+
+## Run Solves needed for a championship to give `count` trophies (the inverse of trophies_for).
+static func solves_for_trophies(count: int) -> float:
+	return float(count) * float(count) * float(Content.CHAMPIONSHIP["divisor"])
+
+
+## Solves earned in this run (since the last championship). No championship has happened yet, so it's the lifetime
+## total; 6.2 gives it its own counter, reset by competing.
+func get_run_solves() -> float:
+	return total_solves
+
+
+## Trophies competing now would give.
+func get_pending_trophies() -> int:
+	return trophies_for(get_run_solves())
+
+
+## Competing needs at least one trophy to win.
+func can_compete() -> bool:
+	return get_pending_trophies() >= 1
+
+
+## The Compete button shows up at half the first trophy's Solves (like an upgrade at half its cost), or once trophies exist.
+func is_compete_visible() -> bool:
+	return trophies > 0 or has_won_championship() or get_run_solves() >= solves_for_trophies(1) * 0.5
+
+
+## The moves multiplier from `count` unspent trophies (-1 = the ones owned now).
+func get_trophy_mult(count: int = -1) -> float:
+	return 1.0 + float(Content.CHAMPIONSHIP["bonus_per_trophy"]) * float(trophies if count < 0 else count)
+
+
+## Everything the Compete screen shows: trophies now / won / after, the bonus before and after, and the next trophy.
+##   {run_solves, trophies, gain, after, mult_now, mult_after, next_at (run Solves for one more trophy), next_progress (0..1)}
+func get_championship_preview() -> Dictionary:
+	var run := get_run_solves()
+	var gain := trophies_for(run)
+	var floor_at := solves_for_trophies(gain)
+	var next_at := solves_for_trophies(gain + 1)
+	return {
+		"run_solves": run,
+		"trophies": trophies,
+		"gain": gain,
+		"after": trophies + gain,
+		"mult_now": get_trophy_mult(),
+		"mult_after": get_trophy_mult(trophies + gain),
+		"next_at": next_at,
+		"next_progress": clampf((run - floor_at) / (next_at - floor_at), 0.0, 1.0),
+	}
+
+
 ## The next puzzle on the ladder that isn't unlocked yet and can be reached now ("" if none).
 func get_next_locked_puzzle() -> String:
 	for def: Dictionary in Content.PUZZLES:
@@ -724,14 +784,14 @@ func get_next_mastery_milestone(puzzle_id: String) -> Dictionary:
 
 
 ## Moves on a puzzle are multiplied by its level bonus, its "moves" milestones, every "all_moves" milestone, its hand-solve
-## tier and specialist upgrades ("puzzle_mult", 5.7b).
+## tier, specialist upgrades ("puzzle_mult", 5.7b) and unspent trophies (Phase 6).
 func get_puzzle_moves_mult(puzzle_id: String) -> float:
 	var per_level := 1.0 + float(Content.MASTERY["per_level_moves"]) * (get_mastery_level(puzzle_id) - 1)
 	var everywhere := 1.0
 	for id in unlocked_puzzles:
 		everywhere *= _milestone_mult(id, "all_moves")
 	return per_level * _milestone_mult(puzzle_id, "moves") * everywhere * get_hand_tier_mult(puzzle_id) \
-			* _upgrade_mult("puzzle_mult", puzzle_id)
+			* _upgrade_mult("puzzle_mult", puzzle_id) * get_trophy_mult()
 
 
 func _mastery_mult(puzzle_id: String, effect_type: String) -> float:
@@ -1474,6 +1534,7 @@ func reset_state() -> void:
 	for def: Dictionary in Content.BUILDINGS:
 		buildings[def["id"]] = 0
 	upgrades.clear()
+	trophies = 0
 	method = Content.METHODS[0]["id"]
 	solve_records.clear()
 	_solve_bests.clear()

@@ -33,6 +33,8 @@ scripts/autoload/audio.gd  class AudioManager ("Audio"): play_click/solve/buy/un
 scripts/autoload/settings.gd  class GameSettings ("Settings"): every setting in user://settings.cfg (SPEC), get/set_value,
                            `changed` signal; applies audio + notation itself, main.gd applies graphics + reduce motion
 scenes/welcome_panel.tscn  class WelcomePanel: "Welcome back" (time away, +Solves, Collect) and damaged-save notices
+scenes/compete_panel.tscn  class CompetePanel: the Compete screen (6.1): trophies you'd win, bonus before/after, next
+                           trophy, keep/reset lists (Content.CHAMPIONSHIP); display only, main.gd plays "Finals" meanwhile
 scenes/settings_panel.tscn class SettingsPanel: sound, music mode, Jukebox, graphics, reduce motion, notation, reset save
 scenes/solve_station.tscn  class SolveStation (scripts/ui/solve_station.gd): the "Solve it yourself" overlay: keyboard
                            solving (csTimer or simple keys), drag-to-turn, key hints on the cube, scramble, inspection,
@@ -172,6 +174,7 @@ DAILY=fmc bash tools/screenshot.sh /tmp/shots mid                 # the daily sc
 SCROLL=1 bash tools/screenshot.sh /tmp/shots endgame              # helper list scrolled to the bottom -> endgame_scroll.png
 LAB=1 bash tools/screenshot.sh /tmp/shots mid                     # the Lab tab: one project done, one running -> mid_lab.png
 PICK=speed_practice bash tools/screenshot.sh /tmp/shots mid       # a choice made (Upgrades tab) -> mid_pickspeed_practice.png
+COMPETE=1 bash tools/screenshot.sh /tmp/shots endgame            # the Compete screen open -> endgame_compete.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

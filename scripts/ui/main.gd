@@ -48,6 +48,8 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var buy_max: Button = %BuyMax
 @onready var upgrade_empty: Label = %UpgradeEmpty
 @onready var welcome_panel: WelcomePanel = %WelcomePanel
+@onready var compete_button: Button = %CompeteButton
+@onready var compete_panel: CompetePanel = %CompetePanel
 
 var _helper_cards: Dictionary = {}    ## building id -> ShopCard
 var _upgrade_tiles: Dictionary = {}   ## upgrade id -> UpgradeTile
@@ -72,6 +74,8 @@ var news := NewsFeed.new()          ## the news feed (task R.4): GameState event
 func _ready() -> void:
 	puzzle_view.tapped.connect(_on_tap_pressed)
 	settings_button.pressed.connect(settings_panel.open)
+	compete_button.pressed.connect(open_compete)
+	compete_panel.closed.connect(func() -> void: Audio.set_music_override(""))
 	solve_button.pressed.connect(func() -> void: solve_station.open(Game.get_focused_puzzle_id()))
 	Settings.changed.connect(_on_setting_changed)
 	buy_one.pressed.connect(set_buy_amount.bind(1))
@@ -134,7 +138,7 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	# Space / Enter tap from anywhere. allow_echo = false: holding the key down doesn't repeat (PLAN: no hold-to-repeat).
 	if event.is_action_pressed(TAP_ACTION, false) and not settings_panel.visible and not welcome_panel.visible \
-			and not solve_station.visible:
+			and not solve_station.visible and not compete_panel.visible:
 		_on_tap_pressed()
 		get_viewport().set_input_as_handled()
 		return
@@ -201,6 +205,7 @@ func _refresh() -> void:
 	]
 	_refresh_goal_strip(goals)
 	Audio.set_music_context(Game.get_unlocked_track_ids(), Game.get_track_for_puzzle(Game.get_focused_puzzle_id()))
+	_refresh_compete()
 	stats_label.text = "Lifetime: %s solves  ·  %s moves" % [
 		Num.format(Game.total_solves),
 		Num.format(Game.total_moves),
@@ -933,6 +938,25 @@ func _on_purchased(kind: String, _id: String) -> void:
 		_showcase.method = Game.method  # the next showcase solve uses it
 	Audio.play_buy()
 	_refresh()
+
+
+# --- World Championship (task 6.1) -------------------------------------------------
+
+## Opens the Compete screen with what competing would give now, and plays "Finals" while it's open.
+func open_compete() -> void:
+	compete_panel.open(Game.get_championship_preview())
+	Audio.set_music_override("finals")
+
+
+## The top-bar Compete button (from half the first trophy's Solves) and the open Compete screen.
+func _refresh_compete() -> void:
+	compete_button.visible = Game.is_compete_visible()
+	var gain := Game.get_pending_trophies()
+	compete_button.text = "Compete" if gain < 1 else "Compete +%s" % Num.format(float(gain))  # short: the top bar is full
+	compete_button.tooltip_text = "World Championship: %s now." % ("no trophies yet" if gain < 1 else "+%s %s" % [
+		Num.format(float(gain)), "trophy" if gain == 1 else "trophies"])
+	if compete_panel.visible:
+		compete_panel.set_preview(Game.get_championship_preview())
 
 
 # --- Settings ----------------------------------------------------------------------
