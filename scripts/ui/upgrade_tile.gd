@@ -5,30 +5,39 @@ extends Button
 
 const DIM_UNAFFORDABLE := 0.55
 const DIM_OWNED := 0.7
+const DIM_LOCKED_OUT := 0.35
 
 @onready var _content: Control = %Content
 @onready var _icon: TextureRect = %Icon
 @onready var _cost: Label = %Cost
+@onready var _badge: Label = %Badge
 
 var affordable := false
 var owned := false
 var _title := ""
 var _description := ""
 var _cost_text := ""
+var _choice := ""        ## choices (5.7b): "Pick one: ..." line in the tooltip, "" for ordinary upgrades
+var locked_out := false  ## the other upgrade of its pair was picked this run
 
 
-## view: {icon: Texture2D, title, description, cost (strings), affordable: bool, owned: bool}
+## view: {icon: Texture2D, title, description, cost (strings), affordable: bool, owned: bool,
+##   choice: String (a choice upgrade's "Pick one" note), locked_out: bool (its partner was picked)}
 func set_view(view: Dictionary) -> void:
 	_icon.texture = view.get("icon")
 	_title = view.get("title", "")
 	_description = view.get("description", "")
 	_cost_text = view.get("cost", "")
+	_choice = view.get("choice", "")
 	owned = view.get("owned", false)
-	affordable = view.get("affordable", false) and not owned
+	locked_out = view.get("locked_out", false) and not owned
+	affordable = view.get("affordable", false) and not owned and not locked_out
 	disabled = not affordable
-	_cost.text = "Owned" if owned else _cost_text
+	_badge.visible = _choice != ""
+	_badge.text = "PICKED" if owned else ("NOT PICKED" if locked_out else "PICK 1")
+	_cost.text = "Owned" if owned else ("—" if locked_out else _cost_text)
 	_cost.theme_type_variation = &"CostAffordable" if affordable or owned else &"CostUnaffordable"
-	_content.modulate.a = 1.0 if affordable else (DIM_OWNED if owned else DIM_UNAFFORDABLE)
+	_content.modulate.a = 1.0 if affordable else (DIM_OWNED if owned else (DIM_LOCKED_OUT if locked_out else DIM_UNAFFORDABLE))
 	tooltip_text = _title  # must be non-empty for the custom tooltip below to appear
 
 
@@ -40,7 +49,13 @@ func _make_custom_tooltip(_for_text: String) -> Object:
 	var description := _label(_description, &"CardLine")
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(description)
-	if owned:
+	if _choice != "":
+		var choice := _label(_choice, &"CardLine")
+		choice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(choice)
+	if locked_out:
+		box.add_child(_label("Not picked this run", &"CostUnaffordable"))
+	elif owned:
 		box.add_child(_label("Owned", &"CostAffordable"))
 	else:
 		box.add_child(_label("Costs %s Solves" % _cost_text, &"CostAffordable" if affordable else &"CostUnaffordable"))

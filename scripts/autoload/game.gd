@@ -337,13 +337,42 @@ func is_upgrade_available(id: String) -> bool:
 	if upgrades.has(id):
 		return false
 	var def := Content.get_upgrade(id)
-	if def.is_empty() or total_solves < float(def["cost"]) * 0.5:
+	if def.is_empty() or total_solves < float(def["cost"]) * 0.5 or is_upgrade_locked_out(id):
 		return false
 	var requires: Dictionary = def.get("requires", {})
 	for building_id: String in requires:
 		if int(buildings.get(building_id, 0)) < int(requires[building_id]):
 			return false
 	return true
+
+
+## Choices (5.7b): the other upgrades in this one's `choice_group` (empty if it isn't a choice).
+func get_choice_partners(id: String) -> Array[String]:
+	var partners: Array[String] = []
+	var group := String(Content.get_upgrade(id).get("choice_group", ""))
+	if group == "":
+		return partners
+	for def: Dictionary in Content.get_upgrades():
+		if def["id"] != id and String(def.get("choice_group", "")) == group:
+			partners.append(def["id"])
+	return partners
+
+
+## The upgrade picked in a choice group this run, or "".
+func get_choice_pick(group: String) -> String:
+	for def: Dictionary in Content.get_upgrades():
+		if String(def.get("choice_group", "")) == group and upgrades.has(def["id"]):
+			return def["id"]
+	return ""
+
+
+## True when another upgrade of this one's choice group was bought this run, so this one can't be.
+func is_upgrade_locked_out(id: String) -> bool:
+	var group := String(Content.get_upgrade(id).get("choice_group", ""))
+	if group == "":
+		return false
+	var pick := get_choice_pick(group)
+	return pick != "" and pick != id
 
 
 func buy_upgrade(id: String) -> bool:
@@ -669,9 +698,11 @@ func get_mastery_xp_for_level(level: int) -> float:
 	return ceilf(float(Content.MASTERY["xp_first_level"]) * pow(float(Content.MASTERY["xp_growth"]), level - 1))
 
 
-## XP a solve on this puzzle gives (bigger puzzles give more, so XP per move is the same everywhere).
+## XP a solve on this puzzle gives (bigger puzzles give more, so XP per move is the same everywhere; "mastery_xp_mult"
+## upgrades multiply it).
 func get_mastery_xp_per_solve(puzzle_id: String) -> float:
-	return float(Content.get_puzzle(puzzle_id).get("moves_per_solve", 8.0)) / float(Content.MASTERY["xp_per_solve_moves"])
+	return float(Content.get_puzzle(puzzle_id).get("moves_per_solve", 8.0)) / float(Content.MASTERY["xp_per_solve_moves"]) \
+			* _upgrade_mult("mastery_xp_mult")
 
 
 ## Progress through the current level, 0..1 (1 at the max level).
@@ -691,13 +722,15 @@ func get_next_mastery_milestone(puzzle_id: String) -> Dictionary:
 	return {}
 
 
-## Moves on a puzzle are multiplied by its level bonus, its "moves" milestones and every "all_moves" milestone.
+## Moves on a puzzle are multiplied by its level bonus, its "moves" milestones, every "all_moves" milestone, its hand-solve
+## tier and specialist upgrades ("puzzle_mult", 5.7b).
 func get_puzzle_moves_mult(puzzle_id: String) -> float:
 	var per_level := 1.0 + float(Content.MASTERY["per_level_moves"]) * (get_mastery_level(puzzle_id) - 1)
 	var everywhere := 1.0
 	for id in unlocked_puzzles:
 		everywhere *= _milestone_mult(id, "all_moves")
-	return per_level * _milestone_mult(puzzle_id, "moves") * everywhere * get_hand_tier_mult(puzzle_id)
+	return per_level * _milestone_mult(puzzle_id, "moves") * everywhere * get_hand_tier_mult(puzzle_id) \
+			* _upgrade_mult("puzzle_mult", puzzle_id)
 
 
 func _mastery_mult(puzzle_id: String, effect_type: String) -> float:
@@ -774,7 +807,7 @@ func get_next_goal() -> Dictionary:
 		if int(buildings.get(def["id"], 0)) == 0:
 			candidates.append({"kind": "helper", "id": def["id"], "name": def["name"], "cost": get_building_cost(def["id"]), "more": false})
 	for def: Dictionary in Content.get_upgrades():
-		if upgrades.has(def["id"]) or not _upgrade_requirements_met(def):
+		if upgrades.has(def["id"]) or not _upgrade_requirements_met(def) or is_upgrade_locked_out(def["id"]):
 			continue
 		candidates.append({"kind": "upgrade", "id": def["id"], "name": def["name"], "cost": float(def["cost"]), "more": false})
 	var next_method := get_next_method()
@@ -1204,7 +1237,7 @@ func get_goals(limit: int = 3) -> Array[Dictionary]:
 		for def: Dictionary in Content.BUILDINGS:
 			add.call(cost_goal.call("helper", def["id"], def["name"], get_building_cost(def["id"]), true))
 	for def: Dictionary in Content.get_upgrades():
-		if not upgrades.has(def["id"]) and _upgrade_requirements_met(def):
+		if not upgrades.has(def["id"]) and _upgrade_requirements_met(def) and not is_upgrade_locked_out(def["id"]):
 			add.call(cost_goal.call("upgrade", def["id"], def["name"], float(def["cost"]), false))
 	var next_method := get_next_method()
 	if not next_method.is_empty() and String(research.get("id", "")) != "method_" + String(next_method["id"]):
@@ -1389,7 +1422,7 @@ func _upgrade_mult(effect_type: String, target: String = "") -> float:
 		var effect: Dictionary = def["effect"]
 		if effect["type"] != effect_type:
 			continue
-		if target != "" and effect.get("target", "") != target:
+		if target != "" and effect.get("target", "") != target and not (effect.get("puzzles", []) as Array).has(target):
 			continue
 		mult *= float(effect["value"])
 	for id: String in research_done:  # finished Lab projects (5.6) count like owned upgrades
@@ -1581,7 +1614,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		if buildings.has(id):  # ignore helpers that were removed from Content
 			buildings[id] = int(saved_buildings[id])
 	for id: String in data.get("upgrades", []):
-		if not Content.get_upgrade(id).is_empty():
+		if not Content.get_upgrade(id).is_empty() and not is_upgrade_locked_out(id):  # a damaged save: one per choice group
 			upgrades[id] = true
 	var saved_method := str(data.get("method", ""))
 	if Content.get_method_index(saved_method) >= 0:  # an unknown id (removed from Content) keeps the Beginner Method

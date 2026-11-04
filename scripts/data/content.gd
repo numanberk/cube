@@ -18,6 +18,8 @@ const EFFECT_TYPES := [
 	"solve_moves_mult",  # multiplies moves needed per solve (< 1 is good)
 	"solve_value_mult",  # multiplies Solves earned per solve
 	"synergy",           # each owned "source" helper makes the "target" helper `value` (e.g. 0.02 = 2 %) faster (5.3)
+	"puzzle_mult",       # multiplies all moves (taps and helpers) on the puzzles in "puzzles" (5.7b specialists)
+	"mastery_xp_mult",   # multiplies mastery XP from every solve (5.7b)
 ]
 
 const BUILDINGS := [
@@ -263,6 +265,62 @@ const UPGRADES := [
 		"cost": 400000000,
 		"effect": {"type": "solve_value_mult", "value": 2.0},
 		"requires": {"lab": 10},
+	},
+	# Choices (task 5.7b): upgrades with the same `choice_group` are a pair. Buying one locks the other for this run
+	# (a championship, 6.2, resets upgrades and so the choice), so players make builds, not just purchases.
+	{
+		"id": "speed_practice",
+		"icon": "speed_practice",
+		"name": "Speed Practice",
+		"description": "Drill finger tricks every day. Taps ×3.",
+		"cost": 400,
+		"effect": {"type": "tap_mult", "value": 3.0},
+		"choice_group": "practice",
+	},
+	{
+		"id": "efficient_solving",
+		"icon": "efficient_solving",
+		"name": "Efficient Solving",
+		"description": "Plan the whole cross in inspection. 20 % fewer moves per solve.",
+		"cost": 400,
+		"effect": {"type": "solve_moves_mult", "value": 0.8},
+		"choice_group": "practice",
+	},
+	{
+		"id": "small_cubes",
+		"icon": "small_cubes",
+		"name": "Small-Cube Specialist",
+		"description": "Your team trains on 2×2 and 3×3: all moves on them ×2.",
+		"cost": 300000,
+		"effect": {"type": "puzzle_mult", "puzzles": ["2x2", "3x3"], "value": 2.0},
+		"choice_group": "specialist",
+	},
+	{
+		"id": "big_cubes",
+		"icon": "big_cubes",
+		"name": "Big-Cube Specialist",
+		"description": "Your team trains on big cubes: all moves on 4×4 and bigger ×3.",
+		"cost": 300000,
+		"effect": {"type": "puzzle_mult", "puzzles": ["4x4", "5x5", "7x7", "megaminx"], "value": 3.0},
+		"choice_group": "specialist",
+	},
+	{
+		"id": "prize_focus",
+		"icon": "prize_focus",
+		"name": "Prize Hunting",
+		"description": "Enter every event with prize money: every solve pays ×1.5.",
+		"cost": 50000000,
+		"effect": {"type": "solve_value_mult", "value": 1.5},
+		"choice_group": "focus",
+	},
+	{
+		"id": "mastery_focus",
+		"icon": "mastery_focus",
+		"name": "Deliberate Practice",
+		"description": "Every solve is a lesson: ×3 mastery XP on every puzzle.",
+		"cost": 50000000,
+		"effect": {"type": "mastery_xp_mult", "value": 3.0},
+		"choice_group": "focus",
 	},
 ]
 

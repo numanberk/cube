@@ -261,7 +261,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       permanent ×3 (stacking per promotion), and its milestones start again. Never required. Only do this task if the
       5.8 sim run shows the first hour still needs more decisions; otherwise move it to Phase 11.
       *Done when:* tests cover the reset, the multiplier and the cost curve after promotion.
-- [ ] **5.7b Choices: pick one of two (fun pass, 2026-11-04):** some upgrades come as a pair where buying one locks the
+- [x] **5.7b Choices: pick one of two (fun pass, 2026-11-04):** some upgrades come as a pair where buying one locks the
       other for this run (e.g. "Speed practice: taps +50 %" *or* "Coaching: helpers +20 %"; "Big-cube specialist" *or*
       "Small-cube specialist"), so players make builds, not just purchases. A prestige resets the choice. As data
       (`choice_group`). *Done when:* tests cover the lock-out and the reset, and there's a screenshot of a pair.

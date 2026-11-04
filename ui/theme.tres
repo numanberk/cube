@@ -929,3 +929,7 @@ FlowLabel/base_type = &"Label"
 FlowLabel/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1)
 FlowLabel/font_sizes/font_size = 16
 FlowLabel/fonts/font = SubResource("FontVariation_2j8s8")
+ChoiceBadge/base_type = &"Label"
+ChoiceBadge/colors/font_color = Color(0.1647, 0.6157, 0.4235, 1)
+ChoiceBadge/font_sizes/font_size = 11
+ChoiceBadge/fonts/font = SubResource("FontVariation_2j8s8")

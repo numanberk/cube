@@ -140,6 +140,16 @@ func test_content_is_valid() -> void:
 			check(not Content.get_building(effect.get("target", "")).is_empty(), "upgrade %s targets a real helper" % def["id"])
 		for building_id: String in def.get("requires", {}):
 			check(not Content.get_building(building_id).is_empty(), "upgrade %s requires a real helper" % def["id"])
+		if effect["type"] == "puzzle_mult":
+			for puzzle_id: String in effect.get("puzzles", []):
+				check(not Content.get_puzzle(puzzle_id).is_empty(), "upgrade %s boosts a real puzzle" % def["id"])
+		if def.has("choice_group"):
+			var members := 0
+			for other: Dictionary in Content.UPGRADES:
+				if other.get("choice_group", "") == def["choice_group"]:
+					members += 1
+					check(float(other["cost"]) == float(def["cost"]), "choice %s: both sides cost the same" % def["choice_group"])
+			check(members == 2, "choice group %s is a pair" % def["choice_group"])
 	for i in Content.METHODS.size():
 		var def: Dictionary = Content.METHODS[i]
 		for field: String in ["id", "icon", "name", "description", "cost", "mult"]:
@@ -3416,6 +3426,70 @@ func test_lab_goals() -> void:
 	check(not running.is_empty() and running["name"] == "Research CFOP" and running["unit"] == "time"
 			and is_equal_approx(float(running["seconds"]), float(Content.get_method("cfop")["research_seconds"])), "the research is a goal, with its time left")
 	g.free()
+
+
+func test_choices() -> void:
+	var g := new_game()
+	g.cheat_add_solves(1e9)
+	check(g.is_upgrade_available("speed_practice") and g.is_upgrade_available("efficient_solving"), "both sides of a choice are on offer")
+	check(g.get_choice_partners("speed_practice") == ["efficient_solving"] and g.get_choice_partners("lube").is_empty(), "partners")
+	var taps := g.get_tap_moves()
+	check(g.buy_upgrade("speed_practice") and is_equal_approx(g.get_tap_moves(), taps * 3.0), "Speed Practice: taps ×3")
+	check(g.get_choice_pick("practice") == "speed_practice", "it's the pick of its group")
+	check(g.is_upgrade_locked_out("efficient_solving") and not g.is_upgrade_available("efficient_solving"), "the other side is locked out")
+	var goal_ids: Array = []
+	for goal in g.get_goals(20):
+		goal_ids.append(goal["id"])
+	check(not goal_ids.has("efficient_solving") and g.get_next_goal().get("id", "") != "efficient_solving", "...and is never a goal")
+	var solves := g.solves
+	check(not g.buy_upgrade("efficient_solving") and is_equal_approx(g.solves, solves), "...and can't be bought")
+	check(not g.is_upgrade_locked_out("speed_practice"), "the pick itself isn't locked out")
+	# Effects: specialists boost only their puzzles; Deliberate Practice multiplies mastery XP.
+	g._add_puzzle("4x4")
+	var small := g.get_puzzle_moves_mult("3x3")
+	var big := g.get_puzzle_moves_mult("4x4")
+	check(g.buy_upgrade("big_cubes") and is_equal_approx(g.get_puzzle_moves_mult("4x4"), big * 3.0)
+			and is_equal_approx(g.get_puzzle_moves_mult("3x3"), small), "Big-Cube Specialist: ×3 on 4×4, nothing on 3×3")
+	check(g.is_upgrade_locked_out("small_cubes"), "...and Small-Cube Specialist is locked out")
+	var xp := g.get_mastery_xp_per_solve("3x3")
+	check(g.buy_upgrade("mastery_focus") and is_equal_approx(g.get_mastery_xp_per_solve("3x3"), xp * 3.0), "Deliberate Practice: ×3 mastery XP")
+	# Saved and loaded with the run; a damaged save with both sides keeps only one.
+	var data := g.get_save_data()
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.upgrades.has("speed_practice") and loaded.is_upgrade_locked_out("efficient_solving"), "the choice survives save/load")
+	data["upgrades"] = ["efficient_solving", "speed_practice"]
+	loaded.apply_save_data(data, float(data["saved_at"]))
+	check(loaded.upgrades.has("efficient_solving") and not loaded.upgrades.has("speed_practice"), "a damaged save with both sides keeps one")
+	# A new run (a championship resets upgrades, 6.2; reset_state for now) opens the choice again.
+	g.reset_state()
+	g.cheat_add_solves(1e4)
+	check(g.is_upgrade_available("speed_practice") and g.is_upgrade_available("efficient_solving"), "a new run: choose again")
+	g.free()
+	loaded.free()
+
+
+func test_choice_tiles() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	game.cheat_add_solves(1000)
+	main._refresh()
+	var speed: UpgradeTile = main._upgrade_tiles["speed_practice"]
+	var efficient: UpgradeTile = main._upgrade_tiles["efficient_solving"]
+	check(speed.visible and efficient.visible and speed._badge.visible and speed._badge.text == "PICK 1", "a pair shows with PICK 1 badges")
+	check(speed._choice.contains("Efficient Solving"), "the tooltip names the other side")
+	check(not main._upgrade_tiles["lube"]._badge.visible, "ordinary upgrades have no badge")
+	speed.pressed.emit()
+	main._refresh()
+	check(game.upgrades.has("speed_practice") and speed._badge.text == "PICKED", "picking one")
+	check(efficient.visible and efficient.locked_out and efficient.disabled and efficient._badge.text == "NOT PICKED",
+			"the other side stays visible, greyed out")
+	check(efficient.get_index() == speed.get_index() + 1, "next to its pick")
+	main.free()
+	game.reset_state()
 
 
 func test_lab_content() -> void:

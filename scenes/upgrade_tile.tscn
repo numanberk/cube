@@ -19,6 +19,14 @@ grow_vertical = 2
 mouse_filter = 2
 alignment = 1
 
+[node name="Badge" type="Label" parent="Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"ChoiceBadge"
+text = "PICK 1"
+horizontal_alignment = 1
+
 [node name="Icon" type="TextureRect" parent="Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(44, 44)

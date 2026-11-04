@@ -2,6 +2,27 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-04 — Task 5.7b: choices, pick one of two
+- **Three pairs** (`choice_group` in `Content.UPGRADES`; buying one locks the other for this run, a championship (6.2)
+  resets upgrades and so the choice): **Speed Practice** (taps ×3) *or* **Efficient Solving** (−20 % moves per solve),
+  400 Solves; **Small-Cube Specialist** (×2 on 2×2/3×3) *or* **Big-Cube Specialist** (×3 on 4×4 and up), 300K;
+  **Prize Hunting** (solves pay ×1.5) *or* **Deliberate Practice** (×3 mastery XP), 50M. Both sides cost the same.
+- **New effect types** `puzzle_mult` (moves on the puzzles in `puzzles`; in `get_puzzle_moves_mult`) and
+  `mastery_xp_mult` (in `get_mastery_xp_per_solve`). `_upgrade_mult(type, target)` matches `puzzles` lists too.
+- **GameState:** `get_choice_partners(id)`, `get_choice_pick(group)`, `is_upgrade_locked_out(id)`; a locked-out upgrade
+  isn't available, isn't a goal, and a damaged save with both sides keeps the first. **No save change** (the pick is
+  just the owned upgrade).
+- **UI:** choice tiles have a small **PICK 1** badge (new theme variation `ChoiceBadge`) and a tooltip line naming the
+  other side; after picking, the pick says **PICKED** and the other stays next to it greyed out (**NOT PICKED**, "—").
+  Screenshot option `PICK=<id>`; shots in `docs/screenshots/5.7b-choices/`.
+- **Simulator:** picks greedily like any upgrade (it takes Speed Practice, Small-Cube Specialist and Prize Hunting);
+  "everything bought" counts one side per pair.
+- **Balance:** a bit faster overall (Robot 7:11, 4×4 8:36, 5×5 10:19, active ×2.69). The longest first-hour wait reads
+  19:41 now (it was 11:58 only because the old 36-min gap was cut off at 1:00:00): the late first hour is thin. **5.8**.
+- Tests: pair data (two members, same cost, real puzzles), lock-out, effects, goals skip the locked side, save/load,
+  damaged save, a new run reopens the choice; tiles (badge, tooltip, picked/not picked, order).
+- **Next: 5.8 rebalance** (5.7 Helper Promotion only if 5.8 shows the first hour needs more decisions), then Phase 6.
+
 ## 2026-11-04 — Task 5.6: the Algorithm Lab (save v9)
 - **Real-time research, also while the game is closed** (capped at 8 h like offline progress). One project at a time
   (a second slot may come with the trophy tree, 6.3). Paid when started; the effect counts when it finishes.

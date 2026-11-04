@@ -75,3 +75,9 @@ The black background square was removed so the game can tint them; no other chan
 | `assets/icons/orbital.svg` | satellite | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/satellite.html |
 | `assets/icons/quantum.svg` | atom-core | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/atom-core.html |
 | `assets/icons/locked.svg` | padlock | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/padlock.html |
+| `assets/icons/speed_practice.svg` | sprint | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/sprint.html |
+| `assets/icons/efficient_solving.svg` | light-bulb | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/light-bulb.html |
+| `assets/icons/small_cubes.svg` | cube | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/cube.html |
+| `assets/icons/big_cubes.svg` | stack | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/stack.html |
+| `assets/icons/prize_focus.svg` | coins | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/coins.html |
+| `assets/icons/mastery_focus.svg` | graduate-cap | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/graduate-cap.html |

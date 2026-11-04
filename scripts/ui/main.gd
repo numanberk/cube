@@ -312,25 +312,46 @@ func _refresh_upgrade_tiles() -> void:
 		var tile: UpgradeTile = _upgrade_tiles[id]
 		var cost := float(def["cost"])
 		var owned: bool = Game.upgrades.has(id)
-		tile.visible = owned or Game.is_upgrade_available(id)
+		var locked_out := Game.is_upgrade_locked_out(id)
+		var partners := Game.get_choice_partners(id)
+		# A choice (5.7b) shows with its partner: both while open, the loser greyed out once one is picked.
+		tile.visible = owned or Game.is_upgrade_available(id) or (locked_out and Game.total_solves >= cost * 0.5)
 		if not tile.visible:
 			continue
 		any_visible = true
-		var can_buy := not owned and Game.solves >= cost
+		var can_buy := not owned and not locked_out and Game.solves >= cost
 		if can_buy:
 			affordable_count += 1
 		tile.set_view({
 			"icon": Content.icon(def["icon"]), "title": def["name"], "description": def["description"],
-			"cost": Num.format(cost), "affordable": can_buy, "owned": owned,
+			"cost": Num.format(cost), "affordable": can_buy, "owned": owned, "locked_out": locked_out,
+			"choice": _choice_text(id, partners, owned, locked_out),
 		})
 	# Buyable tiles first (the next method, then upgrades in content order), then the owned ones the same way.
 	for def: Dictionary in Content.get_upgrades():
-		(owned_order if Game.upgrades.has(def["id"]) else order).append(_upgrade_tiles[def["id"]])
+		var settled: bool = Game.upgrades.has(def["id"]) or Game.is_upgrade_locked_out(def["id"])  # a lost choice sits by its pick
+		(owned_order if settled else order).append(_upgrade_tiles[def["id"]])
 	order.append_array(owned_order)
 	for index in order.size():
 		upgrade_list.move_child(order[index], index)
 	upgrade_empty.visible = not any_visible
 	tabs.set_tab_title(UPGRADES_TAB, "Upgrades (%d)" % affordable_count if affordable_count > 0 else "Upgrades")
+
+
+## The "Pick one" line in a choice upgrade's tooltip (5.7b), "" for an ordinary upgrade.
+func _choice_text(id: String, partners: Array[String], owned: bool, locked_out: bool) -> String:
+	if partners.is_empty():
+		return ""
+	var names: Array[String] = []
+	for partner in partners:
+		names.append(String(Content.get_upgrade(partner)["name"]))
+	var other := " or ".join(names)
+	if owned:
+		return "You picked this over %s. A championship lets you choose again." % other
+	if locked_out:
+		return "You picked %s this run. A championship lets you choose again." % Content.get_upgrade(Game.get_choice_pick(
+				String(Content.get_upgrade(id)["choice_group"])))["name"]
+	return "Pick one: buying this locks %s for this run." % other
 
 
 ## What a method does to the focused puzzle: "3×3: 20 → 14 moves per solve" (or the floor note once it's reached).
