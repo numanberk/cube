@@ -289,7 +289,8 @@ const UPGRADES := [
 	# (a championship, 6.2, resets upgrades and so the choice), so players make builds, not just purchases.
 	# Never put an upgrade that has already shipped into a group without a save migration (or refund): a save owning
 	# both sides keeps only the first on load. The specialists come before the 4×4 (task 5.8): Small-Cube pays at once,
-	# Big-Cube once the 4×4 and 5×5 run; by 60 min both builds earn about the same (BALANCE.md, "Main build vs other build").
+	# Big-Cube nothing until the 4×4, then more; by 60 min both earn about the same (BALANCE.md, "Main build vs the other
+	# side of each choice"). So the pair is picked ~8 min before the first big cube: now or later, on purpose.
 	{
 		"id": "speed_practice",
 		"icon": "speed_practice",

@@ -119,7 +119,7 @@ Background agents are fine while you keep working (e.g. `balance-analyst` while 
 1. Run `bash tools/run_tests.sh` (or the `test-runner` agent) and make sure it prints `All good.`
    (On Linux it downloads Godot automatically. Elsewhere set `GODOT=/path/to/godot`.)
    Add or adjust tests in `tests/test_runner.gd` for any rule you changed.
-   `test_pacing_targets` runs the balance bot (~10 s). Targets with an `expected_failure` in
+   `test_pacing_targets` runs the balance bot (~2–3 min since 5.8: three runs, the 2-hour one ~90 s). Targets with an `expected_failure` in
    `tools/pacing.gd` may miss; if your change makes one pass, the test tells you to remove its mark.
    After any content/balance change, also run `bash tools/simulate.sh` (or `balance-analyst`) and commit `docs/BALANCE.md`.
    Then have `diff-reviewer` review the change and fix what it finds.

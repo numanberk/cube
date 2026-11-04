@@ -343,109 +343,16 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 15 | 64.24M | 3.14M | 790.0M | 16.39B | 2×2 20 % · 3×3 45 % · 4×4 35 % |
 | 30 | 17.07B | 217.7M | 1.84T | 12.36T | 2×2 10 % · 3×3 24 % · 4×4 19 % · 5×5 48 % |
 
-## Main build vs other build (first 60 min)
+## Main build vs the other side of each choice (first 60 min)
 
-The other build never buys the side of each choice pair the tapping bot picked, so the balance isn't tuned
-to one build. Both should hit roughly the same moments.
+Each other column is the tapping bot again, never buying the side of ONE choice pair it picked, so it plays
+the other side of that pair (the greedy bot never would). A side that's far behind is a weak choice.
 
-| Moment | Main build | Other build |
-|---|---|---|
-| 3×3 | 4:22 | 4:22 |
-| Solving Robot | 8:34 | 9:20 |
-| 4×4 | 27:53 | 34:37 |
-| 5×5 | 52:28 | 1:04:32 |
-| Longest wait for something new | 2:51 | 3:49 |
-| Lifetime Solves at 1:00:00 | 9.82T | 787.6B |
-
-## Other build: tapping, never buying some upgrades (3 taps/s, 70 min)
-
-- Never buys: Efficient Solving, Small-Cube Specialist, Prize Hunting (so it takes the other side of each pair)
-- Items bought: 577 (71 different)
-- Every helper, upgrade, method and puzzle owned at: never
-- Longest wait for something new: 4:53 (after Research Grants IV, before Regional Branches III)
-
-### First purchase of each item
-
-| Time | Kind | Item | Cost | Gap |
+| Moment | Main build | Not Efficient Solving | Not Small-Cube Specialist | Not Prize Hunting |
 |---|---|---|---|---|
-| 0:00 | helper | Cubing Friend | 0 | +0:00 |
-| 0:12 | upgrade | Practice Partners I | 5 | +0:12 |
-| 0:48 | upgrade | Cube Lube | 15 | +0:36 |
-| 1:49 | upgrade | Stackmat Timer | 50 | +1:02 |
-| 2:31 | upgrade | Practice Partners II | 75 | +0:41 |
-| 4:05 | method | Learn CFOP | 200 | +1:34 |
-| 4:08 | upgrade | Practice Partners III | 400 | +0:04 |
-| 4:22 | puzzle | 3×3 | 300 | +0:13 |
-| 4:33 | helper | Cubing Club | 60 | +0:11 |
-| 4:34 | upgrade | Club Training I | 60 | +0:01 |
-| 5:09 | upgrade | Club Snacks | 1.50K | +0:35 |
-| 5:17 | upgrade | Club Training II | 900 | +0:08 |
-| 5:51 | upgrade | Club Training III | 4.80K | +0:34 |
-| 6:19 | research | 2-look OLL | 5.00K | +0:29 |
-| 6:38 | upgrade | Practice Partners IV | 8.25K | +0:19 |
-| 7:29 | upgrade | Magnetic Cube | 36.00K | +0:51 |
-| 7:39 | upgrade | Speed Practice | 800 | +0:10 |
-| 7:50 | upgrade | Club Coaching | 18.00K | +0:11 |
-| 8:36 | upgrade | Club Training IV | 99.00K | +0:46 |
-| 9:20 | helper | Solving Robot | 12.00K | +0:44 |
-| 9:22 | upgrade | Servo Tuning I | 12.00K | +0:02 |
-| 9:40 | upgrade | Robot Firmware v2 | 60.00K | +0:18 |
-| 10:30 | upgrade | Servo Tuning II | 180.0K | +0:50 |
-| 11:19 | research | 2-look PLL | 20.00K | +0:49 |
-| 12:36 | upgrade | Servo Tuning III | 960.0K | +1:17 |
-| 13:57 | upgrade | Robot Sparring | 630.0K | +1:20 |
-| 14:17 | helper | Local Competition | 100.0K | +0:21 |
-| 14:38 | upgrade | Sponsorship Deal | 500.0K | +0:20 |
-| 14:40 | upgrade | Comp Experience I | 100.0K | +0:03 |
-| 15:20 | upgrade | Practice Partners V | 550.0K | +0:40 |
-| 16:44 | upgrade | Comp Experience II | 1.50M | +1:23 |
-| 19:00 | upgrade | Club Training V | 6.60M | +2:17 |
-| 20:38 | upgrade | Comp Experience III | 8.00M | +1:37 |
-| 21:20 | method | Learn Roux | 140.0K | +0:42 |
-| 21:21 | research | Finger Tricks | 500 | +0:01 |
-| 21:41 | upgrade | Talent Scouts | 3.50M | +0:20 |
-| 23:20 | upgrade | Servo Tuning IV | 19.80M | +1:39 |
-| 23:28 | research | Lookahead | 2.80M | +0:08 |
-| 23:56 | helper | Cube Factory | 1.70M | +0:28 |
-| 24:01 | upgrade | Assembly Line I | 1.70M | +0:05 |
-| 27:50 | upgrade | Prize Money | 84.00M | +3:49 |
-| 29:02 | upgrade | Assembly Line II | 25.50M | +1:12 |
-| 31:41 | upgrade | Assembly Line III | 136.0M | +2:39 |
-| 34:37 | puzzle | 4×4 | 180.0M | +2:56 |
-| 34:42 | upgrade | Big-Cube Specialist | 21.00M | +0:05 |
-| 35:16 | upgrade | Comp Experience IV | 165.0M | +0:34 |
-| 35:30 | upgrade | Factory Supply | 84.00M | +0:15 |
-| 35:40 | helper | Speedcubing Lab | 34.00M | +0:10 |
-| 35:44 | upgrade | Research Grants I | 34.00M | +0:03 |
-| 37:36 | upgrade | Research Grants II | 510.0M | +1:52 |
-| 40:20 | upgrade | Live Stream | 2.50B | +2:44 |
-| 40:37 | helper | Pro Team | 450.0M | +0:17 |
-| 40:50 | upgrade | Team Bootcamp I | 450.0M | +0:13 |
-| 43:00 | upgrade | Research Grants III | 2.72B | +2:10 |
-| 44:37 | upgrade | Assembly Line IV | 2.81B | +1:37 |
-| 44:46 | upgrade | Lab Prototypes | 840.0M | +0:09 |
-| 45:35 | upgrade | Servo Tuning V | 1.32B | +0:48 |
-| 46:49 | upgrade | Team Bootcamp II | 6.75B | +1:14 |
-| 46:52 | method | Learn ZZ | 98.00M | +0:03 |
-| 46:53 | research | Full PLL | 70.00M | +0:01 |
-| 47:16 | upgrade | Pro Scrims | 2.00B | +0:23 |
-| 47:51 | helper | Cubing Federation | 5.00B | +0:35 |
-| 48:09 | upgrade | Regional Branches I | 5.00B | +0:18 |
-| 51:39 | upgrade | Team Bootcamp III | 36.00B | +3:29 |
-| 54:54 | upgrade | Regional Branches II | 75.00B | +3:15 |
-| 55:47 | upgrade | Federation Rankings | 20.00B | +0:53 |
-| 57:24 | upgrade | Research Grants IV | 56.10B | +1:37 |
-| 1:02:17 | upgrade | Regional Branches III | 400.0B | +4:53 |
-| 1:04:32 | puzzle | 5×5 | 250.0B | +2:15 |
-| 1:05:06 | upgrade | Comp Experience V | 11.00B | +0:34 |
-| 1:07:59 | upgrade | Team Bootcamp IV | 742.5B | +2:53 |
-
-### Income over time
-
-| Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves | Bot's split |
-|---|---|---|---|---|---|
-| 1 | 1.1 | 9 | 6 | 39 | 2×2 100 % |
-| 5 | 101 | 222 | 623 | 4.16K | 2×2 30 % · 3×3 70 % |
-| 15 | 41.00K | 33.41K | 202.6K | 5.67M | 2×2 25 % · 3×3 75 % |
-| 30 | 1.35M | 284.1K | 8.42M | 324.2M | 2×2 30 % · 3×3 70 % |
-| 60 | 1.83B | 56.98M | 149.1B | 795.6B | 2×2 5 % · 3×3 10 % · 4×4 85 % |
+| 3×3 | 4:22 | 4:22 | 4:22 | 4:22 |
+| Solving Robot | 8:34 | 9:20 | 8:34 | 8:34 |
+| 4×4 | 27:53 | 32:09 | 29:32 | 27:53 |
+| 5×5 | 52:28 | 59:17 | 53:30 | 56:02 |
+| Longest wait for something new | 2:51 | 3:18 | 2:48 | 4:03 |
+| Lifetime Solves at 1:00:00 | 9.82T | 2.25T | 10.30T | 3.86T |

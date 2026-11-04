@@ -1423,8 +1423,8 @@ func invalidate_upgrade_cache() -> void:
 
 
 ## Product of every owned upgrade's effect of this type (and target). Cached: with ~50 upgrades (5.2) this is called
-## thousands of times a second by the balance bot. The cache is dropped whenever the number of owned upgrades changes
-## (buying, a reset, a load, or the bot trying one on), which is the only way the set changes.
+## thousands of times a second by the balance bot. It's dropped by invalidate_upgrade_cache() (buying, finishing research,
+## a reset, a load) and, as a safety net, whenever the number of owned upgrades or finished projects changes.
 func _upgrade_mult(effect_type: String, target: String = "") -> float:
 	if upgrades.size() + 1000 * research_done.size() != _mult_cache_owned:
 		_mult_cache.clear()

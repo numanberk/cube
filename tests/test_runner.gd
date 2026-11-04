@@ -3304,7 +3304,7 @@ func test_helper_milestones() -> void:
 	var cost := float(Content.get_upgrade(id)["cost"])
 	g.cheat_add_solves(cost)
 	check(g.is_upgrade_available(id), "Practice Partners I shows up with 1 Friend")
-	check(not g.is_upgrade_available("ms_friend_10"), "...II needs 10")
+	check(not g.is_upgrade_available("ms_friend_10"), "...III needs 10")
 	var before := g.get_building_mps("friend")
 	check(g.buy_upgrade(id) and is_equal_approx(g.get_building_mps("friend"), before * 2.0), "and doubles Friends")
 	check(not g.is_upgrade_available(id), "once")
@@ -3598,6 +3598,7 @@ func test_lab_offline_and_saves() -> void:
 	var slow := new_game()
 	slow.cheat_add_solves(1e12)
 	slow.research_done["two_look_oll"] = true
+	slow.invalidate_upgrade_cache()
 	slow.research = {"id": "full_oll", "left": 3.0 * 3600.0}
 	var slow_data := slow.get_save_data()
 	var later := new_game()

@@ -363,14 +363,14 @@ static func to_markdown(result: Dictionary) -> String:
 		title = "Active: tapping + %s-pace hand solves" % GameState.hand_tier_name(int(hand.get("tier", 2)))
 	var forbid: Array = result.get("forbid", [])
 	if not forbid.is_empty():
-		title = "Other build: tapping, never buying some upgrades"
+		title += " (never buying some upgrades)"
 	lines.append("## %s (%s taps/s, %s min)" % [title, _num(taps), _num(result["minutes"])])
 	lines.append("")
 	if not forbid.is_empty():
 		var names := PackedStringArray()
 		for id: Variant in forbid:
 			names.append(Content.get_upgrade(str(id)).get("name", str(id)))
-		lines.append("- Never buys: %s (so it takes the other side of each pair)" % ", ".join(names))
+		lines.append("- Never buys: %s" % ", ".join(names))
 	if not hand.is_empty():
 		lines.append("- Hand solves in the Solve Station: %d (each just inside the tier's target on the biggest cube owned, back to back)" % result["hand_solves"])
 	var events: Array = result["events"]
@@ -416,27 +416,41 @@ static func chosen_sides(result: Dictionary) -> Array[String]:
 	return picked
 
 
-## Markdown comparing two runs at the PLAN §2 moments (the main build against the other build, 5.8).
-static func compare_markdown(main: Dictionary, other: Dictionary, until: float) -> String:
+## Markdown comparing the main build with runs that each play the other side of one choice pair (5.8). `others` is
+## [[label, result], ...].
+static func compare_markdown(main: Dictionary, others: Array, until: float) -> String:
 	var lines: PackedStringArray = []
-	lines.append("## Main build vs other build (first %s min)" % _num(until / 60.0))
+	lines.append("## Main build vs the other side of each choice (first %s min)" % _num(until / 60.0))
 	lines.append("")
-	lines.append("The other build never buys the side of each choice pair the tapping bot picked, so the balance isn't tuned")
-	lines.append("to one build. Both should hit roughly the same moments.")
+	lines.append("Each other column is the tapping bot again, never buying the side of ONE choice pair it picked, so it plays")
+	lines.append("the other side of that pair (the greedy bot never would). A side that's far behind is a weak choice.")
 	lines.append("")
-	lines.append("| Moment | Main build | Other build |")
-	lines.append("|---|---|---|")
+	var header := "| Moment | Main build |"
+	var rule := "|---|---|"
+	for other: Array in others:
+		header += " %s |" % other[0]
+		rule += "---|"
+	lines.append(header)
+	lines.append(rule)
 	for row: Array in [["3×3", "puzzle", "3x3"], ["Solving Robot", "helper", "robot"], ["4×4", "puzzle", "4x4"],
 			["5×5", "puzzle", "5x5"]]:
-		lines.append("| %s | %s | %s |" % [row[0], _first_time(main, row[1], row[2]), _first_time(other, row[1], row[2])])
-	var gap_main := Pacing.longest_gap(main["events"], 0.0, minf(until, float(main["minutes"]) * 60.0))
-	var gap_other := Pacing.longest_gap(other["events"], 0.0, minf(until, float(other["minutes"]) * 60.0))
-	lines.append("| Longest wait for something new | %s | %s |" % [_clock(gap_main["length"]), _clock(gap_other["length"])])
-	var main_total := _total_at(main, until)
-	var other_total := _total_at(other, until)
-	lines.append("| Lifetime Solves at %s | %s | %s |" % [_clock(until), Num.format(main_total), Num.format(other_total)])
+		var line := "| %s | %s |" % [row[0], _first_time(main, row[1], row[2])]
+		for other: Array in others:
+			line += " %s |" % _first_time(other[1], row[1], row[2])
+		lines.append(line)
+	var gaps := "| Longest wait for something new | %s |" % _clock(_gap_until(main, until))
+	var totals := "| Lifetime Solves at %s | %s |" % [_clock(until), Num.format(_total_at(main, until))]
+	for other: Array in others:
+		gaps += " %s |" % _clock(_gap_until(other[1], until))
+		totals += " %s |" % Num.format(_total_at(other[1], until))
+	lines.append(gaps)
+	lines.append(totals)
 	lines.append("")
 	return "\n".join(lines)
+
+
+static func _gap_until(result: Dictionary, until: float) -> float:
+	return Pacing.longest_gap(result["events"], 0.0, minf(until, float(result["minutes"]) * 60.0))["length"]
 
 
 static func _first_time(result: Dictionary, kind: String, id: String) -> String:

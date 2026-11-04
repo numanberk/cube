@@ -41,17 +41,18 @@ func _initialize() -> void:
 	sections.append(Simulator.to_markdown(active))
 	by_profile["active"] = active
 
-	# The other build (5.8): the tapping bot again, but never buying the choice-pair sides it picked, so it plays the
-	# other side of each pair (the greedy bot would never pick those by itself).
+	# The other side of each choice pair (5.8): the tapping bot again for the first hour, once per pair, never buying the
+	# side it picked (the greedy bot would never pick the other side by itself).
 	if by_profile.has("tapping") and forbid.is_empty():
-		var other_forbid := Simulator.chosen_sides(by_profile["tapping"])
-		var other_minutes := minf(minutes, 70.0)
-		var other_started := Time.get_ticks_msec()
-		var other: Dictionary = sim.run(Pacing.TAPS_PER_SEC, other_minutes, {}, other_forbid)
-		print("Simulated the other build (never %s) for %s min in %.1f s" % [", ".join(other_forbid), other_minutes,
-				(Time.get_ticks_msec() - other_started) / 1000.0])
-		sections.append(Simulator.compare_markdown(by_profile["tapping"], other, 3600.0))
-		sections.append(Simulator.to_markdown(other))
+		var others: Array = []
+		for picked: String in Simulator.chosen_sides(by_profile["tapping"]):
+			var other_started := Time.get_ticks_msec()
+			var other: Dictionary = sim.run(Pacing.TAPS_PER_SEC, minf(minutes, 60.0), {}, [picked])
+			var label := "Not %s" % Content.get_upgrade(picked)["name"]
+			print("Simulated the other side of %s for %s min in %.1f s" % [picked, minf(minutes, 60.0),
+					(Time.get_ticks_msec() - other_started) / 1000.0])
+			others.append([label, other])
+		sections.append(Simulator.compare_markdown(by_profile["tapping"], others, 3600.0))
 
 	var rows := Pacing.evaluate(by_profile)
 	for row: Dictionary in rows:

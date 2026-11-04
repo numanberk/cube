@@ -39,8 +39,8 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
     5 Pro Teams) and **Federation Rankings** (each Federation +1 % Pro Teams, 20B, 5 Federations); icons team-idea and podium
     (game-icons.net, Delapouite, CC BY 3.0, in CREDITS). Shot: `docs/screenshots/5.8-rebalance/`.
 - **The other side of each choice** (the 5.8 note): the simulator takes a `forbid` list (`simulate.sh --forbid a,b`), and
-  BALANCE.md now has a **"Main build vs other build"** table: the tapping bot again, never buying the pair sides it picked.
-  Checked one pair at a time (lifetime Solves at 60 min, main build 9.9T):
+  BALANCE.md now has a **"Main build vs the other side of each choice"** table: the tapping bot again for the first hour,
+  once per pair, never buying the side it picked (lifetime Solves at 60 min, main build 9.8T):
   - **Big-Cube Specialist** was far stronger than Small-Cube (×3 on the puzzles that make most of the income: 35T even at
     ×2), so it's **×1.5** now: 10.5T, and that build passes every pacing target too. Both cost 21M, before the 4×4: Small
     pays at once, Big once the 4×4/5×5 run. (The bot still picks Small: it only values today's income.)
@@ -50,6 +50,12 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
     long-term pick; **Phase 6** should make that visible (e.g. 6.2/6.3). Not changed here.
 - **For Phase 6:** lifetime Solves at 90 min are ~1e14, so 6.1's `sqrt(run_solves / 1e6)` would give ~10K trophies;
   pick the divisor from BALANCE.md (note added to 6.1). The 2-hour runs take ~90 s each now (simulate.sh ~4 min in all).
+- **Review (diff-reviewer):** no correctness or save issues. Fixed: the comparison ran all three other sides in one run (so
+  it couldn't back the content comment), stale cache comments, `--forbid` titles, a test label. Noted: `xp_growth` 1.25
+  recomputes levels from saved XP, so **dev saves lose mastery levels** (a level-50 puzzle drops to ~39; the game isn't out,
+  so no migration). The specialists are now picked ~8 min before the first big cube, on purpose (now-or-later choice; the
+  5.7b review had put them after the 4×4). Only the simulator part of `test_upgrade_cache_swaps` guards the real bug (in
+  the game the count always changed). `test_pacing_targets` takes ~2–3 min now (CLAUDE.md updated).
 - **5.7 Helper Promotion → Phase 11** (its own rule: only if 5.8 showed the first hour needs more decisions; it doesn't).
 - Tests (3752 checks, `All good.`): hard-coded numbers now read from `Content` (3×3 cost, Club Coaching's %, Big-Cube's
   ×1.5); the next-goal order (CFOP 200 now comes before the 3×3 300); `test_upgrade_cache_swaps`.
