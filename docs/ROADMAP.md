@@ -31,6 +31,10 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 - [x] **0.5 Project subagents (owner, 2026-11-04):** `.claude/agents/` with diff-reviewer (Opus), screenshot-checker and
       balance-analyst (Sonnet), test-runner (Haiku), fun-designer (Opus). CLAUDE.md says when to use each.
       *Done when:* the five files exist and CLAUDE.md's "Subagents" section and finish checklist use them.
+- [x] **0.6 Hooks that trigger the subagents (owner, 2026-11-04):** `.claude/settings.json` + `tools/hooks/workflow.py`:
+      reminders after content/UI edits, a commit gate (tests, balance bot, screenshots, diff-reviewer), a fun-pass
+      prompt when a phase is finished.
+      *Done when:* each case is pipe-tested and the gate blocked and then allowed a real commit in a session.
 
 ## Phase 1 — 3D cube (D3) ✅
 - [x] **1.1 TwistyModel + cube shapes:** `scripts/cube/twisty_model.gd` (`TwistyModel`) and `scripts/cube/puzzle_shapes.gd`

@@ -75,6 +75,7 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
                            PLAYER_RESEARCH (what our player loves; tasks marked (PR) come from it)
 .claude/agents/            Project subagents (see "Subagents" below): diff-reviewer, screenshot-checker,
                            balance-analyst, test-runner, fun-designer
+.claude/settings.json      Hooks that run tools/hooks/workflow.py (the commit gate and reminders, see "Subagents")
 ```
 
 ## Rules of the code
@@ -114,6 +115,21 @@ agents (they'd collide on `game.gd`, `content.gd` and the save version). Use the
 All of them report and never commit. Fix what they find yourself (or say why not in the CHANGELOG). Ideas from
 `fun-designer` go to the owner first; only the ones they pick become ROADMAP tasks, marked "(fun pass, date)".
 Background agents are fine while you keep working (e.g. `balance-analyst` while you write tests).
+
+**Hooks enforce this** (`.claude/settings.json` -> `tools/hooks/workflow.py`; its header explains each part):
+- Editing `content.gd`/`game.gd` or UI files (`scenes/`, `ui/`, `scripts/ui/`, `assets/icons|fonts|images/`) gives
+  you a one-time reminder to run `balance-analyst` / `screenshot-checker`.
+- **`git commit` is blocked** while the change set (everything not yet on `main`, committed or not) has code in it
+  (anything outside `docs/`, `.claude/agents/` and `*.md` files) and: tests haven't passed since the last code
+  change; or `content.gd`/`game.gd` changed since the balance bot last ran; or UI files changed since the last
+  screenshots; or `diff-reviewer` hasn't reviewed every changed code file (fixing its findings needs no second
+  review). A check counts from when it *started*, so edits made while it runs still need a new run.
+- The hook reads the checks' own output: run them in the foreground or via their agents (a background Bash run isn't
+  seen), and keep `All good.` / `Wrote …docs/BALANCE.md` / `Saved …` in that same command's output (`… > log; grep
+  "All good" log` in one command is fine; a log read by a later, separate command isn't seen).
+- A commit that ticks the last task of a roadmap phase asks for a `fun-designer` pass.
+- What ran is kept in `.git/cube-workflow.json` (per clone, never committed). If the gate is wrong, or the owner asks
+  to skip it, prefix the command with `CUBE_SKIP_GATE=1` and say why in the CHANGELOG.
 
 ## Before you finish (every session)
 1. Run `bash tools/run_tests.sh` (or the `test-runner` agent) and make sure it prints `All good.`
