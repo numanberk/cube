@@ -322,7 +322,8 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
 - **D13 Hand-solve rewards:** **~2–3×** (owner, 2026-11-03): an active player who keeps solving in the Solve Station earns
   about 2–3× an idle one (short Flow boosts per solve, bigger for faster tiers, plus permanent per-puzzle bonuses for
   time targets). Idling is never pointless. Built in S.3; the sim's "active" profile checks it. Measured as **progress
-  speed**: the active player reaches the tapping bot's 30-min lifetime Solves 2–3× sooner (×2.31 today). A raw Solves
+  speed**: the active player reaches the tapping bot's 30-min lifetime Solves 2–3× sooner (×2.80 after 5.2; Flow was raised
+  then, Gold ×2.6, because milestones made a flat boost worth less). A raw Solves
   ratio is far larger (×6 at 30 min) because the early economy compounds, so it isn't the target.
 
 ### Open

@@ -92,7 +92,7 @@ const TARGETS: Array[Dictionary] = [
 	{
 		"id": "idle_progress", "text": "Never tapping still buys something within 5 min", "profile": "idle",
 		"type": "first_by", "kind": "", "max": 300.0,
-		"expected_failure": "With no taps there's no income at all. Needs a free first Friend or a trickle (5.8 or later).",
+		"expected_failure": "",
 	},
 ]
 

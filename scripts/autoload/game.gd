@@ -81,6 +81,8 @@ var flow: Dictionary = {}                  ## Flow from hand solves (S.3): {mult
 var drills: Dictionary = {}                ## algorithm id -> {best, clean, count} (S.4, saved)
 var daily: Dictionary = {}                 ## S.5 (saved): {date, rewarded, times {puzzle: s}, fmc {puzzle: moves}, fmc_ever {puzzle: moves}}
 var daily_now := -1.0                      ## tests: the unix time "now" for the daily (-1 = the real clock)
+var _mult_cache: Dictionary = {}           ## _upgrade_mult results for the current set of owned upgrades
+var _mult_cache_owned := -1                ## upgrades.size() the cache was built for
 var _offline_catch_up := false             ## true while offline progress is added: buffs don't count then
 
 
@@ -253,7 +255,15 @@ func get_solves_per_second() -> float:
 func get_building_cost(id: String) -> float:
 	var def := Content.get_building(id)
 	var owned: int = buildings.get(id, 0)
-	return ceilf(float(def["base_cost"]) * pow(COST_GROWTH, owned))
+	return _copy_cost(def, owned)
+
+
+## What copy number `n` (0 = the first) of a helper costs: ceil(base × 1.15^n), and nothing for a helper's first copy
+## when it's marked first_free (task 5.0).
+func _copy_cost(def: Dictionary, n: int) -> float:
+	if n == 0 and def.get("first_free", false):
+		return 0.0
+	return ceilf(float(def["base_cost"]) * pow(COST_GROWTH, n))
 
 
 ## Cost of the next `count` copies of a helper: the exact sum of each copy's ceil(base × 1.15^owned), so bulk
@@ -263,7 +273,7 @@ func get_building_cost_for(id: String, count: int) -> float:
 	var owned: int = buildings.get(id, 0)
 	var total := 0.0
 	for i in mini(count, BULK_LIMIT):
-		total += ceilf(float(def["base_cost"]) * pow(COST_GROWTH, owned + i))
+		total += _copy_cost(def, owned + i)
 	return total
 
 
@@ -274,7 +284,7 @@ func get_max_affordable(id: String) -> int:
 	var left := solves
 	var count := 0
 	while count < BULK_LIMIT:
-		var cost := ceilf(float(def["base_cost"]) * pow(COST_GROWTH, owned + count))
+		var cost := _copy_cost(def, owned + count)
 		if cost > left:
 			break
 		left -= cost
@@ -760,7 +770,7 @@ func get_next_goal() -> Dictionary:
 	for def: Dictionary in Content.BUILDINGS:
 		if int(buildings.get(def["id"], 0)) == 0:
 			candidates.append({"kind": "helper", "id": def["id"], "name": def["name"], "cost": get_building_cost(def["id"]), "more": false})
-	for def: Dictionary in Content.UPGRADES:
+	for def: Dictionary in Content.get_upgrades():
 		if upgrades.has(def["id"]) or not _upgrade_requirements_met(def):
 			continue
 		candidates.append({"kind": "upgrade", "id": def["id"], "name": def["name"], "cost": float(def["cost"]), "more": false})
@@ -1190,7 +1200,7 @@ func get_goals(limit: int = 3) -> Array[Dictionary]:
 	if all_owned:
 		for def: Dictionary in Content.BUILDINGS:
 			add.call(cost_goal.call("helper", def["id"], def["name"], get_building_cost(def["id"]), true))
-	for def: Dictionary in Content.UPGRADES:
+	for def: Dictionary in Content.get_upgrades():
 		if not upgrades.has(def["id"]) and _upgrade_requirements_met(def):
 			add.call(cost_goal.call("upgrade", def["id"], def["name"], float(def["cost"]), false))
 	var next_method := get_next_method()
@@ -1244,10 +1254,20 @@ func _upgrade_requirements_met(def: Dictionary) -> bool:
 	return true
 
 
+## Product of every owned upgrade's effect of this type (and target). Cached: with ~50 upgrades (5.2) this is called
+## thousands of times a second by the balance bot. The cache is dropped whenever the number of owned upgrades changes
+## (buying, a reset, a load, or the bot trying one on), which is the only way the set changes.
 func _upgrade_mult(effect_type: String, target: String = "") -> float:
+	if upgrades.size() != _mult_cache_owned:
+		_mult_cache.clear()
+		_mult_cache_owned = upgrades.size()
+	var key := effect_type + "|" + target
+	if _mult_cache.has(key):
+		return _mult_cache[key]
 	var mult := 1.0
-	for def: Dictionary in Content.UPGRADES:
-		if not upgrades.has(def["id"]):
+	for id: String in upgrades:
+		var def := Content.get_upgrade(id)
+		if def.is_empty():
 			continue
 		var effect: Dictionary = def["effect"]
 		if effect["type"] != effect_type:
@@ -1255,6 +1275,7 @@ func _upgrade_mult(effect_type: String, target: String = "") -> float:
 		if target != "" and effect.get("target", "") != target:
 			continue
 		mult *= float(effect["value"])
+	_mult_cache[key] = mult
 	return mult
 
 

@@ -66,14 +66,21 @@ func test_tapping_completes_a_solve() -> void:
 
 func test_buying_helpers() -> void:
 	var g := new_game()
-	check(not g.buy_building("friend"), "can't buy without Solves")
+	check_near(g.get_building_cost("friend"), 0.0, "the first Friend is free (5.0: never tapping still progresses)")
+	check(g.buy_building("friend"), "so it can be bought with no Solves")
+	check(not g.buy_building("friend"), "the second one costs Solves")
+	check_near(g.get_building_cost("friend"), ceilf(5.0 * 1.15), "...ceil(5 × 1.15) = 6")
+	check_near(g.get_building_cost_for("friend", 2), 6.0 + ceilf(5.0 * 1.15 * 1.15), "bulk cost sums each copy")
+	check(not Content.get_building("club").get("first_free", false) and g.get_building_cost("club") > 0.0, "only the Friend is free")
+	g.free()
+	g = new_game()
 	g.cheat_add_solves(5.0)
 	check(g.buy_building("friend"), "can buy with enough Solves")
-	check_near(g.solves, 0.0, "cost was deducted")
+	check_near(g.solves, 5.0, "the free one costs nothing")
 	check(g.get_building_cost("friend") > 5.0, "cost grows after buying")
 	check_near(g.get_moves_per_second(), 0.5, "one friend = 0.5 moves/s")
 	g.add_moves(g.get_moves_per_second() * 30.0)
-	check_near(g.solves, 1.0, "30s of one friend = 1 solve")
+	check_near(g.solves, 6.0, "30s of one friend = 1 solve (on top of the 5 the free Friend didn't cost)")
 	g.free()
 
 
@@ -190,7 +197,7 @@ func test_simulator_short_run() -> void:
 	check(not events.is_empty() and events[0]["id"] == "friend", "the first purchase is a Cubing Friend")
 	check(tapping["checkpoints"].size() == 1, "a 2-minute run records only the 1-minute checkpoint")
 	var idle: Dictionary = sim.run(0.0, 1.0)
-	check(idle["events"].is_empty(), "with no taps and no helpers nothing is bought")
+	check(idle["events"].size() >= 1 and idle["events"][0]["id"] == "friend", "with no taps the free Friend is still taken (5.0)")
 
 
 func test_simulator_leaves_state_unchanged_when_measuring() -> void:
@@ -840,18 +847,18 @@ func test_next_goal() -> void:
 	var g := new_game()
 	var goal := g.get_next_goal()
 	check(goal["id"] == "friend" and goal["kind"] == "helper", "a new game aims at the first Friend")
-	check_near(goal["missing"], 5.0, "it says how many Solves are missing")
-	check(is_inf(float(goal["seconds"])), "with no helpers the time is unknown (tap to get there)")
-	g.cheat_add_solves(5.0)
-	check_near(g.get_next_goal()["missing"], 0.0, "with enough Solves it's ready to buy")
+	check_near(goal["missing"], 0.0, "it's free, so it's ready to buy at once (5.0)")
 	g.buy_building("friend")
+	g.cheat_add_solves(2.0)
+	goal = g.get_next_goal()
+	check(float(goal["missing"]) > 0.0 and float(goal["seconds"]) > 0.0, "the next goal has Solves missing and a time")
 	goal = g.get_next_goal()
 	check(goal["id"] == "lube", "next is the cheapest new thing (Cube Lube, 15)")
 	check(float(goal["seconds"]) > 0.0 and not is_inf(float(goal["seconds"])), "with a helper there's a time estimate")
-	g.cheat_add_solves(1e12)
+	g.cheat_add_solves(1e30)
 	for def: Dictionary in Content.BUILDINGS:
-		g.buy_building(def["id"])
-	for def: Dictionary in Content.UPGRADES:
+		g.buy_buildings(def["id"], 200)  # enough for every milestone
+	for def: Dictionary in Content.get_upgrades():
 		g.buy_upgrade(def["id"])
 	goal = g.get_next_goal()
 	check(goal["kind"] == "puzzle" and goal["id"] == "3x3", "with every helper and upgrade owned it aims at the next puzzle")
@@ -919,7 +926,10 @@ func test_shop_cards() -> void:
 	var cards: Dictionary = main._helper_cards
 	var friend: ShopCard = cards["friend"]
 	var club: ShopCard = cards["club"]
-	check(friend.visible and not friend.affordable and friend.disabled, "fresh: the Friend card shows but isn't affordable")
+	check(friend.visible and friend.affordable and not friend.disabled, "fresh: the free first Friend is ready to take (5.0)")
+	game.buy_building("friend")
+	main._refresh()
+	check(friend.visible and not friend.affordable and friend.disabled, "the second one isn't affordable yet")
 	check(club.visible and club.locked and club._title.text == "???", "fresh: the next helper shows as a locked ??? card")
 	var visible_locked := 0
 	for id: String in cards:
@@ -935,7 +945,7 @@ func test_shop_cards() -> void:
 	var tabs: TabContainer = main.get_node("%Tabs")
 	check(tabs.get_tab_title(main.UPGRADES_TAB) == "Upgrades (1)", "the Upgrades tab shows a badge for the affordable Lube")
 	friend.pressed.emit()
-	check(game.buildings["friend"] == 1, "clicking an affordable card buys the helper")
+	check(game.buildings["friend"] == 2, "clicking an affordable card buys the helper (a second Friend)")
 	main.free()
 	game.reset_state()
 
@@ -1184,30 +1194,31 @@ func test_music_crossfade_never_two_at_full_volume() -> void:
 
 # --- Buy x1 / x10 / Max (task 3.3) ------------------------------------------------
 
+## (The Club: the Friend's first copy is free since 5.0, which would skew the sums.)
 func test_bulk_buying() -> void:
 	var g := new_game()
 	var one_by_one := 0.0
 	for i in 10:
-		one_by_one += ceilf(5.0 * pow(1.15, i))
-	check_near(g.get_building_cost_for("friend", 10), one_by_one, "x10 costs the same as ten single buys")
-	check_near(g.get_building_cost_for("friend", 1), g.get_building_cost("friend"), "x1 cost = the normal cost")
+		one_by_one += ceilf(60.0 * pow(1.15, i))
+	check_near(g.get_building_cost_for("club", 10), one_by_one, "x10 costs the same as ten single buys")
+	check_near(g.get_building_cost_for("club", 1), g.get_building_cost("club"), "x1 cost = the normal cost")
 	g.cheat_add_solves(one_by_one - 1.0)
-	check(g.buy_buildings("friend", 10) == 0, "x10 with one Solve too few buys nothing")
+	check(g.buy_buildings("club", 10) == 0, "x10 with one Solve too few buys nothing")
 	check_near(g.solves, one_by_one - 1.0, "...and spends nothing")
 	g.cheat_add_solves(1.0)
-	check(g.buy_buildings("friend", 10) == 10, "x10 with exactly enough buys 10")
+	check(g.buy_buildings("club", 10) == 10, "x10 with exactly enough buys 10")
 	check_near(g.solves, 0.0, "...and costs exactly the sum")
-	check(g.buildings["friend"] == 10, "owning 10 Friends now")
-	check(g.get_max_affordable("friend") == 0, "Max with no Solves = 0")
-	check(g.buy_buildings("friend", GameState.BUY_MAX) == 0, "buying Max with no Solves buys nothing")
+	check(g.buildings["club"] == 10, "owning 10 Clubs now")
+	check(g.get_max_affordable("club") == 0, "Max with no Solves = 0")
+	check(g.buy_buildings("club", GameState.BUY_MAX) == 0, "buying Max with no Solves buys nothing")
 	g.cheat_add_solves(1000.0)
-	var max_count := g.get_max_affordable("friend")
-	var max_cost := g.get_building_cost_for("friend", max_count)
-	check(max_count > 0 and max_cost <= 1000.0 and g.get_building_cost_for("friend", max_count + 1) > 1000.0,
+	var max_count := g.get_max_affordable("club")
+	var max_cost := g.get_building_cost_for("club", max_count)
+	check(max_count > 0 and max_cost <= 1000.0 and g.get_building_cost_for("club", max_count + 1) > 1000.0,
 			"Max is the most you can afford (one more would be too many)")
-	check(g.buy_buildings("friend", GameState.BUY_MAX) == max_count, "buying Max buys that many")
+	check(g.buy_buildings("club", GameState.BUY_MAX) == max_count, "buying Max buys that many")
 	check_near(g.solves, 1000.0 - max_cost, "...for exactly their cost")
-	check(g.solves < g.get_building_cost("friend"), "what's left can't buy another")
+	check(g.solves < g.get_building_cost("club"), "what's left can't buy another")
 	g.free()
 
 
@@ -2540,7 +2551,11 @@ func test_goals() -> void:
 	var g := new_game()
 	var goals := g.get_goals(3)
 	check(not goals.is_empty() and goals[0]["id"] == "friend", "a new game's first goal is the first Friend")
-	check(is_inf(float(goals[0]["seconds"])) and float(goals[0]["progress"]) == 0.0, "no helpers: no ETA yet, no progress")
+	check(float(goals[0]["seconds"]) == 0.0 and float(goals[0]["progress"]) == 1.0, "the free Friend is ready now (5.0)")
+	g.buy_building("friend")
+	g.update_flow(0.0)
+	var later := g.get_goals(3)
+	check(float(later[0]["missing"]) > 0.0 and float(later[0]["progress"]) < 1.0, "after it, goals have Solves to go")
 	check(goals.size() <= 3, "at most 3 goals")
 	var kinds := {}
 	for goal in g.get_goals(10):
@@ -2882,18 +2897,18 @@ func test_hand_solve_tiers_and_flow() -> void:
 	g.unlock_puzzle("3x3")
 	var xp_before := g.get_mastery_xp("3x3")
 	var info := g.record_hand_solve("3x3", 89.0, "", 60)
-	check_near(g.get_flow_mult(), float(data["flow_by_tier"][3]), "a Gold solve: Flow ×2")
+	check_near(g.get_flow_mult(), float(data["flow_by_tier"][3]), "a Gold solve: Gold's Flow")
 	check_near(float(g.flow["left"]), 89.0 * 1.5, "Flow lasts 1.5 × the solve (2:13), at least 2 min")
-	check(int(info["tier"]) == 2 and is_equal_approx(float(info["flow_mult"]), 2.0), "the solve's info says so")
+	check(int(info["tier"]) == 2 and is_equal_approx(float(info["flow_mult"]), float(data["flow_by_tier"][3])), "the solve's info says so")
 	g.add_moves_to("3x3", 1.0)
 	var moves_before := g.total_moves
 	var mult_before := g.get_puzzle_moves_mult("3x3")  # (the moves can level mastery up, which changes it)
 	g.add_moves_to("3x3", 10.0)
-	check_near(g.total_moves - moves_before, 10.0 * mult_before * 2.0, "every move counts ×2 in Flow")
+	check_near(g.total_moves - moves_before, 10.0 * mult_before * float(data["flow_by_tier"][3]), "every move counts ×Flow")
 	g.update_flow(200.0)
 	check(g.flow.is_empty() and g.get_flow_mult() == 1.0, "then it runs out")
 	g.record_hand_solve("3x3", 250.0, "", 60)
-	check_near(g.get_flow_mult(), float(data["flow_by_tier"][1]), "a slower solve replaces it with its own Flow (Bronze ×1.6)")
+	check_near(g.get_flow_mult(), float(data["flow_by_tier"][1]), "a slower solve replaces it with its own Flow (Bronze's)")
 	check_near(float(g.flow["left"]), 375.0, "...for 1.5 × 4:10")
 	g.flow = {}
 	g.record_hand_solve("3x3", 50.0, "DNF", 60)
@@ -2944,10 +2959,10 @@ func test_hand_solve_rewards_on_screen() -> void:
 	station._refresh_records()
 	check((station.get_node("%TargetsLabel") as Label).text.contains("✓ Gold"), "...and ticks the ones reached")
 	var reward: String = station.reward_text(info)
-	check(reward.contains("Gold: Flow ×2") and reward.contains("new tier"), "after a solve: tier, Flow and the new tier: %s" % reward)
+	check(reward.contains("Gold: Flow ×%s" % Num.format(float(Content.SOLVE_REWARDS["flow_by_tier"][3]))) and reward.contains("new tier"), "after a solve: tier, Flow and the new tier: %s" % reward)
 	station.close()
 	main._refresh_golden()
-	check((main.get_node("%FlowLabel") as Label).visible and (main.get_node("%FlowLabel") as Label).text.begins_with("Flow ×2"), "the top bar shows the Flow")
+	check((main.get_node("%FlowLabel") as Label).visible and (main.get_node("%FlowLabel") as Label).text.begins_with("Flow ×%s" % Num.format(float(Content.SOLVE_REWARDS["flow_by_tier"][3]))), "the top bar shows the Flow")
 	main.free()
 	game.reset_state()
 
@@ -3234,3 +3249,43 @@ func test_daily_in_station() -> void:
 	settings.set_value("inspection", true)
 	game.daily_now = -1.0
 	game.reset_state()
+
+
+# --- Generated helper milestones (task 5.2) --------------------------------------------
+
+func test_helper_milestones() -> void:
+	var all := Content.get_upgrades()
+	check(all.size() == Content.UPGRADES.size() + Content.BUILDINGS.size() * Content.HELPER_MILESTONES.size(),
+			"every helper gets every milestone (%d upgrades)" % all.size())
+	for helper: Dictionary in Content.BUILDINGS:
+		var previous_cost := 0.0
+		for row: Dictionary in Content.HELPER_MILESTONES:
+			var def := Content.get_upgrade("ms_%s_%d" % [helper["id"], row["owned"]])
+			check(not def.is_empty(), "%s has a milestone at %d" % [helper["id"], row["owned"]])
+			if def.is_empty():
+				continue
+			check(def["effect"]["type"] in Content.EFFECT_TYPES and def["effect"]["target"] == helper["id"], "%s: boosts that helper" % def["name"])
+			check_near(float(def["effect"]["value"]), float(row["mult"]), "%s: ×%s" % [def["name"], row["mult"]])
+			check(int(def["requires"][helper["id"]]) == int(row["owned"]), "%s: needs %d" % [def["name"], row["owned"]])
+			check(float(def["cost"]) > previous_cost, "%s costs more than the last one" % def["name"])
+			check(def["icon"] == helper["icon"], "%s uses the helper's icon" % def["name"])
+			previous_cost = float(def["cost"])
+	# In play: a milestone appears once you own enough, and doubles that helper.
+	var g := new_game()
+	g.buy_building("friend")  # free
+	var id := "ms_friend_1"
+	var cost := float(Content.get_upgrade(id)["cost"])
+	g.cheat_add_solves(cost)
+	check(g.is_upgrade_available(id), "Practice Partners I shows up with 1 Friend")
+	check(not g.is_upgrade_available("ms_friend_10"), "...II needs 10")
+	var before := g.get_building_mps("friend")
+	check(g.buy_upgrade(id) and is_equal_approx(g.get_building_mps("friend"), before * 2.0), "and doubles Friends")
+	check(not g.is_upgrade_available(id), "once")
+	g.free()
+	# A helper added to the data gets its milestones by itself (the generator only reads BUILDINGS + the table).
+	var fake := {"id": "test_helper", "icon": "friend", "name": "Test Helper", "milestone_name": "Testing", "base_cost": 100}
+	var made := Content.milestones_for(fake)
+	check(made.size() == Content.HELPER_MILESTONES.size() and made[0]["id"] == "ms_test_helper_1" and made[0]["name"] == "Testing I",
+			"a new helper gets its milestones from the table: %s" % [made.map(func(d: Dictionary) -> String: return d["name"])])
+	check(made[-1]["requires"] == {"test_helper": 200} and is_equal_approx(float(made[1]["cost"]), 100.0 * float(Content.HELPER_MILESTONES[1]["cost_mult"])),
+			"...with the table's thresholds and costs")

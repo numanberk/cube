@@ -13,20 +13,20 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 
 | Target | Actual | Status |
 |---|---|---|
-| First helper ≤ 20 s | Cubing Friend at 0:13 | pass |
-| First upgrade < 1 min | Cube Lube at 0:48 | pass |
-| Something new every ≤ 3 min in the first hour | longest 30:01 (after 5×5, before God's Number) | expected failure |
-| Something new every ≤ 10 min after the first hour | longest 1:00:00 (after God's Number, until 2:00:00) | expected failure |
-| 3×3 unlocked at ~5 min (4–6 min) | 4:18 | pass |
-| Solving Robot at ~10 min (8–12 min) | 7:24 | expected failure |
-| 4×4 unlocked at ~30 min (25–35 min) | 11:04 | expected failure |
-| 5×5 unlocked at ~60 min (50–70 min) | 21:24 | expected failure |
+| First helper ≤ 20 s | Cubing Friend at 0:00 | pass |
+| First upgrade < 1 min | Cube Lube at 0:44 | pass |
+| Something new every ≤ 3 min in the first hour | longest 22:21 (after Club Training V, until 1:00:00) | expected failure |
+| Something new every ≤ 10 min after the first hour | longest 30:24 (after Servo Tuning V, before Comp Experience V) | expected failure |
+| 3×3 unlocked at ~5 min (4–6 min) | 4:11 | pass |
+| Solving Robot at ~10 min (8–12 min) | 6:29 | expected failure |
+| 4×4 unlocked at ~30 min (25–35 min) | 7:57 | expected failure |
+| 5×5 unlocked at ~60 min (50–70 min) | 11:11 | expected failure |
 | First World Championship at ~90 min (80–100 min, D6) | never (in 2:00:00) | expected failure |
 | 7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
 | Second run reaches the same point in ≤ 50 % of the time | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
-| The bot's best split at 30 min is a real mix (no puzzle above 70 %) | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % | pass |
-| An active player (Gold-pace hand solves) gets there 2–3× sooner than the tapping bot (D13) | ×2.31 (the tapping bot's 13.50B Solves at 30:00, the active one at 13:00) | pass |
-| Never tapping still buys something within 5 min | nothing bought in 2:00:00 | expected failure |
+| The bot's best split at 30 min is a real mix (no puzzle above 70 %) | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % | pass |
+| An active player (Gold-pace hand solves) gets there 2–3× sooner than the tapping bot (D13) | ×2.80 (the tapping bot's 754.9B Solves at 30:00, the active one at 10:43) | pass |
+| Never tapping still buys something within 5 min | Cubing Friend at 0:00 | pass |
 
 ### Expected failures
 
@@ -41,104 +41,172 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 - **First World Championship at ~90 min (80–100 min, D6)** — Prestige doesn't exist yet (Phase 6); the bot must learn to Compete (6.4).
 - **7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run** — Needs prestige and multi-run simulation (6.2, 6.4).
 - **Second run reaches the same point in ≤ 50 % of the time** — Needs prestige and multi-run simulation (6.2, 6.4).
-- **Never tapping still buys something within 5 min** — With no taps there's no income at all. Needs a free first Friend or a trickle (5.8 or later).
 
 ## Tapping (3 taps/s, 120 min)
 
-- Items bought: 485 (18 different)
-- Every helper, upgrade, method and puzzle owned at: 51:25
-- Longest wait for something new: 1:08:35 (after God's Number, until 2:00:00)
+- Items bought: 677 (46 different)
+- Every helper, upgrade, method and puzzle owned at: never
+- Longest wait for something new: 40:03 (after Club Training V, before Servo Tuning V)
 
 ### First purchase of each item
 
 | Time | Kind | Item | Cost | Gap |
 |---|---|---|---|---|
-| 0:13 | helper | Cubing Friend | 5 | +0:13 |
-| 0:48 | upgrade | Cube Lube | 15 | +0:34 |
-| 2:16 | helper | Cubing Club | 60 | +1:28 |
-| 3:20 | upgrade | Stackmat Timer | 50 | +1:05 |
-| 4:18 | puzzle | 3×3 | 150 | +0:57 |
-| 5:05 | method | Learn CFOP | 200 | +0:47 |
-| 6:12 | upgrade | Club Snacks | 600 | +1:07 |
-| 6:58 | upgrade | Magnetic Cube | 1.50K | +0:46 |
-| 7:24 | helper | Solving Robot | 1.50K | +0:26 |
-| 8:14 | helper | Local Competition | 9.00K | +0:50 |
-| 9:05 | method | Learn Roux | 25.00K | +0:51 |
-| 9:15 | upgrade | Robot Firmware v2 | 8.00K | +0:10 |
-| 9:54 | helper | Cube Factory | 120.0K | +0:39 |
-| 11:04 | puzzle | 4×4 | 400.0K | +1:10 |
-| 11:27 | helper | Speedcubing Lab | 1.80M | +0:23 |
-| 13:43 | method | Learn ZZ | 50.00M | +2:16 |
-| 21:24 | puzzle | 5×5 | 300.0M | +7:41 |
-| 51:25 | method | God's Number | 30.00B | +30:01 |
+| 0:00 | helper | Cubing Friend | 0 | +0:00 |
+| 0:44 | upgrade | Cube Lube | 15 | +0:44 |
+| 2:05 | helper | Cubing Club | 60 | +1:21 |
+| 3:10 | upgrade | Stackmat Timer | 50 | +1:05 |
+| 3:27 | upgrade | Practice Partners I | 50 | +0:17 |
+| 4:11 | puzzle | 3×3 | 150 | +0:44 |
+| 4:39 | method | Learn CFOP | 200 | +0:28 |
+| 4:55 | upgrade | Practice Partners II | 150 | +0:16 |
+| 5:25 | upgrade | Club Snacks | 600 | +0:30 |
+| 5:34 | upgrade | Club Training I | 600 | +0:09 |
+| 5:52 | upgrade | Magnetic Cube | 1.50K | +0:18 |
+| 6:00 | upgrade | Club Training II | 1.80K | +0:09 |
+| 6:11 | upgrade | Practice Partners III | 1.25K | +0:10 |
+| 6:21 | helper | Local Competition | 9.00K | +0:10 |
+| 6:29 | helper | Solving Robot | 1.50K | +0:08 |
+| 6:41 | method | Learn Roux | 25.00K | +0:12 |
+| 6:56 | upgrade | Robot Firmware v2 | 8.00K | +0:15 |
+| 6:59 | upgrade | Club Training III | 15.00K | +0:03 |
+| 7:02 | upgrade | Servo Tuning I | 15.00K | +0:03 |
+| 7:09 | upgrade | Servo Tuning II | 45.00K | +0:07 |
+| 7:21 | helper | Cube Factory | 120.0K | +0:13 |
+| 7:26 | upgrade | Comp Experience I | 90.00K | +0:05 |
+| 7:37 | upgrade | Comp Experience II | 270.0K | +0:11 |
+| 7:57 | puzzle | 4×4 | 400.0K | +0:20 |
+| 8:10 | upgrade | Assembly Line I | 1.20M | +0:12 |
+| 8:23 | helper | Speedcubing Lab | 1.80M | +0:14 |
+| 8:32 | upgrade | Assembly Line II | 3.60M | +0:09 |
+| 8:48 | upgrade | Servo Tuning III | 375.0K | +0:16 |
+| 9:08 | upgrade | Research Grants I | 18.00M | +0:20 |
+| 9:37 | upgrade | Research Grants II | 54.00M | +0:29 |
+| 9:49 | method | Learn ZZ | 50.00M | +0:12 |
+| 9:55 | upgrade | Comp Experience III | 2.25M | +0:06 |
+| 10:04 | upgrade | Assembly Line III | 30.00M | +0:09 |
+| 10:14 | upgrade | Practice Partners IV | 40.00K | +0:09 |
+| 10:38 | upgrade | Research Grants III | 450.0M | +0:24 |
+| 10:47 | upgrade | Club Training IV | 480.0K | +0:09 |
+| 11:11 | puzzle | 5×5 | 300.0M | +0:24 |
+| 11:14 | upgrade | Servo Tuning IV | 12.00M | +0:03 |
+| 11:29 | upgrade | Comp Experience IV | 72.00M | +0:15 |
+| 11:55 | upgrade | Assembly Line IV | 960.0M | +0:27 |
+| 14:39 | method | God's Number | 30.00B | +2:44 |
+| 15:30 | upgrade | Research Grants IV | 14.40B | +0:51 |
+| 30:31 | upgrade | Practice Partners V | 40.00M | +15:01 |
+| 37:39 | upgrade | Club Training V | 480.0M | +7:08 |
+| 1:17:42 | upgrade | Servo Tuning V | 12.00B | +40:03 |
+| 1:48:05 | upgrade | Comp Experience V | 72.00B | +30:24 |
 
 ### Income over time
 
 | Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves | Bot's split |
 |---|---|---|---|---|---|
-| 1 | 0.9 | 7 | 4 | 30 | 2×2 100 % |
-| 5 | 7.3 | 29 | 161 | 712 | 2×2 40 % · 3×3 60 % |
-| 15 | 3.45M | 921.8K | 350.3K | 333.1M | 2×2 10 % · 3×3 25 % · 4×4 65 % |
-| 30 | 24.08M | 2.03M | 232.9M | 13.62B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
-| 60 | 38.56M | 2.27M | 3.66B | 64.17B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
-| 120 | 47.57M | 2.81M | 7.47B | 223.5B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
+| 1 | 0.9 | 7.5 | 7 | 35 | 2×2 100 % |
+| 5 | 38 | 94 | 12 | 1.28K | 2×2 35 % · 3×3 65 % |
+| 15 | 328.8M | 19.03M | 4.59B | 53.04B | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 30 | 877.0M | 50.78M | 59.49B | 759.0B | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 60 | 979.2M | 56.70M | 101.8B | 2.45T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 120 | 1.07B | 61.77M | 605.2B | 6.14T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
 
 ## Never tapping (0 taps/s, 120 min)
 
-- Items bought: 0 (0 different)
+- Items bought: 388 (13 different)
 - Every helper, upgrade, method and puzzle owned at: never
-- Longest wait for something new: 2:00:00 (after the start, until 2:00:00)
+- Longest wait for something new: 1:02:35 (after 5×5, before God's Number)
 
 ### First purchase of each item
 
-Nothing was bought.
+| Time | Kind | Item | Cost | Gap |
+|---|---|---|---|---|
+| 0:00 | helper | Cubing Friend | 0 | +0:00 |
+| 7:26 | helper | Cubing Club | 60 | +7:26 |
+| 10:15 | puzzle | 3×3 | 150 | +2:49 |
+| 11:28 | method | Learn CFOP | 200 | +1:13 |
+| 13:58 | helper | Solving Robot | 1.50K | +2:29 |
+| 17:05 | helper | Local Competition | 9.00K | +3:07 |
+| 18:55 | method | Learn Roux | 25.00K | +1:50 |
+| 20:35 | helper | Cube Factory | 120.0K | +1:40 |
+| 23:04 | puzzle | 4×4 | 400.0K | +2:30 |
+| 23:51 | helper | Speedcubing Lab | 1.80M | +0:47 |
+| 28:24 | method | Learn ZZ | 50.00M | +4:32 |
+| 39:59 | puzzle | 5×5 | 300.0M | +11:35 |
+| 1:42:34 | method | God's Number | 30.00B | +1:02:35 |
 
 ### Income over time
 
 | Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves | Bot's split |
 |---|---|---|---|---|---|
-| 1 | 0 | 0 | 0 | 0 | 2×2 100 % |
-| 5 | 0 | 0 | 0 | 0 | 2×2 100 % |
-| 15 | 0 | 0 | 0 | 0 | 2×2 100 % |
-| 30 | 0 | 0 | 0 | 0 | 2×2 100 % |
-| 60 | 0 | 0 | 0 | 0 | 2×2 100 % |
-| 120 | 0 | 0 | 0 | 0 | 2×2 100 % |
+| 1 | 0.1 | 0.5 | 3 | 3 | 2×2 100 % |
+| 5 | 0.4 | 3.5 | 1 | 54 | 2×2 100 % |
+| 15 | 58 | 119 | 1.26K | 6.82K | 2×2 30 % · 3×3 70 % |
+| 30 | 1.48M | 400.4K | 6.16M | 240.4M | 2×2 10 % · 3×3 25 % · 4×4 65 % |
+| 60 | 12.01M | 1.01M | 488.3M | 13.85B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
+| 120 | 19.54M | 1.15M | 14.49M | 64.40B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
 
 ## Active: tapping + Gold-pace hand solves (3 taps/s, 30 min)
 
 - Hand solves in the Solve Station: 7 (each just inside the tier's target on the biggest cube owned, back to back)
-- Items bought: 431 (18 different)
-- Every helper, upgrade, method and puzzle owned at: 22:18
-- Longest wait for something new: 13:57 (after 5×5, before God's Number)
+- Items bought: 659 (45 different)
+- Every helper, upgrade, method and puzzle owned at: never
+- Longest wait for something new: 13:24 (after Club Training V, before Servo Tuning V)
 
 ### First purchase of each item
 
 | Time | Kind | Item | Cost | Gap |
 |---|---|---|---|---|
-| 0:06 | helper | Cubing Friend | 5 | +0:06 |
-| 0:21 | upgrade | Cube Lube | 15 | +0:15 |
-| 0:57 | helper | Cubing Club | 60 | +0:37 |
-| 1:12 | upgrade | Stackmat Timer | 50 | +0:14 |
-| 1:49 | puzzle | 3×3 | 150 | +0:37 |
-| 2:08 | method | Learn CFOP | 200 | +0:19 |
-| 2:35 | upgrade | Club Snacks | 600 | +0:27 |
-| 2:55 | upgrade | Magnetic Cube | 1.50K | +0:20 |
-| 3:07 | helper | Solving Robot | 1.50K | +0:11 |
-| 3:28 | helper | Local Competition | 9.00K | +0:22 |
-| 3:50 | method | Learn Roux | 25.00K | +0:22 |
-| 3:55 | upgrade | Robot Firmware v2 | 8.00K | +0:04 |
-| 4:12 | helper | Cube Factory | 120.0K | +0:17 |
-| 4:53 | helper | Speedcubing Lab | 1.80M | +0:41 |
-| 4:55 | puzzle | 4×4 | 400.0K | +0:02 |
-| 6:01 | method | Learn ZZ | 50.00M | +1:06 |
-| 8:21 | puzzle | 5×5 | 300.0M | +2:20 |
-| 22:18 | method | God's Number | 30.00B | +13:57 |
+| 0:00 | helper | Cubing Friend | 0 | +0:00 |
+| 0:15 | upgrade | Cube Lube | 15 | +0:14 |
+| 0:40 | helper | Cubing Club | 60 | +0:26 |
+| 0:51 | upgrade | Stackmat Timer | 50 | +0:11 |
+| 0:59 | upgrade | Practice Partners I | 50 | +0:07 |
+| 1:16 | puzzle | 3×3 | 150 | +0:18 |
+| 1:27 | method | Learn CFOP | 200 | +0:10 |
+| 1:34 | upgrade | Practice Partners II | 150 | +0:08 |
+| 1:46 | upgrade | Club Snacks | 600 | +0:11 |
+| 1:49 | upgrade | Club Training I | 600 | +0:03 |
+| 1:55 | upgrade | Magnetic Cube | 1.50K | +0:06 |
+| 1:58 | upgrade | Club Training II | 1.80K | +0:03 |
+| 2:01 | upgrade | Practice Partners III | 1.25K | +0:03 |
+| 2:05 | helper | Local Competition | 9.00K | +0:03 |
+| 2:07 | helper | Solving Robot | 1.50K | +0:03 |
+| 2:11 | method | Learn Roux | 25.00K | +0:04 |
+| 2:16 | upgrade | Robot Firmware v2 | 8.00K | +0:05 |
+| 2:17 | upgrade | Club Training III | 15.00K | +0:01 |
+| 2:19 | upgrade | Servo Tuning I | 15.00K | +0:01 |
+| 2:21 | upgrade | Servo Tuning II | 45.00K | +0:02 |
+| 2:25 | helper | Cube Factory | 120.0K | +0:04 |
+| 2:27 | upgrade | Comp Experience I | 90.00K | +0:01 |
+| 2:30 | upgrade | Comp Experience II | 270.0K | +0:04 |
+| 2:38 | puzzle | 4×4 | 400.0K | +0:08 |
+| 2:42 | upgrade | Assembly Line I | 1.20M | +0:04 |
+| 2:47 | helper | Speedcubing Lab | 1.80M | +0:05 |
+| 2:50 | upgrade | Assembly Line II | 3.60M | +0:03 |
+| 2:57 | upgrade | Servo Tuning III | 375.0K | +0:06 |
+| 3:05 | upgrade | Research Grants I | 18.00M | +0:08 |
+| 3:15 | upgrade | Research Grants II | 54.00M | +0:11 |
+| 3:20 | method | Learn ZZ | 50.00M | +0:04 |
+| 3:22 | upgrade | Comp Experience III | 2.25M | +0:02 |
+| 3:26 | upgrade | Assembly Line III | 30.00M | +0:03 |
+| 3:29 | upgrade | Practice Partners IV | 40.00K | +0:03 |
+| 3:39 | upgrade | Research Grants III | 450.0M | +0:10 |
+| 3:42 | upgrade | Club Training IV | 480.0K | +0:03 |
+| 3:50 | upgrade | Servo Tuning IV | 12.00M | +0:08 |
+| 3:56 | upgrade | Comp Experience IV | 72.00M | +0:06 |
+| 4:02 | puzzle | 5×5 | 300.0M | +0:06 |
+| 4:08 | upgrade | Assembly Line IV | 960.0M | +0:06 |
+| 5:19 | method | God's Number | 30.00B | +1:12 |
+| 5:37 | upgrade | Research Grants IV | 14.40B | +0:18 |
+| 10:53 | upgrade | Practice Partners V | 40.00M | +5:16 |
+| 13:17 | upgrade | Club Training V | 480.0M | +2:23 |
+| 26:40 | upgrade | Servo Tuning V | 12.00B | +13:24 |
 
 ### Income over time
 
 | Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves | Bot's split |
 |---|---|---|---|---|---|
-| 1 | 1.9 | 13 | 0 | 121 | 2×2 100 % |
-| 5 | 157.7K | 78.19K | 1.61M | 5.83M | 2×2 25 % · 3×3 60 % · 4×4 15 % |
-| 15 | 28.19M | 2.07M | 5.29B | 20.37B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
-| 30 | 47.54M | 2.44M | 3.03B | 86.15B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
+| 1 | 3.8 | 24 | 2 | 230 | 2×2 100 % |
+| 5 | 209.6M | 18.68M | 18.06B | 34.40B | 2×2 10 % · 3×3 25 % · 4×4 60 % · 5×5 5 % |
+| 15 | 1.07B | 54.08M | 97.28B | 1.46T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 30 | 1.18B | 59.54M | 17.60B | 4.11T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |

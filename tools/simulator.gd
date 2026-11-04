@@ -50,7 +50,7 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}) -> Dictiona
 	var next_checkpoint := 0
 	var purchases := 0
 	var all_bought_at := -1.0
-	var item_count := Content.BUILDINGS.size() + Content.UPGRADES.size() + Content.METHODS.size() - 1  # Beginner is free
+	var item_count := Content.BUILDINGS.size() + Content.get_upgrades().size() + Content.METHODS.size() - 1  # Beginner is free
 	for def: Dictionary in Content.PUZZLES:
 		if float(def["unlock_cost"]) > 0.0 and not def["requires_prestige"]:
 			item_count += 1  # puzzles you can buy before prestige
@@ -208,7 +208,7 @@ func _candidates(g: GameState) -> Array[Dictionary]:
 	for def: Dictionary in Content.BUILDINGS:
 		if g.is_building_unlocked(def["id"]):
 			items.append({"kind": "helper", "id": def["id"]})
-	for def: Dictionary in Content.UPGRADES:
+	for def: Dictionary in Content.get_upgrades():
 		if g.is_upgrade_available(def["id"]):
 			items.append({"kind": "upgrade", "id": def["id"]})
 	var next_method := g.get_next_method()

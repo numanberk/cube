@@ -2,6 +2,30 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-04 — Roadmap: Phase 5 → 6 next; Tasks 5.0 (free first Friend) and 5.2 (generated helper milestones)
+- **Owner: "progress with Phase 5 and 6".** ROADMAP order: Phase 5, then Phase 6, before the rest of Phase S (S.7, R.5,
+  R.6). New tasks from the fun review: **5.0** never tapping still progresses, **5.7b** "pick one of two" upgrade choices,
+  **7.0** career moments (story beats at key unlocks).
+- **5.0:** the first Cubing Friend is free (`"first_free": true` in BUILDINGS; `GameState._copy_cost()`), so a player who
+  never taps still earns. The idle pacing target now passes for real (expected-failure mark removed).
+- **5.2:** `Content.HELPER_MILESTONES` (one table: at 1/10/25/50/100/150/200 owned, ×2 for base_cost × 10/30/250/8K/8M/8B/8T)
+  and `Content.milestones_for(helper)` generate 7 upgrades per helper ("Practice Partners I…VII", the helper's icon,
+  `"milestone": true`). **`Content.get_upgrades()`** = UPGRADES + every helper's milestones (cached); `get_upgrade()` uses an
+  index. Everything that listed upgrades (GameState, main.gd, the simulator, tests) now uses `get_upgrades()`.
+  Each helper has a `milestone_name`. 47 upgrades in total now (the 5.8 target is ~40+).
+- **Performance:** `GameState._upgrade_mult()` caches its products (dropped whenever the number of owned upgrades
+  changes). With 47 upgrades the balance bot had become ~5× slower (160 s per 2-hour run); now ~29 s.
+- **Balance (BALANCE.md):** the longest wait in the first hour fell from 30:01 to 22:21. The game got faster, so the 4×4
+  (7:57) and 5×5 (11:11) are even earlier than before; that's for **5.8** (rebalance). **Flow raised** so D13 still holds:
+  `flow_by_tier` [1.5, 1.8, 2.2, **2.6 Gold**, 3.0, 3.4, **3.8 Master**] (was …2.0…3.0); the active player is ×2.80 faster
+  (with the old values it fell to ×1.72: milestones make a flat boost worth less). The speedup is sensitive to Flow
+  (Gold ×2.0 → ×1.72, ×2.1 → ×2.05, ×2.2/2.6 → ×2.80); recheck it in 5.8.
+- Tests (2995 checks, `All good.`): every helper has every milestone (target, ×2, requirement, rising cost, icon), a
+  milestone appears at its count and doubles that helper, `milestones_for()` on a made-up helper; the free Friend (and
+  bulk costs, shop card, goals, simulator idle run adjusted for it; the bulk test now uses the Club).
+  Screenshot: `docs/screenshots/5.2-milestones/` (Upgrades tab).
+- **Next: 5.3 synergies and solve-value upgrades.**
+
 ## 2026-11-04 — Task S.5: daily scramble and Fewest Moves (save v8)
 - **"Daily" in the Solve Station:** today's scramble for the selected cube, the same for everyone that day: seeded from the
   **UTC date** + puzzle with FNV-1a (`GameState.daily_seed`, pinned by a test and checked against Python, so it never

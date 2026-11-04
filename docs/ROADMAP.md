@@ -140,7 +140,9 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
 The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is a keen speedcuber**
 (best ~30 s on a real 3×3, consistently under 1:00; first described as "almost professional"). So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
 records and drills, and your real skill feeds the idle economy. Do S.1–S.6 before the rest of Phase 5 (5.2 onward).
-**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1–R.4 ✅** (readable main screen, below) → S.6 ✅ → S.3 ✅ → S.4 ✅ → S.5 ✅, S.5,
+**Order (2026-11-04, owner: "progress with Phase 5 and 6"):** the rest of Phase S (S.7, R.5, R.6) waits until after
+**Phase 5 and Phase 6**, which fix the dead zone (nothing new from ~21 to ~51 min) and the missing long loop.
+Earlier order: S.1 ✅ → S.2 ✅ → **R.1–R.4 ✅** (readable main screen, below) → S.6 ✅ → S.3 ✅ → S.4 ✅ → S.5 ✅, S.5,
 S.7, S.8 → R.5, R.6. Then the rest of Phase 5.
 - [x] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
       using **csTimer's virtual-cube layout** (I/K = R/R', J/F = U/U', H/G = F/F', D/E = L/L', S/L = D/D', W/O = B/B',
@@ -234,8 +236,10 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
 - Later ideas (Phase 11): Bluetooth smart-cube support (needs a plugin; GAN/MoYu protocols), relays, blindfolded mode,
   one-handed mode, a replay viewer for PB solves.
 
-## Phase 5 (continued)
-- [ ] **5.2 Generated helper milestones:** ×2 at 1/10/25/50/100/150/200 owned, generated from one table in `content.gd`.
+## Phase 5 (continued) — next (owner, 2026-11-04), then Phase 6
+- [x] **5.0 Never tapping still progresses:** the first Cubing Friend is free (a new game starts with one), so a player who
+      only watches still earns. *Done when:* the idle pacing target passes for real and a test checks the free Friend.
+- [x] **5.2 Generated helper milestones:** ×2 at 1/10/25/50/100/150/200 owned, generated from one table in `content.gd`.
       *Done when:* adding a helper automatically gets its milestones, and a test checks this.
 - [ ] **5.3 Synergies and solve value:** e.g. "Club Coaching" (each Club gives Friends +1 %), and upgrades that use
       `solve_value_mult` ("Sponsorship deal", "Prize money"). New effect types go in `Content.EFFECT_TYPES` and `GameState`.
@@ -254,6 +258,10 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       permanent ×3 (stacking per promotion), and its milestones start again. Never required. Only do this task if the
       5.8 sim run shows the first hour still needs more decisions; otherwise move it to Phase 11.
       *Done when:* tests cover the reset, the multiplier and the cost curve after promotion.
+- [ ] **5.7b Choices: pick one of two (fun pass, 2026-11-04):** some upgrades come as a pair where buying one locks the
+      other for this run (e.g. "Speed practice: taps +50 %" *or* "Coaching: helpers +20 %"; "Big-cube specialist" *or*
+      "Small-cube specialist"), so players make builds, not just purchases. A prestige resets the choice. As data
+      (`choice_group`). *Done when:* tests cover the lock-out and the reset, and there's a screenshot of a pair.
 - [ ] **5.8 Rebalance (first hour):** ~40 upgrades in total.
       *Done when:* the "something new every 1–3 min", Robot, 4×4 and 5×5 pacing tests pass for real.
 
@@ -278,6 +286,10 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       *Done when:* the sim's first prestige lands at 80–100 min, and the second run reaches the same point in ≤ 45 min, as real pacing tests.
 
 ## Phase 7 — Goals
+- [ ] **7.0 Career moments (fun pass, 2026-11-04):** short story beats at key unlocks, as data, shown in the news feed and as a
+      pop: "Your first competition!", "A local shop sponsors you", "You open a cubing club"…, from a kid with a cube to running
+      a lab, so the progression reads as a journey. *Done when:* each moment fires once at its trigger (test) and there's a
+      screenshot.
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
       all moves, with a toast when earned. Save v10. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar

@@ -154,7 +154,7 @@ func _build_shop() -> void:
 		card.pressed.connect(_on_helper_card_pressed.bind(def["id"]))
 		helper_list.add_child(card)
 		_helper_cards[def["id"]] = card
-	for def: Dictionary in Content.UPGRADES:
+	for def: Dictionary in Content.get_upgrades():
 		var tile: UpgradeTile = UpgradeTileScene.instantiate()
 		tile.pressed.connect(Game.buy_upgrade.bind(def["id"]))
 		upgrade_list.add_child(tile)
@@ -287,7 +287,7 @@ func _refresh_upgrade_tiles() -> void:
 			"cost": Num.format(cost), "affordable": can_buy, "owned": learned,
 		})
 		(owned_order if learned else order).append(tile)
-	for def: Dictionary in Content.UPGRADES:
+	for def: Dictionary in Content.get_upgrades():
 		var id: String = def["id"]
 		var tile: UpgradeTile = _upgrade_tiles[id]
 		var cost := float(def["cost"])
@@ -304,7 +304,7 @@ func _refresh_upgrade_tiles() -> void:
 			"cost": Num.format(cost), "affordable": can_buy, "owned": owned,
 		})
 	# Buyable tiles first (the next method, then upgrades in content order), then the owned ones the same way.
-	for def: Dictionary in Content.UPGRADES:
+	for def: Dictionary in Content.get_upgrades():
 		(owned_order if Game.upgrades.has(def["id"]) else order).append(_upgrade_tiles[def["id"]])
 	order.append_array(owned_order)
 	for index in order.size():
