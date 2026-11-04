@@ -863,22 +863,22 @@ func test_next_goal() -> void:
 	goal = g.get_next_goal()
 	check(float(goal["missing"]) > 0.0 and float(goal["seconds"]) > 0.0, "the next goal has Solves missing and a time")
 	goal = g.get_next_goal()
-	check(goal["id"] == "lube", "next is the cheapest new thing (Cube Lube, 15)")
+	check(goal["id"] == "ms_friend_1", "next is the cheapest new thing (Practice Partners I, 5)")
 	check(float(goal["seconds"]) > 0.0 and not is_inf(float(goal["seconds"])), "with a helper there's a time estimate")
-	g.cheat_add_solves(1e30)
+	g.cheat_add_solves(1e33)
 	for def: Dictionary in Content.BUILDINGS:
 		g.buy_buildings(def["id"], 200)  # enough for every milestone
 	for def: Dictionary in Content.get_upgrades():
 		g.buy_upgrade(def["id"])
 	goal = g.get_next_goal()
-	check(goal["kind"] == "puzzle" and goal["id"] == "3x3", "with every helper and upgrade owned it aims at the next puzzle")
-	while g.get_next_locked_puzzle() != "":
-		g.unlock_puzzle(g.get_next_locked_puzzle())
-	goal = g.get_next_goal()
-	check(goal["kind"] == "method" and goal["id"] == "cfop", "then at the next method")
+	check(goal["kind"] == "method" and goal["id"] == "cfop", "with every helper and upgrade owned it aims at the next method (CFOP, 200)")
 	while not g.get_next_method().is_empty():
 		g.buy_method(g.get_next_method()["id"])
 		g.finish_research()  # methods are Lab research (5.6)
+	goal = g.get_next_goal()
+	check(goal["kind"] == "puzzle" and goal["id"] == "3x3", "then at the next puzzle (the 3x3, 300)")
+	while g.get_next_locked_puzzle() != "":
+		g.unlock_puzzle(g.get_next_locked_puzzle())
 	goal = g.get_next_goal()
 	check(goal["more"] and goal["kind"] == "helper", "with everything owned it aims at another helper")
 	g.free()
@@ -954,7 +954,7 @@ func test_shop_cards() -> void:
 	check(not club.locked and club.visible, "40 lifetime Solves reveals the Club (unlocks at 30)")
 	check(cards["robot"].locked and cards["robot"].visible, "...and the Robot becomes the locked next card")
 	var tabs: TabContainer = main.get_node("%Tabs")
-	check(tabs.get_tab_title(main.UPGRADES_TAB) == "Upgrades (1)", "the Upgrades tab shows a badge for the affordable Lube")
+	check(tabs.get_tab_title(main.UPGRADES_TAB) == "Upgrades (2)", "the Upgrades tab shows a badge for the affordable Lube and Practice Partners I")
 	friend.pressed.emit()
 	check(game.buildings["friend"] == 2, "clicking an affordable card buys the helper (a second Friend)")
 	main.free()
@@ -1142,7 +1142,7 @@ func test_tracks_data() -> void:
 	check(with_files >= 2, "at least 2 tracks have music")
 	var g := new_game()
 	check(g.get_unlocked_track_ids() == (["practice_room"] as Array[String]), "a new game hears the 2x2's track")
-	g.cheat_add_solves(150.0)
+	g.cheat_add_solves(float(Content.get_puzzle("3x3")["unlock_cost"]))
 	g.unlock_puzzle("3x3")
 	check(g.get_unlocked_track_ids() == (["practice_room", "first_sub_20"] as Array[String]), "unlocking the 3x3 unlocks its track")
 	check(g.get_track_for_puzzle("3x3") == "first_sub_20", "3x3's track is First Sub-20")
@@ -1355,10 +1355,10 @@ func test_parallel_puzzles() -> void:
 	check(g.get_next_locked_puzzle() == "3x3", "the next puzzle is the 3x3")
 	check(not g.unlock_puzzle("4x4"), "puzzles unlock in ladder order")
 	check(not g.unlock_puzzle("3x3"), "can't unlock without the Solves")
-	g.cheat_add_solves(150.0)
+	g.cheat_add_solves(float(Content.get_puzzle("3x3")["unlock_cost"]))
 	var focus_events := [0]
 	g.focus_changed.connect(func(_id: String) -> void: focus_events[0] += 1)
-	check(g.unlock_puzzle("3x3"), "150 Solves unlock the 3x3")
+	check(g.unlock_puzzle("3x3"), "its unlock cost in Solves unlocks the 3x3")
 	check_near(g.solves, 0.0, "unlocking spends its cost")
 	check(g.get_focused_puzzle_id() == "3x3" and focus_events[0] == 1, "the new puzzle gets the focus")
 	check_near(g.get_puzzle_share("3x3"), 1.0, "unlocking moves the whole split onto it")
@@ -1437,9 +1437,9 @@ func test_puzzle_row() -> void:
 	var locked: PuzzleChip = main._locked_chip
 	check(locked.visible and locked.locked and locked.puzzle_id == "3x3", "the 3x3 shows as the next locked puzzle")
 	check(locked._unlock.disabled, "...and can't be unlocked without the Solves")
-	game.cheat_add_solves(150.0)
+	game.cheat_add_solves(float(Content.get_puzzle("3x3")["unlock_cost"]))
 	main._refresh()
-	check(not locked._unlock.disabled, "with 150 Solves the Unlock button is enabled")
+	check(not locked._unlock.disabled, "with the 3x3's cost in Solves the Unlock button is enabled")
 	var audio: AudioManager = root.get_node("Audio")
 	await create_timer(0.6).timeout
 	var unlock_sounds := int(audio.played["unlock"])
@@ -1500,7 +1500,7 @@ func test_split_controls() -> void:
 	var game: GameState = root.get_node("Game")
 	game.persistence_enabled = false
 	game.reset_state()
-	game.cheat_add_solves(200.0)
+	game.cheat_add_solves(float(Content.get_puzzle("3x3")["unlock_cost"]))
 	game.unlock_puzzle("3x3")
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -1603,7 +1603,7 @@ func test_jukebox_locks() -> void:
 	check(rows[1] is Label and (rows[1] as Label).text.contains("Unlock 3×3 to hear this"), "First Sub-20 says unlock the 3x3")
 	check((rows[5] as Label).text.contains("Unlock Megaminx"), "Twelve Faces says unlock the Megaminx")
 	check((rows[6] as Label).text.contains("World Championship"), "Finals says win a World Championship")
-	game.cheat_add_solves(1e9)
+	game.cheat_add_solves(1e13)
 	game.unlock_puzzle("3x3")
 	game.unlock_puzzle("4x4")
 	game.unlock_puzzle("5x5")
@@ -1650,7 +1650,7 @@ func test_mastery() -> void:
 	check(g.get_next_mastery_milestone("2x2")["level"] == 25, "the next milestone is level 25")
 	check(g.get_mastery_progress("2x2") >= 0.0 and g.get_mastery_progress("2x2") < 1.0, "progress through the level is 0..1")
 	# Other puzzles are independent, except "all moves" milestones.
-	g.cheat_add_solves(150.0)
+	g.cheat_add_solves(float(Content.get_puzzle("3x3")["unlock_cost"]))
 	g.unlock_puzzle("3x3")
 	check(g.get_mastery_level("3x3") == 1 and is_equal_approx(g.get_puzzle_moves_mult("3x3"), 1.0), "each puzzle has its own mastery")
 	var xp_50 := 0.0
@@ -3329,10 +3329,11 @@ func test_synergies_and_solve_value() -> void:
 	var club_before := g.get_building_mps("club")
 	check(g.is_upgrade_available("club_coaching"), "Club Coaching shows up with 5 Clubs")
 	g.buy_upgrade("club_coaching")
-	check_near(g.get_building_mps("friend"), friend_before * (1.0 + 0.02 * 5), "synergy: 5 Clubs make each Friend 10 % faster")
+	var per_club := float(Content.get_upgrade("club_coaching")["effect"]["value"])
+	check_near(g.get_building_mps("friend"), friend_before * (1.0 + per_club * 5), "synergy: each of 5 Clubs makes each Friend faster")
 	check_near(g.get_building_mps("club"), club_before, "...and leave the Clubs alone")
 	g.buy_buildings("club", 5)
-	check_near(g.get_building_mps("friend"), friend_before * (1.0 + 0.02 * 10), "it grows with every Club (10 → +20 %)")
+	check_near(g.get_building_mps("friend"), friend_before * (1.0 + per_club * 10), "it grows with every Club (10 Clubs: twice the bonus)")
 	g.buy_buildings("robot", 5)
 	var club_mps := g.get_building_mps("club")
 	g.buy_upgrade("robot_sparring")
@@ -3355,6 +3356,48 @@ func test_synergies_and_solve_value() -> void:
 
 
 # --- Six more helpers (task 5.5) ---------------------------------------------------------
+
+# Task 5.8: the upgrade cache must not survive a swap of one owned upgrade for another (the same count). The balance
+# bot tries upgrades on one at a time; before 5.8 every trial after the first reused the first one's numbers.
+func test_upgrade_cache_swaps() -> void:
+	var g := new_game()
+	var taps := g.get_tap_moves()
+	var friend := g.get_building_mps("friend")
+	g.upgrades["lube"] = true
+	g.invalidate_upgrade_cache()
+	check_near(g.get_tap_moves(), taps * 2.0, "trying Cube Lube on: taps ×2")
+	g.upgrades.erase("lube")
+	g.upgrades["stackmat"] = true  # same count, another upgrade
+	g.invalidate_upgrade_cache()
+	check_near(g.get_tap_moves(), taps, "swapped for Stackmat Timer: taps back to normal")
+	check_near(g.get_building_mps("friend"), friend * 2.0, "...and Friends ×2")
+	g.upgrades.erase("stackmat")
+	g.invalidate_upgrade_cache()
+	# Buying, a reset and a load drop the cache by themselves.
+	g.cheat_add_solves(100.0)
+	check(g.buy_upgrade("lube") and is_equal_approx(g.get_tap_moves(), taps * 2.0), "buying drops the cache")
+	var data := g.get_save_data()
+	var other := new_game()
+	other.upgrades["stackmat"] = true  # one owned upgrade before the load, one in the save
+	other.invalidate_upgrade_cache()
+	check_near(other.get_tap_moves(), taps, "before the load: Stackmat only")
+	other.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check_near(other.get_tap_moves(), taps * 2.0, "after loading a save with Cube Lube: taps ×2")
+	g.reset_state()
+	check_near(g.get_tap_moves(), taps, "a reset drops it too")
+	# The balance bot values each upgrade on its own (the never-tapping bot used to value them all like Cube Lube: 0).
+	var sim: RefCounted = load("res://tools/simulator.gd").new()
+	var idle := new_game()
+	idle.buildings["friend"] = 7
+	idle.total_solves = 100.0
+	var base: float = sim.income(idle, 0.0)
+	var lube_gain: float = sim._income_gain(idle, {"kind": "upgrade", "id": "lube"}, 0.0, base)
+	var partners_gain: float = sim._income_gain(idle, {"kind": "upgrade", "id": "ms_friend_1"}, 0.0, base)
+	check(is_zero_approx(lube_gain) and is_equal_approx(partners_gain, base), "the bot: Lube gains nothing idle, Practice Partners I doubles it")
+	idle.free()
+	other.free()
+	g.free()
+
 
 func test_helper_ladder() -> void:
 	check(Content.BUILDINGS.size() == 12, "12 helpers, Friend to Quantum Solver")
@@ -3430,7 +3473,7 @@ func test_lab_goals() -> void:
 
 func test_choices() -> void:
 	var g := new_game()
-	g.cheat_add_solves(1e9)
+	g.cheat_add_solves(1e12)
 	check(g.is_upgrade_available("speed_practice") and g.is_upgrade_available("efficient_solving"), "both sides of a choice are on offer")
 	check(g.get_choice_partners("speed_practice") == ["efficient_solving"] and g.get_choice_partners("lube").is_empty(), "partners")
 	check(g._goal_name(Content.get_upgrade("efficient_solving")) == "Efficient Solving or Speed Practice"
@@ -3450,8 +3493,8 @@ func test_choices() -> void:
 	g._add_puzzle("4x4")
 	var small := g.get_puzzle_moves_mult("3x3")
 	var big := g.get_puzzle_moves_mult("4x4")
-	check(g.buy_upgrade("big_cubes") and is_equal_approx(g.get_puzzle_moves_mult("4x4"), big * 3.0)
-			and is_equal_approx(g.get_puzzle_moves_mult("3x3"), small), "Big-Cube Specialist: ×3 on 4×4, nothing on 3×3")
+	check(g.buy_upgrade("big_cubes") and is_equal_approx(g.get_puzzle_moves_mult("4x4"), big * 1.5)
+			and is_equal_approx(g.get_puzzle_moves_mult("3x3"), small), "Big-Cube Specialist: ×1.5 on 4×4, nothing on 3×3")
 	check(g.is_upgrade_locked_out("small_cubes"), "...and Small-Cube Specialist is locked out")
 	var other := new_game()
 	other.cheat_add_solves(1e9)

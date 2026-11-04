@@ -16,15 +16,21 @@
 | Upgrade unlock | Visible once lifetime Solves ≥ 50% of cost, and its `requires` are met |
 | Offline | Seconds away × moves/sec, capped at 8 h |
 
-## Helpers (current)
+## Helpers (current, task 5.8)
 | Helper | Base cost | Moves/s |
 |---|---|---|
 | Cubing Friend | 5 | 0.5 |
-| Cubing Club | 60 | 4 |
-| Solving Robot | 700 | 32 |
-| Local Competition | 9,000 | 260 |
-| Cube Factory | 120,000 | 2,100 |
-| Speedcubing Lab | 1,800,000 | 18,000 |
+| Cubing Club | 60 | 3 |
+| Solving Robot | 12K | 33 |
+| Local Competition | 100K | 180 |
+| Cube Factory | 1.7M | 1K |
+| Speedcubing Lab | 34M | 6K |
+| Pro Team | 450M | 38K |
+| Cubing Federation | 5B | 240K |
+| Cube Museum | 240B | 1.6M |
+| AI Solver | 6.7T | 11M |
+| Orbital Cube Station | 100T | 75M |
+| Quantum Solver | 2.1Qa | 550M |
 
 ## Planned systems
 The build order and pacing targets are in `docs/PLAN.md`. Numbers above are the current (v1) game.

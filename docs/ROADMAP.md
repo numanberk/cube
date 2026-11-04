@@ -239,7 +239,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
 - Later ideas (Phase 11): Bluetooth smart-cube support (needs a plugin; GAN/MoYu protocols), relays, blindfolded mode,
   one-handed mode, a replay viewer for PB solves.
 
-## Phase 5 (continued) — next (owner, 2026-11-04), then Phase 6
+## Phase 5 (continued) — done 2026-11-04 (owner: Phase 5, then Phase 6)
 - [x] **5.0 Never tapping still progresses:** the first Cubing Friend is free (a new game starts with one), so a player who
       only watches still earns. *Done when:* the idle pacing target passes for real and a test checks the free Friend.
 - [x] **5.2 Generated helper milestones:** ×2 at 1/10/25/50/100/150/200 owned, generated from one table in `content.gd`.
@@ -257,21 +257,23 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       The game logic (timers, completion while offline) lives in `GameState`; there's a Lab tab with progress bars.
       *Done when:* tests cover a project finishing online, finishing while offline (capped like offline progress), and
       save/load mid-research, and there's a screenshot of the tab.
-- [ ] **5.7 Helper Promotion (PR, optional):** at 100 owned, a helper can be promoted: its count resets to 0, it gets a
-      permanent ×3 (stacking per promotion), and its milestones start again. Never required. Only do this task if the
-      5.8 sim run shows the first hour still needs more decisions; otherwise move it to Phase 11.
-      *Done when:* tests cover the reset, the multiplier and the cost curve after promotion.
+- [x] **5.7 Helper Promotion (PR, optional):** moved to **Phase 11** (2026-11-04, after the 5.8 sim run: the first hour
+      now has something new every ≤ 3 min and three choice pairs, so it doesn't need more decisions).
 - [x] **5.7b Choices: pick one of two (fun pass, 2026-11-04):** some upgrades come as a pair where buying one locks the
       other for this run (e.g. "Speed practice: taps +50 %" *or* "Coaching: helpers +20 %"; "Big-cube specialist" *or*
       "Small-cube specialist"), so players make builds, not just purchases. A prestige resets the choice. As data
       (`choice_group`). *Done when:* tests cover the lock-out and the reset, and there's a screenshot of a pair.
-- [ ] **5.8 Rebalance (first hour):** ~40 upgrades in total. Note: the greedy bot values only today's income, so it
+- [x] **5.8 Rebalance (first hour):** ~40 upgrades in total. Note: the greedy bot values only today's income, so it
       never picks Deliberate Practice (mastery XP) and only values Big-Cube Specialist once it owns a big cube; check
       the other side of each pair by hand (or force it in a sim run) so the balance isn't tuned to one build.
       *Done when:* the "something new every 1–3 min", Robot, 4×4 and 5×5 pacing tests pass for real.
+      *(Done 2026-11-04: longest first-hour wait 2:51, Robot 8:34, 4×4 27:53, 5×5 52:28. BALANCE.md now also plays the
+      other side of every choice pair; Speed Practice and Deliberate Practice are weak in a run, see the CHANGELOG.)*
 
 ## Phase 6 — Prestige: World Championship
 - [ ] **6.1 Trophy formula and Compete screen:** `floor(sqrt(run_solves / 1e6))` to start, each unspent trophy +2 % all moves.
+      *(Note from 5.8: the tapping bot has ~1e14 lifetime Solves at 90 min (9.9T at 60, 1.1Qa at 120), so this formula
+      would give ~10K trophies (×200). Pick the divisor from BALANCE.md so the first championship gives a sensible bonus.)*
       The Compete screen shows the trophies you'll get, the new bonus, and exactly what you keep and lose. It plays "Finals".
       *Done when:* there's a screenshot and tests cover the formula.
 - [ ] **6.2 Reset logic + save v10:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
@@ -369,3 +371,6 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
 - [ ] New puzzles: Pyraminx, Skewb, Square-1 (each a new `PuzzleShapes` entry and a new track)
 - [ ] Seasonal events
 - [ ] A third prestige layer, if players ask for more
+- [ ] **Helper Promotion (was 5.7, PR):** at 100 owned, a helper can be promoted: its count resets to 0, it gets a
+      permanent ×3 (stacking per promotion), and its milestones start again. Never required.
+      *Done when:* tests cover the reset, the multiplier and the cost curve after promotion.

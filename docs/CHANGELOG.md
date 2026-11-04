@@ -2,6 +2,59 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-04 — Task 5.8: first-hour rebalance
+- **Done when met:** the pacing targets "something new every ≤ 3 min in the first hour" (longest wait 2:51), Solving Robot
+  (8:34, window 8–12 min), 4×4 (27:53, 25–35) and 5×5 (52:28, 50–70) pass for real; their `expected_failure` marks are
+  gone. Still passing: first helper, first upgrade (now Practice Partners I at 0:12), 3×3 (4:22), the 30-min split
+  (20/45/35 %), the active profile (×2.38, D13) and never-tapping progress. Still expected failures: ≤ 10-min waits
+  after the first hour (13:40 before Neural Upgrades II at ~1:36; the championship at ~90 min should end the run first),
+  prestige and the multi-run targets (Phase 6). Margins are thin (the 3-min gap by 9 s, the Robot by 34 s): any content
+  change can flip a target, which is what the test is for.
+- **Bug fix (GameState):** the upgrade/Lab multiplier cache was keyed only by *how many* upgrades are owned, so swapping
+  one for another of the same count reused stale numbers. The balance bot tries upgrades on one at a time, so **every
+  trial after the first in a planning pass used the first one's effect**: the never-tapping bot valued every upgrade like
+  Cube Lube (nothing, idle) and never bought one, and the tapping bot's choices were partly wrong (all earlier BALANCE.md
+  runs). New `invalidate_upgrade_cache()`, called by buying, finishing research, reset, load and the Lab load; code that
+  edits `upgrades`/`research_done` directly (the simulator, screenshot presets) calls it too. Test `test_upgrade_cache_swaps`.
+  The never-tapping bot now buys upgrades (it picks Efficient Solving) and reaches the 4×4 at ~32 min, the 5×5 at ~57.
+- **Why it was too fast:** measured with a throwaway per-30-s trace. Milestones cost a fraction of the copies they
+  doubled (×2 at 50 owned for 7 copies' worth), the helper ladder got only ~1.6× worse per Solve per tier while Solves per
+  move grew ~60× (puzzles, solve value, methods), and mastery levels grew with log(moves), so after ~20 min old puzzles
+  out-earned a fresh 4×4/5×5 and the bot stopped valuing new puzzles. Income doubled every ~15 s at 6–12 min.
+- **Numbers (all in `content.gd`):**
+  - Helpers: costs Robot 12K, Competition 100K, Factory 1.7M, Lab 34M, Pro Team 450M, Federation 5B, Museum 240B,
+    AI 6.7T, Orbital 100T, Quantum 2.1Qa; moves/s Club 3, Robot 33, Competition 180, Factory 1K, Lab 6K, Pro Team 38K,
+    Federation 240K, Museum 1.6M, AI 11M, Orbital 75M, Quantum 550M (each tier ~2.5× worse per Solve; DESIGN.md table).
+  - **Milestones:** a new row at 5 owned (×1.5), so 8 per helper (I–VIII; ids are by owned count, so saves are fine,
+    only the roman numerals of the old II–VII moved up one). I costs 1× the helper's base cost (it follows the first copy),
+    the rest ~2 × n × 1.15^n × base (about the price of the copies they double): 15, 80, 1650, 1.1e5, 2.3e8, 3.8e11, 5.5e14.
+  - Puzzles: 3×3 300, 4×4 180M (22 Solves/solve), 5×5 250B (80/solve), 7×7 500B (300/solve, so it still pays more per
+    move than the 5×5), Megaminx 100T; PLAN §4.1 table updated. Mastery `xp_growth` 1.15 → 1.25.
+  - Upgrades: most mid-game costs ×3–30 (Magnetic Cube 36K, Sponsorship 500K, Prize Money 84M, Lab Prototypes 840M…);
+    Club Coaching 1 % per Club (was 2 %); **Live Stream ×1.5** (was ×2, 2.5B: the bot hoarded for it, leaving 4-min holes);
+    choices: Speed Practice / Efficient Solving 800, specialists 21M, Prize Hunting / Deliberate Practice 35B.
+  - Lab/methods: Roux 140K, ZZ 98M (research 13:20, was 20 min), God's Number 200B; 2-look PLL 6 min, Lookahead 10 min
+    (was 30: the one slot sat on it), Lookahead/Full PLL/Full OLL costs ×1.4.
+  - **Two new synergies** (the chain Club→Friend … Lab→Factory continues): **Pro Scrims** (each Pro Team +1 % Labs, 2B,
+    5 Pro Teams) and **Federation Rankings** (each Federation +1 % Pro Teams, 20B, 5 Federations); icons team-idea and podium
+    (game-icons.net, Delapouite, CC BY 3.0, in CREDITS). Shot: `docs/screenshots/5.8-rebalance/`.
+- **The other side of each choice** (the 5.8 note): the simulator takes a `forbid` list (`simulate.sh --forbid a,b`), and
+  BALANCE.md now has a **"Main build vs other build"** table: the tapping bot again, never buying the pair sides it picked.
+  Checked one pair at a time (lifetime Solves at 60 min, main build 9.9T):
+  - **Big-Cube Specialist** was far stronger than Small-Cube (×3 on the puzzles that make most of the income: 35T even at
+    ×2), so it's **×1.5** now: 10.5T, and that build passes every pacing target too. Both cost 21M, before the 4×4: Small
+    pays at once, Big once the 4×4/5×5 run. (The bot still picks Small: it only values today's income.)
+  - **Speed Practice** (taps ×3) instead of Efficient Solving: 2.3T. Taps stop mattering after ~10 min; **S.7** (taps add
+    a % of moves/s) is what makes it a real choice. Not changed here.
+  - **Deliberate Practice** (×3 mastery XP) instead of Prize Hunting: 3.9T. Mastery is kept through prestige, so it's the
+    long-term pick; **Phase 6** should make that visible (e.g. 6.2/6.3). Not changed here.
+- **For Phase 6:** lifetime Solves at 90 min are ~1e14, so 6.1's `sqrt(run_solves / 1e6)` would give ~10K trophies;
+  pick the divisor from BALANCE.md (note added to 6.1). The 2-hour runs take ~90 s each now (simulate.sh ~4 min in all).
+- **5.7 Helper Promotion → Phase 11** (its own rule: only if 5.8 showed the first hour needs more decisions; it doesn't).
+- Tests (3752 checks, `All good.`): hard-coded numbers now read from `Content` (3×3 cost, Club Coaching's %, Big-Cube's
+  ×1.5); the next-goal order (CFOP 200 now comes before the 3×3 300); `test_upgrade_cache_swaps`.
+- **Next: Phase 6, task 6.1** (trophy formula and Compete screen).
+
 ## 2026-11-04 — Task 5.7b: choices, pick one of two
 - **Three pairs** (`choice_group` in `Content.UPGRADES`; buying one locks the other for this run, a championship (6.2)
   resets upgrades and so the choice): **Speed Practice** (taps ×3) *or* **Efficient Solving** (−20 % moves per solve),

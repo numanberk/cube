@@ -118,16 +118,16 @@ For a specific task, replace the second sentence with e.g. "Do task 4.2."
   share and showing its solves/s. Clicking a small one brings it into focus. Unlocking a puzzle drops it into the row
   with a short animation, and its music track fades in.
 - Each tier raises moves per solve *and* Solves per solve by more, so moving up is always a net gain.
-  Starting curve for the simulator to tune:
+  Today's curve (tuned by the simulator in task 5.8; `Content.PUZZLES` is the source of truth):
 
-  | Puzzle | Moves/solve | Solves/solve | Unlock cost |
-  |---|---|---|---|
-  | 2×2 | 8 | 1 | start |
-  | 3×3 | 20 | 4 | ~150 |
-  | 4×4 | 60 | 18 | ~25K |
-  | 5×5 | 120 | 50 | ~1.5M |
-  | 7×7 | 300 | 200 | after prestige |
-  | Megaminx | 700 | 800 | after prestige |
+  | Puzzle | Moves/solve | Solves/solve | Unlock cost | Bot unlocks it at |
+  |---|---|---|---|---|
+  | 2×2 | 8 | 1 | start | — |
+  | 3×3 | 20 | 4 | 300 | ~4 min |
+  | 4×4 | 60 | 22 | 180M | ~28 min |
+  | 5×5 | 120 | 80 | 250B | ~52 min |
+  | 7×7 | 300 | 300 | 500B, after prestige | (Phase 6) |
+  | Megaminx | 700 | 800 | 100T, after prestige | (Phase 6) |
 - Methods (Beginner → CFOP → Roux → ZZ → God's Number, `Content.METHODS`, task 5.1) are learned in order and multiply
   moves per solve by ×0.7 each, with a **floor per puzzle** (`min_moves_per_solve`: a fifth of its moves per solve, a quarter
   on the 2×2), so a puzzle never becomes trivial. All four learned methods plus mastery reach the floor only on the 2×2;

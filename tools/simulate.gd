@@ -2,7 +2,8 @@ extends SceneTree
 ## Runs the balance bot and writes a Markdown report. Use tools/simulate.sh:
 ##   bash tools/simulate.sh                        # 3 taps/s and 0 taps/s, 120 min -> docs/BALANCE.md
 ##   bash tools/simulate.sh --taps 5 --minutes 60 --out /tmp/b.md
-## --taps takes a comma list (one run per value).
+##   bash tools/simulate.sh --forbid small_cubes --out /tmp/b.md   # never buy these upgrades (try one choice's other side)
+## --taps takes a comma list (one run per value), --forbid a comma list of upgrade ids.
 
 const Simulator := preload("res://tools/simulator.gd")
 const Pacing := preload("res://tools/pacing.gd")
@@ -13,6 +14,7 @@ func _initialize() -> void:
 	var taps_list: PackedStringArray = String(args.get("taps", "3,0")).split(",", false)
 	var minutes := float(args.get("minutes", "120"))
 	var out: String = args.get("out", "res://docs/BALANCE.md")
+	var forbid: Array = Array(String(args.get("forbid", "")).split(",", false))
 
 	var sim: RefCounted = Simulator.new()
 	var sections: PackedStringArray = []
@@ -20,7 +22,7 @@ func _initialize() -> void:
 	for taps_text in taps_list:
 		var taps := float(taps_text)
 		var started := Time.get_ticks_msec()
-		var result: Dictionary = sim.run(taps, minutes)
+		var result: Dictionary = sim.run(taps, minutes, {}, forbid)
 		print("Simulated %s taps/s for %s min in %.1f s: %d items, all owned at %s" % [
 			taps_text, minutes, (Time.get_ticks_msec() - started) / 1000.0, result["purchases"],
 			"never" if float(result["all_bought_at"]) < 0.0 else Simulator._clock(result["all_bought_at"]),
@@ -33,11 +35,23 @@ func _initialize() -> void:
 
 	# The active profile (S.3): tapping plus Gold-pace hand solves, compared with plain tapping at 30 min.
 	var active_started := Time.get_ticks_msec()
-	var active: Dictionary = sim.run(Pacing.TAPS_PER_SEC, minf(minutes, Pacing.ACTIVE_MINUTES), Pacing.ACTIVE_HAND)
+	var active: Dictionary = sim.run(Pacing.TAPS_PER_SEC, minf(minutes, Pacing.ACTIVE_MINUTES), Pacing.ACTIVE_HAND, forbid)
 	print("Simulated the active profile for %s min in %.1f s: %d hand solves" % [
 		minf(minutes, Pacing.ACTIVE_MINUTES), (Time.get_ticks_msec() - active_started) / 1000.0, active["hand_solves"]])
 	sections.append(Simulator.to_markdown(active))
 	by_profile["active"] = active
+
+	# The other build (5.8): the tapping bot again, but never buying the choice-pair sides it picked, so it plays the
+	# other side of each pair (the greedy bot would never pick those by itself).
+	if by_profile.has("tapping") and forbid.is_empty():
+		var other_forbid := Simulator.chosen_sides(by_profile["tapping"])
+		var other_minutes := minf(minutes, 70.0)
+		var other_started := Time.get_ticks_msec()
+		var other: Dictionary = sim.run(Pacing.TAPS_PER_SEC, other_minutes, {}, other_forbid)
+		print("Simulated the other build (never %s) for %s min in %.1f s" % [", ".join(other_forbid), other_minutes,
+				(Time.get_ticks_msec() - other_started) / 1000.0])
+		sections.append(Simulator.compare_markdown(by_profile["tapping"], other, 3600.0))
+		sections.append(Simulator.to_markdown(other))
 
 	var rows := Pacing.evaluate(by_profile)
 	for row: Dictionary in rows:

@@ -81,3 +81,5 @@ The black background square was removed so the game can tint them; no other chan
 | `assets/icons/big_cubes.svg` | stack | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/stack.html |
 | `assets/icons/prize_focus.svg` | coins | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/coins.html |
 | `assets/icons/mastery_focus.svg` | graduate-cap | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/graduate-cap.html |
+| `assets/icons/pro_scrims.svg` | team-idea | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/team-idea.html |
+| `assets/icons/federation_rankings.svg` | podium | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/podium.html |

@@ -86,7 +86,7 @@ var research_done: Dictionary = {}         ## finished non-method Lab projects (
 var daily: Dictionary = {}                 ## S.5 (saved): {date, rewarded, times {puzzle: s}, fmc {puzzle: moves}, fmc_ever {puzzle: moves}}
 var daily_now := -1.0                      ## tests: the unix time "now" for the daily (-1 = the real clock)
 var _mult_cache: Dictionary = {}           ## _upgrade_mult results for the current set of owned upgrades
-var _mult_cache_owned := -1                ## upgrades.size() the cache was built for
+var _mult_cache_owned := -1                ## upgrades.size() + 1000 × research_done.size() the cache was built for (-1 = stale)
 var _offline_catch_up := false             ## true while offline progress is added: buffs don't count then
 
 
@@ -383,6 +383,7 @@ func buy_upgrade(id: String) -> bool:
 		return false
 	solves -= cost
 	upgrades[id] = true
+	invalidate_upgrade_cache()
 	purchased.emit("upgrade", id)
 	return true
 
@@ -1400,6 +1401,7 @@ func _complete_research(id: String) -> void:
 		purchased.emit("method", def["method"])
 	else:
 		research_done[id] = true
+		invalidate_upgrade_cache()
 		research_finished.emit(id)
 		check_helper_times()
 		check_time_tiers()
@@ -1410,6 +1412,14 @@ func _on_drill_set_learned_for_lab(set_id: String) -> void:
 	for def in Content.get_lab_projects():
 		if String(def.get("drill_set", "")) == set_id and not is_research_done(def["id"]):
 			_complete_research(def["id"])
+
+
+## Drops the cached upgrade/Lab multipliers. Everything in GameState that changes `upgrades` or `research_done` calls it;
+## code that changes them directly (the balance bot trying an upgrade on, screenshot presets, tests) must call it too.
+## (The cache also checks the owned count, but that alone misses swapping one upgrade for another of the same count:
+## the bot tries upgrades on one at a time, so until 5.8 every trial after the first reused the first one's numbers.)
+func invalidate_upgrade_cache() -> void:
+	_mult_cache_owned = -1
 
 
 ## Product of every owned upgrade's effect of this type (and target). Cached: with ~50 upgrades (5.2) this is called
@@ -1483,6 +1493,7 @@ func reset_state() -> void:
 	daily = {}
 	research = {}
 	research_done.clear()
+	invalidate_upgrade_cache()
 
 
 func get_save_data() -> Dictionary:
@@ -1629,6 +1640,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	for id: String in data.get("upgrades", []):
 		if not Content.get_upgrade(id).is_empty() and not is_upgrade_locked_out(id):  # a damaged save: one per choice group
 			upgrades[id] = true
+	invalidate_upgrade_cache()
 	var saved_method := str(data.get("method", ""))
 	if Content.get_method_index(saved_method) >= 0:  # an unknown id (removed from Content) keeps the Beginner Method
 		method = saved_method
@@ -1703,6 +1715,7 @@ func _load_lab(saved: Variant) -> void:
 		var drilled := String(def.get("drill_set", "")) != "" and is_drill_set_learned(def["drill_set"])
 		if (done_set.has(def["id"]) and _lab_requirements_done(def)) or drilled:
 			research_done[def["id"]] = true
+	invalidate_upgrade_cache()
 	var current: Dictionary = lab.get("current", {}) if typeof(lab.get("current", {})) == TYPE_DICTIONARY else {}
 	var id := str(current.get("id", ""))
 	var def := Content.get_lab_project(id)

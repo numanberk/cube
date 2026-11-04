@@ -113,11 +113,13 @@ func _ready() -> void:
 		station._refresh()
 	if args.has("lab"):  # 5.6: the Lab tab with one project done and one running
 		Game.research_done["finger_tricks"] = true
+		Game.invalidate_upgrade_cache()
 		Game.research = {"id": "two_look_pll", "left": 222.0}
 		(main.get_node("%Tabs") as TabContainer).current_tab = main.LAB_TAB
 		main._refresh()
 	if args.has("pick"):  # 5.7b: one side of a choice picked (bought for free), the Upgrades tab open
 		Game.upgrades[String(args["pick"])] = true
+		Game.invalidate_upgrade_cache()
 		(main.get_node("%Tabs") as TabContainer).current_tab = main.UPGRADES_TAB
 		main._refresh()
 	if args.has("flow"):  # S.3: Flow running after a Gold hand solve

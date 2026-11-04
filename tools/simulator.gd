@@ -22,6 +22,7 @@ const SAMPLE_INTERVAL := 5.0  ## lifetime Solves are sampled this often (see "sa
 
 var _now := 0.0
 var _purchases := 0
+var _forbid := {}  ## upgrade ids this run never buys (to play the other side of a choice pair, 5.8)
 var _puzzle_gain_cache := {}  ## puzzle id -> {at, purchases, gain}
 const CHECKPOINT_MINUTES: Array[float] = [1.0, 5.0, 15.0, 30.0, 60.0, 120.0]
 
@@ -35,8 +36,13 @@ const CHECKPOINT_MINUTES: Array[float] = [1.0, 5.0, 15.0, 30.0, 60.0, 120.0]
 ##   hand_solves: how many Solve Station solves the bot did (the "active" profile, S.3)
 ## `hand` makes it an active player (task S.3): {"tier": 2} = a hand solve just inside that tier's target (Gold) on its
 ## biggest unlocked cube, back to back (the solve's time + HAND_OVERHEAD for scramble and inspection).
-func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}) -> Dictionary:
+## `forbid` lists upgrade ids the bot never buys: forbidding one side of each choice pair (5.7b) plays the other build,
+## which the greedy bot would never pick by itself (task 5.8: the balance mustn't be tuned to one build).
+func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Array = []) -> Dictionary:
 	_puzzle_gain_cache.clear()
+	_forbid.clear()
+	for id: Variant in forbid:
+		_forbid[str(id)] = true
 	_now = 0.0
 	_purchases = 0
 	var g := GameState.new()
@@ -164,6 +170,7 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}) -> Dictiona
 		"hand_solves": hand_solves,
 		"samples": samples,
 		"hand": hand,
+		"forbid": forbid,
 	}
 
 
@@ -231,7 +238,7 @@ func _candidates(g: GameState) -> Array[Dictionary]:
 		if g.is_building_unlocked(def["id"]):
 			items.append({"kind": "helper", "id": def["id"]})
 	for def: Dictionary in Content.get_upgrades():
-		if g.is_upgrade_available(def["id"]):
+		if g.is_upgrade_available(def["id"]) and not _forbid.has(def["id"]):
 			items.append({"kind": "upgrade", "id": def["id"]})
 	var next_method := g.get_next_method()
 	if not next_method.is_empty() and g.is_method_available(next_method["id"]) and g.research.is_empty():
@@ -257,8 +264,10 @@ func _income_gain(g: GameState, item: Dictionary, taps_per_sec: float, base: flo
 			return with_it - base
 		"upgrade":
 			g.upgrades[id] = true
+			g.invalidate_upgrade_cache()
 			var with_it := income(g, taps_per_sec)
 			g.upgrades.erase(id)
+			g.invalidate_upgrade_cache()
 			return with_it - base
 		"method":
 			var current := g.method
@@ -268,8 +277,10 @@ func _income_gain(g: GameState, item: Dictionary, taps_per_sec: float, base: flo
 			return with_it - base
 		"research":
 			g.research_done[id] = true
+			g.invalidate_upgrade_cache()
 			var with_it := income(g, taps_per_sec)
 			g.research_done.erase(id)
+			g.invalidate_upgrade_cache()
 			return with_it - base
 		"puzzle":
 			var cached: Dictionary = _puzzle_gain_cache.get(id, {})
@@ -350,8 +361,16 @@ static func to_markdown(result: Dictionary) -> String:
 	var title := "Tapping" if taps > 0.0 else "Never tapping"
 	if not hand.is_empty():
 		title = "Active: tapping + %s-pace hand solves" % GameState.hand_tier_name(int(hand.get("tier", 2)))
+	var forbid: Array = result.get("forbid", [])
+	if not forbid.is_empty():
+		title = "Other build: tapping, never buying some upgrades"
 	lines.append("## %s (%s taps/s, %s min)" % [title, _num(taps), _num(result["minutes"])])
 	lines.append("")
+	if not forbid.is_empty():
+		var names := PackedStringArray()
+		for id: Variant in forbid:
+			names.append(Content.get_upgrade(str(id)).get("name", str(id)))
+		lines.append("- Never buys: %s (so it takes the other side of each pair)" % ", ".join(names))
 	if not hand.is_empty():
 		lines.append("- Hand solves in the Solve Station: %d (each just inside the tier's target on the biggest cube owned, back to back)" % result["hand_solves"])
 	var events: Array = result["events"]
@@ -386,6 +405,53 @@ static func to_markdown(result: Dictionary) -> String:
 		])
 	lines.append("")
 	return "\n".join(lines)
+
+
+## The choice-pair upgrades (5.7b) a run bought: the build it played.
+static func chosen_sides(result: Dictionary) -> Array[String]:
+	var picked: Array[String] = []
+	for e: Dictionary in result["events"]:
+		if e["kind"] == "upgrade" and Content.get_upgrade(e["id"]).has("choice_group"):
+			picked.append(e["id"])
+	return picked
+
+
+## Markdown comparing two runs at the PLAN §2 moments (the main build against the other build, 5.8).
+static func compare_markdown(main: Dictionary, other: Dictionary, until: float) -> String:
+	var lines: PackedStringArray = []
+	lines.append("## Main build vs other build (first %s min)" % _num(until / 60.0))
+	lines.append("")
+	lines.append("The other build never buys the side of each choice pair the tapping bot picked, so the balance isn't tuned")
+	lines.append("to one build. Both should hit roughly the same moments.")
+	lines.append("")
+	lines.append("| Moment | Main build | Other build |")
+	lines.append("|---|---|---|")
+	for row: Array in [["3×3", "puzzle", "3x3"], ["Solving Robot", "helper", "robot"], ["4×4", "puzzle", "4x4"],
+			["5×5", "puzzle", "5x5"]]:
+		lines.append("| %s | %s | %s |" % [row[0], _first_time(main, row[1], row[2]), _first_time(other, row[1], row[2])])
+	var gap_main := Pacing.longest_gap(main["events"], 0.0, minf(until, float(main["minutes"]) * 60.0))
+	var gap_other := Pacing.longest_gap(other["events"], 0.0, minf(until, float(other["minutes"]) * 60.0))
+	lines.append("| Longest wait for something new | %s | %s |" % [_clock(gap_main["length"]), _clock(gap_other["length"])])
+	var main_total := _total_at(main, until)
+	var other_total := _total_at(other, until)
+	lines.append("| Lifetime Solves at %s | %s | %s |" % [_clock(until), Num.format(main_total), Num.format(other_total)])
+	lines.append("")
+	return "\n".join(lines)
+
+
+static func _first_time(result: Dictionary, kind: String, id: String) -> String:
+	for e: Dictionary in result["events"]:
+		if e["kind"] == kind and e["id"] == id:
+			return _clock(e["t"])
+	return "never"
+
+
+static func _total_at(result: Dictionary, at: float) -> float:
+	var total := 0.0
+	for sample: Array in result.get("samples", []):
+		if float(sample[0]) <= at:
+			total = float(sample[1])
+	return total
 
 
 ## "2×2 10 % · 3×3 25 % · 4×4 65 %"
