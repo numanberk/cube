@@ -135,6 +135,7 @@ FLOW=1 bash tools/screenshot.sh /tmp/shots mid                    # Flow running
 DRILL=done bash tools/screenshot.sh /tmp/shots mid                # a PLL drill: solving | done -> mid_drilldone.png
 DAILY=fmc bash tools/screenshot.sh /tmp/shots mid                 # the daily scramble: fmc | timed -> mid_dailyfmc.png
 SCROLL=1 bash tools/screenshot.sh /tmp/shots endgame              # helper list scrolled to the bottom -> endgame_scroll.png
+LAB=1 bash tools/screenshot.sh /tmp/shots mid                     # the Lab tab: one project done, one running -> mid_lab.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

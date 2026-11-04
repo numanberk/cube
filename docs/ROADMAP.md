@@ -248,7 +248,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
 - [x] **5.5 Six more helpers** past the Lab (e.g. Pro Team, Cubing Federation, Cube Museum, AI Solver, Orbital Cube Station,
       Quantum Solver), so costs reach ~1e15, each with an icon.
       *Done when:* they're in the data, their milestones are generated, and there's a screenshot of the shop.
-- [ ] **5.6 Algorithm Lab (PR):** real-time research that keeps running offline (Idle Skilling's hatchery / Perfect Tower's lab).
+- [x] **5.6 Algorithm Lab (PR):** real-time research that keeps running offline (Idle Skilling's hatchery / Perfect Tower's lab).
       One research slot to start (more from the trophy tree). Projects are data: learn OLL, learn PLL, finger tricks,
       lookahead, and the method chain from 5.1 (buying a method becomes researching it). Each takes minutes to hours.
       The game logic (timers, completion while offline) lives in `GameState`; there's a Lab tab with progress bars.
@@ -269,10 +269,10 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
 - [ ] **6.1 Trophy formula and Compete screen:** `floor(sqrt(run_solves / 1e6))` to start, each unspent trophy +2 % all moves.
       The Compete screen shows the trophies you'll get, the new bonus, and exactly what you keep and lose. It plays "Finals".
       *Done when:* there's a screenshot and tests cover the formula.
-- [ ] **6.2 Reset logic + save v9:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
+- [ ] **6.2 Reset logic + save v10:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
       upgrades, puzzles and methods. 7×7 and Megaminx become unlockable after the first championship.
-      *Done when:* tests check what resets and what stays, and there's a v8 → v9 migration test. (Save v6 is S.6's
-      Golden Scramble, v7 S.4's drills, v8 S.5's daily; a running buff should survive prestige or end, decide when building it;
+      *Done when:* tests check what resets and what stays, and there's a v9 → v10 migration test. (Save v6 is S.6's
+      Golden Scramble, v7 S.4's drills, v8 S.5's daily, v9 5.6's Lab — decide whether research survives a prestige; a running buff should survive prestige or end, decide when building it;
       drill records and hand-solve records stay.)
 - [ ] **6.3 Trophy perk tree (PR):** permanent perks as data, arranged in 4 branches: Practice (start with 3×3, +offline cap),
       Team (start with 10 Friends, helper boosts), Competition (unlocks Competitions 8.3, medal bonuses) and Automation
@@ -291,10 +291,10 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       a lab, so the progression reads as a journey. *Done when:* each moment fires once at its trigger (test) and there's a
       screenshot.
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
-      all moves, with a toast when earned. Save v10. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
+      all moves, with a toast when earned. Save v11. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
       so they work as a map of the game, like Revolution Idle's.
-      *Done when:* there are tests for the conditions and the v9 → v10 migration, and a screenshot of the tab and toast.
+      *Done when:* there are tests for the conditions and the v10 → v11 migration, and a screenshot of the tab and toast.
 - [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
 

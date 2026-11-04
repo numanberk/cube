@@ -868,6 +868,7 @@ func test_next_goal() -> void:
 	check(goal["kind"] == "method" and goal["id"] == "cfop", "then at the next method")
 	while not g.get_next_method().is_empty():
 		g.buy_method(g.get_next_method()["id"])
+		g.finish_research()  # methods are Lab research (5.6)
 	goal = g.get_next_goal()
 	check(goal["more"] and goal["kind"] == "helper", "with everything owned it aims at another helper")
 	g.free()
@@ -1674,14 +1675,18 @@ func test_method_chain() -> void:
 	check(not g.is_method_available("roux") and not g.buy_method("roux"), "Roux can't be learned before CFOP")
 	var bought := []
 	g.purchased.connect(func(kind: String, id: String) -> void: bought.append([kind, id]))
-	check(g.buy_method("cfop"), "learn CFOP")
-	check(bought == [["method", "cfop"]], "learning a method is signalled as kind 'method'")
+	check(g.buy_method("cfop"), "start learning CFOP (it's Lab research since 5.6)")
+	check(not g.is_method_learned("cfop") and bought.is_empty() and g.research["id"] == "method_cfop", "...it isn't learned until the research is done")
+	check(not g.buy_method("cfop"), "...and can't be started twice")
+	g.update_research(float(Content.get_method("cfop")["research_seconds"]) + 0.1)
+	check(g.is_method_learned("cfop") and bought == [["method", "cfop"]], "learned when the research finishes, signalled as kind 'method'")
 	check(not g.buy_method("cfop"), "a method can't be learned twice")
 	check_near(g.solves, 1e12 - 200.0, "CFOP costs 200 Solves")
 	check_near(g.get_moves_per_solve("2x2"), 8.0 * 0.7, "CFOP: 30 % fewer moves per solve")
 	check(g.is_method_learned("beginner") and g.is_method_learned("cfop") and g.get_next_method()["id"] == "roux", "Roux is next")
 	for id: String in ["roux", "zz", "gods_number"]:
 		check(g.buy_method(id), "learn %s in order" % id)
+		g.finish_research()
 	check(g.method == "gods_number" and g.get_next_method().is_empty(), "God's Number ends the chain")
 	check_near(g.get_method_mult(), pow(0.7, 4), "four methods: ×0.7 each")
 	g.unlock_puzzle("3x3")
@@ -1704,6 +1709,7 @@ func test_method_floor() -> void:
 	g.cheat_add_solves(1e12)
 	for def: Dictionary in Content.METHODS.slice(1):
 		g.buy_method(def["id"])
+		g.finish_research()
 	check_near(g.get_moves_floor("2x2"), 2.0, "the 2×2 can't go below 2 moves per solve")
 	check(8.0 * g.get_method_mult() < 2.0, "...and every method together would push it below that")
 	check_near(g.get_moves_per_solve("2x2"), 2.0, "so it stops at the floor")
@@ -1764,7 +1770,11 @@ func test_method_tiles() -> void:
 	check(first_visible == cfop, "the next method comes first in the grid")
 	check(cfop._description.contains("2×2: 8 → 5.6 moves per solve"), "its tooltip says what it does to the focused puzzle")
 	cfop.pressed.emit()
-	check(game.method == "cfop" and cfop.owned and cfop._cost.text == "Owned", "pressing the tile learns CFOP; it stays as an Owned tile")
+	main._refresh()
+	check(game.research.get("id", "") == "method_cfop" and cfop._cost.text.begins_with("Researching"), "pressing the tile starts researching CFOP")
+	game.finish_research()
+	main._refresh()
+	check(game.method == "cfop" and cfop.owned and cfop._cost.text == "Owned", "once it's done CFOP is learned; it stays as an Owned tile")
 	check(not main._method_tiles["roux"].visible, "Roux stays hidden until it's in reach")
 	main.free()
 	game.reset_state()
@@ -3190,7 +3200,7 @@ func test_daily_scramble_rules() -> void:
 	v7["version"] = 7
 	var migrated := new_game()
 	migrated.apply_save_data(v7, float(data["saved_at"]))
-	check(migrated.is_daily_reward_ready() and int(migrated.get_save_data()["version"]) == 8, "a v7 save gets an empty daily")
+	check(migrated.is_daily_reward_ready() and int(migrated.get_save_data()["version"]) >= 8, "a v7 save gets an empty daily")
 	g.free()
 	loaded.free()
 	migrated.free()
@@ -3339,3 +3349,99 @@ func test_helper_ladder() -> void:
 			check(float(b["mps"]) / float(b["base_cost"]) < float(a["mps"]) / float(a["base_cost"]), "%s is a bit less efficient per Solve" % b["name"])
 		check(b.has("milestone_name") and (Content.NEWS["who"] as Dictionary).has(b["id"]), "%s has milestone names and a news title" % b["name"])
 	check(float(Content.BUILDINGS.back()["base_cost"]) >= 1e13, "the top helper costs 10T+ (copies pass 1e15)")
+
+
+# --- Algorithm Lab (task 5.6) -----------------------------------------------------------
+
+func test_lab_research() -> void:
+	var g := new_game()
+	var events: Array = []
+	g.research_started.connect(func(id: String) -> void: events.append("start " + id))
+	g.research_finished.connect(func(id: String) -> void: events.append("done " + id))
+	check(not g.is_research_visible("finger_tricks") and not g.start_research("finger_tricks"), "nothing in reach at the start")
+	g.cheat_add_solves(1e4)
+	var taps := g.get_tap_moves()
+	check(g.start_research("finger_tricks") and is_equal_approx(g.solves, 1e4 - 500.0), "Finger Tricks: paid when it starts")
+	check(not g.can_start_research("two_look_oll"), "one project at a time")
+	check_near(g.get_tap_moves(), taps, "no effect while it's being researched")
+	g.update_research(60.0)
+	check_near(float(g.get_research_progress()["fraction"]), 0.5, "half way after half its time")
+	g.update_research(61.0)
+	check(g.is_research_done("finger_tricks") and g.research.is_empty() and events == ["start finger_tricks", "done finger_tricks"], "done after 2 minutes")
+	check_near(g.get_tap_moves(), taps * 2.0, "then taps count ×2")
+	check(not g.is_research_visible("finger_tricks"), "a done project can't be researched again")
+	check(not g.is_research_visible("full_pll"), "Full PLL needs 2-look PLL first")
+	# Methods are projects too.
+	g.cheat_add_solves(1e6)
+	check(g.buy_method("cfop") and g.research["id"] == "method_cfop" and not g.is_method_learned("cfop"), "buying CFOP starts its research")
+	g.update_research(float(Content.get_method("cfop")["research_seconds"]))
+	check(g.is_method_learned("cfop") and g.is_research_done("method_cfop"), "...and learns it when done")
+	# Drill sets count as research: learning 2-look OLL in the Solve Station finishes the project for free.
+	var solves_before := g.solves
+	for alg in Content.get_drill_cases("2look_oll"):
+		for i in int(Content.DRILLS["clean_needed"]):
+			g.record_drill("2look_oll", alg["id"], 1.0)
+	check(g.is_research_done("two_look_oll") and is_equal_approx(g.solves, solves_before), "learning 2-look OLL in drills finishes its Lab project, free")
+	g.free()
+
+
+func test_lab_offline_and_saves() -> void:
+	var g := new_game()
+	g.cheat_add_solves(1e8)
+	g.start_research("finger_tricks")
+	g.update_research(30.0)
+	var data := g.get_save_data()
+	check(int(data["version"]) == 9 and data["lab"]["current"]["id"] == "finger_tricks", "the running project is saved (v9)")
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.research.get("id", "") == "finger_tricks" and is_equal_approx(float(loaded.research["left"]), 90.0), "it loads mid-research (90 s left)")
+	# Away long enough: it finishes while the game is closed, and the welcome-back report says so.
+	var away := new_game()
+	away.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]) + 600.0)
+	check(away.is_research_done("finger_tricks") and away.research.is_empty(), "10 minutes away: the research finished offline")
+	check(away.offline_report.get("research", "") == "Finger Tricks", "and the welcome back report names it")
+	# Offline research is capped like offline progress (8 h): a 3-hour project started 20 hours ago isn't done.
+	var slow := new_game()
+	slow.cheat_add_solves(1e12)
+	slow.research = {"id": "full_oll", "left": 3.0 * 3600.0 + 9.0 * 3600.0}
+	var slow_data := slow.get_save_data()
+	var later := new_game()
+	later.apply_save_data(JSON.parse_string(JSON.stringify(slow_data)), float(slow_data["saved_at"]) + 20.0 * 3600.0)
+	check(not later.is_research_done("full_oll") and is_equal_approx(float(later.research["left"]), 4.0 * 3600.0), "offline research is capped at 8 h")
+	# Done projects are saved; v8 saves get an empty Lab (and keep their methods).
+	g.finish_research()
+	data = g.get_save_data()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.is_research_done("finger_tricks"), "done projects survive save/load")
+	var v8: Dictionary = data.duplicate(true)
+	v8.erase("lab")
+	v8["version"] = 8
+	v8["method"] = "roux"
+	var migrated := new_game()
+	migrated.apply_save_data(v8, float(data["saved_at"]))
+	check(migrated.research.is_empty() and migrated.research_done.is_empty() and migrated.is_research_done("method_cfop"), "a v8 save: empty Lab, its methods still learned")
+	for node in [g, loaded, away, slow, later, migrated]:
+		node.free()
+
+
+func test_lab_tab() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	game.cheat_add_solves(1e4)
+	main._refresh()
+	var tabs: TabContainer = main.get_node("%Tabs")
+	check(tabs.get_tab_title(main.LAB_TAB).begins_with("Lab"), "there's a Lab tab")
+	var card: ShopCard = main._lab_cards["finger_tricks"]
+	check(card.visible and card.affordable, "Finger Tricks can be started")
+	card.pressed.emit()
+	check(game.research.get("id", "") == "finger_tricks", "pressing the card starts it")
+	main._refresh()
+	check((main.get_node("%LabStatus") as Label).text.begins_with("Researching Finger Tricks") and tabs.get_tab_title(main.LAB_TAB).begins_with("Lab · "), "the tab shows what's running and the time left")
+	game.finish_research()
+	main._refresh()
+	check(card._owned.text == "✓" and not card.affordable, "a done project is ticked")
+	main.free()
+	game.reset_state()

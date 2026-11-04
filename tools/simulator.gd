@@ -73,6 +73,7 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}) -> Dictiona
 			g.tap()
 		g.add_helper_moves(STEP)
 		g.update_flow(STEP)
+		g.update_research(STEP)
 		if not hand.is_empty():
 			hand_wait -= STEP
 			if hand_wait <= 0.0:
@@ -212,8 +213,12 @@ func _candidates(g: GameState) -> Array[Dictionary]:
 		if g.is_upgrade_available(def["id"]):
 			items.append({"kind": "upgrade", "id": def["id"]})
 	var next_method := g.get_next_method()
-	if not next_method.is_empty() and g.is_method_available(next_method["id"]):
+	if not next_method.is_empty() and g.is_method_available(next_method["id"]) and g.research.is_empty():
 		items.append({"kind": "method", "id": next_method["id"]})
+	if g.research.is_empty():  # the Lab (5.6): one project at a time
+		for def: Dictionary in Content.get_lab_projects():
+			if def["kind"] == "research" and g.is_research_visible(def["id"]):
+				items.append({"kind": "research", "id": def["id"]})
 	var next_puzzle := g.get_next_locked_puzzle()
 	if next_puzzle != "":
 		items.append({"kind": "puzzle", "id": next_puzzle})
@@ -239,6 +244,11 @@ func _income_gain(g: GameState, item: Dictionary, taps_per_sec: float, base: flo
 			g.method = id
 			var with_it := income(g, taps_per_sec)
 			g.method = current
+			return with_it - base
+		"research":
+			g.research_done[id] = true
+			var with_it := income(g, taps_per_sec)
+			g.research_done.erase(id)
 			return with_it - base
 		"puzzle":
 			var cached: Dictionary = _puzzle_gain_cache.get(id, {})
@@ -272,6 +282,8 @@ func _cost(g: GameState, item: Dictionary) -> float:
 			return float(Content.get_upgrade(item["id"])["cost"])
 		"method":
 			return float(Content.get_method(item["id"])["cost"])
+		"research":
+			return float(Content.get_lab_project(item["id"])["cost"])
 		"puzzle":
 			return g.get_puzzle_unlock_cost(item["id"])
 	return INF
@@ -285,6 +297,8 @@ func _buy(g: GameState, item: Dictionary) -> bool:
 			return g.buy_upgrade(item["id"])
 		"method":
 			return g.buy_method(item["id"])
+		"research":
+			return g.start_research(item["id"])
 		"puzzle":
 			return g.unlock_puzzle(item["id"])
 	return false
@@ -298,6 +312,8 @@ func _item_name(item: Dictionary) -> String:
 			return Content.get_upgrade(item["id"])["name"]
 		"method":
 			return Content.get_method(item["id"])["name"]
+		"research":
+			return Content.get_lab_project(item["id"])["name"]
 		"puzzle":
 			return Content.get_puzzle(item["id"])["name"]
 	return item["id"]

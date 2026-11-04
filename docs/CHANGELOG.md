@@ -2,6 +2,34 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-04 — Task 5.6: the Algorithm Lab (save v9)
+- **Real-time research, also while the game is closed** (capped at 8 h like offline progress). One project at a time
+  (`Content.LAB["slots"]`; the trophy tree can add more later). Paid when started; the effect counts when it finishes.
+- **Projects** (`Content.get_lab_projects()`): **every method after the Beginner Method** is now research ("learning a
+  method = researching it": CFOP 45 s, Roux 4 min, ZZ 20 min, God's Number 1 h; `research_seconds` in METHODS), plus
+  `Content.LAB["projects"]`: **Finger Tricks** (taps ×2, 2 min), **2-look OLL** / **2-look PLL** (−10 % moves per solve each,
+  5 / 10 min), **Lookahead** (all moves ×1.25, 30 min, after Finger Tricks), **Full PLL** (−10 %, 1 h, after 2-look PLL),
+  **Full OLL** (−15 %, 3 h, after 2-look OLL). Effects use the upgrade effect types (they count in `_upgrade_mult`).
+- **Drill sets count as research (S.4 link):** learning 2-look OLL / 2-look PLL / Full PLL / Full OLL in the Solve Station
+  drills finishes that project at once, free.
+- **GameState:** `research` {id, left}, `research_done`, `start_research()`, `update_research()` (from `_process`, and for
+  time away in `apply_save_data`; the welcome-back report says what finished), `finish_research()` (tests/debug),
+  `is_research_done()`, `is_research_visible()`, `can_start_research()`, `get_research_progress()`, signals
+  `research_started` / `research_finished`. **`buy_method()` now starts the method's research**; `purchased("method")`
+  still fires when it's learned, so the showcase, news and tiers didn't change. **Save v9** (`"lab"`), v8 → v9 migration
+  (methods already learned stay learned). Planned: **v10 prestige (6.2), v11 achievements (7.1)**.
+- **UI:** a **Lab** tab (status line + bar, one card per visible project: time, cost, "Researching · 3m 42s left", ✓ when
+  done; the tab title shows "Lab · 3:42" or "Lab (2)"). Method tiles in Upgrades show "Researching 0:32" and their research
+  time in the tooltip. News line + sting when research finishes. The simulator researches too (it picks Lab projects like
+  upgrades and ticks the Lab).
+- **Balance:** the longest first-hour wait fell to 11:58 (was 25:40); active speedup ×2.61. Robot/4×4/5×5 are still early
+  (7:07 / 8:11 / 11:08): **5.8**.
+- Tests (3475 checks, `All good.`): a project online (paid at start, one slot, no effect until done, half way, done,
+  effect, not twice, requirements), CFOP as research, drill sets finishing projects free; save/load mid-research (v9),
+  finishing offline + the report, the 8 h cap, done projects saved, v8 → v9 keeps methods; the Lab tab (start, status,
+  tab title, ✓). Screenshot tool `LAB=1`; shot in `docs/screenshots/5.6-lab/`.
+- **Next: 5.7b "pick one of two" choices** (5.7 Helper Promotion only if 5.8 needs it), then **5.8 rebalance**.
+
 ## 2026-11-04 — Task 5.5: six more helpers (12 in all)
 - **New helpers past the Speedcubing Lab** (`Content.BUILDINGS`, each ~16× the cost of the last and a bit less efficient
   per Solve): **Pro Team** 30M (180K moves/s), **Cubing Federation** 500M (1.8M), **Cube Museum** 8B (17M), **AI Solver**

@@ -6,6 +6,7 @@ const UI_REFRESH_INTERVAL := 0.1
 const MAX_VISUAL_MOVES_PER_SECOND := 12.0
 const TAP_ACTION := &"tap"  ## Space / Enter (project.godot input map); held keys don't repeat
 const UPGRADES_TAB := 1
+const LAB_TAB := 3
 const SOLVE_POP_INTERVAL := 0.25   ## at most ~4 "+X Solves" pops a second, however many solves happen
 const BURST_INTERVAL := 0.5
 const COUNTER_EASE := 12.0         ## how fast the Solves counter catches up (higher = faster)
@@ -19,6 +20,9 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var move_ticker: RichTextLabel = %MoveTicker
 @onready var stage_chips: HBoxContainer = %StageChips
 @onready var news_list: VBoxContainer = %NewsList
+@onready var lab_list: VBoxContainer = %LabList
+@onready var lab_status: Label = %LabStatus
+@onready var lab_progress: ProgressBar = %LabProgress
 @onready var buff_label: Label = %BuffLabel
 @onready var flow_label: Label = %FlowLabel
 @onready var golden_button: Button = %GoldenButton
@@ -48,6 +52,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 var _helper_cards: Dictionary = {}    ## building id -> ShopCard
 var _upgrade_tiles: Dictionary = {}   ## upgrade id -> UpgradeTile
 var _method_tiles: Dictionary = {}    ## method id -> UpgradeTile (every method after the Beginner Method)
+var _lab_cards: Dictionary = {}       ## Lab project id -> ShopCard (task 5.6)
 var _refresh_timer := 0.0
 var _visual_move_timer := 0.0
 var _shown_solves := 0.0          ## what the counter shows; eases towards Game.solves
@@ -159,6 +164,11 @@ func _build_shop() -> void:
 		tile.pressed.connect(Game.buy_upgrade.bind(def["id"]))
 		upgrade_list.add_child(tile)
 		_upgrade_tiles[def["id"]] = tile
+	for def: Dictionary in Content.get_lab_projects():
+		var card: ShopCard = ShopCardScene.instantiate()
+		card.pressed.connect(_on_lab_card_pressed.bind(String(def["id"])))
+		lab_list.add_child(card)
+		_lab_cards[def["id"]] = card
 	for def: Dictionary in Content.METHODS.slice(1):  # everyone starts with the Beginner Method
 		var tile: UpgradeTile = UpgradeTileScene.instantiate()
 		tile.pressed.connect(Game.buy_method.bind(def["id"]))
@@ -198,6 +208,7 @@ func _refresh() -> void:
 
 	_refresh_helper_cards()
 	_refresh_upgrade_tiles()
+	_refresh_lab()
 	_refresh_puzzle_row()
 	split_panel.refresh()
 
@@ -273,18 +284,23 @@ func _refresh_upgrade_tiles() -> void:
 		var id: String = def["id"]
 		var tile: UpgradeTile = _method_tiles[id]
 		var learned := Game.is_method_learned(id)
-		tile.visible = learned or Game.is_method_available(id)
+		var researching := String(Game.research.get("id", "")) == "method_" + id
+		tile.visible = learned or researching or Game.is_method_available(id)
 		if not tile.visible:
 			continue
 		any_visible = true
 		var cost := float(def["cost"])
-		var can_buy := not learned and Game.solves >= cost
+		var can_buy := not learned and not researching and Game.research.is_empty() and Game.solves >= cost
 		if can_buy:
 			affordable_count += 1
+		var cost_text := Num.format(cost)
+		if researching:  # learning a method is Lab research (5.6)
+			cost_text = "Researching %s" % Num.solve_time(float(Game.research["left"])).get_slice(".", 0)
 		tile.set_view({
 			"icon": Content.icon(def["icon"]), "title": def["name"],
-			"description": "%s\n%s" % [def["description"], _method_effect_text(def, learned)],
-			"cost": Num.format(cost), "affordable": can_buy, "owned": learned,
+			"description": "%s\n%s\nLearning it takes %s of research in the Lab." % [def["description"], _method_effect_text(def, learned),
+					Num.format_duration(float(def.get("research_seconds", 0.0)))],
+			"cost": cost_text, "affordable": can_buy, "owned": learned,
 		})
 		(owned_order if learned else order).append(tile)
 	for def: Dictionary in Content.get_upgrades():
@@ -718,6 +734,11 @@ func _connect_news() -> void:
 	Game.solves_milestone.connect(news.on_solves_milestone)
 	Game.hand_solve_pb.connect(news.on_hand_pb)
 	Game.hand_tier_reached.connect(news.on_hand_tier)
+	Game.research_finished.connect(func(id: String) -> void:
+		var project := Content.get_lab_project(id)
+		news.push("lab", "Research done: %s." % project.get("name", id))
+		Audio.play_unlock())
+	Game.research_started.connect(func(_id: String) -> void: _refresh())
 	Game.daily_rewarded.connect(func(amount: float) -> void:
 		news.push("daily", "Daily scramble done! +%s Solves. A new one comes tomorrow." % Num.format(amount)))
 	Game.drill_set_learned.connect(func(set_id: String) -> void:
@@ -800,6 +821,65 @@ func _refresh_golden() -> void:
 			if def["id"] == Game.buff["id"]:
 				buff_name = def["name"]
 		buff_label.text = "%s ×%s  ·  %ds" % [buff_name, Num.format(float(Game.buff["mult"])), ceili(float(Game.buff["left"]))]
+
+
+# --- Algorithm Lab (task 5.6) ---------------------------------------------------------
+
+## The Lab tab: the running project with its bar, then every project you can see (done ones last, ticked). The tab title
+## shows the time left ("Lab · 2:13") or how many can start now ("Lab (2)").
+func _refresh_lab() -> void:
+	var running := Game.get_research_progress()
+	if running.is_empty():
+		lab_status.text = "The Lab is free: start a project. Research keeps going while the game is closed."
+		lab_progress.value = 0.0
+	else:
+		lab_status.text = "Researching %s  ·  %s left" % [running["name"], Num.format_duration(float(running["left"]))]
+		lab_progress.value = float(running["fraction"])
+	var startable := 0
+	var order: Array[ShopCard] = []
+	var done_order: Array[ShopCard] = []
+	for def: Dictionary in Content.get_lab_projects():
+		var id: String = def["id"]
+		var card: ShopCard = _lab_cards[id]
+		var done := Game.is_research_done(id)
+		var is_running: bool = String(running.get("id", "")) == id
+		card.visible = done or is_running or Game.is_research_visible(id)
+		if not card.visible:
+			continue
+		var can_start := Game.can_start_research(id)
+		if can_start:
+			startable += 1
+		var line2 := "Takes %s" % Num.format_duration(float(def["seconds"]))
+		if is_running:
+			line2 = "Researching  ·  %s left" % Num.format_duration(float(running["left"]))
+		elif done:
+			line2 = "Done"
+		elif String(def.get("drill_set", "")) != "":
+			line2 += "  ·  or learn %s in the Solve Station drills" % Content.get_drill_set(def["drill_set"]).get("name", "")
+		card.set_view({
+			"icon": Content.icon(def["icon"]), "title": def["name"], "line1": def["description"], "line2": line2,
+			"owned": "✓" if done else "", "affordable": can_start,
+			"cost": "" if done or is_running else "%s Solves" % Num.format(float(def["cost"])),
+		})
+		(done_order if done else order).append(card)
+	order.append_array(done_order)
+	for index in order.size():
+		lab_list.move_child(order[index], index)
+	var title := "Lab"
+	if not running.is_empty():
+		title = "Lab · %s" % Num.solve_time(float(running["left"])).get_slice(".", 0)
+	elif startable > 0:
+		title = "Lab (%d)" % startable
+	tabs.set_tab_title(LAB_TAB, title)
+
+
+func _on_lab_card_pressed(id: String) -> void:
+	var def := Content.get_lab_project(id)
+	if def.get("kind", "") == "method":
+		Game.buy_method(def["method"])
+	else:
+		Game.start_research(id)
+	_refresh()
 
 
 func _on_state_reset() -> void:

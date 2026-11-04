@@ -22,14 +22,16 @@ signal flow_started(mult: float, seconds: float)  ## a hand solve started (or re
 signal drill_case_learned(case_id: String)  ## a drill case reached its clean solves (S.4)
 signal drill_set_learned(set_id: String)    ## every case of a drill set is learned
 signal daily_rewarded(amount: float)  ## the first daily scramble finished today paid its reward (S.5)
+signal research_started(project_id: String)   ## Algorithm Lab (5.6)
+signal research_finished(project_id: String)  ## a project's effect counts from now (methods also emit purchased("method"))
 signal golden_spawned
 signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 8  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 9  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                          ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
-                         ## v8 (S.5): daily scramble results + reward
+                         ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0
 const MIN_OFFLINE_SECONDS := 10.0
@@ -79,6 +81,8 @@ var buff: Dictionary = {}                  ## the active buff: {id, mult, left} 
 var golden_rng := RandomNumberGenerator.new()
 var flow: Dictionary = {}                  ## Flow from hand solves (S.3): {mult, left, tier}; not saved (ends on quit)
 var drills: Dictionary = {}                ## algorithm id -> {best, clean, count} (S.4, saved)
+var research: Dictionary = {}              ## the Lab project being researched: {id, left} (5.6, saved), or {}
+var research_done: Dictionary = {}         ## finished non-method Lab projects (methods are tracked by `method`)
 var daily: Dictionary = {}                 ## S.5 (saved): {date, rewarded, times {puzzle: s}, fmc {puzzle: moves}, fmc_ever {puzzle: moves}}
 var daily_now := -1.0                      ## tests: the unix time "now" for the daily (-1 = the real clock)
 var _mult_cache: Dictionary = {}           ## _upgrade_mult results for the current set of owned upgrades
@@ -95,6 +99,7 @@ func _init() -> void:
 		check_helper_times()
 		check_time_tiers())
 	focus_changed.connect(func(_id: String) -> void: check_helper_times(false))
+	drill_set_learned.connect(_on_drill_set_learned_for_lab)
 
 
 func _ready() -> void:
@@ -107,6 +112,7 @@ func _process(delta: float) -> void:
 	add_helper_moves(delta)
 	update_golden(delta)
 	update_flow(delta)
+	update_research(delta)
 	if persistence_enabled:
 		_autosave_timer += delta
 		if _autosave_timer >= AUTOSAVE_INTERVAL:
@@ -374,19 +380,16 @@ func is_method_learned(id: String) -> bool:
 ## Only the next method in the chain can be learned, and it shows up (like an upgrade) at half its cost in lifetime Solves.
 func is_method_available(id: String) -> bool:
 	var next := get_next_method()
-	return not next.is_empty() and next["id"] == id and total_solves >= float(next["cost"]) * 0.5
+	return not next.is_empty() and next["id"] == id and total_solves >= float(next["cost"]) * 0.5 \
+			and String(research.get("id", "")) != "method_" + id
 
 
+## Learning a method is Lab research (5.6): this pays for it and starts it; the method counts once the research is done
+## (then purchased("method", id) fires, as it always has).
 func buy_method(id: String) -> bool:
 	if not is_method_available(id):
 		return false
-	var cost := float(Content.get_method(id)["cost"])
-	if solves < cost:
-		return false
-	solves -= cost
-	method = id
-	purchased.emit("method", id)
-	return true
+	return start_research("method_" + id)
 
 
 ## Moves-per-solve multiplier from every learned method (before the puzzle floor).
@@ -1256,9 +1259,9 @@ func _upgrade_requirements_met(def: Dictionary) -> bool:
 
 ## Synergies on a helper (5.3): ×(1 + value × copies of the source) for each owned synergy upgrade that targets it.
 func _synergy_mult(target: String) -> float:
-	if upgrades.size() != _mult_cache_owned:
+	if upgrades.size() + 1000 * research_done.size() != _mult_cache_owned:
 		_mult_cache.clear()
-		_mult_cache_owned = upgrades.size()
+		_mult_cache_owned = upgrades.size() + 1000 * research_done.size()
 	var key := "synergy_defs|" + target
 	if not _mult_cache.has(key):  # which owned synergies target this helper (only changes with the owned set)
 		var found: Array = []
@@ -1273,13 +1276,105 @@ func _synergy_mult(target: String) -> float:
 	return mult
 
 
+# --- Algorithm Lab (task 5.6) ---------------------------------------------------------
+
+## True for a finished project (a method project: that method is learned).
+func is_research_done(id: String) -> bool:
+	var def := Content.get_lab_project(id)
+	if def.is_empty():
+		return false
+	if def["kind"] == "method":
+		return is_method_learned(def["method"])
+	return research_done.has(id)
+
+
+## Can this project be started now: not done, not running, the slot free, its requirements done, in reach (half its cost
+## in lifetime Solves, like upgrades) and affordable.
+func can_start_research(id: String) -> bool:
+	return is_research_visible(id) and research.is_empty() and solves >= float(Content.get_lab_project(id)["cost"])
+
+
+## Shown in the Lab: not done, requirements done, and half its cost earned (lifetime), like an upgrade.
+func is_research_visible(id: String) -> bool:
+	var def := Content.get_lab_project(id)
+	if def.is_empty() or is_research_done(id) or String(research.get("id", "")) == id:
+		return false
+	for need: String in def.get("requires", []):
+		if not is_research_done(need):
+			return false
+	return total_solves >= float(def["cost"]) * 0.5
+
+
+## Pays for a project and starts it. False if it can't start (see can_start_research).
+func start_research(id: String) -> bool:
+	if not can_start_research(id):
+		return false
+	var def := Content.get_lab_project(id)
+	solves -= float(def["cost"])
+	research = {"id": id, "left": float(def["seconds"])}
+	research_started.emit(id)
+	if float(def["seconds"]) <= 0.0:
+		update_research(0.0001)
+	return true
+
+
+## Runs the Lab's clock (from _process, and for time away: apply_save_data, capped like offline progress).
+func update_research(delta: float) -> void:
+	if research.is_empty() or delta <= 0.0:
+		return
+	research["left"] = float(research["left"]) - delta
+	if float(research["left"]) <= 0.0:
+		_complete_research(String(research["id"]))
+
+
+## Finishes the running project at once (tests and debugging).
+func finish_research() -> void:
+	if not research.is_empty():
+		_complete_research(String(research["id"]))
+
+
+## {id, name, left, total, fraction} for the running project, or {}.
+func get_research_progress() -> Dictionary:
+	if research.is_empty():
+		return {}
+	var def := Content.get_lab_project(String(research["id"]))
+	var total := maxf(0.001, float(def.get("seconds", 1.0)))
+	return {"id": research["id"], "name": def.get("name", ""), "left": maxf(0.0, float(research["left"])), "total": total,
+			"fraction": clampf(1.0 - float(research["left"]) / total, 0.0, 1.0)}
+
+
+func _complete_research(id: String) -> void:
+	var def := Content.get_lab_project(id)
+	if String(research.get("id", "")) == id:
+		research = {}
+	if def.is_empty():
+		return
+	if def["kind"] == "method":
+		if Content.get_method_index(def["method"]) > Content.get_method_index(method):
+			method = def["method"]
+		research_finished.emit(id)
+		purchased.emit("method", def["method"])
+	else:
+		research_done[id] = true
+		research_finished.emit(id)
+		check_helper_times()
+		check_time_tiers()
+
+
+## Learning a drill set in the Solve Station finishes its Lab project for free ("your own practice counts", S.4).
+func _on_drill_set_learned_for_lab(set_id: String) -> void:
+	for def in Content.get_lab_projects():
+		if String(def.get("drill_set", "")) == set_id and not is_research_done(def["id"]):
+			_complete_research(def["id"])
+
+
 ## Product of every owned upgrade's effect of this type (and target). Cached: with ~50 upgrades (5.2) this is called
 ## thousands of times a second by the balance bot. The cache is dropped whenever the number of owned upgrades changes
 ## (buying, a reset, a load, or the bot trying one on), which is the only way the set changes.
 func _upgrade_mult(effect_type: String, target: String = "") -> float:
-	if upgrades.size() != _mult_cache_owned:
+	if upgrades.size() + 1000 * research_done.size() != _mult_cache_owned:
 		_mult_cache.clear()
-		_mult_cache_owned = upgrades.size()
+		_mult_cache_owned = upgrades.size() + 1000 * research_done.size()
 	var key := effect_type + "|" + target
 	if _mult_cache.has(key):
 		return _mult_cache[key]
@@ -1294,6 +1389,11 @@ func _upgrade_mult(effect_type: String, target: String = "") -> float:
 		if target != "" and effect.get("target", "") != target:
 			continue
 		mult *= float(effect["value"])
+	for id: String in research_done:  # finished Lab projects (5.6) count like owned upgrades
+		var lab_effect: Dictionary = Content.get_lab_project(id).get("effect", {})
+		if lab_effect.get("type", "") != effect_type or (target != "" and lab_effect.get("target", "") != target):
+			continue
+		mult *= float(lab_effect["value"])
 	_mult_cache[key] = mult
 	return mult
 
@@ -1332,6 +1432,8 @@ func reset_state() -> void:
 	flow = {}
 	drills.clear()
 	daily = {}
+	research = {}
+	research_done.clear()
 
 
 func get_save_data() -> Dictionary:
@@ -1355,6 +1457,7 @@ func get_save_data() -> Dictionary:
 		"golden": {"next": golden_next, "buff": buff.duplicate()},
 		"drills": drills.duplicate(true),
 		"daily": daily.duplicate(true),
+		"lab": {"current": research.duplicate(), "done": research_done.keys()},
 	}
 
 
@@ -1504,6 +1607,16 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		drills[id] = {"best": best if best > 0.0 else INF, "clean": maxi(0, int(saved.get("clean", 0))),
 				"count": maxi(0, int(saved.get("count", 0)))}
 	daily = _clean_daily(data.get("daily", {}))
+	research = {}
+	research_done.clear()
+	var saved_lab: Dictionary = data.get("lab", {})
+	for id: Variant in saved_lab.get("done", []):
+		var project := Content.get_lab_project(str(id))
+		if not project.is_empty() and project["kind"] == "research":
+			research_done[str(id)] = true
+	var saved_current: Dictionary = saved_lab.get("current", {})
+	if not Content.get_lab_project(String(saved_current.get("id", ""))).is_empty() and not is_research_done(String(saved_current["id"])):
+		research = {"id": String(saved_current["id"]), "left": maxf(0.0, float(saved_current.get("left", 0.0)))}
 	var saved_golden: Dictionary = data.get("golden", {})
 	golden_next = clampf(float(saved_golden.get("next", golden_next)), 0.0, float(Content.GOLDEN["spawn_max"]))
 	golden_glow_left = 0.0
@@ -1525,8 +1638,12 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		_offline_catch_up = true  # a buff pauses while the game is closed
 		add_helper_moves(elapsed)
 		_offline_catch_up = false
-		if total_solves > before:
+		var running := String(research.get("id", ""))
+		update_research(elapsed)  # the Lab kept working too (capped like the rest)
+		if total_solves > before or (running != "" and research.is_empty()):
 			offline_report = {"seconds": elapsed, "solves": total_solves - before}
+			if running != "" and research.is_empty():
+				offline_report["research"] = Content.get_lab_project(running).get("name", "")
 
 
 ## Upgrades old save formats. Bump SAVE_VERSION and add a step here whenever
@@ -1588,6 +1705,11 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("daily"):
 			data["daily"] = {}
 		data["version"] = 8
+	if int(data["version"]) < 9:
+		# v9 adds the Algorithm Lab: nothing researched yet (methods already learned stay learned).
+		if not data.has("lab"):
+			data["lab"] = {"current": {}, "done": []}
+		data["version"] = 9
 	return data
 
 

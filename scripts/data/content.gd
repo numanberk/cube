@@ -270,7 +270,8 @@ const UPGRADES := [
 ## with the first (cost 0). Each learned method multiplies moves per solve on every puzzle by its `mult`, down to that
 ## puzzle's floor (`min_moves_per_solve` in PUZZLES), so no puzzle ever becomes trivial.
 ## (Until save v4 CFOP and Roux were ordinary upgrades with the ids "cfop" and "roux"; GameState._migrate converts them.)
-##   id, icon, name, description, cost (Solves), mult (moves per solve multiplier, < 1 is good)
+##   id, icon, name, description, cost (Solves), mult (moves per solve multiplier, < 1 is good), research_seconds (5.6:
+##   learning a method is research in the Algorithm Lab; it takes this long once paid for)
 const METHODS: Array[Dictionary] = [
 	{
 		"id": "beginner",
@@ -287,6 +288,7 @@ const METHODS: Array[Dictionary] = [
 		"description": "Cross, F2L, OLL, PLL. Solves take 30% fewer moves.",
 		"cost": 200,
 		"mult": 0.7,
+		"research_seconds": 45.0,
 	},
 	{
 		"id": "roux",
@@ -295,6 +297,7 @@ const METHODS: Array[Dictionary] = [
 		"description": "Build blocks, finish with the middle slice. Solves take another 30% fewer moves.",
 		"cost": 25000,
 		"mult": 0.7,
+		"research_seconds": 240.0,
 	},
 	{
 		"id": "zz",
@@ -303,6 +306,7 @@ const METHODS: Array[Dictionary] = [
 		"description": "Orient the edges first, then never rotate. Solves take another 30% fewer moves.",
 		"cost": 5.0e7,
 		"mult": 0.7,
+		"research_seconds": 1200.0,
 	},
 	{
 		"id": "gods_number",
@@ -311,6 +315,7 @@ const METHODS: Array[Dictionary] = [
 		"description": "Every scramble solved in the fewest moves there are. Solves take another 30% fewer moves.",
 		"cost": 3.0e10,
 		"mult": 0.7,
+		"research_seconds": 3600.0,
 	},
 ]
 
@@ -330,6 +335,56 @@ const PUZZLES := [
 	{"id": "7x7", "name": "7×7", "moves_per_solve": 300.0, "min_moves_per_solve": 60.0, "scramble_length": 100, "solve_value": 200.0, "unlock_cost": 5e8, "requires_prestige": true},
 	{"id": "megaminx", "name": "Megaminx", "moves_per_solve": 700.0, "min_moves_per_solve": 140.0, "scramble_length": 77, "solve_value": 800.0, "unlock_cost": 2e11, "requires_prestige": true},
 ]
+
+## Algorithm Lab (task 5.6): research that runs in real time, also while the game is closed (capped like offline progress).
+## One project at a time (`slots`; the trophy tree can add more). Paid when started, its effect counts when it finishes.
+## Every method after the Beginner Method is a project too (see get_lab_projects(); learning a method = researching it).
+## A project with a `drill_set` is done for free the moment the player learns that set in the Solve Station drills (S.4).
+##   id, icon, name, description, cost (Solves), seconds, effect (an upgrade effect: Content.EFFECT_TYPES), requires (ids)
+const LAB := {
+	"slots": 1,
+	"projects": [
+		{"id": "finger_tricks", "icon": "lube", "name": "Finger Tricks", "description": "Flick, push, regrip. Taps ×2.",
+			"cost": 500.0, "seconds": 120.0, "effect": {"type": "tap_mult", "value": 2.0}, "requires": []},
+		{"id": "two_look_oll", "icon": "cfop", "name": "2-look OLL", "description": "Orient the last layer in two steps. 10 % fewer moves per solve.",
+			"cost": 5000.0, "seconds": 300.0, "effect": {"type": "solve_moves_mult", "value": 0.9}, "requires": [], "drill_set": "2look_oll"},
+		{"id": "two_look_pll", "icon": "cfop", "name": "2-look PLL", "description": "Permute the last layer in two steps. 10 % fewer moves per solve.",
+			"cost": 20000.0, "seconds": 600.0, "effect": {"type": "solve_moves_mult", "value": 0.9}, "requires": [], "drill_set": "2look_pll"},
+		{"id": "lookahead", "icon": "cfop", "name": "Lookahead", "description": "Spot the next pair while solving this one. All moves ×1.25.",
+			"cost": 2.0e6, "seconds": 1800.0, "effect": {"type": "global_mult", "value": 1.25}, "requires": ["finger_tricks"]},
+		{"id": "full_pll", "icon": "cfop", "name": "Full PLL", "description": "All 21 PLLs: one look. 10 % fewer moves per solve.",
+			"cost": 5.0e7, "seconds": 3600.0, "effect": {"type": "solve_moves_mult", "value": 0.9}, "requires": ["two_look_pll"], "drill_set": "pll"},
+		{"id": "full_oll", "icon": "cfop", "name": "Full OLL", "description": "All 57 OLLs: one look. 15 % fewer moves per solve.",
+			"cost": 2.0e9, "seconds": 10800.0, "effect": {"type": "solve_moves_mult", "value": 0.85}, "requires": ["two_look_oll"], "drill_set": "oll"},
+	],
+}
+
+static var _lab_projects: Array[Dictionary] = []
+
+
+## Every Lab project: one per method after the Beginner Method ("method_cfop", kind "method", requiring the previous one),
+## then LAB["projects"] (kind "research"). Built once.
+static func get_lab_projects() -> Array[Dictionary]:
+	if _lab_projects.is_empty():
+		var previous := ""
+		for def: Dictionary in METHODS.slice(1):
+			_lab_projects.append({"id": "method_" + def["id"], "kind": "method", "method": def["id"], "icon": def["icon"],
+					"name": def["name"], "description": def["description"], "cost": float(def["cost"]),
+					"seconds": float(def.get("research_seconds", 60.0)), "requires": [] if previous == "" else [previous]})
+			previous = "method_" + def["id"]
+		for def: Dictionary in LAB["projects"]:
+			var project: Dictionary = def.duplicate(true)
+			project["kind"] = "research"
+			_lab_projects.append(project)
+	return _lab_projects
+
+
+static func get_lab_project(id: String) -> Dictionary:
+	for def in get_lab_projects():
+		if def["id"] == id:
+			return def
+	return {}
+
 
 ## Algorithms (task R.1, shared with the drills in S.4): real speedcubing algorithms in WCA notation, for the staged
 ## solver (StagedSolver) that the main cube's showcase solve plays. Every one is checked by a test: it must keep the
