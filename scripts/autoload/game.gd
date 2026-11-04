@@ -809,7 +809,7 @@ func get_next_goal() -> Dictionary:
 	for def: Dictionary in Content.get_upgrades():
 		if upgrades.has(def["id"]) or not _upgrade_requirements_met(def) or is_upgrade_locked_out(def["id"]):
 			continue
-		candidates.append({"kind": "upgrade", "id": def["id"], "name": def["name"], "cost": float(def["cost"]), "more": false})
+		candidates.append({"kind": "upgrade", "id": def["id"], "name": _goal_name(def), "cost": float(def["cost"]), "more": false})
 	var next_method := get_next_method()
 	if not next_method.is_empty() and String(research.get("id", "")) != "method_" + String(next_method["id"]):
 		candidates.append({"kind": "method", "id": next_method["id"], "name": next_method["name"],
@@ -1238,7 +1238,7 @@ func get_goals(limit: int = 3) -> Array[Dictionary]:
 			add.call(cost_goal.call("helper", def["id"], def["name"], get_building_cost(def["id"]), true))
 	for def: Dictionary in Content.get_upgrades():
 		if not upgrades.has(def["id"]) and _upgrade_requirements_met(def) and not is_upgrade_locked_out(def["id"]):
-			add.call(cost_goal.call("upgrade", def["id"], def["name"], float(def["cost"]), false))
+			add.call(cost_goal.call("upgrade", def["id"], _goal_name(def), float(def["cost"]), false))
 	var next_method := get_next_method()
 	if not next_method.is_empty() and String(research.get("id", "")) != "method_" + String(next_method["id"]):
 		add.call(cost_goal.call("method", next_method["id"], next_method["name"], float(next_method["cost"]), false))
@@ -1267,6 +1267,14 @@ func get_goals(limit: int = 3) -> Array[Dictionary]:
 		goals.append(by_kind[kind])
 	goals.sort_custom(_goal_before)
 	return goals.slice(0, limit)
+
+
+## An upgrade's name in the goal strip; an open choice (5.7b) names both sides, so the strip doesn't pick for you.
+func _goal_name(def: Dictionary) -> String:
+	var names: Array[String] = [String(def["name"])]
+	for partner in get_choice_partners(def["id"]):
+		names.append(String(Content.get_upgrade(partner)["name"]))
+	return " or ".join(names)
 
 
 ## Soonest first; with the same (or no) estimate, Solves goals before mastery, then the cheapest.
@@ -1422,16 +1430,21 @@ func _upgrade_mult(effect_type: String, target: String = "") -> float:
 		var effect: Dictionary = def["effect"]
 		if effect["type"] != effect_type:
 			continue
-		if target != "" and effect.get("target", "") != target and not (effect.get("puzzles", []) as Array).has(target):
+		if not _effect_matches(effect, target):
 			continue
 		mult *= float(effect["value"])
 	for id: String in research_done:  # finished Lab projects (5.6) count like owned upgrades
 		var lab_effect: Dictionary = Content.get_lab_project(id).get("effect", {})
-		if lab_effect.get("type", "") != effect_type or (target != "" and lab_effect.get("target", "") != target):
+		if lab_effect.get("type", "") != effect_type or not _effect_matches(lab_effect, target):
 			continue
 		mult *= float(lab_effect["value"])
 	_mult_cache[key] = mult
 	return mult
+
+
+## Does an effect apply to this target ("" = any): its `target` (a helper) or one of its `puzzles` (5.7b specialists).
+func _effect_matches(effect: Dictionary, target: String) -> bool:
+	return target == "" or effect.get("target", "") == target or (effect.get("puzzles", []) as Array).has(target)
 
 
 # --- Save / load -------------------------------------------------------------

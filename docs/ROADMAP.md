@@ -265,7 +265,9 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       other for this run (e.g. "Speed practice: taps +50 %" *or* "Coaching: helpers +20 %"; "Big-cube specialist" *or*
       "Small-cube specialist"), so players make builds, not just purchases. A prestige resets the choice. As data
       (`choice_group`). *Done when:* tests cover the lock-out and the reset, and there's a screenshot of a pair.
-- [ ] **5.8 Rebalance (first hour):** ~40 upgrades in total.
+- [ ] **5.8 Rebalance (first hour):** ~40 upgrades in total. Note: the greedy bot values only today's income, so it
+      never picks Deliberate Practice (mastery XP) and only values Big-Cube Specialist once it owns a big cube; check
+      the other side of each pair by hand (or force it in a sim run) so the balance isn't tuned to one build.
       *Done when:* the "something new every 1–3 min", Robot, 4×4 and 5×5 pacing tests pass for real.
 
 ## Phase 6 — Prestige: World Championship
@@ -276,7 +278,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       upgrades, puzzles and methods. 7×7 and Megaminx become unlockable after the first championship.
       *Done when:* tests check what resets and what stays, and there's a v9 → v10 migration test. (Save v6 is S.6's
       Golden Scramble, v7 S.4's drills, v8 S.5's daily, v9 5.6's Lab — decide whether research survives a prestige; a running buff should survive prestige or end, decide when building it;
-      drill records and hand-solve records stay.)
+      drill records and hand-solve records stay; choice pairs (5.7b) reopen, with a test.)
 - [ ] **6.3 Trophy perk tree (PR):** permanent perks as data, arranged in 4 branches: Practice (start with 3×3, +offline cap),
       Team (start with 10 Friends, helper boosts), Competition (unlocks Competitions 8.3, medal bonuses) and Automation
       (unlocks 6.3b). As in Idle Skilling, **the first node of each branch unlocks a system**. Nodes need their parent.
@@ -284,6 +286,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
 - [ ] **6.3b Auto-buyers and auto-Compete (PR):** toggles bought in the Automation branch: auto-buy the cheapest helper,
       auto-buy upgrades, auto-unlock the next puzzle, and auto-Compete when the trophy gain reaches a set amount.
       The logic is in `GameState` (checked once a second); the toggles live in a small Automation panel.
+      Auto-buy upgrades **skips choice pairs** (`choice_group`, 5.7b): picking a side stays the player's decision.
       *Done when:* tests cover each auto-buyer, auto-Compete's threshold, and that nothing runs before it's bought.
 - [ ] **6.4 Tune prestige (D6: ~90 min):**
       *Done when:* the sim's first prestige lands at 80–100 min, and the second run reaches the same point in ≤ 45 min, as real pacing tests.

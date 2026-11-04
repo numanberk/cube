@@ -60,8 +60,9 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}) -> Dictiona
 	var choice_groups := {}
 	for def: Dictionary in Content.get_upgrades():
 		if def.has("choice_group"):
+			if choice_groups.has(def["choice_group"]):
+				item_count -= 1  # only one upgrade of each choice group (5.7b) can be bought
 			choice_groups[def["choice_group"]] = true
-	item_count -= choice_groups.size()  # only one side of each choice (5.7b) can be bought
 	var learned_method := g.method
 
 	var t := 0.0

@@ -17,10 +17,17 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   Screenshot option `PICK=<id>`; shots in `docs/screenshots/5.7b-choices/`.
 - **Simulator:** picks greedily like any upgrade (it takes Speed Practice, Small-Cube Specialist and Prize Hunting);
   "everything bought" counts one side per pair.
-- **Balance:** a bit faster overall (Robot 7:11, 4×4 8:36, 5×5 10:19, active ×2.69). The longest first-hour wait reads
+- **Balance:** a bit faster overall (Robot 7:11, 4×4 8:15, 5×5 10:39, active ×2.67; the bot still takes Small-Cube Specialist, at 9:12). The longest first-hour wait reads
   19:41 now (it was 11:58 only because the old 36-min gap was cut off at 1:00:00): the late first hour is thin. **5.8**.
 - Tests: pair data (two members, same cost, real puzzles), lock-out, effects, goals skip the locked side, save/load,
   damaged save, a new run reopens the choice; tiles (badge, tooltip, picked/not picked, order).
+- **Review fixes (diff-reviewer via a general-purpose agent):** the specialists cost 1M (after the 4×4, so it can be
+  compared); an open choice's goal names both sides ("Speed Practice or Efficient Solving") so the strip doesn't pick;
+  `_effect_matches()` shared by upgrades and Lab projects; a content comment: never add a shipped upgrade to a group
+  without a migration; ROADMAP notes for 6.2 (choices reopen, test), 6.3b (auto-buy skips choice pairs) and 5.8 (the
+  greedy bot never values Deliberate Practice, check the other builds); more tests (Small-Cube ×2 incl. taps, tab
+  count, locked-out tooltip, goal names). Seen, not changed: the never-tapping bot buys no upgrades at all (was so
+  before) — look at it in 5.8.
 - **Next: 5.8 rebalance** (5.7 Helper Promotion only if 5.8 shows the first hour needs more decisions), then Phase 6.
 
 ## 2026-11-04 — Task 5.6: the Algorithm Lab (save v9)

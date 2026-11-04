@@ -268,6 +268,8 @@ const UPGRADES := [
 	},
 	# Choices (task 5.7b): upgrades with the same `choice_group` are a pair. Buying one locks the other for this run
 	# (a championship, 6.2, resets upgrades and so the choice), so players make builds, not just purchases.
+	# Never put an upgrade that has already shipped into a group without a save migration (or refund): a save owning
+	# both sides keeps only the first on load. The specialists cost more than the 4×4 so it's there to compare.
 	{
 		"id": "speed_practice",
 		"icon": "speed_practice",
@@ -291,7 +293,7 @@ const UPGRADES := [
 		"icon": "small_cubes",
 		"name": "Small-Cube Specialist",
 		"description": "Your team trains on 2×2 and 3×3: all moves on them ×2.",
-		"cost": 300000,
+		"cost": 1000000,
 		"effect": {"type": "puzzle_mult", "puzzles": ["2x2", "3x3"], "value": 2.0},
 		"choice_group": "specialist",
 	},
@@ -300,7 +302,7 @@ const UPGRADES := [
 		"icon": "big_cubes",
 		"name": "Big-Cube Specialist",
 		"description": "Your team trains on big cubes: all moves on 4×4 and bigger ×3.",
-		"cost": 300000,
+		"cost": 1000000,
 		"effect": {"type": "puzzle_mult", "puzzles": ["4x4", "5x5", "7x7", "megaminx"], "value": 3.0},
 		"choice_group": "specialist",
 	},

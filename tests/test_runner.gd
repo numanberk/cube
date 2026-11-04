@@ -3433,6 +3433,8 @@ func test_choices() -> void:
 	g.cheat_add_solves(1e9)
 	check(g.is_upgrade_available("speed_practice") and g.is_upgrade_available("efficient_solving"), "both sides of a choice are on offer")
 	check(g.get_choice_partners("speed_practice") == ["efficient_solving"] and g.get_choice_partners("lube").is_empty(), "partners")
+	check(g._goal_name(Content.get_upgrade("efficient_solving")) == "Efficient Solving or Speed Practice"
+			and g._goal_name(Content.get_upgrade("lube")) == "Cube Lube", "goal names")
 	var taps := g.get_tap_moves()
 	check(g.buy_upgrade("speed_practice") and is_equal_approx(g.get_tap_moves(), taps * 3.0), "Speed Practice: taps ×3")
 	check(g.get_choice_pick("practice") == "speed_practice", "it's the pick of its group")
@@ -3451,6 +3453,20 @@ func test_choices() -> void:
 	check(g.buy_upgrade("big_cubes") and is_equal_approx(g.get_puzzle_moves_mult("4x4"), big * 3.0)
 			and is_equal_approx(g.get_puzzle_moves_mult("3x3"), small), "Big-Cube Specialist: ×3 on 4×4, nothing on 3×3")
 	check(g.is_upgrade_locked_out("small_cubes"), "...and Small-Cube Specialist is locked out")
+	var other := new_game()
+	other.cheat_add_solves(1e9)
+	other._add_puzzle("4x4")
+	var small_taps := other.get_puzzle_moves_mult("3x3")
+	var big_other := other.get_puzzle_moves_mult("4x4")
+	var before := other.total_moves
+	other.tap()
+	var tap_before := other.total_moves - before
+	check(other.buy_upgrade("small_cubes") and is_equal_approx(other.get_puzzle_moves_mult("3x3"), small_taps * 2.0)
+			and is_equal_approx(other.get_puzzle_moves_mult("4x4"), big_other), "Small-Cube Specialist: ×2 on 3×3, nothing on 4×4")
+	before = other.total_moves
+	other.tap()  # the focused puzzle is the 2×2
+	check(is_equal_approx(other.total_moves - before, tap_before * 2.0), "...and it doubles taps on the 2×2 too")
+	other.free()
 	var xp := g.get_mastery_xp_per_solve("3x3")
 	check(g.buy_upgrade("mastery_focus") and is_equal_approx(g.get_mastery_xp_per_solve("3x3"), xp * 3.0), "Deliberate Practice: ×3 mastery XP")
 	# Saved and loaded with the run; a damaged save with both sides keeps only one.
@@ -3488,6 +3504,11 @@ func test_choice_tiles() -> void:
 	check(efficient.visible and efficient.locked_out and efficient.disabled and efficient._badge.text == "NOT PICKED",
 			"the other side stays visible, greyed out")
 	check(efficient.get_index() == speed.get_index() + 1, "next to its pick")
+	check(efficient._choice == "You picked Speed Practice this run. A championship lets you choose again.", "the other side's tooltip says what you picked")
+	var tabs: TabContainer = main.get_node("%Tabs")
+	game.solves = 0.0
+	main._refresh()
+	check(tabs.get_tab_title(main.UPGRADES_TAB) == "Upgrades", "a locked-out side never counts as affordable")
 	main.free()
 	game.reset_state()
 
