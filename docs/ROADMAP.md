@@ -137,10 +137,10 @@ If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do th
       Replaces the hand-written `cfop`/`roux` upgrades (migrate their ids).
       *Done when:* tests cover the floor and the old-id migration.
 ## Phase S — Solve Station: hands-on cubing (owner, 2026-11-03: do this next)
-The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is an almost
-professional speedcuber**. So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
+The owner: "it's just looking at the screen while it shuffles most of the time", and **the player is a keen speedcuber**
+(best ~30 s on a real 3×3, consistently under 1:00; first described as "almost professional"). So the game gets a real cubing side: you solve the puzzles yourself, with a timer,
 records and drills, and your real skill feeds the idle economy. Do S.1–S.6 before the rest of Phase 5 (5.2 onward).
-**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1–R.4 ✅** (readable main screen, below) → S.6 ✅ → S.3 (needs D13) → S.4, S.5,
+**Order (2026-11-03):** S.1 ✅ → S.2 ✅ → **R.1–R.4 ✅** (readable main screen, below) → S.6 ✅ → S.3 ✅ → S.4, S.5,
 S.7, S.8 → R.5, R.6. Then the rest of Phase 5.
 - [x] **S.1 Turn it yourself:** a Solve Station overlay (a "Solve" button) with its own 3D puzzle you turn with the keyboard,
       using **csTimer's virtual-cube layout** (I/K = R/R', J/F = U/U', H/G = F/F', D/E = L/L', S/L = D/D', W/O = B/B',
@@ -203,7 +203,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       stage on even cubes), so the showcase works on every cube. Megaminx stays on scramble + rewind (Phase 11).
       *Done when:* tests solve random scrambles on 4×4 and 5×5 with the stage goals checked, and the showcase holds the bench.
 
-- [ ] **S.3 Rewards [D13 = ~2–3×]:** hand solves pay into the idle game. Per-puzzle **time targets** as data (e.g. 3×3: 60/40/25/
+- [x] **S.3 Rewards [D13 = ~2–3×]:** hand solves pay into the idle game. Per-puzzle **time targets** as data (e.g. 3×3: 60/40/25/
       15/10 s, bronze → "WR pace"); reaching a tier for the first time gives a permanent bonus on that puzzle, every solve
       gives a short **Flow** buff (more moves for a few minutes, bigger for better tiers), PBs give mastery XP.
       The sim gets an "active" profile.

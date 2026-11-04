@@ -2,6 +2,36 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-04 — Task S.3: hand-solve rewards (D13 = 2–3×)
+- **The player's level** (owner): best ~30 s on a real 3×3, consistently under 1:00. That corrects the earlier "almost
+  professional" (PLAYER_RESEARCH, PLAN, ROADMAP updated). Targets are tuned for keyboard solving at that level.
+- **Time targets** (`Content.SOLVE_REWARDS`, per puzzle, Bronze → Silver → Gold → Platinum → Diamond → Master):
+  3×3 5:00 / 2:30 / 1:30 / 1:00 / 40 / 25 s; 2×2 90/45/25/15/10/6 s; 4×4 15:00 … 1:40; 5×5 25:00 … 3:30; 7×7 1:00:00 … 10:50;
+  Megaminx (no station keys yet) 30:00 … 4:00. Retune freely; it's data.
+- **Rewards** (all in GameState, from `record_hand_solve`; nothing for a DNF):
+  - **Flow**: every finished hand solve sets all moves ×1.5 (under every target) / 1.6 / 1.8 / **2.0 Gold** / 2.3 / 2.6 /
+    **3.0 Master** for max(2:00, 1.5 × the solve's time). A new solve replaces the old Flow. Not saved (ends on quit),
+    never counts offline. "Flow ×2 · 1:45" in the top bar (tooltip explains it). `flow`, `get_flow_mult()`, `update_flow()`.
+  - **Permanent tier bonus**: +5 % moves on a puzzle per tier its PB single has reached (Gold = +15 %, Master = +30 %),
+    derived from the records (so it survives save/load, no save change). Signal `hand_tier_reached` → news line
+    ("Your 3×3: Gold tier! +15 % moves on the 3×3 for good"). `get_hand_tier()`, `get_best_hand_tier()`, `get_hand_tier_mult()`.
+  - **Mastery XP**: a hand solve gives 10 idle solves' XP on that puzzle, ×5 for a PB single.
+- **Station:** the status line after a solve adds "· Platinum: Flow ×2.3 for 2:00 (· new tier: +20 % moves here for good)";
+  the records panel lists the targets with the reached ones ticked.
+- **Balance:** the simulator has an **active profile** (`run(taps, minutes, {"tier": 2})`: the tapping bot plus a hand solve
+  just inside Gold on its biggest cube, back to back, + 30 s overhead) and samples lifetime Solves every 5 s. New pacing
+  target **active_speedup** (type `speedup`): the active player reaches the tapping bot's 30-min lifetime Solves **2–3×
+  sooner** — today **×2.31** (13:00 vs 30:00). The raw lifetime ratio at 30 min is ×6.3 because the early economy
+  compounds (a 2× boost early pulls the whole timeline in), so progress speed is the D13 measure. BALANCE.md has the
+  active profile. `test_pacing_targets` now also runs it (~10 s more).
+- Screenshot tool: `FLOW=1`; the station's staged solves now use ~1:00 times (our player's pace). Shots:
+  `docs/screenshots/S.3-rewards/` (a Platinum solve with Flow, the main screen with Flow running).
+- Tests (2148 checks, `All good.`): tier boundaries and target data for every puzzle; Flow by tier, its length, ×2 on
+  moves, expiry, replacement by a slower solve, none for a DNF, the under-every-target Flow; mastery XP (×5 PB); the tier
+  bonus (+15 % Gold, +25 % Diamond, once each, only that puzzle); after a load no Flow but the bonus stays; never offline;
+  the station's targets line and reward text, and the top-bar Flow label.
+- **Next: S.4 algorithm drills** (PLL/OLL as data, shared with `Content.ALGORITHMS`; for this player start from 2-look).
+
 ## 2026-11-03 — Task S.6: Golden Scramble (save v6)
 - **Every 2–5 min a golden sticker glows on the main cube for 12 s** (the middle of the top face, pulsing amber/cream;
   unshaded so it's always bright), with a gold **"Golden Scramble! 9s"** button under the cube for any puzzle (also the

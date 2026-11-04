@@ -16,6 +16,7 @@
 #   KEYS=simple SOLVE=solving bash tools/screenshot.sh /tmp/shots mid    # Solve Station, simple keys -> mid_solvesolving_keyssimple.png
 #   NEWS=1 bash tools/screenshot.sh /tmp/shots mid         # a few news feed lines -> mid_news.png
 #   GOLDEN=glow bash tools/screenshot.sh /tmp/shots mid     # Golden Scramble: glow | case | buff -> mid_goldenglow.png
+#   FLOW=1 bash tools/screenshot.sh /tmp/shots mid          # Flow running after a Gold hand solve -> mid_flow.png
 #   bash tools/screenshot.sh /tmp/shots bench              # 7×7 at max speed, 600 frames per quality, logs frame times
 #
 # Presets live in tools/screenshot_presets.gd (fresh, mid, late, ...).
@@ -51,6 +52,7 @@ METHOD="${METHOD:-}"
 KEYS="${KEYS:-}"
 NEWS="${NEWS:-}"
 GOLDEN="${GOLDEN:-}"
+FLOW="${FLOW:-}"
 
 if [[ $# -gt 0 ]]; then
   PRESETS=("$@")
@@ -81,10 +83,10 @@ fi
 
 failed=0
 for preset in "${PRESETS[@]}"; do
-  out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}${POSE:+_$POSE}${GRAPHICS:+_$GRAPHICS}${TAB:+_tab$TAB}${JUICE:+_juice}${BUY:+_buy$BUY}${SETTINGS:+_settings}${SOLVE:+_solve$SOLVE}${SHOWCASE:+_showcase$SHOWCASE}${METHOD:+_$METHOD}${KEYS:+_keys$KEYS}${NEWS:+_news}${GOLDEN:+_golden$GOLDEN}.png"
+  out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}${POSE:+_$POSE}${GRAPHICS:+_$GRAPHICS}${TAB:+_tab$TAB}${JUICE:+_juice}${BUY:+_buy$BUY}${SETTINGS:+_settings}${SOLVE:+_solve$SOLVE}${SHOWCASE:+_showcase$SHOWCASE}${METHOD:+_$METHOD}${KEYS:+_keys$KEYS}${NEWS:+_news}${GOLDEN:+_golden$GOLDEN}${FLOW:+_flow}.png"
   rm -f "$out"
   "${RUN[@]}" "$GODOT" --path "$ROOT" --rendering-driver opengl3 --audio-driver Dummy --resolution "$SIZE" \
-    --windowed --position 0,0 res://tools/screenshot.tscn -- --preset "$preset" --out "$out" ${PUZZLE:+--puzzle "$PUZZLE"} ${POSE:+--pose "$POSE"} ${GRAPHICS:+--graphics "$GRAPHICS"} ${TAB:+--tab "$TAB"} ${JUICE:+--juice 1} ${BUY:+--buy "$BUY"} ${SETTINGS:+--settings 1} ${SOLVE:+--solve "$SOLVE"} ${SHOWCASE:+--showcase "$SHOWCASE"} ${METHOD:+--method "$METHOD"} ${KEYS:+--keys "$KEYS"} ${NEWS:+--news 1} ${GOLDEN:+--golden "$GOLDEN"} \
+    --windowed --position 0,0 res://tools/screenshot.tscn -- --preset "$preset" --out "$out" ${PUZZLE:+--puzzle "$PUZZLE"} ${POSE:+--pose "$POSE"} ${GRAPHICS:+--graphics "$GRAPHICS"} ${TAB:+--tab "$TAB"} ${JUICE:+--juice 1} ${BUY:+--buy "$BUY"} ${SETTINGS:+--settings 1} ${SOLVE:+--solve "$SOLVE"} ${SHOWCASE:+--showcase "$SHOWCASE"} ${METHOD:+--method "$METHOD"} ${KEYS:+--keys "$KEYS"} ${NEWS:+--news 1} ${GOLDEN:+--golden "$GOLDEN"} ${FLOW:+--flow 1} \
     >"$LOG" 2>&1 || true
   if [[ -f "$out" ]] && ! grep -qE "SCRIPT ERROR|Parse Error|ERROR:" "$LOG"; then
     grep "^Bench " "$LOG" || true

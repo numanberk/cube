@@ -18,6 +18,7 @@ const LIST_LENGTH := 50       ## times shown in the list (the newest)
 @onready var _records_title: Label = %RecordsTitle
 @onready var _bests_label: Label = %BestsLabel
 @onready var _current_label: Label = %CurrentLabel
+@onready var _targets_label: Label = %TargetsLabel
 @onready var _times_rows: VBoxContainer = %TimesRows
 @onready var _keys_help: Label = %KeysHelp
 @onready var _puzzle_picker: HBoxContainer = %PuzzlePicker
@@ -404,8 +405,8 @@ func _refresh_clock() -> void:
 			var result: Dictionary = session.results.back()
 			_timer_label.text = result_text(result)
 			_timer_label.theme_type_variation = &"TimerDone"
-			_status_label.text = "%s  %d moves  ·  %.2f TPS  ·  Enter: next scramble" % [
-				pb_text(last_info), int(result["moves"]), session.tps(now)]
+			_status_label.text = "%s  %d moves  ·  %.2f TPS%s  ·  Enter: next scramble" % [
+				pb_text(last_info), int(result["moves"]), session.tps(now), reward_text(last_info)]
 		_:
 			_timer_label.text = "0.00"
 			_status_label.text = " "
@@ -422,6 +423,7 @@ func _refresh_records() -> void:
 		var current: float = Game.get_current_average(id, size)
 		now_parts.append("ao%d %s" % [size, "—" if current < 0.0 else Num.solve_time(current)])
 	_bests_label.text = "PB   " + "  ·  ".join(best_parts)
+	_targets_label.text = targets_text(id)
 	_current_label.text = "Now  " + "  ·  ".join(now_parts)
 	for child in _times_rows.get_children():
 		_times_rows.remove_child(child)
@@ -470,6 +472,30 @@ func _row_button(text: String, variation: StringName) -> Button:
 
 static func _time_or_dash(seconds: float) -> String:
 	return "—" if is_inf(seconds) else Num.solve_time(seconds)
+
+
+## What a solve earned (S.3): "  ·  Gold: Flow ×2.0 for 2:15" (+ "  ·  new tier: +15 % moves on the 3×3 for good").
+static func reward_text(info: Dictionary) -> String:
+	if not info.has("flow_mult"):
+		return ""
+	var tier := int(info.get("tier", -1))
+	var text := "  ·  %s: Flow ×%s for %s" % [GameState.hand_tier_name(tier) if tier >= 0 else "Under every target",
+			Num.format(float(info["flow_mult"])), Num.solve_time(float(info["flow_seconds"])).get_slice(".", 0)]
+	if int(info.get("new_tier", -1)) >= 0:
+		var bonus := float(Content.SOLVE_REWARDS["tier_moves_bonus"]) * (int(info["new_tier"]) + 1) * 100.0
+		text += "  ·  new tier: +%d %% moves here for good" % roundi(bonus)
+	return text
+
+
+## The time targets for a puzzle, the ones its PB has reached ticked: "Targets  ✓ Bronze 5:00 · ✓ Silver 2:30 · Gold 1:30 ...".
+func targets_text(puzzle_id: String) -> String:
+	var targets: Array = (Content.SOLVE_REWARDS["targets"] as Dictionary).get(puzzle_id, [])
+	var reached: int = Game.get_best_hand_tier(puzzle_id)
+	var parts := PackedStringArray()
+	for i in targets.size():
+		parts.append("%s%s %s" % ["✓ " if i <= reached else "", GameState.hand_tier_name(i),
+				Num.solve_time(float(targets[i])).trim_suffix(".00")])
+	return "Targets   " + "  ·  ".join(parts)
 
 
 ## "Solved!" or the PBs the last solve set ("New PB single and ao5!").

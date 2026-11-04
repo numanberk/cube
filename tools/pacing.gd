@@ -14,10 +14,14 @@ extends RefCounted
 ##   max_gap       no wait longer than `max` seconds for a new item between `from` and `to` seconds
 ##   split_mix     at checkpoint `minute`, the bot's split uses 2+ puzzles and none above `max_share`
 ##   unsupported   the simulator can't measure it yet (`reason` says what's missing); always an expected failure
+##   speedup       how many times sooner `profile` reaches the lifetime Solves `baseline` has at `minute`, between `min`
+##                 and `max` (D13's "2–3×": the early economy compounds, so a raw Solves ratio would be far bigger)
 
 const TAPS_PER_SEC := 3.0  ## "Tapping" in PLAN §2
 const TAPPING_MINUTES := 120.0
 const IDLE_MINUTES := 10.0
+const ACTIVE_MINUTES := 30.0
+const ACTIVE_HAND := {"tier": 2}  ## the "active" profile: Gold-pace hand solves back to back (S.3)
 
 const TARGETS: Array[Dictionary] = [
 	{
@@ -81,6 +85,11 @@ const TARGETS: Array[Dictionary] = [
 		"expected_failure": "",
 	},
 	{
+		"id": "active_speedup", "text": "An active player (Gold-pace hand solves) gets there 2–3× sooner than the tapping bot (D13)",
+		"profile": "active", "type": "speedup", "baseline": "tapping", "minute": 30.0, "min": 2.0, "max": 3.0,
+		"expected_failure": "",
+	},
+	{
 		"id": "idle_progress", "text": "Never tapping still buys something within 5 min", "profile": "idle",
 		"type": "first_by", "kind": "", "max": 300.0,
 		"expected_failure": "With no taps there's no income at all. Needs a free first Friend or a trickle (5.8 or later).",
@@ -97,6 +106,8 @@ static func evaluate(results: Dictionary) -> Array[Dictionary]:
 		var outcome := {"passed": false, "actual": "profile '%s' not simulated" % target["profile"]}
 		if target["type"] == "unsupported":
 			outcome = {"passed": false, "actual": "not measured: %s" % target["reason"]}
+		elif target["type"] == "speedup":
+			outcome = _check_speedup(target, results)
 		elif results.has(target["profile"]):
 			outcome = check(target, results[target["profile"]])
 		var expected: String = target.get("expected_failure", "")
@@ -147,6 +158,26 @@ static func check(target: Dictionary, result: Dictionary) -> Dictionary:
 			return {"passed": gap["length"] <= float(target["max"]), "actual": "longest %s (%s)" % [clock(gap["length"]), gap["where"]]}
 	push_error("Unknown pacing target type '%s'" % target["type"])
 	return {"passed": false, "actual": "unknown target type"}
+
+
+static func _check_speedup(target: Dictionary, results: Dictionary) -> Dictionary:
+	if not results.has(target["profile"]) or not results.has(target["baseline"]):
+		return {"passed": false, "actual": "profiles '%s'/'%s' not simulated" % [target["profile"], target["baseline"]]}
+	var at := float(target["minute"]) * 60.0
+	var goal := -1.0
+	for sample: Array in results[target["baseline"]].get("samples", []):
+		if float(sample[0]) <= at:
+			goal = float(sample[1])
+	var reached := -1.0
+	for sample: Array in results[target["profile"]].get("samples", []):
+		if float(sample[1]) >= goal:
+			reached = float(sample[0])
+			break
+	if goal <= 0.0 or reached <= 0.0:
+		return {"passed": false, "actual": "never reached the tapping bot's %s-min total" % target["minute"]}
+	var speedup := at / reached
+	return {"passed": speedup >= float(target["min"]) and speedup <= float(target["max"]),
+			"actual": "×%.2f (the tapping bot's %s Solves at %s, the active one at %s)" % [speedup, Num.format(goal), clock(at), clock(reached)]}
 
 
 static func _split_text(split: Dictionary) -> String:

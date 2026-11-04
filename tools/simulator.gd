@@ -17,6 +17,8 @@ const REPLAN_INTERVAL := 1.0  ## re-pick the target this often (and after every 
 const SPLIT_INTERVAL := 30.0  ## re-choose the helper split this often (and after a puzzle unlock)
 const SPLIT_CHUNKS := 20      ## the split is chosen in 5 % steps
 const PUZZLE_GAIN_REFRESH := 15.0  ## re-estimate what unlocking the next puzzle is worth this often (it's slow)
+const HAND_OVERHEAD := 30.0   ## active profile: seconds between hand solves on top of the solve itself
+const SAMPLE_INTERVAL := 5.0  ## lifetime Solves are sampled this often (see "samples")
 
 var _now := 0.0
 var _purchases := 0
@@ -30,7 +32,10 @@ const CHECKPOINT_MINUTES: Array[float] = [1.0, 5.0, 15.0, 30.0, 60.0, 120.0]
 ##   purchases:   int                          total items bought
 ##   checkpoints: [{minute, solves_per_sec, moves_per_sec, solves, total_solves}]
 ##   all_bought_at: seconds when every helper, upgrade, method and pre-prestige puzzle was owned at least once, or -1
-func run(taps_per_sec: float, minutes: float) -> Dictionary:
+##   hand_solves: how many Solve Station solves the bot did (the "active" profile, S.3)
+## `hand` makes it an active player (task S.3): {"tier": 2} = a hand solve just inside that tier's target (Gold) on its
+## biggest unlocked cube, back to back (the solve's time + HAND_OVERHEAD for scramble and inspection).
+func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}) -> Dictionary:
 	_puzzle_gain_cache.clear()
 	_now = 0.0
 	_purchases = 0
@@ -55,6 +60,10 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 	var replan_timer := 0.0
 	var split_timer := 0.0
 	var target := {}
+	var hand_wait := 0.0
+	var hand_solves := 0
+	var samples: Array = []  # [seconds, lifetime Solves] every SAMPLE_INTERVAL (how fast a run gets somewhere)
+	var sample_timer := 0.0
 
 	while t < duration:
 		# Earn: taps, then helpers (same as GameState._process does each frame).
@@ -63,8 +72,22 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 			tap_credit -= 1.0
 			g.tap()
 		g.add_helper_moves(STEP)
+		g.update_flow(STEP)
+		if not hand.is_empty():
+			hand_wait -= STEP
+			if hand_wait <= 0.0:
+				var puzzle := _hand_puzzle(g)
+				var targets: Array = (Content.SOLVE_REWARDS["targets"] as Dictionary)[puzzle]
+				var time := float(targets[int(hand.get("tier", 2))]) * 0.98
+				g.record_hand_solve(puzzle, time, "", 50)
+				hand_solves += 1
+				hand_wait = time + HAND_OVERHEAD
 		t += STEP
 		_now = t
+		sample_timer -= STEP
+		if sample_timer <= 0.0:
+			samples.append([t, g.total_solves])
+			sample_timer = SAMPLE_INTERVAL
 		_purchases = purchases
 		split_timer -= STEP
 		if split_timer <= 0.0:
@@ -116,7 +139,20 @@ func run(taps_per_sec: float, minutes: float) -> Dictionary:
 		"purchases": purchases,
 		"checkpoints": checkpoints,
 		"all_bought_at": all_bought_at,
+		"hand_solves": hand_solves,
+		"samples": samples,
+		"hand": hand,
 	}
+
+
+## The biggest cube the player has (what an active player would practise on).
+func _hand_puzzle(g: GameState) -> String:
+	var best := "2x2"
+	for id in g.get_unlocked_puzzle_ids():
+		var shape := PuzzleShapes.from_id(id)
+		if shape != null and shape.size > PuzzleShapes.from_id(best).size:
+			best = id
+	return best
 
 
 ## The bot's helper split: the best one for income. With the variety bonus (Content.VARIETY) each puzzle's income is
@@ -273,10 +309,14 @@ func _item_name(item: Dictionary) -> String:
 static func to_markdown(result: Dictionary) -> String:
 	var taps: float = result["taps_per_sec"]
 	var lines: PackedStringArray = []
-	lines.append("## %s (%s taps/s, %s min)" % [
-		"Tapping" if taps > 0.0 else "Never tapping", _num(taps), _num(result["minutes"]),
-	])
+	var hand: Dictionary = result.get("hand", {})
+	var title := "Tapping" if taps > 0.0 else "Never tapping"
+	if not hand.is_empty():
+		title = "Active: tapping + %s-pace hand solves" % GameState.hand_tier_name(int(hand.get("tier", 2)))
+	lines.append("## %s (%s taps/s, %s min)" % [title, _num(taps), _num(result["minutes"])])
 	lines.append("")
+	if not hand.is_empty():
+		lines.append("- Hand solves in the Solve Station: %d (each just inside the tier's target on the biggest cube owned, back to back)" % result["hand_solves"])
 	var events: Array = result["events"]
 	var all_at: float = result["all_bought_at"]
 	lines.append("- Items bought: %d (%d different)" % [result["purchases"], events.size()])

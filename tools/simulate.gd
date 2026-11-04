@@ -31,6 +31,14 @@ func _initialize() -> void:
 		elif is_equal_approx(taps, Pacing.TAPS_PER_SEC):
 			by_profile["tapping"] = result
 
+	# The active profile (S.3): tapping plus Gold-pace hand solves, compared with plain tapping at 30 min.
+	var active_started := Time.get_ticks_msec()
+	var active: Dictionary = sim.run(Pacing.TAPS_PER_SEC, minf(minutes, Pacing.ACTIVE_MINUTES), Pacing.ACTIVE_HAND)
+	print("Simulated the active profile for %s min in %.1f s: %d hand solves" % [
+		minf(minutes, Pacing.ACTIVE_MINUTES), (Time.get_ticks_msec() - active_started) / 1000.0, active["hand_solves"]])
+	sections.append(Simulator.to_markdown(active))
+	by_profile["active"] = active
+
 	var rows := Pacing.evaluate(by_profile)
 	for row: Dictionary in rows:
 		print("  %-16s %-17s %s" % [row["id"], row["status"], row["actual"]])

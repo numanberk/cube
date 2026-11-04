@@ -20,6 +20,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var stage_chips: HBoxContainer = %StageChips
 @onready var news_list: VBoxContainer = %NewsList
 @onready var buff_label: Label = %BuffLabel
+@onready var flow_label: Label = %FlowLabel
 @onready var golden_button: Button = %GoldenButton
 @onready var hint_label: Label = %HintLabel
 @onready var settings_button: Button = %SettingsButton
@@ -703,6 +704,7 @@ func _connect_news() -> void:
 	Game.time_tier_reached.connect(news.on_time_tier)
 	Game.solves_milestone.connect(news.on_solves_milestone)
 	Game.hand_solve_pb.connect(news.on_hand_pb)
+	Game.hand_tier_reached.connect(news.on_hand_tier)
 
 
 ## The list under the shop: newest first and bright, older ones dim; it scrolls back through the last 20.
@@ -763,6 +765,12 @@ func _refresh_golden() -> void:
 				rect.end.y - golden_button.size.y - 6.0)  # under the cube, so the golden sticker on top stays visible
 	if puzzle_view.is_golden_shown() != glowing and not solve_station.visible:
 		puzzle_view.set_golden(glowing)
+	flow_label.visible = not Game.flow.is_empty()
+	if flow_label.visible:  # S.3: Flow from hand solves in the Solve Station
+		flow_label.text = "Flow ×%s  ·  %s" % [Num.format(float(Game.flow["mult"])),
+				Num.solve_time(float(Game.flow["left"])).get_slice(".", 0)]
+		flow_label.tooltip_text = "Your last hand solve: every move counts ×%s until the Flow runs out. Solve again to keep it." \
+				% Num.format(float(Game.flow["mult"]))
 	buff_label.visible = not Game.buff.is_empty()
 	if buff_label.visible:
 		var buff_name := String(Game.buff["id"])

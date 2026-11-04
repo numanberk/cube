@@ -262,6 +262,34 @@ const NEWS := {
 }
 
 
+## Hand-solve rewards (task S.3, D13: an active player earns ~2–3× an idle one). Per-puzzle time targets for the Solve
+## Station, slowest first (seconds, keyboard solving). Tuned for our player (owner, 2026-11-03: best ~30 s on a real 3×3,
+## consistently under 1:00); keyboard solving is slower than a real cube, so Gold 1:30 should be within reach and Master a
+## stretch. A finished solve's tier sets its Flow; the best tier a puzzle's PB single has reached is a permanent bonus.
+##   tiers: names, slowest first (index 0 = Bronze)
+##   flow_by_tier: Flow multiplier for a solve below every target, then for each tier
+##   flow_min_seconds / flow_time_factor: Flow lasts max(min, factor × the solve's time) (bigger puzzles take longer)
+##   tier_moves_bonus: +moves on that puzzle per tier its PB has reached
+##   xp_solves / xp_pb_factor: a hand solve gives the mastery XP of this many idle solves (×factor for a PB single)
+const SOLVE_REWARDS := {
+	"tiers": ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master"],
+	"targets": {
+		"2x2": [90.0, 45.0, 25.0, 15.0, 10.0, 6.0],
+		"3x3": [300.0, 150.0, 90.0, 60.0, 40.0, 25.0],
+		"4x4": [900.0, 480.0, 300.0, 200.0, 140.0, 100.0],
+		"5x5": [1500.0, 900.0, 600.0, 420.0, 300.0, 210.0],
+		"7x7": [3600.0, 2400.0, 1600.0, 1200.0, 900.0, 650.0],
+		"megaminx": [1800.0, 1200.0, 800.0, 500.0, 350.0, 240.0],
+	},
+	"flow_by_tier": [1.5, 1.6, 1.8, 2.0, 2.3, 2.6, 3.0],
+	"flow_min_seconds": 120.0,
+	"flow_time_factor": 1.5,
+	"tier_moves_bonus": 0.05,
+	"xp_solves": 10.0,
+	"xp_pb_factor": 5.0,
+}
+
+
 ## Golden Scramble (task S.6, was 8.1): every spawn_min..spawn_max seconds a golden sticker glows on the main puzzle
 ## for `glow` seconds. Clicking it opens a quick case (the puzzle case_moves_min..max moves from solved) to solve within
 ## `solve_seconds` for a random buff (by weight). "frenzy": all moves ×mult for `seconds`; "lucky": `minutes` of the

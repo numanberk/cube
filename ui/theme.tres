@@ -925,3 +925,7 @@ BuffLabel/font_sizes/font_size = 16
 BuffLabel/fonts/font = SubResource("FontVariation_2j8s8")
 TimerGolden/base_type = &"TimerLabel"
 TimerGolden/colors/font_color = Color(0.9608, 0.7725, 0.2588, 1)
+FlowLabel/base_type = &"Label"
+FlowLabel/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1)
+FlowLabel/font_sizes/font_size = 16
+FlowLabel/fonts/font = SubResource("FontVariation_2j8s8")

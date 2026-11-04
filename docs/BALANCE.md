@@ -25,6 +25,7 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 | 7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
 | Second run reaches the same point in ≤ 50 % of the time | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
 | The bot's best split at 30 min is a real mix (no puzzle above 70 %) | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % | pass |
+| An active player (Gold-pace hand solves) gets there 2–3× sooner than the tapping bot (D13) | ×2.31 (the tapping bot's 13.50B Solves at 30:00, the active one at 13:00) | pass |
 | Never tapping still buys something within 5 min | nothing bought in 2:00:00 | expected failure |
 
 ### Expected failures
@@ -102,3 +103,42 @@ Nothing was bought.
 | 30 | 0 | 0 | 0 | 0 | 2×2 100 % |
 | 60 | 0 | 0 | 0 | 0 | 2×2 100 % |
 | 120 | 0 | 0 | 0 | 0 | 2×2 100 % |
+
+## Active: tapping + Gold-pace hand solves (3 taps/s, 30 min)
+
+- Hand solves in the Solve Station: 7 (each just inside the tier's target on the biggest cube owned, back to back)
+- Items bought: 431 (18 different)
+- Every helper, upgrade, method and puzzle owned at: 22:18
+- Longest wait for something new: 13:57 (after 5×5, before God's Number)
+
+### First purchase of each item
+
+| Time | Kind | Item | Cost | Gap |
+|---|---|---|---|---|
+| 0:06 | helper | Cubing Friend | 5 | +0:06 |
+| 0:21 | upgrade | Cube Lube | 15 | +0:15 |
+| 0:57 | helper | Cubing Club | 60 | +0:37 |
+| 1:12 | upgrade | Stackmat Timer | 50 | +0:14 |
+| 1:49 | puzzle | 3×3 | 150 | +0:37 |
+| 2:08 | method | Learn CFOP | 200 | +0:19 |
+| 2:35 | upgrade | Club Snacks | 600 | +0:27 |
+| 2:55 | upgrade | Magnetic Cube | 1.50K | +0:20 |
+| 3:07 | helper | Solving Robot | 1.50K | +0:11 |
+| 3:28 | helper | Local Competition | 9.00K | +0:22 |
+| 3:50 | method | Learn Roux | 25.00K | +0:22 |
+| 3:55 | upgrade | Robot Firmware v2 | 8.00K | +0:04 |
+| 4:12 | helper | Cube Factory | 120.0K | +0:17 |
+| 4:53 | helper | Speedcubing Lab | 1.80M | +0:41 |
+| 4:55 | puzzle | 4×4 | 400.0K | +0:02 |
+| 6:01 | method | Learn ZZ | 50.00M | +1:06 |
+| 8:21 | puzzle | 5×5 | 300.0M | +2:20 |
+| 22:18 | method | God's Number | 30.00B | +13:57 |
+
+### Income over time
+
+| Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves | Bot's split |
+|---|---|---|---|---|---|
+| 1 | 1.9 | 13 | 0 | 121 | 2×2 100 % |
+| 5 | 157.7K | 78.19K | 1.61M | 5.83M | 2×2 25 % · 3×3 60 % · 4×4 15 % |
+| 15 | 28.19M | 2.07M | 5.29B | 20.37B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
+| 30 | 47.54M | 2.44M | 3.03B | 86.15B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |

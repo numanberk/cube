@@ -17,6 +17,8 @@ signal helper_best_time(building_id: String, puzzle_id: String, seconds: float, 
 signal solves_milestone(amount: float)  ## lifetime Solves passed a power of ten (100, 1K, 10K, ...)
 signal hand_solve_pb(puzzle_id: String, single: bool, averages: Array, seconds: float)  ## a Solve Station PB
 ## Golden Scramble (task S.6): a sticker starts glowing, stops glowing unclaimed, an attempt ends (buff = {} on a miss).
+signal hand_tier_reached(puzzle_id: String, tier: String)  ## a puzzle's PB single reached a new S.3 tier (permanent)
+signal flow_started(mult: float, seconds: float)  ## a hand solve started (or refreshed) Flow
 signal golden_spawned
 signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
@@ -71,6 +73,7 @@ var golden_glow_left := 0.0                ## > 0 while a golden sticker glows a
 var golden_attempt_left := 0.0             ## > 0 while a claimed Golden Scramble case is being solved
 var buff: Dictionary = {}                  ## the active buff: {id, mult, left} (saved; paused while closed), or {}
 var golden_rng := RandomNumberGenerator.new()
+var flow: Dictionary = {}                  ## Flow from hand solves (S.3): {mult, left, tier}; not saved (ends on quit)
 var _offline_catch_up := false             ## true while offline progress is added: buffs don't count then
 
 
@@ -94,6 +97,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	add_helper_moves(delta)
 	update_golden(delta)
+	update_flow(delta)
 	if persistence_enabled:
 		_autosave_timer += delta
 		if _autosave_timer >= AUTOSAVE_INTERVAL:
@@ -137,7 +141,7 @@ func add_moves(amount: float) -> void:
 func add_moves_to(puzzle_id: String, amount: float) -> void:
 	if amount <= 0.0 or not puzzle_progress.has(puzzle_id):
 		return
-	amount *= get_puzzle_moves_mult(puzzle_id) * get_buff_mult()
+	amount *= get_puzzle_moves_mult(puzzle_id) * get_buff_mult() * get_flow_mult()
 	total_moves += amount
 	var progress := float(puzzle_progress[puzzle_id]) + amount
 	var needed := get_moves_per_solve(puzzle_id)
@@ -385,6 +389,7 @@ func record_hand_solve(puzzle_id: String, seconds: float, penalty: String, moves
 		return {}
 	var record := _solve_record(puzzle_id)
 	var bests := get_solve_bests(puzzle_id)  # before adding this solve
+	var tier_before := get_best_hand_tier(puzzle_id)
 	var history: Array = record["history"]
 	history.append({"t": seconds, "p": penalty, "m": moves, "d": Time.get_unix_time_from_system()})
 	while history.size() > SOLVE_HISTORY_LIMIT:
@@ -398,6 +403,7 @@ func record_hand_solve(puzzle_id: String, seconds: float, penalty: String, moves
 		if current >= 0.0 and current < float(bests[size]):
 			bests[size] = current
 			(info["pb_averages"] as Array).append(size)
+	_reward_hand_solve(puzzle_id, final, bool(info["pb_single"]), tier_before, info)
 	solve_records_changed.emit(puzzle_id)
 	if info["pb_single"] or not (info["pb_averages"] as Array).is_empty():
 		hand_solve_pb.emit(puzzle_id, info["pb_single"], info["pb_averages"], final)
@@ -671,7 +677,7 @@ func get_puzzle_moves_mult(puzzle_id: String) -> float:
 	var everywhere := 1.0
 	for id in unlocked_puzzles:
 		everywhere *= _milestone_mult(id, "all_moves")
-	return per_level * _milestone_mult(puzzle_id, "moves") * everywhere
+	return per_level * _milestone_mult(puzzle_id, "moves") * everywhere * get_hand_tier_mult(puzzle_id)
 
 
 func _mastery_mult(puzzle_id: String, effect_type: String) -> float:
@@ -826,6 +832,76 @@ func check_time_tiers(emit: bool = true) -> void:
 		if index > int(_tier_reached[id]):
 			_tier_reached[id] = index
 			time_tier_reached.emit(id, tier["name"], get_team_solve_time(id))
+
+
+# --- Hand-solve rewards (task S.3) ------------------------------------------------------
+
+## The tier a time reaches on a puzzle (0 = Bronze ... 5 = Master), or -1 below every target (or a DNF).
+func get_hand_tier(puzzle_id: String, seconds: float) -> int:
+	var targets: Array = (Content.SOLVE_REWARDS["targets"] as Dictionary).get(puzzle_id, [])
+	var tier := -1
+	for i in targets.size():
+		if seconds <= float(targets[i]):
+			tier = i
+	return tier
+
+
+## The best tier the puzzle's PB single has reached (-1 for none): the permanent bonus.
+func get_best_hand_tier(puzzle_id: String) -> int:
+	var single := float(get_solve_bests(puzzle_id)["single"])
+	return -1 if is_inf(single) else get_hand_tier(puzzle_id, single)
+
+
+static func hand_tier_name(tier: int) -> String:
+	var names: Array = Content.SOLVE_REWARDS["tiers"]
+	return names[tier] if tier >= 0 and tier < names.size() else ""
+
+
+## Moves on a puzzle ×(1 + 5 % per tier its PB has reached).
+func get_hand_tier_mult(puzzle_id: String) -> float:
+	return 1.0 + float(Content.SOLVE_REWARDS["tier_moves_bonus"]) * (get_best_hand_tier(puzzle_id) + 1)
+
+
+## Flow's multiplier on every move while it runs (not during offline catch-up), else 1.
+func get_flow_mult() -> float:
+	if flow.is_empty() or _offline_catch_up:
+		return 1.0
+	return float(flow["mult"])
+
+
+func update_flow(delta: float) -> void:
+	if flow.is_empty() or delta <= 0.0:
+		return
+	flow["left"] = float(flow["left"]) - delta
+	if float(flow["left"]) <= 0.0:
+		flow = {}
+
+
+## A finished hand solve: Flow (by this solve's tier; a new solve replaces the old Flow), mastery XP, and a new tier if
+## the PB single reached one. Fills info with {tier, flow_mult, flow_seconds, new_tier}.
+func _reward_hand_solve(puzzle_id: String, final: float, pb_single: bool, tier_before: int, info: Dictionary) -> void:
+	var data: Dictionary = Content.SOLVE_REWARDS
+	info["tier"] = -1
+	info["new_tier"] = -1
+	if is_inf(final):  # a DNF earns nothing
+		return
+	var tier := get_hand_tier(puzzle_id, final)
+	var mult := float((data["flow_by_tier"] as Array)[tier + 1])
+	var seconds := maxf(float(data["flow_min_seconds"]), float(data["flow_time_factor"]) * final)
+	flow = {"mult": mult, "left": seconds, "tier": tier}
+	info["tier"] = tier
+	info["flow_mult"] = mult
+	info["flow_seconds"] = seconds
+	flow_started.emit(mult, seconds)
+	if unlocked_puzzles.has(puzzle_id):
+		var xp := float(data["xp_solves"]) * get_mastery_xp_per_solve(puzzle_id)
+		_add_mastery_xp(puzzle_id, xp * (float(data["xp_pb_factor"]) if pb_single else 1.0))
+	var tier_now := get_best_hand_tier(puzzle_id)
+	if tier_now > tier_before:
+		info["new_tier"] = tier_now
+		hand_tier_reached.emit(puzzle_id, hand_tier_name(tier_now))
+		check_helper_times()
+		check_time_tiers()
 
 
 # --- Golden Scramble (task S.6) ------------------------------------------------------
@@ -1087,6 +1163,7 @@ func reset_state() -> void:
 	golden_attempt_left = 0.0
 	golden_rng.randomize()
 	golden_next = _roll_golden_wait()
+	flow = {}
 
 
 func get_save_data() -> Dictionary:

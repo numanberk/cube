@@ -96,6 +96,14 @@ func on_hand_pb(puzzle_id: String, single: bool, averages: Array, seconds: float
 	push("hand:" + puzzle_id, "Your new %s PB: %s" % [puzzle, ", ".join(parts)])
 
 
+## A puzzle's PB reached a new Solve Station tier (S.3): a permanent bonus.
+func on_hand_tier(puzzle_id: String, tier: String) -> void:
+	var puzzle: String = Content.get_puzzle(puzzle_id).get("name", puzzle_id)
+	var index: int = (Content.SOLVE_REWARDS["tiers"] as Array).find(tier)
+	var bonus := roundi(float(Content.SOLVE_REWARDS["tier_moves_bonus"]) * (index + 1) * 100.0)
+	push("hand_tier:" + puzzle_id, "Your %s: %s tier! +%d %% moves on the %s for good" % [puzzle, tier, bonus, puzzle])
+
+
 ## A helper's name, the same every time for the same copy: "Club member Ana", "Robot Unit 7".
 static func member_name(building_id: String, copy: int) -> String:
 	var who: Array = (Content.NEWS["who"] as Dictionary).get(building_id, ["Helper", "people"])

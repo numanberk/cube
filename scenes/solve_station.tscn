@@ -172,6 +172,13 @@ theme_type_variation = &"CardLine"
 text = "Now  ao5 —"
 autowrap_mode = 3
 
+[node name="TargetsLabel" type="Label" parent="Margin/Rows/Body/Side/SideBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"CardLine"
+text = "Targets"
+autowrap_mode = 3
+
 [node name="TimesScroll" type="ScrollContainer" parent="Margin/Rows/Body/Side/SideBox"]
 unique_name_in_owner = true
 layout_mode = 2

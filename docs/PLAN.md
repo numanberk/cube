@@ -258,7 +258,7 @@ Each phase ends with something playable. Task details and "Done when" are in the
 | 2 | **Look** | The UI around the cube: theme, layout, shop cards, juice. | 4 |
 | 3 | **Sound and feel** | SFX, the music system (D5), Buy ×N, settings, keyboard, offline panel. | 6 |
 | 4 | **Puzzles** | The main progression axis. All unlocked puzzles run at once (D9) with a shared helper team split across them; each has a mastery bar. | 8 |
-| S | **Solve Station** (owner, 2026-11-03: before the rest of Phase 5) | The player is an almost-pro speedcuber and idling alone was "just looking at the screen". Solve the puzzles yourself with csTimer keys, WCA inspection, records, algorithm drills, daily scrambles; real skill pays into the idle game. Golden Scramble and tap scaling moved here. **R.1–R.6** make the main cube readable: real staged showcase solves, cube times, goals, a news feed. | 14 |
+| S | **Solve Station** (owner, 2026-11-03: before the rest of Phase 5) | The player is a keen speedcuber (~30 s best on a real 3×3) and idling alone was "just looking at the screen". Solve the puzzles yourself with csTimer keys, WCA inspection, records, algorithm drills, daily scrambles; real skill pays into the idle game. Golden Scramble and tap scaling moved here. **R.1–R.6** make the main cube readable: real staged showcase solves, cube times, goals, a news feed. | 14 |
 | 5 | **Depth** | Fills the first hour so something new arrives every few minutes. The Algorithm Lab finishes research while you're away. | 8 |
 | 6 | **Prestige: World Championship** | Gives the long loop. 7×7, Megaminx and the "Finals" track sit behind it. A perk tree whose branches unlock systems; auto-buyers. | 5 |
 | 7 | **Goals** | Long-term targets between prestiges: ~100 achievements, stats, the Cube Collection and the Comp Kit loadout. | 4 |
@@ -321,7 +321,9 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
 
 - **D13 Hand-solve rewards:** **~2–3×** (owner, 2026-11-03): an active player who keeps solving in the Solve Station earns
   about 2–3× an idle one (short Flow boosts per solve, bigger for faster tiers, plus permanent per-puzzle bonuses for
-  time targets). Idling is never pointless. Built in S.3; the sim's "active" profile checks it.
+  time targets). Idling is never pointless. Built in S.3; the sim's "active" profile checks it. Measured as **progress
+  speed**: the active player reaches the tapping bot's 30-min lifetime Solves 2–3× sooner (×2.31 today). A raw Solves
+  ratio is far larger (×6 at 30 min) because the early economy compounds, so it isn't the target.
 
 ### Open
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?

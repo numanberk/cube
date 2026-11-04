@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -78,6 +78,10 @@ func _ready() -> void:
 		for i in 10:
 			feed.advance(10.0)
 		main._show_news()
+	if args.has("flow"):  # S.3: Flow running after a Gold hand solve
+		Game.record_hand_solve("3x3", 84.2, "", 58)
+		Game.flow["left"] = 105.0
+		main._refresh_golden()
 	if args.has("golden"):  # Golden Scramble: glow (sticker + button) | case (the 10 s case open) | buff (Frenzy running)
 		var mode := String(args["golden"])
 		Game.golden_rng.seed = RANDOM_SEED
@@ -132,8 +136,8 @@ func _stage_solve(station: Node, mode: String, puzzle: String) -> void:
 	station.new_attempt(rng)
 	var session: SolveSession = station.session
 	if mode != "inspecting":
-		for t: float in [9.84, 11.02, 8.77, 12.41, 10.36, 9.95, 11.48]:  # earlier solves, so the records show
-			Game.record_hand_solve(puzzle, t, "+2" if t == 12.41 else "", 58)
+		for t: float in [71.84, 64.02, 58.77, 82.41, 66.36, 61.95, 69.48]:  # earlier solves at our player's pace (~1:00)
+			Game.record_hand_solve(puzzle, t, "+2" if t == 82.41 else "", 58)
 	if mode == "inspecting":
 		station.frozen_now = 106.2
 		station.handle_key(KEY_SEMICOLON)  # a y rotation during inspection
@@ -144,8 +148,8 @@ func _stage_solve(station: Node, mode: String, puzzle: String) -> void:
 	for i in count:
 		session.turn(solution[i], now)
 		station.get_node("%View").turn(solution[i])
-		now += 0.37
-	station.frozen_now = now - 0.37 if mode == "done" else now + 0.2
+		now += 2.3
+	station.frozen_now = now - 2.3 if mode == "done" else now + 0.2
 	if mode == "done":
 		var result: Dictionary = session.results.back()
 		station.last_info = Game.record_hand_solve(puzzle, float(result["time"]), String(result["penalty"]), int(result["moves"]))

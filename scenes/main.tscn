@@ -72,6 +72,14 @@ size_flags_vertical = 4
 theme_type_variation = &"SubtitleLabel"
 text = "0 solves/s"
 
+[node name="FlowLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"FlowLabel"
+text = "Flow ×2 · 2:00"
+
 [node name="BuffLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
 visible = false

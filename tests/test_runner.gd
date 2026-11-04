@@ -232,7 +232,7 @@ func test_pacing_checks() -> void:
 	var rows: Array = Pacing.evaluate({})
 	check(rows.size() == Pacing.TARGETS.size(), "evaluate returns a row per target")
 	for target: Dictionary in Pacing.TARGETS:
-		check(target["profile"] in ["tapping", "idle"], "target %s has a known profile" % target["id"])
+		check(target["profile"] in ["tapping", "idle", "active"], "target %s has a known profile" % target["id"])
 		if target["type"] == "unsupported":
 			check(target.get("expected_failure", "") != "", "unsupported target %s is an expected failure" % target["id"])
 
@@ -244,6 +244,7 @@ func test_pacing_targets() -> void:
 	var results := {
 		"tapping": sim.run(Pacing.TAPS_PER_SEC, Pacing.TAPPING_MINUTES),
 		"idle": sim.run(0.0, Pacing.IDLE_MINUTES),
+		"active": sim.run(Pacing.TAPS_PER_SEC, Pacing.ACTIVE_MINUTES, Pacing.ACTIVE_HAND),
 	}
 	var expected: PackedStringArray = []
 	for row: Dictionary in Pacing.evaluate(results):
@@ -2853,5 +2854,97 @@ func test_golden_scramble_on_screen() -> void:
 	game.golden_finished.connect(func(success: bool, _buff: Dictionary) -> void: missed.append(success), CONNECT_ONE_SHOT)
 	station.handle_key(KEY_ESCAPE)
 	check(missed == [false] and not station.visible, "Esc walks away from the case: a miss")
+	main.free()
+	game.reset_state()
+
+
+# --- Hand-solve rewards (task S.3) -----------------------------------------------------
+
+func test_hand_solve_tiers_and_flow() -> void:
+	var g := new_game()
+	var data: Dictionary = Content.SOLVE_REWARDS
+	check(g.get_hand_tier("3x3", 400.0) == -1 and g.get_hand_tier("3x3", 300.0) == 0, "3×3: over 5:00 is no tier, 5:00 is Bronze")
+	check(g.get_hand_tier("3x3", 89.0) == 2 and GameState.hand_tier_name(2) == "Gold", "1:29 is Gold")
+	check(g.get_hand_tier("3x3", 24.0) == 5 and g.get_hand_tier("2x2", 5.0) == 5, "Master is the fastest target")
+	for id: String in data["targets"]:
+		var targets: Array = data["targets"][id]
+		check(targets.size() == (data["tiers"] as Array).size(), "%s has a target per tier" % id)
+		for i in range(1, targets.size()):
+			check(float(targets[i]) < float(targets[i - 1]), "%s targets get faster" % id)
+	for def: Dictionary in Content.PUZZLES:
+		check((data["targets"] as Dictionary).has(def["id"]), "%s has time targets" % def["id"])
+	# Flow: by the solve's tier, for max(2 min, 1.5 × the time); it multiplies every move.
+	var tiers: Array = []
+	g.hand_tier_reached.connect(func(id: String, tier: String) -> void: tiers.append([id, tier]))
+	g.cheat_add_solves(1000.0)
+	g.unlock_puzzle("3x3")
+	var xp_before := g.get_mastery_xp("3x3")
+	var info := g.record_hand_solve("3x3", 89.0, "", 60)
+	check_near(g.get_flow_mult(), float(data["flow_by_tier"][3]), "a Gold solve: Flow ×2")
+	check_near(float(g.flow["left"]), 89.0 * 1.5, "Flow lasts 1.5 × the solve (2:13), at least 2 min")
+	check(int(info["tier"]) == 2 and is_equal_approx(float(info["flow_mult"]), 2.0), "the solve's info says so")
+	g.add_moves_to("3x3", 1.0)
+	var moves_before := g.total_moves
+	var mult_before := g.get_puzzle_moves_mult("3x3")  # (the moves can level mastery up, which changes it)
+	g.add_moves_to("3x3", 10.0)
+	check_near(g.total_moves - moves_before, 10.0 * mult_before * 2.0, "every move counts ×2 in Flow")
+	g.update_flow(200.0)
+	check(g.flow.is_empty() and g.get_flow_mult() == 1.0, "then it runs out")
+	g.record_hand_solve("3x3", 250.0, "", 60)
+	check_near(g.get_flow_mult(), float(data["flow_by_tier"][1]), "a slower solve replaces it with its own Flow (Bronze ×1.6)")
+	check_near(float(g.flow["left"]), 375.0, "...for 1.5 × 4:10")
+	g.flow = {}
+	g.record_hand_solve("3x3", 50.0, "DNF", 60)
+	check(g.flow.is_empty(), "a DNF earns no Flow")
+	g.record_hand_solve("3x3", 500.0, "", 60)
+	check_near(g.get_flow_mult(), float(data["flow_by_tier"][0]), "even a solve under every target gives a little Flow (×1.5)")
+	check_near(float(g.flow["left"]), 750.0, "...for 1.5 × its time")
+	# Mastery XP: 10 idle solves' worth, ×5 for a PB single.
+	var per_solve := float(data["xp_solves"]) * g.get_mastery_xp_per_solve("3x3")
+	check(g.get_mastery_xp("3x3") >= xp_before + per_solve * float(data["xp_pb_factor"]), "the first (PB) solve gave ×5 XP")
+	var xp := g.get_mastery_xp("3x3")
+	g.record_hand_solve("3x3", 120.0, "", 60)
+	check_near(g.get_mastery_xp("3x3") - xp, per_solve, "a non-PB solve gives 10 idle solves' XP")
+	# The permanent bonus: +5 % moves per tier the PB single has reached; each new tier pops once.
+	check(tiers == [["3x3", "Gold"]], "the first PB reached Gold (once): %s" % [tiers])
+	check_near(g.get_hand_tier_mult("3x3"), 1.15, "Gold PB: +15 % moves on the 3×3")
+	check_near(g.get_hand_tier_mult("2x2"), 1.0, "...and nothing on the 2×2")
+	g.record_hand_solve("3x3", 39.0, "", 60)
+	check(tiers.size() == 2 and tiers[1][1] == "Diamond" and is_equal_approx(g.get_hand_tier_mult("3x3"), 1.25), "a 39 s PB: Diamond, +25 %")
+	# Flow isn't saved and never counts offline; the tier bonus comes back from the records.
+	var saved := g.get_save_data()
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(saved)), float(saved["saved_at"]))
+	check(loaded.flow.is_empty() and is_equal_approx(loaded.get_hand_tier_mult("3x3"), 1.25), "after a load: no Flow, the tier bonus stays")
+	var away := new_game()
+	g.record_hand_solve("3x3", 89.0, "", 60)
+	away.flow = {"mult": 3.0, "left": 1e6, "tier": 5}
+	away._offline_catch_up = true
+	check(away.get_flow_mult() == 1.0, "Flow never counts for offline progress")
+	g.free()
+	loaded.free()
+	away.free()
+
+
+func test_hand_solve_rewards_on_screen() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	root.get_node("Settings").persistence_enabled = false
+	game.cheat_add_solves(1000.0)
+	game.unlock_puzzle("3x3")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var station: Node = main.get_node("%SolveStation")
+	station.open("3x3")
+	check((station.get_node("%TargetsLabel") as Label).text.contains("Gold 1:30"), "the records panel lists the targets")
+	var info: Dictionary = game.record_hand_solve("3x3", 85.0, "", 60)
+	station._refresh_records()
+	check((station.get_node("%TargetsLabel") as Label).text.contains("✓ Gold"), "...and ticks the ones reached")
+	var reward: String = station.reward_text(info)
+	check(reward.contains("Gold: Flow ×2") and reward.contains("new tier"), "after a solve: tier, Flow and the new tier: %s" % reward)
+	station.close()
+	main._refresh_golden()
+	check((main.get_node("%FlowLabel") as Label).visible and (main.get_node("%FlowLabel") as Label).text.begins_with("Flow ×2"), "the top bar shows the Flow")
 	main.free()
 	game.reset_state()

@@ -13,9 +13,12 @@ idle games, by hours played:
 
 (tModLoader is in the list too but isn't an idle game, so it's left out.)
 
-**The player is also an almost professional speedcuber** (owner, 2026-11-03). They know csTimer, WCA rules, methods and
-algorithm sets, so the game should respect real cubing: real notation, real scrambles, real inspection and averages,
-and a way to use their actual skill (the Solve Station, ROADMAP Phase S). Never dumb the cubing down.
+**The player is also a keen speedcuber** (owner, 2026-11-03). They know csTimer and real cubing, so the game should
+respect it: real notation, real scrambles, real inspection and averages, and a way to use their actual skill (the Solve
+Station, ROADMAP Phase S). Never dumb the cubing down.
+*Their level* (owner, 2026-11-03, correcting an earlier "almost professional"): **best ~30 s on a real 3×3, consistently
+under 1:00**. That's a solid intermediate solver, not a pro: Solve Station targets are tuned for it (S.3: keyboard 3×3
+Gold 1:30, Master 25 s), and drills (S.4) should start from 2-look OLL/PLL and build up to full sets.
 
 **What the numbers say:** this player isn't a casual idler. 804 hours in one game, and 140+ hours in a game with
 *mixed* reviews (Idle Pins), means they stay for **systems depth, collecting and optimising**, more than for polish.
