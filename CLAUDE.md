@@ -133,6 +133,7 @@ NEWS=1 bash tools/screenshot.sh /tmp/shots mid                    # a few news f
 GOLDEN=glow bash tools/screenshot.sh /tmp/shots mid               # Golden Scramble: glow | case | buff -> mid_goldenglow.png
 FLOW=1 bash tools/screenshot.sh /tmp/shots mid                    # Flow running after a Gold hand solve -> mid_flow.png
 DRILL=done bash tools/screenshot.sh /tmp/shots mid                # a PLL drill: solving | done -> mid_drilldone.png
+DAILY=fmc bash tools/screenshot.sh /tmp/shots mid                 # the daily scramble: fmc | timed -> mid_dailyfmc.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

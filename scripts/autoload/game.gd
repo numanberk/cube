@@ -21,13 +21,15 @@ signal hand_tier_reached(puzzle_id: String, tier: String)  ## a puzzle's PB sing
 signal flow_started(mult: float, seconds: float)  ## a hand solve started (or refreshed) Flow
 signal drill_case_learned(case_id: String)  ## a drill case reached its clean solves (S.4)
 signal drill_set_learned(set_id: String)    ## every case of a drill set is learned
+signal daily_rewarded(amount: float)  ## the first daily scramble finished today paid its reward (S.5)
 signal golden_spawned
 signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 7  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
-                         ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records
+const SAVE_VERSION := 8  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+                         ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
+                         ## v8 (S.5): daily scramble results + reward
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0
 const MIN_OFFLINE_SECONDS := 10.0
@@ -77,6 +79,8 @@ var buff: Dictionary = {}                  ## the active buff: {id, mult, left} 
 var golden_rng := RandomNumberGenerator.new()
 var flow: Dictionary = {}                  ## Flow from hand solves (S.3): {mult, left, tier}; not saved (ends on quit)
 var drills: Dictionary = {}                ## algorithm id -> {best, clean, count} (S.4, saved)
+var daily: Dictionary = {}                 ## S.5 (saved): {date, rewarded, times {puzzle: s}, fmc {puzzle: moves}, fmc_ever {puzzle: moves}}
+var daily_now := -1.0                      ## tests: the unix time "now" for the daily (-1 = the real clock)
 var _offline_catch_up := false             ## true while offline progress is added: buffs don't count then
 
 
@@ -907,6 +911,74 @@ func _reward_hand_solve(puzzle_id: String, final: float, pb_single: bool, tier_b
 		check_time_tiers()
 
 
+# --- Daily scramble (task S.5) ------------------------------------------------------
+
+## Today's date in UTC ("2026-11-04"): the daily scramble is the same for everyone that day.
+func get_daily_date() -> String:
+	var now := daily_now if daily_now >= 0.0 else Time.get_unix_time_from_system()
+	return Time.get_date_string_from_unix_time(int(now))
+
+
+## The seed for a puzzle's daily scramble on a date: FNV-1a over "date:puzzle", so it never depends on the engine's hash.
+static func daily_seed(date: String, puzzle_id: String) -> int:
+	var h := 2166136261
+	for byte in ("%s:%s" % [date, puzzle_id]).to_utf8_buffer():
+		h = ((h ^ byte) * 16777619) & 0xFFFFFFFF
+	return h
+
+
+## Today's results, rolled over to a fresh day when the date changed.
+func get_daily() -> Dictionary:
+	var today := get_daily_date()
+	if String(daily.get("date", "")) != today:
+		var ever: Dictionary = daily.get("fmc_ever", {})
+		daily = {"date": today, "rewarded": false, "times": {}, "fmc": {}, "fmc_ever": ever}
+	return daily
+
+
+## A finished daily: mode "time" (seconds, final with penalties; INF = DNF) or "fmc" (moves). Keeps today's best (and
+## the best FMC ever) and pays the day's reward the first time. Returns {best, pb_today, reward}.
+func record_daily(puzzle_id: String, mode: String, value: float) -> Dictionary:
+	var today := get_daily()
+	if Content.get_puzzle(puzzle_id).is_empty() or not mode in ["time", "fmc"] or value <= 0.0:
+		return {}
+	var key := "times" if mode == "time" else "fmc"
+	var bests: Dictionary = today[key]
+	var pb := not is_inf(value) and value < float(bests.get(puzzle_id, INF))
+	if pb:
+		bests[puzzle_id] = value
+	if mode == "fmc" and value < float((today["fmc_ever"] as Dictionary).get(puzzle_id, INF)):
+		today["fmc_ever"][puzzle_id] = value
+	var reward := 0.0
+	if not bool(today["rewarded"]) and not is_inf(value):
+		reward = maxf(get_solves_per_second() * float(Content.DAILY["reward_minutes"]) * 60.0,
+				float(Content.DAILY["min_solves_value"]) * get_solve_value(focused_puzzle))
+		solves += reward
+		total_solves += reward
+		today["rewarded"] = true
+		daily_rewarded.emit(reward)
+	return {"best": float(bests.get(puzzle_id, INF)), "pb_today": pb, "reward": reward}
+
+
+func is_daily_reward_ready() -> bool:
+	return not bool(get_daily()["rewarded"])
+
+
+func _clean_daily(saved: Variant) -> Dictionary:
+	if typeof(saved) != TYPE_DICTIONARY:
+		return {}
+	var d: Dictionary = saved
+	var out := {"date": String(d.get("date", "")), "rewarded": bool(d.get("rewarded", false)), "times": {}, "fmc": {}, "fmc_ever": {}}
+	for key: String in ["times", "fmc", "fmc_ever"]:
+		var values: Variant = d.get(key, {})
+		if typeof(values) != TYPE_DICTIONARY:
+			continue
+		for id: String in values:
+			if not Content.get_puzzle(id).is_empty() and float(values[id]) > 0.0:
+				out[key][id] = float(values[id])
+	return out
+
+
 # --- Algorithm drills (task S.4) ------------------------------------------------------
 
 ## A finished drill of one case (an algorithm id) in `set_id`: best time, clean solves (within the set's target), learned.
@@ -1219,6 +1291,7 @@ func reset_state() -> void:
 	golden_next = _roll_golden_wait()
 	flow = {}
 	drills.clear()
+	daily = {}
 
 
 func get_save_data() -> Dictionary:
@@ -1241,6 +1314,7 @@ func get_save_data() -> Dictionary:
 		"solve_records": solve_records.duplicate(true),
 		"golden": {"next": golden_next, "buff": buff.duplicate()},
 		"drills": drills.duplicate(true),
+		"daily": daily.duplicate(true),
 	}
 
 
@@ -1389,6 +1463,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		var best := float(saved.get("best", 0.0))
 		drills[id] = {"best": best if best > 0.0 else INF, "clean": maxi(0, int(saved.get("clean", 0))),
 				"count": maxi(0, int(saved.get("count", 0)))}
+	daily = _clean_daily(data.get("daily", {}))
 	var saved_golden: Dictionary = data.get("golden", {})
 	golden_next = clampf(float(saved_golden.get("next", golden_next)), 0.0, float(Content.GOLDEN["spawn_max"]))
 	golden_glow_left = 0.0
@@ -1468,6 +1543,11 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("drills"):
 			data["drills"] = {}
 		data["version"] = 7
+	if int(data["version"]) < 8:
+		# v8 adds the daily scramble: nothing played yet.
+		if not data.has("daily"):
+			data["daily"] = {}
+		data["version"] = 8
 	return data
 
 

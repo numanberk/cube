@@ -2,6 +2,28 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-04 — Task S.5: daily scramble and Fewest Moves (save v8)
+- **"Daily" in the Solve Station:** today's scramble for the selected cube, the same for everyone that day: seeded from the
+  **UTC date** + puzzle with FNV-1a (`GameState.daily_seed`, pinned by a test and checked against Python, so it never
+  depends on the engine's hash). Enter or switching cube gives the day's scramble again.
+  - **Timed:** a normal WCA attempt (inspection setting applies); it's also a hand-solve record (Flow, tiers…) and keeps
+    today's best time.
+  - **FMC** (toggle next to Daily): no clock, no inspection; the big number counts moves (rotations free, slices and wide
+    turns count one). **Backspace starts over.** Keeps today's best and the **best FMC ever** per puzzle. Not a timed record.
+  - Side panel: today's best time and FMC, best FMC ever, and whether the reward is waiting.
+- **Daily reward:** the first daily finished each day (timed or FMC, not a DNF) pays 30 minutes of the current Solves/s
+  (at least 50 solves' worth of the focused puzzle; `Content.DAILY`). News line. A new day (UTC) starts fresh results and a
+  new reward; the best FMC ever stays.
+- **GameState:** `daily` {date, rewarded, times, fmc, fmc_ever}, `get_daily_date()` (+ `daily_now` for tests),
+  `get_daily()` (rolls the day over), `record_daily(puzzle, "time"|"fmc", value)`, `is_daily_reward_ready()`, signal
+  `daily_rewarded`. **Save v8** (`"daily"`), v7 → v8 migration. Planned: **v9 prestige (6.2), v10 achievements (7.1)**.
+  `SolveSession.restart()`. The footer's "Enter:" text follows the mode. Screenshot tool: `DAILY=fmc|timed` (fixed date).
+- Tests (2729 checks, `All good.`): seed (same day/puzzle, different day, different puzzle, pinned value), same seed = same
+  scramble, UTC date; DNF doesn't collect, first finish pays once, today's best FMC/time, a new day resets but keeps the best
+  FMC ever, save/load v8 + migration; in the station: day label, Enter repeats, FMC counts moves, Backspace, FMC records +
+  reward and isn't a timed record, timed daily is a record and today's time, Daily off.
+- **Next: S.7 turns are taps + TPS streak** (then S.8 is already done; R.5/R.6; then Phase 5).
+
 ## 2026-11-04 — Task S.4: algorithm drills (save v7)
 - **Full OLL (57) and PLL (21)** in `Content.ALGORITHMS` (new fields `full`, `case` = OLL number; the 2-look entries are
   part of the full sets too: Sune = OLL 27, Line = OLL 45, T/Y/A/U/H/Z perms…). Written as most cubers learn them; the V perm

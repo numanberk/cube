@@ -27,6 +27,8 @@ const LIST_LENGTH := 50       ## times shown in the list (the newest)
 @onready var _close_button: Button = %CloseButton
 @onready var _simple_toggle: Button = %SimpleKeysToggle
 @onready var _drills_toggle: Button = %DrillsToggle
+@onready var _daily_toggle: Button = %DailyToggle
+@onready var _fmc_toggle: Button = %FmcToggle
 @onready var _hints_toggle: Button = %HintsToggle
 @onready var _hints_layer: Control = %KeyHints
 @onready var _footer: Label = %FooterHint
@@ -47,6 +49,9 @@ var drill_set := "2look_pll"
 var drill_case: Dictionary = {}      ## the Content.ALGORITHMS entry being drilled
 var drill_result: Dictionary = {}    ## what Game.record_drill() said about the last one
 var drill_rng := RandomNumberGenerator.new()
+var daily_mode := false              ## the daily scramble (S.5): today's seeded scramble, timed or Fewest Moves
+var fmc_mode := false
+var daily_result: Dictionary = {}    ## what Game.record_daily() said about the last daily
 
 
 func _ready() -> void:
@@ -63,6 +68,8 @@ func _ready() -> void:
 	_view.drag_turned.connect(play_move)
 	Game.golden_finished.connect(_on_golden_finished)
 	_drills_toggle.toggled.connect(set_drill_mode)
+	_daily_toggle.toggled.connect(set_daily_mode)
+	_fmc_toggle.toggled.connect(set_fmc)
 	drill_rng.randomize()
 	Game.solve_records_changed.connect(func(_id: String) -> void: _records_dirty = true)
 	set_process(false)
@@ -85,6 +92,8 @@ func open(puzzle_id: String = "") -> void:
 
 
 func close() -> void:
+	if daily_mode:
+		set_daily_mode(false, false)
 	if drill_mode:
 		set_drill_mode(false, false)
 	if golden_mode and Game.golden_attempt_left > 0.0:
@@ -100,6 +109,7 @@ func close() -> void:
 func open_golden(puzzle_id: String, moves: int) -> void:
 	open(puzzle_id)
 	set_drill_mode(false, false)
+	set_daily_mode(false, false)
 	golden_mode = true
 	golden_result = ""
 	_golden_close_left = 0.0
@@ -138,6 +148,9 @@ func select_puzzle(puzzle_id: String) -> void:
 
 ## A fresh scramble on the current puzzle.
 func new_attempt(rng: RandomNumberGenerator = null) -> void:
+	if daily_mode:
+		start_daily()
+		return
 	session.inspection = bool(Settings.get_value("inspection"))
 	session.start(_puzzle, _now(), rng)
 	last_info = {}
@@ -189,10 +202,87 @@ func keys_help_text() -> String:
 	return text
 
 
+# --- Daily scramble (task S.5) -------------------------------------------------------
+
+## Daily on (today's scramble for the current cube, timed or FMC) or off.
+func set_daily_mode(on: bool, restart: bool = true) -> void:
+	daily_mode = on
+	_daily_toggle.set_pressed_no_signal(on)
+	_fmc_toggle.visible = on
+	if not on:
+		fmc_mode = false
+		_fmc_toggle.set_pressed_no_signal(false)
+	_records_dirty = true
+	if on and drill_mode:
+		set_drill_mode(false, false)
+	if restart and visible:
+		new_attempt()
+
+
+func set_fmc(on: bool) -> void:
+	fmc_mode = on
+	_fmc_toggle.set_pressed_no_signal(on)
+	if daily_mode:
+		start_daily()
+
+
+## Today's scramble for this puzzle (the same for everyone: seeded from the UTC date). FMC has no inspection or clock.
+func start_daily() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = GameState.daily_seed(Game.get_daily_date(), _puzzle)
+	session.inspection = bool(Settings.get_value("inspection")) and not fmc_mode
+	session.start(_puzzle, _now(), rng)
+	last_info = {}
+	daily_result = {}
+	_view.show_state(session.scramble)
+	_scramble_label.text = "Daily %s%s:  %s" % [Game.get_daily_date(), "  ·  FMC" if fmc_mode else "", session.scramble_text()]
+	_keys_help.text = keys_help_text()
+	_records_dirty = true
+	_build_hints()
+	_refresh()
+
+
+## FMC result: "Solved in 41 moves · today's best 38 · best ever 35 · +12.3K Solves (daily reward)".
+func daily_status_text() -> String:
+	var day: Dictionary = Game.get_daily()
+	var text := "Solved in %d moves  ·  today's best %d  ·  best ever %d" % [session.moves,
+			int(float((day["fmc"] as Dictionary).get(session.puzzle_id, session.moves))),
+			int(float((day["fmc_ever"] as Dictionary).get(session.puzzle_id, session.moves)))]
+	return text + _reward_suffix() + "  ·  Enter: try again"
+
+
+func _daily_suffix() -> String:
+	return ("  ·  today's best!" if daily_result.get("pb_today", false) else "") + _reward_suffix()
+
+
+func _reward_suffix() -> String:
+	var reward := float(daily_result.get("reward", 0.0))
+	return "  ·  +%s Solves (daily reward)" % Num.format(reward) if reward > 0.0 else ""
+
+
+func _refresh_daily_panel() -> void:
+	var day: Dictionary = Game.get_daily()
+	var name: String = Content.get_puzzle(_puzzle)["name"]
+	_records_title.text = "Daily %s  ·  %s" % [day["date"], name]
+	var time := float((day["times"] as Dictionary).get(_puzzle, INF))
+	var fmc := float((day["fmc"] as Dictionary).get(_puzzle, INF))
+	var ever := float((day["fmc_ever"] as Dictionary).get(_puzzle, INF))
+	_bests_label.text = "Today   best %s  ·  FMC %s" % ["—" if is_inf(time) else Num.solve_time(time),
+			"—" if is_inf(fmc) else "%d moves" % int(fmc)]
+	_current_label.text = "Best FMC ever   %s" % ("—" if is_inf(ever) else "%d moves" % int(ever))
+	_targets_label.text = "Daily reward: claimed today. A new scramble comes tomorrow (UTC)." if not Game.is_daily_reward_ready() \
+			else "Daily reward: ready. Finish today's scramble, timed or FMC, to collect it."
+	for child in _times_rows.get_children():
+		_times_rows.remove_child(child)
+		child.queue_free()
+
+
 # --- Algorithm drills (task S.4) -------------------------------------------------------
 
 ## Drills on (the picker shows the sets; a 3×3 case each time) or off (back to normal solves).
 func set_drill_mode(on: bool, restart: bool = true) -> void:
+	if on and daily_mode:
+		set_daily_mode(false, false)
 	drill_mode = on
 	_drills_toggle.set_pressed_no_signal(on)
 	_inspection_toggle.visible = not on
@@ -421,6 +511,12 @@ func handle_key(code: int, shift: bool = false) -> void:
 		KEY_ESCAPE:
 			close()
 			return
+		KEY_BACKSPACE:
+			if daily_mode and fmc_mode and session.state != "done":
+				session.restart()
+				_view.show_state(session.scramble)
+				_refresh()
+			return
 		KEY_ENTER, KEY_KP_ENTER:
 			if drill_mode:
 				new_drill()
@@ -451,6 +547,15 @@ func play_move(move: Dictionary) -> void:
 
 
 func _after_turn(was_done: bool) -> void:
+	if daily_mode and session.state == "done" and not was_done:
+		if fmc_mode:
+			daily_result = Game.record_daily(session.puzzle_id, "fmc", float(session.moves))
+			_records_dirty = true
+			_view.flash()
+			Audio.play_solve()
+			return
+		var final := SolveSession.final_time(session.results.back())
+		daily_result = Game.record_daily(session.puzzle_id, "time", final)  # (then it's a normal hand solve too)
 	if drill_mode:
 		if session.state == "done" and not was_done:
 			drill_result = Game.record_drill(drill_set, drill_case.get("id", ""), session.elapsed(_now()))
@@ -501,8 +606,9 @@ func _refresh() -> void:
 	elif session.model != null and session.model.size > 3:
 		lines.append("Hands: left %d · right %d" % [session.left_hand, session.right_hand])
 	_hand_label.text = "   ·   ".join(lines) if not lines.is_empty() else " "
-	_footer.text = "%s  ·  drag a row to turn it  ·  Enter: new scramble  ·  Esc: close" % (
-			"Simple keys" if session.layout == "simple" else "csTimer keys")
+	var enter := "today's scramble again" if daily_mode else ("next case" if drill_mode else "new scramble")
+	_footer.text = "%s  ·  drag a row to turn it  ·  Enter: %s  ·  Esc: close" % [
+			"Simple keys" if session.layout == "simple" else "csTimer keys", enter]
 	if _records_dirty:
 		_records_dirty = false
 		_refresh_records()
@@ -510,6 +616,12 @@ func _refresh() -> void:
 
 func _refresh_clock() -> void:
 	var now := _now()
+	if daily_mode and fmc_mode:
+		_timer_label.text = "%d moves" % session.moves
+		_timer_label.theme_type_variation = &"TimerDone" if session.state == "done" else &"TimerLabel"
+		_status_label.text = daily_status_text() if session.state == "done" \
+				else "Fewest moves: plan it, then turn. Rotations are free. Backspace: start over."
+		return
 	if drill_mode:
 		_timer_label.text = Num.solve_time(session.elapsed(now))
 		_timer_label.theme_type_variation = &"TimerDone" if session.state == "done" else &"TimerLabel"
@@ -543,14 +655,18 @@ func _refresh_clock() -> void:
 			var result: Dictionary = session.results.back()
 			_timer_label.text = result_text(result)
 			_timer_label.theme_type_variation = &"TimerDone"
-			_status_label.text = "%s  %d moves  ·  %.2f TPS%s  ·  Enter: next scramble" % [
-				pb_text(last_info), int(result["moves"]), session.tps(now), reward_text(last_info)]
+			_status_label.text = "%s  %d moves  ·  %.2f TPS%s%s  ·  Enter: %s" % [
+				pb_text(last_info), int(result["moves"]), session.tps(now), reward_text(last_info),
+				_daily_suffix() if daily_mode else "", "try today's scramble again" if daily_mode else "next scramble"]
 		_:
 			_timer_label.text = "0.00"
 			_status_label.text = " "
 
 
 func _refresh_records() -> void:
+	if daily_mode:
+		_refresh_daily_panel()
+		return
 	if drill_mode:
 		_refresh_drill_list()
 		return

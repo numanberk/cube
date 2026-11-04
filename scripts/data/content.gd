@@ -394,6 +394,13 @@ static func get_drill_set(set_id: String) -> Dictionary:
 	return {}
 
 
+## Daily scramble (task S.5): one scramble per puzzle per day, the same for everyone (seeded from the UTC date), solved
+## timed (a normal WCA attempt, also a hand-solve record) or as Fewest Moves (no clock, rotations free, slices and wide
+## turns count as one). The first daily finished each day gives `reward_minutes` of the current Solves/s (at least
+## `min_solves_value` solves' worth of the focused puzzle).
+const DAILY := {"reward_minutes": 30.0, "min_solves_value": 50.0}
+
+
 ## Golden Scramble (task S.6, was 8.1): every spawn_min..spawn_max seconds a golden sticker glows on the main puzzle
 ## for `glow` seconds. Clicking it opens a quick case (the puzzle case_moves_min..max moves from solved) to solve within
 ## `solve_seconds` for a random buff (by weight). "frenzy": all moves ×mult for `seconds`; "lucky": `minutes` of the

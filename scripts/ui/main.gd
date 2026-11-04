@@ -718,6 +718,8 @@ func _connect_news() -> void:
 	Game.solves_milestone.connect(news.on_solves_milestone)
 	Game.hand_solve_pb.connect(news.on_hand_pb)
 	Game.hand_tier_reached.connect(news.on_hand_tier)
+	Game.daily_rewarded.connect(func(amount: float) -> void:
+		news.push("daily", "Daily scramble done! +%s Solves. A new one comes tomorrow." % Num.format(amount)))
 	Game.drill_set_learned.connect(func(set_id: String) -> void:
 		news.push("drill_set", "You learned %s! Your team uses it in its solves now." % Content.get_drill_set(set_id)["name"]
 				if set_id in ["oll", "pll"] else "You learned %s!" % Content.get_drill_set(set_id)["name"])

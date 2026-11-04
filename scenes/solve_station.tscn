@@ -50,6 +50,27 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 alignment = 1
 
+[node name="DailyToggle" type="Button" parent="Margin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+toggle_mode = true
+tooltip_text = "Today's scramble: the same for everyone. The first one you finish each day pays a reward."
+text = "Daily"
+
+[node name="FmcToggle" type="Button" parent="Margin/Rows/Header"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+toggle_mode = true
+tooltip_text = "Fewest Moves: no clock, count your turns. Rotations are free. Backspace starts over."
+text = "FMC"
+
 [node name="DrillsToggle" type="Button" parent="Margin/Rows/Header"]
 unique_name_in_owner = true
 layout_mode = 2

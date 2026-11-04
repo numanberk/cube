@@ -3036,7 +3036,7 @@ func test_drill_rules() -> void:
 	check(g.record_drill("nope", "pll_t", 1.0).is_empty() and g.record_drill("pll", "nope", 1.0).is_empty(), "unknown set or case: nothing")
 	# Saved (v7); a v6 save has none.
 	var data := g.get_save_data()
-	check(int(data["version"]) == 7 and data["drills"].has("pll_t"), "drill records are saved (v7)")
+	check(int(data["version"]) >= 7 and data["drills"].has("pll_t"), "drill records are saved (v7)")
 	var loaded := new_game()
 	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
 	check(loaded.is_drill_set_learned("2look_pll") and is_equal_approx(float(loaded.get_drill_record("pll_t")["best"]), 1.0), "and load back")
@@ -3045,7 +3045,7 @@ func test_drill_rules() -> void:
 	v6["version"] = 6
 	var migrated := new_game()
 	migrated.apply_save_data(v6, float(data["saved_at"]))
-	check(migrated.drills.is_empty() and int(migrated.get_save_data()["version"]) == 7, "a v6 save gets empty drills")
+	check(migrated.drills.is_empty() and int(migrated.get_save_data()["version"]) >= 7, "a v6 save gets empty drills")
 	g.free()
 	loaded.free()
 	migrated.free()
@@ -3120,4 +3120,117 @@ func test_drill_station_and_showcase() -> void:
 			game.record_drill("pll", alg["id"], 1.0)
 	check(main._solver_options() == {"full_pll": true} and main._showcase.solver_options == {"full_pll": true}, "full PLL learned: one-look PLL in the showcase")
 	main.free()
+	game.reset_state()
+
+
+# --- Daily scramble and FMC (task S.5) -------------------------------------------------
+
+func test_daily_scramble_rules() -> void:
+	# The seed comes from the date and puzzle only (FNV-1a), so everyone gets the same scramble that day.
+	check(GameState.daily_seed("2026-11-04", "3x3") == GameState.daily_seed("2026-11-04", "3x3"), "same day, same seed")
+	check(GameState.daily_seed("2026-11-04", "3x3") != GameState.daily_seed("2026-11-05", "3x3"), "another day, another seed")
+	check(GameState.daily_seed("2026-11-04", "3x3") != GameState.daily_seed("2026-11-04", "2x2"), "another puzzle, another seed")
+	check(GameState.daily_seed("2026-11-04", "3x3") == 2657919017, "the seed is fixed forever (FNV-1a, checked against Python; not the engine's hash): %d" % GameState.daily_seed("2026-11-04", "3x3"))
+	var scrambles := []
+	for i in 2:
+		var session := SolveSession.new()
+		var rng := RandomNumberGenerator.new()
+		rng.seed = GameState.daily_seed("2026-11-04", "3x3")
+		session.start("3x3", 0.0, rng)
+		scrambles.append(session.scramble_text())
+	check(scrambles[0] == scrambles[1], "the same seed makes the same scramble: %s" % scrambles[0])
+	var g := new_game()
+	g.daily_now = 1793750400.0  # 2026-11-04 00:00 UTC
+	check(g.get_daily_date() == "2026-11-04", "the date is UTC: %s" % g.get_daily_date())
+	g.daily_now += 86399.0
+	check(g.get_daily_date() == "2026-11-04", "...all day")
+	# Records and the once-a-day reward.
+	check(g.is_daily_reward_ready(), "a reward is waiting")
+	var r := g.record_daily("3x3", "time", INF)
+	check(r["reward"] == 0.0 and g.is_daily_reward_ready(), "a DNF doesn't collect it")
+	var before := g.solves
+	r = g.record_daily("3x3", "fmc", 45.0)
+	var expected := float(Content.DAILY["min_solves_value"]) * g.get_solve_value()
+	check_near(float(r["reward"]), expected, "the first finished daily pays (no helpers: 50 solves' worth)")
+	check_near(g.solves - before, expected, "...into Solves")
+	check(not g.is_daily_reward_ready(), "...once")
+	r = g.record_daily("3x3", "fmc", 38.0)
+	check(r["reward"] == 0.0 and r["pb_today"] and is_equal_approx(float(r["best"]), 38.0), "a better FMC is today's best, no second reward")
+	r = g.record_daily("3x3", "fmc", 41.0)
+	check(not r["pb_today"] and is_equal_approx(float(r["best"]), 38.0), "a worse one isn't")
+	g.record_daily("3x3", "time", 63.5)
+	check(is_equal_approx(float(g.get_daily()["times"]["3x3"]), 63.5), "today's best time")
+	# A new day: fresh results and reward; the best FMC ever stays. Saved (v8).
+	var data := g.get_save_data()
+	check(int(data["version"]) >= 8 and data["daily"]["fmc"]["3x3"] == 38.0, "saved (v8)")
+	g.daily_now += 10.0  # 2026-11-05
+	check(g.get_daily()["date"] == "2026-11-05" and g.is_daily_reward_ready() and g.get_daily()["fmc"].is_empty(), "the next day starts fresh")
+	check(is_equal_approx(float(g.get_daily()["fmc_ever"]["3x3"]), 38.0), "...but the best FMC ever stays")
+	var loaded := new_game()
+	loaded.daily_now = 1793750400.0
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(not loaded.is_daily_reward_ready() and is_equal_approx(float(loaded.get_daily()["fmc"]["3x3"]), 38.0), "a load keeps today's results")
+	var v7: Dictionary = data.duplicate(true)
+	v7.erase("daily")
+	v7["version"] = 7
+	var migrated := new_game()
+	migrated.apply_save_data(v7, float(data["saved_at"]))
+	check(migrated.is_daily_reward_ready() and int(migrated.get_save_data()["version"]) == 8, "a v7 save gets an empty daily")
+	g.free()
+	loaded.free()
+	migrated.free()
+
+
+func test_daily_in_station() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	game.daily_now = 1793750400.0
+	var settings: Node = root.get_node("Settings")
+	settings.persistence_enabled = false
+	settings.set_value("inspection", false)
+	game.cheat_add_solves(1000.0)
+	game.unlock_puzzle("3x3")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var station: Node = main.get_node("%SolveStation")
+	station.open("3x3")
+	station.frozen_now = 50.0
+	(station.get_node("%DailyToggle") as Button).toggled.emit(true)
+	var daily_scramble: String = station.session.scramble_text()
+	check(station.daily_mode and (station.get_node("%FmcToggle") as Button).visible, "Daily on: today's scramble, and an FMC toggle")
+	check((station.get_node("%ScrambleLabel") as Label).text.contains("Daily 2026-11-04"), "the label names the day")
+	station.handle_key(KEY_ENTER)
+	check(station.session.scramble_text() == daily_scramble, "Enter gives the same scramble again (it's the day's)")
+	# FMC: count moves, Backspace starts over, solving records the moves and pays the day's reward.
+	(station.get_node("%FmcToggle") as Button).toggled.emit(true)
+	check(station.fmc_mode and station.session.scramble_text() == daily_scramble, "FMC uses the same scramble")
+	var solution: Array = station.session.model.inverse_sequence(station.session.scramble)
+	station.play_move(solution[0])
+	check((station.get_node("%TimerLabel") as Label).text == "1 moves", "the big number counts moves")
+	station.handle_key(KEY_BACKSPACE)
+	check(station.session.moves == 0 and station.session.scramble_text() == daily_scramble, "Backspace starts over, no moves counted")
+	var count_before := game.get_hand_solve_count("3x3")
+	var solves_before := game.solves
+	for move in solution:
+		station.play_move(move)
+	check(station.session.state == "done" and is_equal_approx(float(game.get_daily()["fmc"]["3x3"]), float(solution.size())), "FMC records the move count")
+	check(game.solves > solves_before and not game.is_daily_reward_ready(), "the day's reward is paid")
+	check(game.get_hand_solve_count("3x3") == count_before, "an FMC isn't a timed record")
+	check((station.get_node("%StatusLabel") as Label).text.contains("daily reward"), "and says so")
+	# Timed daily: also a normal hand solve.
+	(station.get_node("%FmcToggle") as Button).toggled.emit(false)
+	station.frozen_now = 60.0
+	var timed: Array = station.session.model.inverse_sequence(station.session.scramble)
+	station.play_move(timed[0])  # the clock starts...
+	station.frozen_now = 121.4   # ...and stops a minute later
+	for move in timed.slice(1):
+		station.play_move(move)
+	check(game.get_hand_solve_count("3x3") == count_before + 1 and game.get_daily()["times"].has("3x3"), "a timed daily is a record and today's time")
+	(station.get_node("%DailyToggle") as Button).toggled.emit(false)
+	check(not station.daily_mode and station.session.scramble_text() != daily_scramble, "Daily off: random scrambles again")
+	station.close()
+	main.free()
+	settings.set_value("inspection", true)
+	game.daily_now = -1.0
 	game.reset_state()

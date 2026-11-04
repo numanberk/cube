@@ -90,6 +90,19 @@ func start_drill(alg: String, now: float, rng: RandomNumberGenerator = null) -> 
 	return true
 
 
+## Fewest Moves (task S.5): back to the scramble, no moves counted (the clock doesn't matter in FMC).
+func restart() -> void:
+	if model == null:
+		return
+	model.reset()
+	model.apply_all(scramble)
+	moves = 0
+	penalty = ""
+	state = "ready"
+	_started_at = 0.0
+	_finished_at = 0.0
+
+
 func scramble_text() -> String:
 	return "" if model == null else model.notation_sequence(scramble)
 
