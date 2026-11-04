@@ -2,6 +2,33 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-04 — Task 0.6: hooks that make sessions use the subagents (tooling only)
+- **Owner: "make them trigger at appropriate times".** Agents described in CLAUDE.md are only used if the model
+  remembers to, so `.claude/settings.json` now wires Claude Code hooks to `tools/hooks/workflow.py` (Python 3, stdlib):
+  - **remind** (after Edit/Write): first edit of `content.gd`/`game.gd` -> "run `balance-analyst`"; first UI edit
+    (`scenes/`, `ui/`, `scripts/ui/`, `assets/icons|fonts|images/`) -> "run `screenshot-checker`". Once per session each.
+  - **gate** (before Bash): blocks `git commit` until, for the change set not yet on main (merge-base with
+    `origin/main`, else local `main`, else HEAD): tests passed after the last code change, the balance bot ran after the
+    last `content.gd`/`game.gd` change, screenshots were taken after the last UI change, and `diff-reviewer` reviewed
+    every changed code file (it records the file list; fixing its findings needs no second review). Change sets with
+    no code (`docs/`, `.claude/agents/`, `*.md`) pass. Deleted/moved files count as changed when their folder changed.
+    Only a real `git [-C dir|-c k=v|--flag] commit` is gated, not one mentioned in quotes or a heredoc.
+    Escape: `CUBE_SKIP_GATE=1 git commit ...`, with a CHANGELOG note.
+  - **record** (after Bash, Agent, SubagentStop): notes passed checks (dated by when they *started*: the gate notes the
+    start time per `tool_use_id`) and finished agents in `.git/cube-workflow.json`. Background Bash runs aren't seen.
+    Agents usually run in the background, so a finished agent is recorded from **SubagentStop** (it has `agent_type`
+    but not the agent's report; the Agent tool's own PostToolUse fires at launch and is ignored then). Hooks also fire
+    for a subagent's own Bash calls, which is how `test-runner`'s and `balance-analyst`'s runs are recorded.
+  - The first version was reviewed by `diff-reviewer` (10 findings: `grep -n` hid "All good.", no fallback without
+    `origin/main`, deletions skipped the tests, a check counted edits made while it ran, a before-shot passed the
+    screenshot check, the commit regex, a shared temp file, doc drift); all fixed and pipe-tested.
+  - **aftercommit**: a commit that ticks the last task of a phase asks for a `fun-designer` pass for the owner.
+- Verified: every case pipe-tested in a scratch clone; in this session the gate blocked a commit (tests + review
+  missing), then allowed it after `test-runner` and `diff-reviewer` ran.
+- Windows note: hooks call `python3`. In a local Claude Code on Windows without it they fail open (never block), but
+  every Bash call then shows a hook error; install Python 3 or ignore the noise.
+- No game code changed; the next roadmap task is whatever the 5.7b entry below says.
+
 ## 2026-11-04 — Task 5.7b: choices, pick one of two
 - **Three pairs** (`choice_group` in `Content.UPGRADES`; buying one locks the other for this run, a championship (6.2)
   resets upgrades and so the choice): **Speed Practice** (taps ×3) *or* **Efficient Solving** (−20 % moves per solve),
