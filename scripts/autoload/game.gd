@@ -208,7 +208,7 @@ func get_tap_moves() -> float:
 ## Moves per second produced by ONE unit of a building.
 func get_building_mps(id: String) -> float:
 	var def := Content.get_building(id)
-	return float(def["mps"]) * _upgrade_mult("building_mult", id) * _upgrade_mult("global_mult")
+	return float(def["mps"]) * _upgrade_mult("building_mult", id) * _upgrade_mult("global_mult") * _synergy_mult(id)
 
 
 func get_moves_per_second() -> float:
@@ -1252,6 +1252,25 @@ func _upgrade_requirements_met(def: Dictionary) -> bool:
 		if int(buildings.get(building_id, 0)) < int(requires[building_id]):
 			return false
 	return true
+
+
+## Synergies on a helper (5.3): ×(1 + value × copies of the source) for each owned synergy upgrade that targets it.
+func _synergy_mult(target: String) -> float:
+	if upgrades.size() != _mult_cache_owned:
+		_mult_cache.clear()
+		_mult_cache_owned = upgrades.size()
+	var key := "synergy_defs|" + target
+	if not _mult_cache.has(key):  # which owned synergies target this helper (only changes with the owned set)
+		var found: Array = []
+		for id: String in upgrades:
+			var effect: Dictionary = Content.get_upgrade(id).get("effect", {})
+			if effect.get("type", "") == "synergy" and effect.get("target", "") == target:
+				found.append(effect)
+		_mult_cache[key] = found
+	var mult := 1.0
+	for effect: Dictionary in _mult_cache[key]:
+		mult *= 1.0 + float(effect["value"]) * int(buildings.get(effect["source"], 0))
+	return mult
 
 
 ## Product of every owned upgrade's effect of this type (and target). Cached: with ~50 upgrades (5.2) this is called

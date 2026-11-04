@@ -15,17 +15,17 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 |---|---|---|
 | First helper ≤ 20 s | Cubing Friend at 0:00 | pass |
 | First upgrade < 1 min | Cube Lube at 0:44 | pass |
-| Something new every ≤ 3 min in the first hour | longest 22:21 (after Club Training V, until 1:00:00) | expected failure |
-| Something new every ≤ 10 min after the first hour | longest 30:24 (after Servo Tuning V, before Comp Experience V) | expected failure |
+| Something new every ≤ 3 min in the first hour | longest 34:01 (after Assembly Line V, until 1:00:00) | expected failure |
+| Something new every ≤ 10 min after the first hour | longest 42:14 (after Research Grants V, until 2:00:00) | expected failure |
 | 3×3 unlocked at ~5 min (4–6 min) | 4:11 | pass |
-| Solving Robot at ~10 min (8–12 min) | 6:29 | expected failure |
-| 4×4 unlocked at ~30 min (25–35 min) | 7:57 | expected failure |
-| 5×5 unlocked at ~60 min (50–70 min) | 11:11 | expected failure |
+| Solving Robot at ~10 min (8–12 min) | 6:53 | expected failure |
+| 4×4 unlocked at ~30 min (25–35 min) | 7:38 | expected failure |
+| 5×5 unlocked at ~60 min (50–70 min) | 9:18 | expected failure |
 | First World Championship at ~90 min (80–100 min, D6) | never (in 2:00:00) | expected failure |
 | 7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
 | Second run reaches the same point in ≤ 50 % of the time | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
 | The bot's best split at 30 min is a real mix (no puzzle above 70 %) | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % | pass |
-| An active player (Gold-pace hand solves) gets there 2–3× sooner than the tapping bot (D13) | ×2.80 (the tapping bot's 754.9B Solves at 30:00, the active one at 10:43) | pass |
+| An active player (Gold-pace hand solves) gets there 2–3× sooner than the tapping bot (D13) | ×2.87 (the tapping bot's 8.39T Solves at 30:00, the active one at 10:27) | pass |
 | Never tapping still buys something within 5 min | Cubing Friend at 0:00 | pass |
 
 ### Expected failures
@@ -44,9 +44,9 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 
 ## Tapping (3 taps/s, 120 min)
 
-- Items bought: 677 (46 different)
+- Items bought: 796 (56 different)
 - Every helper, upgrade, method and puzzle owned at: never
-- Longest wait for something new: 40:03 (after Club Training V, before Servo Tuning V)
+- Longest wait for something new: 51:48 (after Assembly Line V, before Research Grants V)
 
 ### First purchase of each item
 
@@ -63,41 +63,51 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 5:25 | upgrade | Club Snacks | 600 | +0:30 |
 | 5:34 | upgrade | Club Training I | 600 | +0:09 |
 | 5:52 | upgrade | Magnetic Cube | 1.50K | +0:18 |
-| 6:00 | upgrade | Club Training II | 1.80K | +0:09 |
-| 6:11 | upgrade | Practice Partners III | 1.25K | +0:10 |
-| 6:21 | helper | Local Competition | 9.00K | +0:10 |
-| 6:29 | helper | Solving Robot | 1.50K | +0:08 |
-| 6:41 | method | Learn Roux | 25.00K | +0:12 |
-| 6:56 | upgrade | Robot Firmware v2 | 8.00K | +0:15 |
-| 6:59 | upgrade | Club Training III | 15.00K | +0:03 |
-| 7:02 | upgrade | Servo Tuning I | 15.00K | +0:03 |
-| 7:09 | upgrade | Servo Tuning II | 45.00K | +0:07 |
-| 7:21 | helper | Cube Factory | 120.0K | +0:13 |
-| 7:26 | upgrade | Comp Experience I | 90.00K | +0:05 |
-| 7:37 | upgrade | Comp Experience II | 270.0K | +0:11 |
-| 7:57 | puzzle | 4×4 | 400.0K | +0:20 |
-| 8:10 | upgrade | Assembly Line I | 1.20M | +0:12 |
-| 8:23 | helper | Speedcubing Lab | 1.80M | +0:14 |
-| 8:32 | upgrade | Assembly Line II | 3.60M | +0:09 |
-| 8:48 | upgrade | Servo Tuning III | 375.0K | +0:16 |
-| 9:08 | upgrade | Research Grants I | 18.00M | +0:20 |
-| 9:37 | upgrade | Research Grants II | 54.00M | +0:29 |
-| 9:49 | method | Learn ZZ | 50.00M | +0:12 |
-| 9:55 | upgrade | Comp Experience III | 2.25M | +0:06 |
-| 10:04 | upgrade | Assembly Line III | 30.00M | +0:09 |
-| 10:14 | upgrade | Practice Partners IV | 40.00K | +0:09 |
-| 10:38 | upgrade | Research Grants III | 450.0M | +0:24 |
-| 10:47 | upgrade | Club Training IV | 480.0K | +0:09 |
-| 11:11 | puzzle | 5×5 | 300.0M | +0:24 |
-| 11:14 | upgrade | Servo Tuning IV | 12.00M | +0:03 |
-| 11:29 | upgrade | Comp Experience IV | 72.00M | +0:15 |
-| 11:55 | upgrade | Assembly Line IV | 960.0M | +0:27 |
-| 14:39 | method | God's Number | 30.00B | +2:44 |
-| 15:30 | upgrade | Research Grants IV | 14.40B | +0:51 |
-| 30:31 | upgrade | Practice Partners V | 40.00M | +15:01 |
-| 37:39 | upgrade | Club Training V | 480.0M | +7:08 |
-| 1:17:42 | upgrade | Servo Tuning V | 12.00B | +40:03 |
-| 1:48:05 | upgrade | Comp Experience V | 72.00B | +30:24 |
+| 6:06 | upgrade | Practice Partners III | 1.25K | +0:14 |
+| 6:10 | upgrade | Club Training II | 1.80K | +0:05 |
+| 6:16 | upgrade | Club Coaching | 3.00K | +0:06 |
+| 6:26 | helper | Local Competition | 9.00K | +0:10 |
+| 6:42 | upgrade | Sponsorship Deal | 25.00K | +0:16 |
+| 6:47 | upgrade | Club Training III | 15.00K | +0:05 |
+| 6:52 | method | Learn Roux | 25.00K | +0:05 |
+| 6:53 | helper | Solving Robot | 1.50K | +0:01 |
+| 7:00 | upgrade | Robot Firmware v2 | 8.00K | +0:07 |
+| 7:02 | upgrade | Servo Tuning I | 15.00K | +0:02 |
+| 7:08 | upgrade | Robot Sparring | 40.00K | +0:06 |
+| 7:10 | upgrade | Servo Tuning II | 45.00K | +0:02 |
+| 7:16 | upgrade | Comp Experience I | 90.00K | +0:06 |
+| 7:21 | helper | Cube Factory | 120.0K | +0:05 |
+| 7:38 | puzzle | 4×4 | 400.0K | +0:17 |
+| 7:52 | helper | Speedcubing Lab | 1.80M | +0:14 |
+| 8:16 | upgrade | Comp Experience II | 270.0K | +0:24 |
+| 8:17 | upgrade | Servo Tuning III | 375.0K | +0:01 |
+| 8:18 | upgrade | Talent Scouts | 400.0K | +0:00 |
+| 8:19 | upgrade | Assembly Line I | 1.20M | +0:01 |
+| 8:21 | upgrade | Prize Money | 2.50M | +0:02 |
+| 8:27 | upgrade | Practice Partners IV | 40.00K | +0:07 |
+| 8:32 | upgrade | Comp Experience III | 2.25M | +0:04 |
+| 8:33 | upgrade | Assembly Line II | 3.60M | +0:01 |
+| 8:42 | method | Learn ZZ | 50.00M | +0:09 |
+| 8:42 | upgrade | Factory Supply | 6.00M | +0:01 |
+| 8:44 | upgrade | Club Training IV | 480.0K | +0:01 |
+| 8:48 | upgrade | Research Grants I | 18.00M | +0:05 |
+| 8:55 | upgrade | Assembly Line III | 30.00M | +0:07 |
+| 8:57 | upgrade | Research Grants II | 54.00M | +0:03 |
+| 9:03 | upgrade | Lab Prototypes | 90.00M | +0:06 |
+| 9:10 | upgrade | Live Stream | 400.0M | +0:07 |
+| 9:14 | upgrade | Research Grants III | 450.0M | +0:04 |
+| 9:18 | puzzle | 5×5 | 300.0M | +0:04 |
+| 9:20 | upgrade | Servo Tuning IV | 12.00M | +0:02 |
+| 9:23 | upgrade | Comp Experience IV | 72.00M | +0:03 |
+| 9:29 | upgrade | Assembly Line IV | 960.0M | +0:06 |
+| 10:00 | method | God's Number | 30.00B | +0:31 |
+| 10:07 | upgrade | Research Grants IV | 14.40B | +0:07 |
+| 11:06 | upgrade | Practice Partners V | 40.00M | +0:59 |
+| 11:25 | upgrade | Club Training V | 480.0M | +0:18 |
+| 14:52 | upgrade | Servo Tuning V | 12.00B | +3:28 |
+| 17:18 | upgrade | Comp Experience V | 72.00B | +2:26 |
+| 25:59 | upgrade | Assembly Line V | 960.0B | +8:41 |
+| 1:17:46 | upgrade | Research Grants V | 14.40T | +51:48 |
 
 ### Income over time
 
@@ -105,10 +115,10 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 |---|---|---|---|---|---|
 | 1 | 0.9 | 7.5 | 7 | 35 | 2×2 100 % |
 | 5 | 38 | 94 | 12 | 1.28K | 2×2 35 % · 3×3 65 % |
-| 15 | 328.8M | 19.03M | 4.59B | 53.04B | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
-| 30 | 877.0M | 50.78M | 59.49B | 759.0B | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
-| 60 | 979.2M | 56.70M | 101.8B | 2.45T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
-| 120 | 1.07B | 61.77M | 605.2B | 6.14T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 15 | 6.38B | 61.59M | 33.71B | 1.74T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 30 | 8.81B | 85.05M | 471.2B | 8.43T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 60 | 9.65B | 93.16M | 4.10T | 25.30T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 120 | 16.89B | 162.9M | 6.42T | 77.12T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
 
 ## Never tapping (0 taps/s, 120 min)
 
@@ -147,10 +157,10 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 
 ## Active: tapping + Gold-pace hand solves (3 taps/s, 30 min)
 
-- Hand solves in the Solve Station: 7 (each just inside the tier's target on the biggest cube owned, back to back)
-- Items bought: 659 (45 different)
+- Hand solves in the Solve Station: 6 (each just inside the tier's target on the biggest cube owned, back to back)
+- Items bought: 766 (56 different)
 - Every helper, upgrade, method and puzzle owned at: never
-- Longest wait for something new: 13:24 (after Club Training V, before Servo Tuning V)
+- Longest wait for something new: 17:57 (after Assembly Line V, before Research Grants V)
 
 ### First purchase of each item
 
@@ -167,46 +177,57 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 1:46 | upgrade | Club Snacks | 600 | +0:11 |
 | 1:49 | upgrade | Club Training I | 600 | +0:03 |
 | 1:55 | upgrade | Magnetic Cube | 1.50K | +0:06 |
-| 1:58 | upgrade | Club Training II | 1.80K | +0:03 |
-| 2:01 | upgrade | Practice Partners III | 1.25K | +0:03 |
-| 2:05 | helper | Local Competition | 9.00K | +0:03 |
-| 2:07 | helper | Solving Robot | 1.50K | +0:03 |
-| 2:11 | method | Learn Roux | 25.00K | +0:04 |
-| 2:16 | upgrade | Robot Firmware v2 | 8.00K | +0:05 |
-| 2:17 | upgrade | Club Training III | 15.00K | +0:01 |
-| 2:19 | upgrade | Servo Tuning I | 15.00K | +0:01 |
-| 2:21 | upgrade | Servo Tuning II | 45.00K | +0:02 |
-| 2:25 | helper | Cube Factory | 120.0K | +0:04 |
-| 2:27 | upgrade | Comp Experience I | 90.00K | +0:01 |
-| 2:30 | upgrade | Comp Experience II | 270.0K | +0:04 |
-| 2:38 | puzzle | 4×4 | 400.0K | +0:08 |
-| 2:42 | upgrade | Assembly Line I | 1.20M | +0:04 |
-| 2:47 | helper | Speedcubing Lab | 1.80M | +0:05 |
-| 2:50 | upgrade | Assembly Line II | 3.60M | +0:03 |
-| 2:57 | upgrade | Servo Tuning III | 375.0K | +0:06 |
-| 3:05 | upgrade | Research Grants I | 18.00M | +0:08 |
-| 3:15 | upgrade | Research Grants II | 54.00M | +0:11 |
-| 3:20 | method | Learn ZZ | 50.00M | +0:04 |
-| 3:22 | upgrade | Comp Experience III | 2.25M | +0:02 |
-| 3:26 | upgrade | Assembly Line III | 30.00M | +0:03 |
-| 3:29 | upgrade | Practice Partners IV | 40.00K | +0:03 |
-| 3:39 | upgrade | Research Grants III | 450.0M | +0:10 |
-| 3:42 | upgrade | Club Training IV | 480.0K | +0:03 |
-| 3:50 | upgrade | Servo Tuning IV | 12.00M | +0:08 |
-| 3:56 | upgrade | Comp Experience IV | 72.00M | +0:06 |
-| 4:02 | puzzle | 5×5 | 300.0M | +0:06 |
-| 4:08 | upgrade | Assembly Line IV | 960.0M | +0:06 |
-| 5:19 | method | God's Number | 30.00B | +1:12 |
-| 5:37 | upgrade | Research Grants IV | 14.40B | +0:18 |
-| 10:53 | upgrade | Practice Partners V | 40.00M | +5:16 |
-| 13:17 | upgrade | Club Training V | 480.0M | +2:23 |
-| 26:40 | upgrade | Servo Tuning V | 12.00B | +13:24 |
+| 2:00 | upgrade | Practice Partners III | 1.25K | +0:05 |
+| 2:01 | upgrade | Club Training II | 1.80K | +0:02 |
+| 2:03 | upgrade | Club Coaching | 3.00K | +0:02 |
+| 2:06 | helper | Local Competition | 9.00K | +0:03 |
+| 2:12 | upgrade | Sponsorship Deal | 25.00K | +0:05 |
+| 2:13 | upgrade | Club Training III | 15.00K | +0:02 |
+| 2:15 | method | Learn Roux | 25.00K | +0:02 |
+| 2:16 | helper | Solving Robot | 1.50K | +0:00 |
+| 2:18 | upgrade | Robot Firmware v2 | 8.00K | +0:02 |
+| 2:18 | upgrade | Servo Tuning I | 15.00K | +0:01 |
+| 2:21 | upgrade | Robot Sparring | 40.00K | +0:02 |
+| 2:21 | upgrade | Servo Tuning II | 45.00K | +0:01 |
+| 2:23 | upgrade | Comp Experience I | 90.00K | +0:02 |
+| 2:25 | helper | Cube Factory | 120.0K | +0:02 |
+| 2:32 | puzzle | 4×4 | 400.0K | +0:07 |
+| 2:36 | helper | Speedcubing Lab | 1.80M | +0:04 |
+| 2:45 | upgrade | Comp Experience II | 270.0K | +0:09 |
+| 2:45 | upgrade | Servo Tuning III | 375.0K | +0:01 |
+| 2:45 | upgrade | Talent Scouts | 400.0K | +0:00 |
+| 2:46 | upgrade | Assembly Line I | 1.20M | +0:00 |
+| 2:47 | upgrade | Prize Money | 2.50M | +0:01 |
+| 2:49 | upgrade | Practice Partners IV | 40.00K | +0:03 |
+| 2:51 | upgrade | Comp Experience III | 2.25M | +0:02 |
+| 2:51 | upgrade | Assembly Line II | 3.60M | +0:00 |
+| 2:55 | method | Learn ZZ | 50.00M | +0:03 |
+| 2:55 | upgrade | Factory Supply | 6.00M | +0:00 |
+| 2:56 | upgrade | Club Training IV | 480.0K | +0:00 |
+| 2:57 | upgrade | Research Grants I | 18.00M | +0:02 |
+| 3:00 | upgrade | Assembly Line III | 30.00M | +0:02 |
+| 3:01 | upgrade | Research Grants II | 54.00M | +0:01 |
+| 3:03 | upgrade | Lab Prototypes | 90.00M | +0:02 |
+| 3:06 | upgrade | Live Stream | 400.0M | +0:02 |
+| 3:07 | upgrade | Research Grants III | 450.0M | +0:02 |
+| 3:09 | puzzle | 5×5 | 300.0M | +0:02 |
+| 3:09 | upgrade | Servo Tuning IV | 12.00M | +0:01 |
+| 3:11 | upgrade | Comp Experience IV | 72.00M | +0:01 |
+| 3:13 | upgrade | Assembly Line IV | 960.0M | +0:02 |
+| 3:25 | method | God's Number | 30.00B | +0:12 |
+| 3:28 | upgrade | Research Grants IV | 14.40B | +0:03 |
+| 3:51 | upgrade | Practice Partners V | 40.00M | +0:23 |
+| 3:57 | upgrade | Club Training V | 480.0M | +0:06 |
+| 5:10 | upgrade | Servo Tuning V | 12.00B | +1:12 |
+| 6:00 | upgrade | Comp Experience V | 72.00B | +0:50 |
+| 9:00 | upgrade | Assembly Line V | 960.0B | +3:01 |
+| 26:58 | upgrade | Research Grants V | 14.40T | +17:57 |
 
 ### Income over time
 
 | Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves | Bot's split |
 |---|---|---|---|---|---|
 | 1 | 3.8 | 24 | 2 | 230 | 2×2 100 % |
-| 5 | 209.6M | 18.68M | 18.06B | 34.40B | 2×2 10 % · 3×3 25 % · 4×4 60 % · 5×5 5 % |
-| 15 | 1.07B | 54.08M | 97.28B | 1.46T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
-| 30 | 1.18B | 59.54M | 17.60B | 4.11T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 5 | 6.95B | 60.47M | 19.20B | 1.52T | 2×2 5 % · 3×3 14 % · 4×4 24 % · 5×5 57 % |
+| 15 | 10.39B | 90.31M | 796.3B | 15.70T | 2×2 5 % · 3×3 14 % · 4×4 24 % · 5×5 57 % |
+| 30 | 17.79B | 154.7M | 977.6B | 43.92T | 2×2 5 % · 3×3 14 % · 4×4 24 % · 5×5 57 % |

@@ -3289,3 +3289,39 @@ func test_helper_milestones() -> void:
 			"a new helper gets its milestones from the table: %s" % [made.map(func(d: Dictionary) -> String: return d["name"])])
 	check(made[-1]["requires"] == {"test_helper": 200} and is_equal_approx(float(made[1]["cost"]), 100.0 * float(Content.HELPER_MILESTONES[1]["cost_mult"])),
 			"...with the table's thresholds and costs")
+
+
+# --- Synergies and solve value (task 5.3) -----------------------------------------------
+
+func test_synergies_and_solve_value() -> void:
+	var g := new_game()
+	g.cheat_add_solves(1e12)
+	g.buy_building("friend")
+	g.buy_buildings("club", 5)
+	var friend_before := g.get_building_mps("friend")
+	var club_before := g.get_building_mps("club")
+	check(g.is_upgrade_available("club_coaching"), "Club Coaching shows up with 5 Clubs")
+	g.buy_upgrade("club_coaching")
+	check_near(g.get_building_mps("friend"), friend_before * (1.0 + 0.02 * 5), "synergy: 5 Clubs make each Friend 10 % faster")
+	check_near(g.get_building_mps("club"), club_before, "...and leave the Clubs alone")
+	g.buy_buildings("club", 5)
+	check_near(g.get_building_mps("friend"), friend_before * (1.0 + 0.02 * 10), "it grows with every Club (10 → +20 %)")
+	g.buy_buildings("robot", 5)
+	var club_mps := g.get_building_mps("club")
+	g.buy_upgrade("robot_sparring")
+	check_near(g.get_building_mps("club"), club_mps * 1.10, "Robot Sparring: 5 Robots → Clubs +10 %")
+	# Solve value: Sponsorship ×1.5, Prize Money ×2, multiplied together.
+	var value := g.get_solve_value("2x2")
+	g.buy_building("competition")
+	check(g.buy_upgrade("sponsorship"), "Sponsorship needs a Local Competition")
+	check_near(g.get_solve_value("2x2"), value * 1.5, "every solve pays 50 % more")
+	g.buy_buildings("competition", 19)
+	g.buy_upgrade("prize_money")
+	check_near(g.get_solve_value("2x2"), value * 3.0, "Prize Money doubles it again (×3 in all)")
+	for def: Dictionary in Content.UPGRADES:
+		var effect: Dictionary = def["effect"]
+		if effect["type"] == "synergy":
+			check(Content.get_building(effect["target"]).size() > 0 and Content.get_building(effect["source"]).size() > 0,
+					"%s links two real helpers" % def["id"])
+			check(float(effect["value"]) > 0.0 and float(effect["value"]) < 0.1, "%s is a small per-copy bonus" % def["id"])
+	g.free()

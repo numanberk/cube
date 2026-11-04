@@ -2,6 +2,25 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-04 — Task 5.3: synergies and solve-value upgrades
+- **New effect type `synergy`** (`Content.EFFECT_TYPES`, applied in `GameState.get_building_mps` via `_synergy_mult`):
+  each owned copy of the `source` helper makes the `target` helper `value` faster. Which synergies are owned is cached with
+  the upgrade multipliers; the product uses the live helper counts.
+- **8 new hand-written upgrades** (55 upgrades in all with the milestones): synergies **Club Coaching** (each Club +2 %
+  Friends, 3K, 5 Clubs), **Robot Sparring** (each Robot +2 % Clubs, 40K), **Talent Scouts** (each Competition +1 % Robots,
+  400K), **Factory Supply** (each Factory +1 % Competitions, 6M), **Lab Prototypes** (each Lab +1 % Factories, 90M); solve
+  value (the old `solve_value_mult`, unused until now) **Sponsorship Deal** ×1.5 (25K), **Prize Money** ×2 (2.5M, 20
+  Competitions), **Live Stream** ×2 (400M, 10 Labs).
+- **8 new icons** from game-icons.net (CC BY 3.0: teacher, crossed-swords, magnifying-glass, cardboard-box, test-tubes,
+  receive-money, trophy-cup, tv), fetched from the set's GitHub mirror (`raw.githubusercontent.com/game-icons/icons`;
+  game-icons.net itself is blocked here), background square removed like the others; all in `assets/CREDITS.md`.
+- **Balance (BALANCE.md):** more boosts made the run faster again, so content runs out sooner: the longest first-hour wait
+  is 34:01 (from ~26 min), the 5×5 comes at 9:18. **5.5 (six more helpers) and 5.8 (rebalance) fix that.** Active speedup
+  ×2.87 (near the 3× ceiling; recheck in 5.8).
+- Tests (3093 checks, `All good.`): synergy math (scales with source copies, only its target), Robot Sparring, Sponsorship
+  ×1.5 and Prize Money stacking to ×3, every synergy links real helpers. Screenshot: `docs/screenshots/5.3-synergies/`.
+- **Next: 5.5 six more helpers** (then 5.6 Algorithm Lab, 5.7b choices, 5.8 rebalance; 5.7 only if 5.8 needs it).
+
 ## 2026-11-04 — Roadmap: Phase 5 → 6 next; Tasks 5.0 (free first Friend) and 5.2 (generated helper milestones)
 - **Owner: "progress with Phase 5 and 6".** ROADMAP order: Phase 5, then Phase 6, before the rest of Phase S (S.7, R.5,
   R.6). New tasks from the fun review: **5.0** never tapping still progresses, **5.7b** "pick one of two" upgrade choices,

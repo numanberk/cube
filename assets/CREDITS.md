@@ -60,4 +60,12 @@ The black background square was removed so the game can tint them; no other chan
 | `assets/icons/beginner.svg` | stairs | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/stairs.html |
 | `assets/icons/zz.svg` | lightning-helix | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/lightning-helix.html |
 | `assets/icons/gods_number.svg` | crown | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/crown.html |
+| `assets/icons/club_coaching.svg` | teacher | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/teacher.html |
+| `assets/icons/robot_sparring.svg` | crossed-swords | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/crossed-swords.html |
+| `assets/icons/talent_scouts.svg` | magnifying-glass | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/magnifying-glass.html |
+| `assets/icons/factory_supply.svg` | cardboard-box | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/cardboard-box.html |
+| `assets/icons/lab_prototypes.svg` | test-tubes | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/test-tubes.html |
+| `assets/icons/sponsorship.svg` | receive-money | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/receive-money.html |
+| `assets/icons/prize_money.svg` | trophy-cup | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/trophy-cup.html |
+| `assets/icons/live_stream.svg` | tv | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/tv.html |
 | `assets/icons/locked.svg` | padlock | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/padlock.html |

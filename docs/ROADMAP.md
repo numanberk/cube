@@ -241,7 +241,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       only watches still earns. *Done when:* the idle pacing target passes for real and a test checks the free Friend.
 - [x] **5.2 Generated helper milestones:** ×2 at 1/10/25/50/100/150/200 owned, generated from one table in `content.gd`.
       *Done when:* adding a helper automatically gets its milestones, and a test checks this.
-- [ ] **5.3 Synergies and solve value:** e.g. "Club Coaching" (each Club gives Friends +1 %), and upgrades that use
+- [x] **5.3 Synergies and solve value:** e.g. "Club Coaching" (each Club gives Friends +1 %), and upgrades that use
       `solve_value_mult` ("Sponsorship deal", "Prize money"). New effect types go in `Content.EFFECT_TYPES` and `GameState`.
       *Done when:* each new effect type has a test.
 - [x] **5.4 Tap scaling:** moved to **S.7** (turns are taps + TPS streak).

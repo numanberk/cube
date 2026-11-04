@@ -17,6 +17,7 @@ const EFFECT_TYPES := [
 	"building_mult",     # multiplies one helper's moves (needs "target")
 	"solve_moves_mult",  # multiplies moves needed per solve (< 1 is good)
 	"solve_value_mult",  # multiplies Solves earned per solve
+	"synergy",           # each owned "source" helper makes the "target" helper `value` (e.g. 0.02 = 2 %) faster (5.3)
 ]
 
 const BUILDINGS := [
@@ -92,6 +93,7 @@ const HELPER_MILESTONES := [
 ]
 
 ## Hand-written upgrades. Use get_upgrades() for the full list (these plus the generated milestones).
+## Synergies (5.3) link helpers: each copy of the source speeds up the target. Solve-value upgrades pay more per solve.
 const UPGRADES := [
 	{
 		"id": "lube",
@@ -135,6 +137,78 @@ const UPGRADES := [
 		"cost": 8000,
 		"effect": {"type": "building_mult", "target": "robot", "value": 2.0},
 		"requires": {"robot": 1},
+	},
+	{
+		"id": "club_coaching",
+		"icon": "club_coaching",
+		"name": "Club Coaching",
+		"description": "Club members coach your friends: each Cubing Club makes Friends 2 % faster.",
+		"cost": 3000,
+		"effect": {"type": "synergy", "target": "friend", "source": "club", "value": 0.02},
+		"requires": {"club": 5},
+	},
+	{
+		"id": "robot_sparring",
+		"icon": "robot_sparring",
+		"name": "Robot Sparring",
+		"description": "Race the robots: each Solving Robot makes Clubs 2 % faster.",
+		"cost": 40000,
+		"effect": {"type": "synergy", "target": "club", "source": "robot", "value": 0.02},
+		"requires": {"robot": 5},
+	},
+	{
+		"id": "sponsorship",
+		"icon": "sponsorship",
+		"name": "Sponsorship Deal",
+		"description": "A cube shop sponsors you: every solve pays 50 % more.",
+		"cost": 25000,
+		"effect": {"type": "solve_value_mult", "value": 1.5},
+		"requires": {"competition": 1},
+	},
+	{
+		"id": "talent_scouts",
+		"icon": "talent_scouts",
+		"name": "Talent Scouts",
+		"description": "Competitions find new talent: each Local Competition makes Robots 1 % faster.",
+		"cost": 400000,
+		"effect": {"type": "synergy", "target": "robot", "source": "competition", "value": 0.01},
+		"requires": {"competition": 10},
+	},
+	{
+		"id": "prize_money",
+		"icon": "prize_money",
+		"name": "Prize Money",
+		"description": "Podium finishes pay out: every solve pays ×2.",
+		"cost": 2500000,
+		"effect": {"type": "solve_value_mult", "value": 2.0},
+		"requires": {"competition": 20},
+	},
+	{
+		"id": "factory_supply",
+		"icon": "factory_supply",
+		"name": "Factory Supply",
+		"description": "Fresh cubes at every event: each Cube Factory makes Competitions 1 % faster.",
+		"cost": 6000000,
+		"effect": {"type": "synergy", "target": "competition", "source": "factory", "value": 0.01},
+		"requires": {"factory": 5},
+	},
+	{
+		"id": "lab_prototypes",
+		"icon": "lab_prototypes",
+		"name": "Lab Prototypes",
+		"description": "The lab designs better cubes: each Speedcubing Lab makes Factories 1 % faster.",
+		"cost": 90000000,
+		"effect": {"type": "synergy", "target": "factory", "source": "lab", "value": 0.01},
+		"requires": {"lab": 5},
+	},
+	{
+		"id": "live_stream",
+		"icon": "live_stream",
+		"name": "Live Stream",
+		"description": "Your solves go out live: every solve pays ×2.",
+		"cost": 400000000,
+		"effect": {"type": "solve_value_mult", "value": 2.0},
+		"requires": {"lab": 10},
 	},
 ]
 
