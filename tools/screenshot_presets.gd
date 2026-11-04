@@ -56,6 +56,18 @@ const PRESETS := {
 		"buildings": {"friend": 60, "club": 45, "robot": 35, "competition": 25, "factory": 15, "lab": 8},
 		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets", "firmware", "roux"],
 	},
+	## Task 5.5: deep into a long run, every helper tier owned (the six past the Lab too), four cubes.
+	"endgame": {
+		"version": 2,
+		"solves": 3.0e13,
+		"total_solves": 5.0e14,
+		"total_moves": 5.0e15,
+		"puzzles": {"unlocked": ["2x2", "3x3", "4x4", "5x5"], "progress": {}, "focus": "3x3",
+			"split": {"2x2": 0.1, "3x3": 0.2, "4x4": 0.3, "5x5": 0.4}},
+		"buildings": {"friend": 150, "club": 120, "robot": 100, "competition": 90, "factory": 75, "lab": 60,
+			"pro_team": 45, "federation": 30, "museum": 18, "ai_solver": 9, "orbital": 3, "quantum": 0},
+		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets", "firmware", "roux"],
+	},
 
 	# All six puzzles (later in the game, after a championship), focused on the Megaminx.
 	"row6": {

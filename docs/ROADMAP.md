@@ -245,7 +245,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       `solve_value_mult` ("Sponsorship deal", "Prize money"). New effect types go in `Content.EFFECT_TYPES` and `GameState`.
       *Done when:* each new effect type has a test.
 - [x] **5.4 Tap scaling:** moved to **S.7** (turns are taps + TPS streak).
-- [ ] **5.5 Six more helpers** past the Lab (e.g. Pro Team, Cubing Federation, Cube Museum, AI Solver, Orbital Cube Station,
+- [x] **5.5 Six more helpers** past the Lab (e.g. Pro Team, Cubing Federation, Cube Museum, AI Solver, Orbital Cube Station,
       Quantum Solver), so costs reach ~1e15, each with an icon.
       *Done when:* they're in the data, their milestones are generated, and there's a screenshot of the shop.
 - [ ] **5.6 Algorithm Lab (PR):** real-time research that keeps running offline (Idle Skilling's hatchery / Perfect Tower's lab).

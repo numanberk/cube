@@ -134,12 +134,13 @@ GOLDEN=glow bash tools/screenshot.sh /tmp/shots mid               # Golden Scram
 FLOW=1 bash tools/screenshot.sh /tmp/shots mid                    # Flow running after a Gold hand solve -> mid_flow.png
 DRILL=done bash tools/screenshot.sh /tmp/shots mid                # a PLL drill: solving | done -> mid_drilldone.png
 DAILY=fmc bash tools/screenshot.sh /tmp/shots mid                 # the daily scramble: fmc | timed -> mid_dailyfmc.png
+SCROLL=1 bash tools/screenshot.sh /tmp/shots endgame              # helper list scrolled to the bottom -> endgame_scroll.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
 - It runs under `xvfb-run` with the real OpenGL 3 renderer (software Mesa, so it's slow but correct) and
   a throwaway user-data dir, so it never touches a real save.
-- Presets (`fresh`, `mid`, `late`, `welcome`; v2 puzzle states `row3`, `row5`, `row6`) are save data in `tools/screenshot_presets.gd`. They go through
+- Presets (`fresh`, `mid`, `late`, `welcome`; v2 puzzle states `row3`, `row5`, `row6`; `endgame` = all 12 helper tiers) are save data in `tools/screenshot_presets.gd`. They go through
   `_migrate()`, so they keep working after save-format changes. A test checks that they still load.
   Add a preset there when a new feature needs its own state (e.g. a puzzle tier or prestige).
 - The economy is frozen during the shot, so numbers match the preset exactly. The cube is seeded, so

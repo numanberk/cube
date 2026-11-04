@@ -15,17 +15,17 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 |---|---|---|
 | First helper ≤ 20 s | Cubing Friend at 0:00 | pass |
 | First upgrade < 1 min | Cube Lube at 0:44 | pass |
-| Something new every ≤ 3 min in the first hour | longest 34:01 (after Assembly Line V, until 1:00:00) | expected failure |
-| Something new every ≤ 10 min after the first hour | longest 42:14 (after Research Grants V, until 2:00:00) | expected failure |
+| Something new every ≤ 3 min in the first hour | longest 25:40 (after Assembly Line V, before Research Grants V) | expected failure |
+| Something new every ≤ 10 min after the first hour | longest 42:07 (after Research Grants V, before Team Bootcamp V) | expected failure |
 | 3×3 unlocked at ~5 min (4–6 min) | 4:11 | pass |
 | Solving Robot at ~10 min (8–12 min) | 6:53 | expected failure |
 | 4×4 unlocked at ~30 min (25–35 min) | 7:38 | expected failure |
-| 5×5 unlocked at ~60 min (50–70 min) | 9:18 | expected failure |
+| 5×5 unlocked at ~60 min (50–70 min) | 9:32 | expected failure |
 | First World Championship at ~90 min (80–100 min, D6) | never (in 2:00:00) | expected failure |
 | 7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
 | Second run reaches the same point in ≤ 50 % of the time | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
 | The bot's best split at 30 min is a real mix (no puzzle above 70 %) | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % | pass |
-| An active player (Gold-pace hand solves) gets there 2–3× sooner than the tapping bot (D13) | ×2.87 (the tapping bot's 8.39T Solves at 30:00, the active one at 10:27) | pass |
+| An active player (Gold-pace hand solves) gets there 2–3× sooner than the tapping bot (D13) | ×2.87 (the tapping bot's 3.83Qi Solves at 30:00, the active one at 10:27) | pass |
 | Never tapping still buys something within 5 min | Cubing Friend at 0:00 | pass |
 
 ### Expected failures
@@ -44,9 +44,9 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 
 ## Tapping (3 taps/s, 120 min)
 
-- Items bought: 796 (56 different)
+- Items bought: 1394 (87 different)
 - Every helper, upgrade, method and puzzle owned at: never
-- Longest wait for something new: 51:48 (after Assembly Line V, before Research Grants V)
+- Longest wait for something new: 45:01 (after Research Grants V, before Team Bootcamp V)
 
 ### First purchase of each item
 
@@ -84,30 +84,61 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 8:18 | upgrade | Talent Scouts | 400.0K | +0:00 |
 | 8:19 | upgrade | Assembly Line I | 1.20M | +0:01 |
 | 8:21 | upgrade | Prize Money | 2.50M | +0:02 |
-| 8:27 | upgrade | Practice Partners IV | 40.00K | +0:07 |
-| 8:32 | upgrade | Comp Experience III | 2.25M | +0:04 |
-| 8:33 | upgrade | Assembly Line II | 3.60M | +0:01 |
-| 8:42 | method | Learn ZZ | 50.00M | +0:09 |
-| 8:42 | upgrade | Factory Supply | 6.00M | +0:01 |
-| 8:44 | upgrade | Club Training IV | 480.0K | +0:01 |
-| 8:48 | upgrade | Research Grants I | 18.00M | +0:05 |
-| 8:55 | upgrade | Assembly Line III | 30.00M | +0:07 |
-| 8:57 | upgrade | Research Grants II | 54.00M | +0:03 |
-| 9:03 | upgrade | Lab Prototypes | 90.00M | +0:06 |
-| 9:10 | upgrade | Live Stream | 400.0M | +0:07 |
-| 9:14 | upgrade | Research Grants III | 450.0M | +0:04 |
-| 9:18 | puzzle | 5×5 | 300.0M | +0:04 |
-| 9:20 | upgrade | Servo Tuning IV | 12.00M | +0:02 |
-| 9:23 | upgrade | Comp Experience IV | 72.00M | +0:03 |
-| 9:29 | upgrade | Assembly Line IV | 960.0M | +0:06 |
-| 10:00 | method | God's Number | 30.00B | +0:31 |
-| 10:07 | upgrade | Research Grants IV | 14.40B | +0:07 |
-| 11:06 | upgrade | Practice Partners V | 40.00M | +0:59 |
-| 11:25 | upgrade | Club Training V | 480.0M | +0:18 |
-| 14:52 | upgrade | Servo Tuning V | 12.00B | +3:28 |
-| 17:18 | upgrade | Comp Experience V | 72.00B | +2:26 |
-| 25:59 | upgrade | Assembly Line V | 960.0B | +8:41 |
-| 1:17:46 | upgrade | Research Grants V | 14.40T | +51:48 |
+| 8:34 | helper | Pro Team | 30.00M | +0:13 |
+| 8:45 | method | Learn ZZ | 50.00M | +0:11 |
+| 8:49 | upgrade | Practice Partners IV | 40.00K | +0:03 |
+| 8:57 | upgrade | Comp Experience III | 2.25M | +0:08 |
+| 8:57 | upgrade | Assembly Line II | 3.60M | +0:00 |
+| 8:58 | upgrade | Factory Supply | 6.00M | +0:01 |
+| 9:00 | upgrade | Club Training IV | 480.0K | +0:02 |
+| 9:14 | helper | Cubing Federation | 500.0M | +0:14 |
+| 9:32 | puzzle | 5×5 | 300.0M | +0:18 |
+| 9:32 | upgrade | Research Grants I | 18.00M | +0:00 |
+| 9:32 | upgrade | Assembly Line III | 30.00M | +0:00 |
+| 9:32 | upgrade | Research Grants II | 54.00M | +0:00 |
+| 9:34 | upgrade | Lab Prototypes | 90.00M | +0:02 |
+| 9:35 | upgrade | Team Bootcamp I | 300.0M | +0:00 |
+| 9:35 | upgrade | Live Stream | 400.0M | +0:00 |
+| 9:36 | upgrade | Team Bootcamp II | 900.0M | +0:01 |
+| 9:39 | upgrade | Regional Branches I | 5.00B | +0:03 |
+| 9:42 | helper | Cube Museum | 8.00B | +0:03 |
+| 9:44 | upgrade | Regional Branches II | 15.00B | +0:02 |
+| 9:47 | method | God's Number | 30.00B | +0:03 |
+| 9:47 | upgrade | Research Grants III | 450.0M | +0:00 |
+| 9:51 | upgrade | Exhibit Halls I | 80.00B | +0:04 |
+| 9:54 | helper | AI Solver | 130.0B | +0:03 |
+| 9:56 | upgrade | Exhibit Halls II | 240.0B | +0:02 |
+| 9:59 | upgrade | Team Bootcamp III | 7.50B | +0:03 |
+| 10:01 | upgrade | Servo Tuning IV | 12.00M | +0:02 |
+| 10:04 | upgrade | Neural Upgrades I | 1.30T | +0:03 |
+| 10:08 | helper | Orbital Cube Station | 2.00T | +0:04 |
+| 10:11 | upgrade | Neural Upgrades II | 3.90T | +0:03 |
+| 10:15 | upgrade | Regional Branches III | 125.0B | +0:04 |
+| 10:17 | upgrade | Comp Experience IV | 72.00M | +0:02 |
+| 10:22 | upgrade | Launch Windows I | 20.00T | +0:06 |
+| 10:30 | helper | Quantum Solver | 40.00T | +0:07 |
+| 10:34 | upgrade | Launch Windows II | 60.00T | +0:04 |
+| 10:42 | upgrade | Exhibit Halls III | 2.00T | +0:08 |
+| 10:44 | upgrade | Assembly Line IV | 960.0M | +0:03 |
+| 10:54 | upgrade | Entanglement I | 400.0T | +0:09 |
+| 11:10 | upgrade | Entanglement II | 1.20Qa | +0:16 |
+| 11:17 | upgrade | Neural Upgrades III | 32.50T | +0:07 |
+| 11:25 | upgrade | Launch Windows III | 500.0T | +0:08 |
+| 11:28 | upgrade | Research Grants IV | 14.40B | +0:03 |
+| 11:54 | upgrade | Entanglement III | 10.00Qa | +0:27 |
+| 12:09 | upgrade | Team Bootcamp IV | 240.0B | +0:15 |
+| 12:20 | upgrade | Regional Branches IV | 4.00T | +0:11 |
+| 12:41 | upgrade | Exhibit Halls IV | 64.00T | +0:21 |
+| 13:07 | upgrade | Neural Upgrades IV | 1.04Qa | +0:26 |
+| 13:28 | upgrade | Practice Partners V | 40.00M | +0:21 |
+| 13:55 | upgrade | Club Training V | 480.0M | +0:27 |
+| 14:05 | upgrade | Launch Windows IV | 16.00Qa | +0:11 |
+| 18:06 | upgrade | Entanglement IV | 320.0Qa | +4:01 |
+| 22:40 | upgrade | Servo Tuning V | 12.00B | +4:34 |
+| 25:28 | upgrade | Comp Experience V | 72.00B | +2:48 |
+| 31:25 | upgrade | Assembly Line V | 960.0B | +5:57 |
+| 57:06 | upgrade | Research Grants V | 14.40T | +25:40 |
+| 1:42:07 | upgrade | Team Bootcamp V | 240.0T | +45:01 |
 
 ### Income over time
 
@@ -115,16 +146,16 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 |---|---|---|---|---|---|
 | 1 | 0.9 | 7.5 | 7 | 35 | 2×2 100 % |
 | 5 | 38 | 94 | 12 | 1.28K | 2×2 35 % · 3×3 65 % |
-| 15 | 6.38B | 61.59M | 33.71B | 1.74T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
-| 30 | 8.81B | 85.05M | 471.2B | 8.43T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
-| 60 | 9.65B | 93.16M | 4.10T | 25.30T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
-| 120 | 16.89B | 162.9M | 6.42T | 77.12T | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 15 | 1.93Qa | 18.64T | 24.79Qa | 315.0Qa | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 30 | 4.87Qa | 46.97T | 95.44Qa | 3.86Qi | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 60 | 5.52Qa | 53.24T | 961.8Qa | 13.31Qi | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 120 | 6.02Qa | 58.12T | 1.96Qi | 34.23Qi | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
 
 ## Never tapping (0 taps/s, 120 min)
 
-- Items bought: 388 (13 different)
+- Items bought: 664 (19 different)
 - Every helper, upgrade, method and puzzle owned at: never
-- Longest wait for something new: 1:02:35 (after 5×5, before God's Number)
+- Longest wait for something new: 1:13:38 (after Quantum Solver, until 2:00:00)
 
 ### First purchase of each item
 
@@ -140,9 +171,15 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 20:35 | helper | Cube Factory | 120.0K | +1:40 |
 | 23:04 | puzzle | 4×4 | 400.0K | +2:30 |
 | 23:51 | helper | Speedcubing Lab | 1.80M | +0:47 |
-| 28:24 | method | Learn ZZ | 50.00M | +4:32 |
-| 39:59 | puzzle | 5×5 | 300.0M | +11:35 |
-| 1:42:34 | method | God's Number | 30.00B | +1:02:35 |
+| 27:04 | helper | Pro Team | 30.00M | +3:13 |
+| 28:40 | method | Learn ZZ | 50.00M | +1:36 |
+| 31:08 | helper | Cubing Federation | 500.0M | +2:28 |
+| 33:56 | helper | Cube Museum | 8.00B | +2:47 |
+| 33:57 | puzzle | 5×5 | 300.0M | +0:01 |
+| 35:36 | method | God's Number | 30.00B | +1:39 |
+| 36:53 | helper | AI Solver | 130.0B | +1:16 |
+| 40:13 | helper | Orbital Cube Station | 2.00T | +3:20 |
+| 46:22 | helper | Quantum Solver | 40.00T | +6:09 |
 
 ### Income over time
 
@@ -151,16 +188,16 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 1 | 0.1 | 0.5 | 3 | 3 | 2×2 100 % |
 | 5 | 0.4 | 3.5 | 1 | 54 | 2×2 100 % |
 | 15 | 58 | 119 | 1.26K | 6.82K | 2×2 30 % · 3×3 70 % |
-| 30 | 1.48M | 400.4K | 6.16M | 240.4M | 2×2 10 % · 3×3 25 % · 4×4 65 % |
-| 60 | 12.01M | 1.01M | 488.3M | 13.85B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
-| 120 | 19.54M | 1.15M | 14.49M | 64.40B | 2×2 0 % · 3×3 15 % · 4×4 30 % · 5×5 55 % |
+| 30 | 5.77M | 1.52M | 70.51M | 512.9M | 2×2 10 % · 3×3 25 % · 4×4 65 % |
+| 60 | 6.54T | 378.4B | 64.15T | 2.94Qa | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
+| 120 | 13.31T | 770.6B | 3.62Qa | 42.35Qa | 2×2 5 % · 3×3 14 % · 4×4 29 % · 5×5 52 % |
 
 ## Active: tapping + Gold-pace hand solves (3 taps/s, 30 min)
 
 - Hand solves in the Solve Station: 6 (each just inside the tier's target on the biggest cube owned, back to back)
-- Items bought: 766 (56 different)
+- Items bought: 1352 (86 different)
 - Every helper, upgrade, method and puzzle owned at: never
-- Longest wait for something new: 17:57 (after Assembly Line V, before Research Grants V)
+- Longest wait for something new: 10:11 (after Research Grants V, until 30:00)
 
 ### First purchase of each item
 
@@ -198,36 +235,66 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 2:45 | upgrade | Talent Scouts | 400.0K | +0:00 |
 | 2:46 | upgrade | Assembly Line I | 1.20M | +0:00 |
 | 2:47 | upgrade | Prize Money | 2.50M | +0:01 |
-| 2:49 | upgrade | Practice Partners IV | 40.00K | +0:03 |
-| 2:51 | upgrade | Comp Experience III | 2.25M | +0:02 |
-| 2:51 | upgrade | Assembly Line II | 3.60M | +0:00 |
-| 2:55 | method | Learn ZZ | 50.00M | +0:03 |
-| 2:55 | upgrade | Factory Supply | 6.00M | +0:00 |
-| 2:56 | upgrade | Club Training IV | 480.0K | +0:00 |
-| 2:57 | upgrade | Research Grants I | 18.00M | +0:02 |
-| 3:00 | upgrade | Assembly Line III | 30.00M | +0:02 |
-| 3:01 | upgrade | Research Grants II | 54.00M | +0:01 |
-| 3:03 | upgrade | Lab Prototypes | 90.00M | +0:02 |
-| 3:06 | upgrade | Live Stream | 400.0M | +0:02 |
-| 3:07 | upgrade | Research Grants III | 450.0M | +0:02 |
-| 3:09 | puzzle | 5×5 | 300.0M | +0:02 |
-| 3:09 | upgrade | Servo Tuning IV | 12.00M | +0:01 |
-| 3:11 | upgrade | Comp Experience IV | 72.00M | +0:01 |
-| 3:13 | upgrade | Assembly Line IV | 960.0M | +0:02 |
-| 3:25 | method | God's Number | 30.00B | +0:12 |
-| 3:28 | upgrade | Research Grants IV | 14.40B | +0:03 |
-| 3:51 | upgrade | Practice Partners V | 40.00M | +0:23 |
-| 3:57 | upgrade | Club Training V | 480.0M | +0:06 |
-| 5:10 | upgrade | Servo Tuning V | 12.00B | +1:12 |
-| 6:00 | upgrade | Comp Experience V | 72.00B | +0:50 |
-| 9:00 | upgrade | Assembly Line V | 960.0B | +3:01 |
-| 26:58 | upgrade | Research Grants V | 14.40T | +17:57 |
+| 2:52 | helper | Pro Team | 30.00M | +0:05 |
+| 2:56 | method | Learn ZZ | 50.00M | +0:04 |
+| 2:58 | upgrade | Practice Partners IV | 40.00K | +0:01 |
+| 3:01 | upgrade | Comp Experience III | 2.25M | +0:03 |
+| 3:01 | upgrade | Assembly Line II | 3.60M | +0:00 |
+| 3:01 | upgrade | Factory Supply | 6.00M | +0:00 |
+| 3:01 | upgrade | Club Training IV | 480.0K | +0:00 |
+| 3:07 | helper | Cubing Federation | 500.0M | +0:06 |
+| 3:12 | puzzle | 5×5 | 300.0M | +0:06 |
+| 3:14 | upgrade | Research Grants I | 18.00M | +0:01 |
+| 3:14 | upgrade | Assembly Line III | 30.00M | +0:00 |
+| 3:14 | upgrade | Research Grants II | 54.00M | +0:00 |
+| 3:15 | upgrade | Lab Prototypes | 90.00M | +0:01 |
+| 3:15 | upgrade | Team Bootcamp I | 300.0M | +0:00 |
+| 3:15 | upgrade | Live Stream | 400.0M | +0:00 |
+| 3:15 | upgrade | Team Bootcamp II | 900.0M | +0:00 |
+| 3:16 | upgrade | Regional Branches I | 5.00B | +0:01 |
+| 3:17 | helper | Cube Museum | 8.00B | +0:01 |
+| 3:18 | upgrade | Regional Branches II | 15.00B | +0:01 |
+| 3:19 | method | God's Number | 30.00B | +0:01 |
+| 3:19 | upgrade | Research Grants III | 450.0M | +0:00 |
+| 3:21 | upgrade | Exhibit Halls I | 80.00B | +0:02 |
+| 3:22 | helper | AI Solver | 130.0B | +0:01 |
+| 3:23 | upgrade | Exhibit Halls II | 240.0B | +0:01 |
+| 3:24 | upgrade | Team Bootcamp III | 7.50B | +0:01 |
+| 3:25 | upgrade | Servo Tuning IV | 12.00M | +0:01 |
+| 3:26 | upgrade | Neural Upgrades I | 1.30T | +0:01 |
+| 3:28 | helper | Orbital Cube Station | 2.00T | +0:02 |
+| 3:29 | upgrade | Neural Upgrades II | 3.90T | +0:01 |
+| 3:31 | upgrade | Regional Branches III | 125.0B | +0:02 |
+| 3:32 | upgrade | Comp Experience IV | 72.00M | +0:01 |
+| 3:35 | upgrade | Launch Windows I | 20.00T | +0:02 |
+| 3:38 | helper | Quantum Solver | 40.00T | +0:03 |
+| 3:40 | upgrade | Launch Windows II | 60.00T | +0:02 |
+| 3:44 | upgrade | Exhibit Halls III | 2.00T | +0:03 |
+| 3:45 | upgrade | Assembly Line IV | 960.0M | +0:01 |
+| 3:48 | upgrade | Entanglement I | 400.0T | +0:03 |
+| 3:54 | upgrade | Entanglement II | 1.20Qa | +0:06 |
+| 3:56 | upgrade | Neural Upgrades III | 32.50T | +0:02 |
+| 3:59 | upgrade | Launch Windows III | 500.0T | +0:03 |
+| 4:00 | upgrade | Research Grants IV | 14.40B | +0:01 |
+| 4:09 | upgrade | Entanglement III | 10.00Qa | +0:09 |
+| 4:14 | upgrade | Team Bootcamp IV | 240.0B | +0:05 |
+| 4:18 | upgrade | Regional Branches IV | 4.00T | +0:04 |
+| 4:26 | upgrade | Exhibit Halls IV | 64.00T | +0:08 |
+| 4:34 | upgrade | Neural Upgrades IV | 1.04Qa | +0:09 |
+| 4:42 | upgrade | Practice Partners V | 40.00M | +0:07 |
+| 4:51 | upgrade | Club Training V | 480.0M | +0:09 |
+| 4:55 | upgrade | Launch Windows IV | 16.00Qa | +0:04 |
+| 6:18 | upgrade | Entanglement IV | 320.0Qa | +1:24 |
+| 7:53 | upgrade | Servo Tuning V | 12.00B | +1:35 |
+| 8:52 | upgrade | Comp Experience V | 72.00B | +0:58 |
+| 10:55 | upgrade | Assembly Line V | 960.0B | +2:04 |
+| 19:49 | upgrade | Research Grants V | 14.40T | +8:54 |
 
 ### Income over time
 
 | Minute | Solves/s | Moves/s | Solves on hand | Lifetime Solves | Bot's split |
 |---|---|---|---|---|---|
 | 1 | 3.8 | 24 | 2 | 230 | 2×2 100 % |
-| 5 | 6.95B | 60.47M | 19.20B | 1.52T | 2×2 5 % · 3×3 14 % · 4×4 24 % · 5×5 57 % |
-| 15 | 10.39B | 90.31M | 796.3B | 15.70T | 2×2 5 % · 3×3 14 % · 4×4 24 % · 5×5 57 % |
-| 30 | 17.79B | 154.7M | 977.6B | 43.92T | 2×2 5 % · 3×3 14 % · 4×4 24 % · 5×5 57 % |
+| 5 | 2.06Qa | 17.89T | 13.67Qa | 240.2Qa | 2×2 5 % · 3×3 14 % · 4×4 24 % · 5×5 57 % |
+| 15 | 5.80Qa | 50.45T | 659.2Qa | 7.87Qi | 2×2 5 % · 3×3 14 % · 4×4 24 % · 5×5 57 % |
+| 30 | 6.44Qa | 56.03T | 985.2Qa | 22.33Qi | 2×2 5 % · 3×3 14 % · 4×4 24 % · 5×5 57 % |

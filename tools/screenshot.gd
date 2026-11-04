@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1] [--drill solving|done] [--daily fmc|timed]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1] [--scroll 1] [--drill solving|done] [--daily fmc|timed]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -139,6 +139,11 @@ func _ready() -> void:
 
 	for i in SETTLE_FRAMES:
 		await get_tree().process_frame
+	if args.has("scroll"):  # the shop list scrolled to the bottom (the last helpers)
+		var scroll := main.helper_list.get_parent() as ScrollContainer
+		scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
+		for i in 3:
+			await get_tree().process_frame
 	if args.has("juice"):  # a few taps and a solve, caught mid-animation
 		var center := view.get_global_rect().get_center()
 		for offset: Vector2 in [Vector2(-60, -20), Vector2(40, 30), Vector2(90, -50)]:

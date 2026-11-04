@@ -68,4 +68,10 @@ The black background square was removed so the game can tint them; no other chan
 | `assets/icons/sponsorship.svg` | receive-money | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/receive-money.html |
 | `assets/icons/prize_money.svg` | trophy-cup | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/trophy-cup.html |
 | `assets/icons/live_stream.svg` | tv | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/tv.html |
+| `assets/icons/pro_team.svg` | team-upgrade | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/team-upgrade.html |
+| `assets/icons/federation.svg` | globe | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/globe.html |
+| `assets/icons/museum.svg` | greek-temple | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/greek-temple.html |
+| `assets/icons/ai_solver.svg` | circuitry | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/circuitry.html |
+| `assets/icons/orbital.svg` | satellite | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/satellite.html |
+| `assets/icons/quantum.svg` | atom-core | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/atom-core.html |
 | `assets/icons/locked.svg` | padlock | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/padlock.html |

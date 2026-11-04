@@ -3325,3 +3325,17 @@ func test_synergies_and_solve_value() -> void:
 					"%s links two real helpers" % def["id"])
 			check(float(effect["value"]) > 0.0 and float(effect["value"]) < 0.1, "%s is a small per-copy bonus" % def["id"])
 	g.free()
+
+
+# --- Six more helpers (task 5.5) ---------------------------------------------------------
+
+func test_helper_ladder() -> void:
+	check(Content.BUILDINGS.size() == 12, "12 helpers, Friend to Quantum Solver")
+	for i in range(1, Content.BUILDINGS.size()):
+		var a: Dictionary = Content.BUILDINGS[i - 1]
+		var b: Dictionary = Content.BUILDINGS[i]
+		check(float(b["base_cost"]) > float(a["base_cost"]) * 5.0 and float(b["mps"]) > float(a["mps"]), "%s costs and makes more than %s" % [b["name"], a["name"]])
+		if i >= 6:  # the six past the Lab (5.5): each a bit less efficient per Solve than the one before
+			check(float(b["mps"]) / float(b["base_cost"]) < float(a["mps"]) / float(a["base_cost"]), "%s is a bit less efficient per Solve" % b["name"])
+		check(b.has("milestone_name") and (Content.NEWS["who"] as Dictionary).has(b["id"]), "%s has milestone names and a news title" % b["name"])
+	check(float(Content.BUILDINGS.back()["base_cost"]) >= 1e13, "the top helper costs 10T+ (copies pass 1e15)")
