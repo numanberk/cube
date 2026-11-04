@@ -73,6 +73,8 @@ tools/simulate.sh          Balance bot (tools/simulator.gd) -> docs/BALANCE.md; 
 tools/pacing.gd            PLAN §2 pacing targets as data; tests fail if one is missed (or newly met, see below)
 docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK, DESIGN,
                            PLAYER_RESEARCH (what our player loves; tasks marked (PR) come from it)
+.claude/agents/            Project subagents (see "Subagents" below): diff-reviewer, screenshot-checker,
+                           balance-analyst, test-runner, fun-designer
 ```
 
 ## Rules of the code
@@ -97,13 +99,30 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    buttons use `focus_mode = none`, so Space never presses a focused button by accident.
    One accent colour: green `#3ccf8e` (dim `#2a9d6c`). Every new asset gets a line in `assets/CREDITS.md`.
 
+## Subagents
+`.claude/agents/` holds helpers for side jobs. The main session writes the code; don't split a task's code between
+agents (they'd collide on `game.gd`, `content.gd` and the save version). Use them like this:
+
+| Agent | Model | When |
+|---|---|---|
+| `test-runner` | Haiku | Whenever you run the tests: it runs `tools/run_tests.sh` and returns only the failures |
+| `balance-analyst` | Sonnet | After any content/balance change: runs `tools/simulate.sh`, explains what moved in BALANCE.md |
+| `screenshot-checker` | Sonnet | After visual changes: tell it what changed and which presets; it shoots and reports problems |
+| `diff-reviewer` | Opus | Every session, once tests pass and before committing: reviews everything not yet on `main` |
+| `fun-designer` | Opus | At the end of a phase, or when the owner asks for a "fun pass": ranked ideas, proposals only |
+
+All of them report and never commit. Fix what they find yourself (or say why not in the CHANGELOG). Ideas from
+`fun-designer` go to the owner first; only the ones they pick become ROADMAP tasks, marked "(fun pass, date)".
+Background agents are fine while you keep working (e.g. `balance-analyst` while you write tests).
+
 ## Before you finish (every session)
-1. Run `bash tools/run_tests.sh` and make sure it prints `All good.`
+1. Run `bash tools/run_tests.sh` (or the `test-runner` agent) and make sure it prints `All good.`
    (On Linux it downloads Godot automatically. Elsewhere set `GODOT=/path/to/godot`.)
    Add or adjust tests in `tests/test_runner.gd` for any rule you changed.
    `test_pacing_targets` runs the balance bot (~10 s). Targets with an `expected_failure` in
    `tools/pacing.gd` may miss; if your change makes one pass, the test tells you to remove its mark.
-   After any content/balance change, also run `bash tools/simulate.sh` and commit `docs/BALANCE.md`.
+   After any content/balance change, also run `bash tools/simulate.sh` (or `balance-analyst`) and commit `docs/BALANCE.md`.
+   Then have `diff-reviewer` review the change and fix what it finds.
 2. Tick off the task in `docs/ROADMAP.md`, but only if its "Done when" is true.
    Visual changes: add a screenshot to `docs/screenshots/` (see "Screenshots" below).
 3. Add a dated entry at the top of `docs/CHANGELOG.md`: what changed, what's half-done,
