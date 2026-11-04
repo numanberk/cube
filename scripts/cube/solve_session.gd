@@ -56,6 +56,40 @@ func start(id: String, now: float, rng: RandomNumberGenerator = null, length: in
 	return true
 
 
+## A drill (task S.4): a 3×3 set up as one algorithm's case, yellow on top: z2, a random U turn, the algorithm undone,
+## another random U turn. The clock runs from now (recognition + execution) until the cube is solved.
+func start_drill(alg: String, now: float, rng: RandomNumberGenerator = null) -> bool:
+	if rng == null:
+		rng = RandomNumberGenerator.new()
+		rng.randomize()
+	var new_model := PuzzleShapes.from_id("3x3")
+	var case_moves := new_model.parse_sequence(alg)
+	if case_moves.is_empty():
+		return false
+	puzzle_id = "3x3"
+	model = new_model
+	var u := model.face_names.find("U")
+	var setup: Array[Dictionary] = model.parse_sequence("z2")
+	setup.append(model.make_move(u, rng.randi_range(0, 3)))
+	setup.append_array(model.inverse_sequence(case_moves))
+	setup.append(model.make_move(u, rng.randi_range(0, 3)))
+	setup = setup.filter(func(m: Dictionary) -> bool: return int(m["turns"]) != 0)
+	scramble = setup
+	model.apply_all(setup)
+	penalty = ""
+	moves = 0
+	left_hand = 1
+	right_hand = 1
+	next_width = 1
+	state = "solving"
+	_started_at = now
+	_finished_at = 0.0
+	if model.is_solved():  # an algorithm that undoes itself (never in the data, but be safe)
+		state = "done"
+		_finished_at = now
+	return true
+
+
 func scramble_text() -> String:
 	return "" if model == null else model.notation_sequence(scramble)
 

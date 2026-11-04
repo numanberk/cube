@@ -487,6 +487,9 @@ func _start_showcase(puzzle_id: String = "") -> void:
 	_showcase = null
 	if ShowcaseSolve.supports(puzzle_id):
 		_showcase = ShowcaseSolve.new(puzzle_id, Game.method, randi())
+		_showcase.solver_options = _solver_options()
+		if not _showcase.solver_options.is_empty():
+			_showcase.start_new()  # the first scramble was solved before the options were known
 		_showcase.started.connect(_on_showcase_started)
 		_showcase.stage_changed.connect(_on_showcase_stage)
 		_showcase.finished.connect(puzzle_view.flash)
@@ -495,6 +498,16 @@ func _start_showcase(puzzle_id: String = "") -> void:
 	else:
 		puzzle_view.turn_time = PuzzleView3D.TURN_TIME
 		_build_stage_chips()
+
+
+## One-look OLL / PLL in the showcase once the player has learned the full set in the drills (S.4).
+func _solver_options() -> Dictionary:
+	var options := {}
+	if Game.is_drill_set_learned("oll"):
+		options["full_oll"] = true
+	if Game.is_drill_set_learned("pll"):
+		options["full_pll"] = true
+	return options
 
 
 func _on_showcase_started() -> void:
@@ -705,6 +718,13 @@ func _connect_news() -> void:
 	Game.solves_milestone.connect(news.on_solves_milestone)
 	Game.hand_solve_pb.connect(news.on_hand_pb)
 	Game.hand_tier_reached.connect(news.on_hand_tier)
+	Game.drill_set_learned.connect(func(set_id: String) -> void:
+		news.push("drill_set", "You learned %s! Your team uses it in its solves now." % Content.get_drill_set(set_id)["name"]
+				if set_id in ["oll", "pll"] else "You learned %s!" % Content.get_drill_set(set_id)["name"])
+		if _showcase != null:
+			_showcase.solver_options = _solver_options())
+	Game.drill_case_learned.connect(func(case_id: String) -> void:
+		news.push("drill_case", "Learned %s." % Content.get_algorithm(case_id).get("name", case_id)))
 
 
 ## The list under the shop: newest first and bright, older ones dim; it scrolls back through the last 20.

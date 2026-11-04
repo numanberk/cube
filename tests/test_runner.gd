@@ -2216,6 +2216,8 @@ func test_algorithm_data() -> void:
 		var model := PuzzleShapes.from_id("3x3")
 		var moves := model.parse_sequence(alg["alg"])
 		check(not moves.is_empty(), "%s parses: %s" % [alg["id"], alg["alg"]])
+		if alg.get("full", false) and not alg.get("two_look", false):
+			continue  # full-set algorithms are checked relative to the centres in test_full_oll_pll_data (V perm has a y)
 		model.apply_all(moves)
 		var keeps: String = {"OLL": "f2l", "PLL": "f2l_and_top_color", "Beginner": ""}[alg["set"]]
 		match alg["id"]:
@@ -2782,7 +2784,7 @@ func test_golden_buffs() -> void:
 	g.buff["left"] = 12.5
 	var next_before := g.golden_next
 	var data := g.get_save_data()
-	check(int(data["version"]) == 6 and data["golden"]["buff"]["id"] == "frenzy", "the buff is saved (save v6)")
+	check(int(data["version"]) >= 6 and data["golden"]["buff"]["id"] == "frenzy", "the buff is saved (save v6)")
 	var loaded := new_game()
 	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
 	check(loaded.buff.get("id", "") == "frenzy" and is_equal_approx(float(loaded.buff["left"]), 12.5), "it's still running after a load")
@@ -2946,5 +2948,176 @@ func test_hand_solve_rewards_on_screen() -> void:
 	station.close()
 	main._refresh_golden()
 	check((main.get_node("%FlowLabel") as Label).visible and (main.get_node("%FlowLabel") as Label).text.begins_with("Flow ×2"), "the top bar shows the Flow")
+	main.free()
+	game.reset_state()
+
+
+# --- Algorithm drills (task S.4) -------------------------------------------------------
+
+## The case an algorithm solves: a solved 3×3 with the algorithm undone (then U^before ... U^after around it), read
+## relative to the centres (so rotations inside an algorithm, like the V perm's y, don't matter).
+func _alg_case_code(alg: String, kind: String, before: int, after: int) -> int:
+	var m := PuzzleShapes.from_id("3x3")
+	var u := m.face_names.find("U")
+	m.apply(m.make_move(u, before))
+	m.apply_all(m.inverse_sequence(m.parse_sequence(alg)))
+	m.apply(m.make_move(u, after))
+	var run = StagedSolver._Run.new(StagedSolver._shape(3), m)
+	return run._project(kind, run.u_corners, run.u_edges, run._tracked_slots(run.u_corners, run.u_edges))
+
+
+func test_full_oll_pll_data() -> void:
+	var oll_cases := {}
+	var pll_cases := {}
+	var oll_count := 0
+	var pll_count := 0
+	for alg: Dictionary in Content.ALGORITHMS:
+		if not alg.get("full", false):
+			continue
+		var m := PuzzleShapes.from_id("3x3")
+		m.apply_all(m.parse_sequence(alg["alg"]))
+		var keeps := StagedSolver.is_stage_done(m, "second_layer")
+		check(keeps, "%s keeps the first two layers (relative to the centres): %s" % [alg["name"], alg["alg"]])
+		if alg["set"] == "OLL":
+			oll_count += 1
+			var best := -1
+			for k in 4:  # the same case seen from any side is one case
+				var code := _alg_case_code(alg["alg"], "orient", 0, k)
+				best = code if best < 0 else mini(best, code)
+			check(best != 0, "%s's case isn't already oriented" % alg["name"])
+			check(not oll_cases.has(best), "%s is a different case from %s" % [alg["name"], oll_cases.get(best, "")])
+			oll_cases[best] = alg["name"]
+		else:
+			pll_count += 1
+			check(StagedSolver.is_stage_done(m, "oll"), "%s keeps the top oriented" % alg["name"])
+			var best := -1
+			for a in 4:
+				for b in 4:
+					var code := _alg_case_code(alg["alg"], "full", a, b)
+					best = code if best < 0 else mini(best, code)
+			var solved_code := _alg_case_code("", "full", 0, 0)
+			check(best != solved_code, "%s's case isn't already solved" % alg["name"])
+			check(not pll_cases.has(best), "%s is a different case from %s" % [alg["name"], pll_cases.get(best, "")])
+			pll_cases[best] = alg["name"]
+	check(oll_count == 57 and oll_cases.size() == 57, "57 OLL algorithms for 57 different cases (%d, %d)" % [oll_count, oll_cases.size()])
+	check(pll_count == 21 and pll_cases.size() == 21, "21 PLL algorithms for 21 different cases (%d, %d)" % [pll_count, pll_cases.size()])
+
+
+func test_drill_rules() -> void:
+	var g := new_game()
+	var target := float(Content.get_drill_set("2look_pll")["target"])
+	var needed := int(Content.DRILLS["clean_needed"])
+	var learned: Array = []
+	var sets: Array = []
+	g.drill_case_learned.connect(func(id: String) -> void: learned.append(id))
+	g.drill_set_learned.connect(func(id: String) -> void: sets.append(id))
+	var r := g.record_drill("2look_pll", "pll_t", target + 5.0)
+	check(r["pb"] and not r["clean"] and int(r["clean_count"]) == 0, "a slow first try: a PB, not clean")
+	r = g.record_drill("2look_pll", "pll_t", target - 1.0)
+	check(r["pb"] and r["clean"] and int(r["clean_count"]) == 1, "under the target: clean")
+	r = g.record_drill("2look_pll", "pll_t", target - 0.5)
+	check(not r["pb"] and r["clean"], "slower than the best but still clean")
+	for i in needed - 2:
+		r = g.record_drill("2look_pll", "pll_t", target - 1.0)
+	check(r["learned_now"] and g.is_case_learned("pll_t") and learned == ["pll_t"], "%d clean solves learn the case (once)" % needed)
+	g.record_drill("2look_pll", "pll_t", target - 1.0)
+	check(learned.size() == 1, "...and it's only learned once")
+	check_near(float(g.get_drill_record("pll_t")["best"]), target - 1.0, "best time kept")
+	var cases := Content.get_drill_cases("2look_pll")
+	check(cases.size() == 8 and Content.get_drill_cases("pll").size() == 21 and Content.get_drill_cases("oll").size() == 57,
+			"sets: 2-look PLL 8, full PLL 21, full OLL 57")
+	check(Content.get_drill_cases("2look_oll").size() == 9, "2-look OLL: 2 edge + 7 corner cases")
+	check(g.get_drill_set_progress("2look_pll") == {"learned": 1, "total": 8}, "1 of 8 learned")
+	for alg in cases:
+		for i in needed:
+			g.record_drill("2look_pll", alg["id"], 1.0)
+	check(g.is_drill_set_learned("2look_pll") and sets == ["2look_pll"], "every case learned: the set is learned")
+	check(g.get_drill_set_progress("pll")["learned"] == 8, "the 2-look cases count for full PLL too")
+	check(g.record_drill("nope", "pll_t", 1.0).is_empty() and g.record_drill("pll", "nope", 1.0).is_empty(), "unknown set or case: nothing")
+	# Saved (v7); a v6 save has none.
+	var data := g.get_save_data()
+	check(int(data["version"]) == 7 and data["drills"].has("pll_t"), "drill records are saved (v7)")
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.is_drill_set_learned("2look_pll") and is_equal_approx(float(loaded.get_drill_record("pll_t")["best"]), 1.0), "and load back")
+	var v6: Dictionary = data.duplicate(true)
+	v6.erase("drills")
+	v6["version"] = 6
+	var migrated := new_game()
+	migrated.apply_save_data(v6, float(data["saved_at"]))
+	check(migrated.drills.is_empty() and int(migrated.get_save_data()["version"]) == 7, "a v6 save gets empty drills")
+	g.free()
+	loaded.free()
+	migrated.free()
+
+
+## Every drill case is the right case: its own algorithm (with U turns before/after) solves it, and yellow is on top.
+func test_drill_cases() -> void:
+	var session := SolveSession.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var bad: Array = []
+	for alg: Dictionary in Content.ALGORITHMS:
+		if alg["set"] == "Beginner":
+			continue
+		session.start_drill(alg["alg"], 0.0, rng)
+		check(session.state == "solving" and not session.model.is_solved(), "%s: a case, the clock running" % alg["name"])
+		var solved := false
+		for a in 4:
+			for b in 4:
+				var m := PuzzleShapes.from_id("3x3")
+				m.orientations = session.model.orientations.duplicate()
+				var u := m.face_names.find("U")
+				m.apply(m.make_move(u, a))
+				m.apply_all(m.parse_sequence(alg["alg"]))
+				m.apply(m.make_move(u, b))
+				solved = solved or m.is_solved()
+		if not solved:
+			bad.append(alg["name"])
+	check(bad.is_empty(), "every case is solved by its own algorithm plus AUF (not: %s)" % [bad])
+	session.start_drill("R U R' U R U2 R'", 0.0, rng)
+	check(session.model.color_at(Vector3(0, 1, 0), session.model.face_names.find("U")) == PuzzleShapes.COLOR_YELLOW, "yellow on top, like cubers drill")
+	for move in session.model.inverse_sequence(session.scramble):
+		session.turn(move, 4.25)
+	check(session.state == "done" and is_equal_approx(session.elapsed(4.25), 4.25), "the clock ran from the case appearing to solved")
+
+
+func test_drill_station_and_showcase() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	root.get_node("Settings").persistence_enabled = false
+	game.cheat_add_solves(1000.0)
+	game.unlock_puzzle("3x3")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var station: Node = main.get_node("%SolveStation")
+	station.open("3x3")
+	station.frozen_now = 100.0
+	(station.get_node("%DrillsToggle") as Button).toggled.emit(true)
+	check(station.drill_mode and station.get_node("%PuzzlePicker").get_child_count() == Content.DRILLS["sets"].size(), "Drills: the picker shows the sets")
+	station.select_drill_set("2look_pll")
+	var case_name: String = station.drill_case["name"]
+	check(station.session.state == "solving" and not (station.get_node("%StatusLabel") as Label).text.contains(case_name), "the case's name stays hidden while you solve")
+	station.frozen_now = 104.0
+	var count_before := game.get_hand_solve_count("3x3")
+	for move in station.session.model.inverse_sequence(station.session.scramble):
+		station.play_move(move)
+	check(int(game.get_drill_record(station.drill_case["id"])["count"]) == 1, "solving it records the drill")
+	check(game.get_hand_solve_count("3x3") == count_before, "drills aren't hand-solve records")
+	var status := (station.get_node("%StatusLabel") as Label).text
+	check(status.contains(case_name) and status.contains(String(station.drill_case["alg"])) and status.contains("clean 1/5"), "then it names the case and its algorithm: %s" % status)
+	check(station.get_node("%TimesRows").get_child_count() == 8, "the side panel lists the set's 8 cases")
+	station.handle_key(KEY_ENTER)
+	check(station.session.state == "solving", "Enter: the next case")
+	(station.get_node("%DrillsToggle") as Button).toggled.emit(false)
+	check(not station.drill_mode and station.session.state != "solving", "Drills off: back to normal solves")
+	station.close()
+	# Learning full PLL puts it in the team's showcase solves.
+	check(main._solver_options().is_empty(), "nothing learned: two-look in the showcase")
+	for alg in Content.get_drill_cases("pll"):
+		for i in int(Content.DRILLS["clean_needed"]):
+			game.record_drill("pll", alg["id"], 1.0)
+	check(main._solver_options() == {"full_pll": true} and main._showcase.solver_options == {"full_pll": true}, "full PLL learned: one-look PLL in the showcase")
 	main.free()
 	game.reset_state()

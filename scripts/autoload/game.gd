@@ -19,13 +19,15 @@ signal hand_solve_pb(puzzle_id: String, single: bool, averages: Array, seconds: 
 ## Golden Scramble (task S.6): a sticker starts glowing, stops glowing unclaimed, an attempt ends (buff = {} on a miss).
 signal hand_tier_reached(puzzle_id: String, tier: String)  ## a puzzle's PB single reached a new S.3 tier (permanent)
 signal flow_started(mult: float, seconds: float)  ## a hand solve started (or refreshed) Flow
+signal drill_case_learned(case_id: String)  ## a drill case reached its clean solves (S.4)
+signal drill_set_learned(set_id: String)    ## every case of a drill set is learned
 signal golden_spawned
 signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 6  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
-                         ## v6 (S.6): Golden Scramble timer + active buff
+const SAVE_VERSION := 7  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+                         ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0
 const MIN_OFFLINE_SECONDS := 10.0
@@ -74,6 +76,7 @@ var golden_attempt_left := 0.0             ## > 0 while a claimed Golden Scrambl
 var buff: Dictionary = {}                  ## the active buff: {id, mult, left} (saved; paused while closed), or {}
 var golden_rng := RandomNumberGenerator.new()
 var flow: Dictionary = {}                  ## Flow from hand solves (S.3): {mult, left, tier}; not saved (ends on quit)
+var drills: Dictionary = {}                ## algorithm id -> {best, clean, count} (S.4, saved)
 var _offline_catch_up := false             ## true while offline progress is added: buffs don't count then
 
 
@@ -904,6 +907,57 @@ func _reward_hand_solve(puzzle_id: String, final: float, pb_single: bool, tier_b
 		check_time_tiers()
 
 
+# --- Algorithm drills (task S.4) ------------------------------------------------------
+
+## A finished drill of one case (an algorithm id) in `set_id`: best time, clean solves (within the set's target), learned.
+## Returns {pb, clean (this one), clean_count, learned (now), learned_now (just now), set_learned_now}.
+func record_drill(set_id: String, case_id: String, seconds: float) -> Dictionary:
+	var drill := Content.get_drill_set(set_id)
+	if drill.is_empty() or Content.get_algorithm(case_id).is_empty() or seconds <= 0.0:
+		return {}
+	var was_learned := is_case_learned(case_id)
+	var set_was_learned := is_drill_set_learned(set_id)
+	var entry: Dictionary = drills.get(case_id, {"best": INF, "clean": 0, "count": 0})
+	var pb := seconds < float(entry["best"])
+	entry["best"] = minf(float(entry["best"]), seconds)
+	entry["count"] = int(entry["count"]) + 1
+	var clean := seconds <= float(drill["target"])
+	if clean:
+		entry["clean"] = int(entry["clean"]) + 1
+	drills[case_id] = entry
+	var learned_now := not was_learned and is_case_learned(case_id)
+	if learned_now:
+		drill_case_learned.emit(case_id)
+	var set_learned_now := not set_was_learned and is_drill_set_learned(set_id)
+	if set_learned_now:
+		drill_set_learned.emit(set_id)
+	return {"pb": pb, "clean": clean, "clean_count": int(entry["clean"]), "learned": is_case_learned(case_id),
+			"learned_now": learned_now, "set_learned_now": set_learned_now}
+
+
+func is_case_learned(case_id: String) -> bool:
+	return int((drills.get(case_id, {}) as Dictionary).get("clean", 0)) >= int(Content.DRILLS["clean_needed"])
+
+
+func get_drill_record(case_id: String) -> Dictionary:
+	return drills.get(case_id, {"best": INF, "clean": 0, "count": 0})
+
+
+## {learned, total} for a drill set.
+func get_drill_set_progress(set_id: String) -> Dictionary:
+	var cases := Content.get_drill_cases(set_id)
+	var learned := 0
+	for alg: Dictionary in cases:
+		if is_case_learned(alg["id"]):
+			learned += 1
+	return {"learned": learned, "total": cases.size()}
+
+
+func is_drill_set_learned(set_id: String) -> bool:
+	var progress := get_drill_set_progress(set_id)
+	return int(progress["total"]) > 0 and int(progress["learned"]) >= int(progress["total"])
+
+
 # --- Golden Scramble (task S.6) ------------------------------------------------------
 
 ## Runs the golden sticker's clock, the attempt's clock and the buff's clock (from _process; tests call it).
@@ -1164,6 +1218,7 @@ func reset_state() -> void:
 	golden_rng.randomize()
 	golden_next = _roll_golden_wait()
 	flow = {}
+	drills.clear()
 
 
 func get_save_data() -> Dictionary:
@@ -1185,6 +1240,7 @@ func get_save_data() -> Dictionary:
 		"method": method,
 		"solve_records": solve_records.duplicate(true),
 		"golden": {"next": golden_next, "buff": buff.duplicate()},
+		"drills": drills.duplicate(true),
 	}
 
 
@@ -1323,6 +1379,16 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		history = history.slice(maxi(0, history.size() - SOLVE_HISTORY_LIMIT))
 		solve_records[id] = {"history": history, "count": maxi(history.size(), int((saved_records[id] as Dictionary).get("count", 0)))}
 
+	drills.clear()
+	var saved_drills: Dictionary = data.get("drills", {})
+	for id: String in saved_drills:
+		var entry: Variant = saved_drills[id]
+		if Content.get_algorithm(id).is_empty() or typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var saved: Dictionary = entry
+		var best := float(saved.get("best", 0.0))
+		drills[id] = {"best": best if best > 0.0 else INF, "clean": maxi(0, int(saved.get("clean", 0))),
+				"count": maxi(0, int(saved.get("count", 0)))}
 	var saved_golden: Dictionary = data.get("golden", {})
 	golden_next = clampf(float(saved_golden.get("next", golden_next)), 0.0, float(Content.GOLDEN["spawn_max"]))
 	golden_glow_left = 0.0
@@ -1397,6 +1463,11 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("golden"):
 			data["golden"] = {"next": float(Content.GOLDEN["spawn_max"]), "buff": {}}
 		data["version"] = 6
+	if int(data["version"]) < 7:
+		# v7 keeps algorithm drill records; nobody had any.
+		if not data.has("drills"):
+			data["drills"] = {}
+		data["version"] = 7
 	return data
 
 

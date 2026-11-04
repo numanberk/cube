@@ -185,30 +185,94 @@ const PUZZLES := [
 ## Algorithms (task R.1, shared with the drills in S.4): real speedcubing algorithms in WCA notation, for the staged
 ## solver (StagedSolver) that the main cube's showcase solve plays. Every one is checked by a test: it must keep the
 ## first two layers and the centres where they were (and a PLL must keep the last layer's orientation).
-##   id, name, set ("OLL", "PLL" or "Beginner"), two_look (part of 2-look OLL/PLL, what CFOP learners start with), alg
-## S.4 adds the full OLL (57) and PLL (21) sets here; the solver uses a full set once the player has learned it.
+##   id, name, set ("OLL", "PLL" or "Beginner"), two_look (part of 2-look OLL/PLL, what CFOP learners start with),
+##   full (part of full OLL / PLL, task S.4), case (the OLL number), alg
+## The drills (S.4) practise these sets; the showcase solve uses a full set once the player has learned all of it.
 const ALGORITHMS: Array[Dictionary] = [
 	# 2-look OLL, step 1: orient the edges (make the cross on top)
-	{"id": "oll_line", "name": "Line", "set": "OLL", "two_look": true, "alg": "F R U R' U' F'"},
-	{"id": "oll_l_shape", "name": "L shape", "set": "OLL", "two_look": true, "alg": "F U R U' R' F'"},
+	{"id": "oll_line", "name": "Line", "set": "OLL", "two_look": true, "full": true, "case": 45, "alg": "F R U R' U' F'"},
+	{"id": "oll_l_shape", "name": "L shape", "set": "OLL", "two_look": true, "full": true, "case": 44, "alg": "F U R U' R' F'"},
 	# 2-look OLL, step 2: orient the corners (OCLL)
-	{"id": "oll_sune", "name": "Sune", "set": "OLL", "two_look": true, "alg": "R U R' U R U2 R'"},
-	{"id": "oll_antisune", "name": "Antisune", "set": "OLL", "two_look": true, "alg": "R U2 R' U' R U' R'"},
-	{"id": "oll_h", "name": "H (Double Sune)", "set": "OLL", "two_look": true, "alg": "R U R' U R U' R' U R U2 R'"},
-	{"id": "oll_pi", "name": "Pi (Bruno)", "set": "OLL", "two_look": true, "alg": "R U2 R2 U' R2 U' R2 U2 R"},
-	{"id": "oll_headlights", "name": "Headlights", "set": "OLL", "two_look": true, "alg": "R2 D R' U2 R D' R' U2 R'"},
-	{"id": "oll_chameleon", "name": "Chameleon", "set": "OLL", "two_look": true, "alg": "r U R' U' r' F R F'"},
-	{"id": "oll_bowtie", "name": "Bowtie", "set": "OLL", "two_look": true, "alg": "F R' F' r U R U' r'"},
+	{"id": "oll_sune", "name": "Sune", "set": "OLL", "two_look": true, "full": true, "case": 27, "alg": "R U R' U R U2 R'"},
+	{"id": "oll_antisune", "name": "Antisune", "set": "OLL", "two_look": true, "full": true, "case": 26, "alg": "R U2 R' U' R U' R'"},
+	{"id": "oll_h", "name": "H (Double Sune)", "set": "OLL", "two_look": true, "full": true, "case": 21, "alg": "R U R' U R U' R' U R U2 R'"},
+	{"id": "oll_pi", "name": "Pi (Bruno)", "set": "OLL", "two_look": true, "full": true, "case": 22, "alg": "R U2 R2 U' R2 U' R2 U2 R"},
+	{"id": "oll_headlights", "name": "Headlights", "set": "OLL", "two_look": true, "full": true, "case": 23, "alg": "R2 D R' U2 R D' R' U2 R'"},
+	{"id": "oll_chameleon", "name": "Chameleon", "set": "OLL", "two_look": true, "full": true, "case": 24, "alg": "r U R' U' r' F R F'"},
+	{"id": "oll_bowtie", "name": "Bowtie", "set": "OLL", "two_look": true, "full": true, "case": 25, "alg": "F R' F' r U R U' r'"},
 	# 2-look PLL, step 1: permute the corners
-	{"id": "pll_aa", "name": "Aa perm", "set": "PLL", "two_look": true, "alg": "x R' U R' D2 R U' R' D2 R2 x'"},
-	{"id": "pll_ab", "name": "Ab perm", "set": "PLL", "two_look": true, "alg": "x R2 D2 R U R' D2 R U' R x'"},
-	{"id": "pll_t", "name": "T perm", "set": "PLL", "two_look": true, "alg": "R U R' U' R' F R2 U' R' U' R U R' F'"},
-	{"id": "pll_y", "name": "Y perm", "set": "PLL", "two_look": true, "alg": "F R U' R' U' R U R' F' R U R' U' R' F R F'"},
+	{"id": "pll_aa", "name": "Aa perm", "set": "PLL", "two_look": true, "full": true, "alg": "x R' U R' D2 R U' R' D2 R2 x'"},
+	{"id": "pll_ab", "name": "Ab perm", "set": "PLL", "two_look": true, "full": true, "alg": "x R2 D2 R U R' D2 R U' R x'"},
+	{"id": "pll_t", "name": "T perm", "set": "PLL", "two_look": true, "full": true, "alg": "R U R' U' R' F R2 U' R' U' R U R' F'"},
+	{"id": "pll_y", "name": "Y perm", "set": "PLL", "two_look": true, "full": true, "alg": "F R U' R' U' R U R' F' R U R' U' R' F R F'"},
 	# 2-look PLL, step 2: permute the edges
-	{"id": "pll_ua", "name": "Ua perm", "set": "PLL", "two_look": true, "alg": "R U' R U R U R U' R' U' R2"},
-	{"id": "pll_ub", "name": "Ub perm", "set": "PLL", "two_look": true, "alg": "R2 U R U R' U' R' U' R' U R'"},
-	{"id": "pll_h", "name": "H perm", "set": "PLL", "two_look": true, "alg": "M2 U M2 U2 M2 U M2"},
-	{"id": "pll_z", "name": "Z perm", "set": "PLL", "two_look": true, "alg": "M' U M2 U M2 U M' U2 M2"},
+	{"id": "pll_ua", "name": "Ua perm", "set": "PLL", "two_look": true, "full": true, "alg": "R U' R U R U R U' R' U' R2"},
+	{"id": "pll_ub", "name": "Ub perm", "set": "PLL", "two_look": true, "full": true, "alg": "R2 U R U R' U' R' U' R' U R'"},
+	{"id": "pll_h", "name": "H perm", "set": "PLL", "two_look": true, "full": true, "alg": "M2 U M2 U2 M2 U M2"},
+	{"id": "pll_z", "name": "Z perm", "set": "PLL", "two_look": true, "full": true, "alg": "M' U M2 U M2 U M' U2 M2"},
+	# Full OLL (57 cases; 21-27, 44 and 45 are the 2-look entries above), as most cubers learn them
+	{"id": "oll_1", "name": "OLL 1", "set": "OLL", "two_look": false, "full": true, "case": 1, "alg": "R U2 R2 F R F' U2 R' F R F'"},
+	{"id": "oll_2", "name": "OLL 2", "set": "OLL", "two_look": false, "full": true, "case": 2, "alg": "F R U R' U' F' f R U R' U' f'"},
+	{"id": "oll_3", "name": "OLL 3", "set": "OLL", "two_look": false, "full": true, "case": 3, "alg": "f R U R' U' f' U' F R U R' U' F'"},
+	{"id": "oll_4", "name": "OLL 4", "set": "OLL", "two_look": false, "full": true, "case": 4, "alg": "f R U R' U' f' U F R U R' U' F'"},
+	{"id": "oll_5", "name": "OLL 5", "set": "OLL", "two_look": false, "full": true, "case": 5, "alg": "r' U2 R U R' U r"},
+	{"id": "oll_6", "name": "OLL 6", "set": "OLL", "two_look": false, "full": true, "case": 6, "alg": "r U2 R' U' R U' r'"},
+	{"id": "oll_7", "name": "OLL 7", "set": "OLL", "two_look": false, "full": true, "case": 7, "alg": "r U R' U R U2 r'"},
+	{"id": "oll_8", "name": "OLL 8", "set": "OLL", "two_look": false, "full": true, "case": 8, "alg": "l' U' L U' L' U2 l"},
+	{"id": "oll_9", "name": "OLL 9", "set": "OLL", "two_look": false, "full": true, "case": 9, "alg": "R U R' U' R' F R2 U R' U' F'"},
+	{"id": "oll_10", "name": "OLL 10", "set": "OLL", "two_look": false, "full": true, "case": 10, "alg": "R U R' U R' F R F' R U2 R'"},
+	{"id": "oll_11", "name": "OLL 11", "set": "OLL", "two_look": false, "full": true, "case": 11, "alg": "r U R' U R' F R F' R U2 r'"},
+	{"id": "oll_12", "name": "OLL 12", "set": "OLL", "two_look": false, "full": true, "case": 12, "alg": "M' R' U' R U' R' U2 R U' R r'"},
+	{"id": "oll_13", "name": "OLL 13", "set": "OLL", "two_look": false, "full": true, "case": 13, "alg": "F U R U' R2 F' R U R U' R'"},
+	{"id": "oll_14", "name": "OLL 14", "set": "OLL", "two_look": false, "full": true, "case": 14, "alg": "R' F R U R' F' R F U' F'"},
+	{"id": "oll_15", "name": "OLL 15", "set": "OLL", "two_look": false, "full": true, "case": 15, "alg": "r' U' r R' U' R U r' U r"},
+	{"id": "oll_16", "name": "OLL 16", "set": "OLL", "two_look": false, "full": true, "case": 16, "alg": "r U r' R U R' U' r U' r'"},
+	{"id": "oll_17", "name": "OLL 17", "set": "OLL", "two_look": false, "full": true, "case": 17, "alg": "R U R' U R' F R F' U2 R' F R F'"},
+	{"id": "oll_18", "name": "OLL 18", "set": "OLL", "two_look": false, "full": true, "case": 18, "alg": "r U R' U R U2 r2 U' R U' R' U2 r"},
+	{"id": "oll_19", "name": "OLL 19", "set": "OLL", "two_look": false, "full": true, "case": 19, "alg": "r' R U R U R' U' M' R' F R F'"},
+	{"id": "oll_20", "name": "OLL 20", "set": "OLL", "two_look": false, "full": true, "case": 20, "alg": "r U R' U' M2 U R U' R' U' M'"},
+	{"id": "oll_28", "name": "OLL 28", "set": "OLL", "two_look": false, "full": true, "case": 28, "alg": "r U R' U' r' R U R U' R'"},
+	{"id": "oll_29", "name": "OLL 29", "set": "OLL", "two_look": false, "full": true, "case": 29, "alg": "R U R' U' R U' R' F' U' F R U R'"},
+	{"id": "oll_30", "name": "OLL 30", "set": "OLL", "two_look": false, "full": true, "case": 30, "alg": "F R' F R2 U' R' U' R U R' F2"},
+	{"id": "oll_31", "name": "OLL 31", "set": "OLL", "two_look": false, "full": true, "case": 31, "alg": "R' U' F U R U' R' F' R"},
+	{"id": "oll_32", "name": "OLL 32", "set": "OLL", "two_look": false, "full": true, "case": 32, "alg": "L U F' U' L' U L F L'"},
+	{"id": "oll_33", "name": "OLL 33", "set": "OLL", "two_look": false, "full": true, "case": 33, "alg": "R U R' U' R' F R F'"},
+	{"id": "oll_34", "name": "OLL 34", "set": "OLL", "two_look": false, "full": true, "case": 34, "alg": "R U R2 U' R' F R U R U' F'"},
+	{"id": "oll_35", "name": "OLL 35", "set": "OLL", "two_look": false, "full": true, "case": 35, "alg": "R U2 R2 F R F' R U2 R'"},
+	{"id": "oll_36", "name": "OLL 36", "set": "OLL", "two_look": false, "full": true, "case": 36, "alg": "L' U' L U' L' U L U L F' L' F"},
+	{"id": "oll_37", "name": "OLL 37", "set": "OLL", "two_look": false, "full": true, "case": 37, "alg": "F R' F' R U R U' R'"},
+	{"id": "oll_38", "name": "OLL 38", "set": "OLL", "two_look": false, "full": true, "case": 38, "alg": "R U R' U R U' R' U' R' F R F'"},
+	{"id": "oll_39", "name": "OLL 39", "set": "OLL", "two_look": false, "full": true, "case": 39, "alg": "L F' L' U' L U F U' L'"},
+	{"id": "oll_40", "name": "OLL 40", "set": "OLL", "two_look": false, "full": true, "case": 40, "alg": "R' F R U R' U' F' U R"},
+	{"id": "oll_41", "name": "OLL 41", "set": "OLL", "two_look": false, "full": true, "case": 41, "alg": "R U R' U R U2 R' F R U R' U' F'"},
+	{"id": "oll_42", "name": "OLL 42", "set": "OLL", "two_look": false, "full": true, "case": 42, "alg": "R' U' R U' R' U2 R F R U R' U' F'"},
+	{"id": "oll_43", "name": "OLL 43", "set": "OLL", "two_look": false, "full": true, "case": 43, "alg": "F' U' L' U L F"},
+	{"id": "oll_46", "name": "OLL 46", "set": "OLL", "two_look": false, "full": true, "case": 46, "alg": "R' U' R' F R F' U R"},
+	{"id": "oll_47", "name": "OLL 47", "set": "OLL", "two_look": false, "full": true, "case": 47, "alg": "R' U' R' F R F' R' F R F' U R"},
+	{"id": "oll_48", "name": "OLL 48", "set": "OLL", "two_look": false, "full": true, "case": 48, "alg": "F R U R' U' R U R' U' F'"},
+	{"id": "oll_49", "name": "OLL 49", "set": "OLL", "two_look": false, "full": true, "case": 49, "alg": "r U' r2 U r2 U r2 U' r"},
+	{"id": "oll_50", "name": "OLL 50", "set": "OLL", "two_look": false, "full": true, "case": 50, "alg": "r' U r2 U' r2 U' r2 U r'"},
+	{"id": "oll_51", "name": "OLL 51", "set": "OLL", "two_look": false, "full": true, "case": 51, "alg": "F U R U' R' U R U' R' F'"},
+	{"id": "oll_52", "name": "OLL 52", "set": "OLL", "two_look": false, "full": true, "case": 52, "alg": "R U R' U R U' B U' B' R'"},
+	{"id": "oll_53", "name": "OLL 53", "set": "OLL", "two_look": false, "full": true, "case": 53, "alg": "l' U2 L U L' U' L U L' U l"},
+	{"id": "oll_54", "name": "OLL 54", "set": "OLL", "two_look": false, "full": true, "case": 54, "alg": "r U2 R' U' R U R' U' R U' r'"},
+	{"id": "oll_55", "name": "OLL 55", "set": "OLL", "two_look": false, "full": true, "case": 55, "alg": "R' F R U R U' R2 F' R2 U' R' U R U R'"},
+	{"id": "oll_56", "name": "OLL 56", "set": "OLL", "two_look": false, "full": true, "case": 56, "alg": "r' U' r U' R' U R U' R' U R r' U r"},
+	{"id": "oll_57", "name": "OLL 57", "set": "OLL", "two_look": false, "full": true, "case": 57, "alg": "R U R' U' M' U R U' r'"},
+	# Full PLL (21 cases; the 2-look ones above are in it too)
+	{"id": "pll_e", "name": "E perm", "set": "PLL", "two_look": false, "full": true, "alg": "x' R U' R' D R U R' D' R U R' D R U' R' D' x"},
+	{"id": "pll_f", "name": "F perm", "set": "PLL", "two_look": false, "full": true, "alg": "R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R"},
+	{"id": "pll_ga", "name": "Ga perm", "set": "PLL", "two_look": false, "full": true, "alg": "R2 U R' U R' U' R U' R2 U' D R' U R D'"},
+	{"id": "pll_gb", "name": "Gb perm", "set": "PLL", "two_look": false, "full": true, "alg": "R' U' R U D' R2 U R' U R U' R U' R2 D"},
+	{"id": "pll_gc", "name": "Gc perm", "set": "PLL", "two_look": false, "full": true, "alg": "R2 U' R U' R U R' U R2 U D' R U' R' D"},
+	{"id": "pll_gd", "name": "Gd perm", "set": "PLL", "two_look": false, "full": true, "alg": "R U R' U' D R2 U' R U' R' U R' U R2 D'"},
+	{"id": "pll_ja", "name": "Ja perm", "set": "PLL", "two_look": false, "full": true, "alg": "R' U L' U2 R U' R' U2 R L"},
+	{"id": "pll_jb", "name": "Jb perm", "set": "PLL", "two_look": false, "full": true, "alg": "R U R' F' R U R' U' R' F R2 U' R'"},
+	{"id": "pll_na", "name": "Na perm", "set": "PLL", "two_look": false, "full": true, "alg": "R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'"},
+	{"id": "pll_nb", "name": "Nb perm", "set": "PLL", "two_look": false, "full": true, "alg": "R' U R U' R' F' U' F R U R' F R' F' R U' R"},
+	{"id": "pll_ra", "name": "Ra perm", "set": "PLL", "two_look": false, "full": true, "alg": "R U' R' U' R U R D R' U' R D' R' U2 R'"},
+	{"id": "pll_rb", "name": "Rb perm", "set": "PLL", "two_look": false, "full": true, "alg": "R2 F R U R U' R' F' R U2 R' U2 R"},
+	{"id": "pll_v", "name": "V perm", "set": "PLL", "two_look": false, "full": true, "alg": "R' U R' U' y R' F' R2 U' R' U R' F R F"},
 	# The beginner (layer-by-layer) method. Written for the front/right; the solver turns them to face any side.
 	{"id": "beg_corner", "name": "Corner insert (repeat)", "set": "Beginner", "two_look": false, "alg": "R U R' U'"},
 	{"id": "beg_edge_right", "name": "Edge to the right", "set": "Beginner", "two_look": false, "alg": "U R U' R' U' F' U F"},
@@ -288,6 +352,46 @@ const SOLVE_REWARDS := {
 	"xp_solves": 10.0,
 	"xp_pb_factor": 5.0,
 }
+
+
+## Algorithm drills (task S.4): practise the last-layer sets on a 3×3 in the Solve Station. A drill shows the case
+## (yellow on top, a random U turn before and after) and times recognition + execution, until solved. A solve within the
+## set's `target` seconds is "clean"; `clean_needed` clean solves make a case learned. Learning every case of a full set
+## lets the main cube's showcase solve use it (one-look OLL / PLL instead of two-look). Tuned for keyboard solving.
+##   sets: id, name, filter (Content.ALGORITHMS fields to match), target (seconds)
+const DRILLS := {
+	"clean_needed": 5,
+	"sets": [
+		{"id": "2look_oll", "name": "2-look OLL", "filter": {"set": "OLL", "two_look": true}, "target": 10.0},
+		{"id": "2look_pll", "name": "2-look PLL", "filter": {"set": "PLL", "two_look": true}, "target": 10.0},
+		{"id": "pll", "name": "Full PLL", "filter": {"set": "PLL", "full": true}, "target": 10.0},
+		{"id": "oll", "name": "Full OLL", "filter": {"set": "OLL", "full": true}, "target": 10.0},
+	],
+}
+
+
+## The algorithms in a drill set (Content.DRILLS), in data order.
+static func get_drill_cases(set_id: String) -> Array[Dictionary]:
+	var cases: Array[Dictionary] = []
+	for drill: Dictionary in DRILLS["sets"]:
+		if drill["id"] != set_id:
+			continue
+		var filter: Dictionary = drill["filter"]
+		for alg: Dictionary in ALGORITHMS:
+			var matches := true
+			for key: String in filter:
+				if alg.get(key, false) != filter[key]:
+					matches = false
+			if matches:
+				cases.append(alg)
+	return cases
+
+
+static func get_drill_set(set_id: String) -> Dictionary:
+	for drill: Dictionary in DRILLS["sets"]:
+		if drill["id"] == set_id:
+			return drill
+	return {}
 
 
 ## Golden Scramble (task S.6, was 8.1): every spawn_min..spawn_max seconds a golden sticker glows on the main puzzle

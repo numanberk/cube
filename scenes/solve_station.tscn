@@ -50,6 +50,16 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 alignment = 1
 
+[node name="DrillsToggle" type="Button" parent="Margin/Rows/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_type_variation = &"ToggleChip"
+toggle_mode = true
+tooltip_text = "Algorithm drills: practise OLL and PLL cases against the clock. 5 clean solves learn a case."
+text = "Drills"
+
 [node name="InspectionToggle" type="Button" parent="Margin/Rows/Header"]
 unique_name_in_owner = true
 layout_mode = 2

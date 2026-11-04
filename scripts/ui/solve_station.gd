@@ -26,6 +26,7 @@ const LIST_LENGTH := 50       ## times shown in the list (the newest)
 @onready var _keys_toggle: Button = %KeysToggle
 @onready var _close_button: Button = %CloseButton
 @onready var _simple_toggle: Button = %SimpleKeysToggle
+@onready var _drills_toggle: Button = %DrillsToggle
 @onready var _hints_toggle: Button = %HintsToggle
 @onready var _hints_layer: Control = %KeyHints
 @onready var _footer: Label = %FooterHint
@@ -41,6 +42,11 @@ var golden_mode := false             ## a Golden Scramble case (S.6): short scra
 var golden_result := ""              ## what the case gave ("" while it runs)
 const GOLDEN_CLOSE_DELAY := 2.2      ## seconds the result shows before the station closes by itself
 var _golden_close_left := 0.0
+var drill_mode := false              ## algorithm drills (S.4): the picker shows drill sets, each attempt is one case
+var drill_set := "2look_pll"
+var drill_case: Dictionary = {}      ## the Content.ALGORITHMS entry being drilled
+var drill_result: Dictionary = {}    ## what Game.record_drill() said about the last one
+var drill_rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
@@ -56,6 +62,8 @@ func _ready() -> void:
 	_view.drag_turns = true
 	_view.drag_turned.connect(play_move)
 	Game.golden_finished.connect(_on_golden_finished)
+	_drills_toggle.toggled.connect(set_drill_mode)
+	drill_rng.randomize()
 	Game.solve_records_changed.connect(func(_id: String) -> void: _records_dirty = true)
 	set_process(false)
 
@@ -77,6 +85,8 @@ func open(puzzle_id: String = "") -> void:
 
 
 func close() -> void:
+	if drill_mode:
+		set_drill_mode(false, false)
 	if golden_mode and Game.golden_attempt_left > 0.0:
 		Game.finish_golden(false)  # walking away from a golden case is a miss
 	golden_mode = false
@@ -89,6 +99,7 @@ func close() -> void:
 ## clock that GameState runs (claim_golden() must have started it). Not a record.
 func open_golden(puzzle_id: String, moves: int) -> void:
 	open(puzzle_id)
+	set_drill_mode(false, false)
 	golden_mode = true
 	golden_result = ""
 	_golden_close_left = 0.0
@@ -176,6 +187,118 @@ func keys_help_text() -> String:
 	if session.model != null and session.model.size > 3:
 		text += "\nHands: 3/4 move the left hand, 8/7 the right one, Space resets."
 	return text
+
+
+# --- Algorithm drills (task S.4) -------------------------------------------------------
+
+## Drills on (the picker shows the sets; a 3×3 case each time) or off (back to normal solves).
+func set_drill_mode(on: bool, restart: bool = true) -> void:
+	drill_mode = on
+	_drills_toggle.set_pressed_no_signal(on)
+	_inspection_toggle.visible = not on
+	_records_dirty = true
+	if on:
+		if _puzzle != "3x3" or _view.puzzle_id != "3x3":
+			_puzzle = "3x3"
+			_view.set_puzzle("3x3")
+		_build_drill_picker()
+		new_drill()
+	else:
+		_build_picker()
+		if restart and visible:
+			select_puzzle(_puzzle if _picker_buttons.has(_puzzle) else _picker_buttons.keys().back())
+
+
+func select_drill_set(set_id: String) -> void:
+	drill_set = set_id
+	_build_drill_picker()
+	_records_dirty = true
+	new_drill()
+
+
+## The next case: one not learned yet (fewest clean solves first, at random among them), else any case in the set.
+func new_drill(case_id: String = "") -> void:
+	var cases := Content.get_drill_cases(drill_set)
+	if cases.is_empty():
+		return
+	drill_case = {}
+	if case_id != "":
+		for alg in cases:
+			if alg["id"] == case_id:
+				drill_case = alg
+	if drill_case.is_empty():
+		var candidates: Array[Dictionary] = cases.filter(func(alg: Dictionary) -> bool: return not Game.is_case_learned(alg["id"]))
+		if candidates.is_empty():
+			candidates = cases  # all learned: keep practising any of them
+		var fewest := 1 << 30
+		var pool: Array[Dictionary] = []
+		for alg in candidates:
+			var clean := int(Game.get_drill_record(alg["id"])["clean"])
+			if clean < fewest:
+				fewest = clean
+				pool = [alg]
+			elif clean == fewest:
+				pool.append(alg)
+		drill_case = pool[drill_rng.randi_range(0, pool.size() - 1)]
+	drill_result = {}
+	session.start_drill(drill_case["alg"], _now(), drill_rng)
+	_view.show_state(session.scramble)
+	var set_def := Content.get_drill_set(drill_set)
+	_scramble_label.text = "%s drill  ·  clean = under %ds  ·  %d clean solves learn a case" % [set_def["name"],
+			int(set_def["target"]), int(Content.DRILLS["clean_needed"])]
+	_build_hints()
+	_refresh()
+
+
+## After a drill: "T perm · 6.42 · best 5.90 · clean 3/5 · R U R' U' ... · Enter: next case".
+func drill_status_text() -> String:
+	if drill_case.is_empty():
+		return ""
+	var record: Dictionary = Game.get_drill_record(drill_case["id"])
+	var clean_text := "learned!" if drill_result.get("learned_now", false) else (
+			"learned" if Game.is_case_learned(drill_case["id"]) else "clean %d/%d" % [int(record["clean"]), int(Content.DRILLS["clean_needed"])])
+	var parts := PackedStringArray([String(drill_case["name"]), "best %s%s" % [Num.solve_time(float(record["best"])),
+			" (PB!)" if drill_result.get("pb", false) else ""], clean_text, String(drill_case["alg"])])
+	if drill_result.get("set_learned_now", false):
+		parts.append("%s learned!" % Content.get_drill_set(drill_set)["name"])
+	return "  ·  ".join(parts) + "  ·  Enter: next case"
+
+
+func _build_drill_picker() -> void:
+	for child in _puzzle_picker.get_children():
+		_puzzle_picker.remove_child(child)
+		child.queue_free()
+	_picker_buttons.clear()
+	for drill: Dictionary in Content.DRILLS["sets"]:
+		var progress := Game.get_drill_set_progress(drill["id"])
+		var button := _row_button("%s %d/%d" % [drill["name"], progress["learned"], progress["total"]], &"ToggleChip")
+		button.toggle_mode = true
+		button.set_pressed_no_signal(drill["id"] == drill_set)
+		button.pressed.connect(select_drill_set.bind(String(drill["id"])))
+		_puzzle_picker.add_child(button)
+
+
+## The side panel in drill mode: every case in the set with its best time and clean solves, learned ones ticked.
+func _refresh_drill_list() -> void:
+	var set_def := Content.get_drill_set(drill_set)
+	var progress := Game.get_drill_set_progress(drill_set)
+	_records_title.text = "%s  ·  %d/%d learned" % [set_def["name"], progress["learned"], progress["total"]]
+	_bests_label.text = "A solve under %ds is clean; %d clean solves learn a case." % [int(set_def["target"]), int(Content.DRILLS["clean_needed"])]
+	_current_label.text = "Learn every case of Full OLL or Full PLL and your team uses it in its solves."
+	_targets_label.text = " "
+	for child in _times_rows.get_children():
+		_times_rows.remove_child(child)
+		child.queue_free()
+	for alg in Content.get_drill_cases(drill_set):
+		var record: Dictionary = Game.get_drill_record(alg["id"])
+		var label := Label.new()
+		label.theme_type_variation = &"CardLine"
+		label.text = "%s%s   best %s   clean %d/%d" % ["✓ " if Game.is_case_learned(alg["id"]) else "", alg["name"],
+				"—" if is_inf(float(record["best"])) else Num.solve_time(float(record["best"])),
+				mini(int(record["clean"]), int(Content.DRILLS["clean_needed"])), int(Content.DRILLS["clean_needed"])]
+		label.tooltip_text = String(alg["alg"])
+		label.mouse_filter = Control.MOUSE_FILTER_PASS
+		_times_rows.add_child(label)
 
 
 # --- Key hints --------------------------------------------------------------------
@@ -299,6 +422,9 @@ func handle_key(code: int, shift: bool = false) -> void:
 			close()
 			return
 		KEY_ENTER, KEY_KP_ENTER:
+			if drill_mode:
+				new_drill()
+				return
 			if golden_mode:
 				if golden_result != "":
 					close()
@@ -325,6 +451,13 @@ func play_move(move: Dictionary) -> void:
 
 
 func _after_turn(was_done: bool) -> void:
+	if drill_mode:
+		if session.state == "done" and not was_done:
+			drill_result = Game.record_drill(drill_set, drill_case.get("id", ""), session.elapsed(_now()))
+			_records_dirty = true
+			_view.flash()
+			Audio.play_solve()
+		return
 	if golden_mode:
 		if session.state == "done" and not was_done and golden_result == "":
 			Game.finish_golden(true)  # golden_finished shows the buff
@@ -377,6 +510,11 @@ func _refresh() -> void:
 
 func _refresh_clock() -> void:
 	var now := _now()
+	if drill_mode:
+		_timer_label.text = Num.solve_time(session.elapsed(now))
+		_timer_label.theme_type_variation = &"TimerDone" if session.state == "done" else &"TimerLabel"
+		_status_label.text = drill_status_text() if session.state == "done" else "Recognise the case, then solve it. The clock is running."
+		return
 	if golden_mode:
 		if golden_result != "":
 			_timer_label.text = Num.solve_time(session.elapsed(now)) if session.state == "done" else "0.0"
@@ -413,6 +551,9 @@ func _refresh_clock() -> void:
 
 
 func _refresh_records() -> void:
+	if drill_mode:
+		_refresh_drill_list()
+		return
 	var id := _puzzle
 	_records_title.text = "%s records  ·  %d solves" % [Content.get_puzzle(id)["name"], Game.get_hand_solve_count(id)]
 	var bests: Dictionary = Game.get_solve_bests(id)

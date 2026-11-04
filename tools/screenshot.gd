@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1] [--drill solving|done]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -78,6 +78,25 @@ func _ready() -> void:
 		for i in 10:
 			feed.advance(10.0)
 		main._show_news()
+	if args.has("drill"):  # S.4: a PLL drill, solving (clock running) or done (case named), with some cases learned
+		var station: Node = main.get_node("%SolveStation")
+		for alg: Dictionary in Content.get_drill_cases("pll").slice(0, 6):
+			for i in int(Content.DRILLS["clean_needed"]):
+				Game.record_drill("pll", alg["id"], 6.0 + i * 0.4)
+		Game.record_drill("pll", "pll_ja", 12.4)
+		station.open("3x3")
+		station.drill_rng.seed = RANDOM_SEED
+		station.frozen_now = 200.0
+		station.set_drill_mode(true)
+		station.select_drill_set("pll")
+		station.new_drill("pll_ja")
+		if String(args["drill"]) == "done":
+			station.frozen_now = 207.8
+			for move in station.session.model.inverse_sequence(station.session.scramble.slice(1)):  # keep the z2: yellow on top
+				station.play_move(move)
+		else:
+			station.frozen_now = 203.1
+		station._refresh()
 	if args.has("flow"):  # S.3: Flow running after a Gold hand solve
 		Game.record_hand_solve("3x3", 84.2, "", 58)
 		Game.flow["left"] = 105.0

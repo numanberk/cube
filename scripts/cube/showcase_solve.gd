@@ -18,6 +18,7 @@ signal finished                   ## the solve is done (flash!)
 
 var puzzle_id := ""
 var method := "beginner"          ## used from the next scramble on (a method learned mid-solve waits for it)
+var solver_options := {}          ## StagedSolver options, e.g. {"full_pll": true} once the player learned full PLL (S.4)
 var phase := "inspection"
 var scramble: Array[Dictionary] = []
 var stages: Array[Dictionary] = []
@@ -59,7 +60,7 @@ func start_new() -> void:
 	model = PuzzleShapes.from_id(puzzle_id)
 	var length := int(Content.get_puzzle(puzzle_id).get("scramble_length", 25))
 	scramble = model.scramble(length, _rng)
-	stages = StagedSolver.solve(model, method)
+	stages = StagedSolver.solve(model, method, solver_options)
 	phase = "inspection"
 	stage_index = 0
 	move_index = 0

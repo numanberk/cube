@@ -49,7 +49,8 @@ static func supports(puzzle_id: String) -> bool:
 
 ## The solve as stages: [{"id", "name", "moves": Array[Dictionary]}]. `method` is a Content.METHODS id.
 ## Returns [] for a puzzle it can't solve (see supports()).
-static func solve(model: TwistyModel, method: String = "cfop") -> Array[Dictionary]:
+## `options`: {"full_oll": true, "full_pll": true} uses one-look OLL / PLL (the player learned the full set, S.4).
+static func solve(model: TwistyModel, method: String = "cfop", options: Dictionary = {}) -> Array[Dictionary]:
 	if model == null or model.notation_style != "wca" or not ("%dx%d" % [model.size, model.size]) in PUZZLES:
 		return []
 	var shape := _shape(model.size)
@@ -61,7 +62,7 @@ static func solve(model: TwistyModel, method: String = "cfop") -> Array[Dictiona
 	elif method == "beginner":
 		run.solve_beginner()
 	else:
-		run.solve_cfop()
+		run.solve_cfop(options)
 	return run.stages
 
 
@@ -1039,16 +1040,18 @@ class _Run:
 		moves = table_search("full", u_corners, u_edges, _u_turns + safe(pll, keep_c, keep_e))
 		add_stage(pll_stage, moves if moves != null else [])
 
-	func solve_cfop() -> void:
+	func solve_cfop(options: Dictionary = {}) -> void:
 		orient_for_cross()
 		solve_cross()
 		solve_f2l()
+		var oll_key := "full" if options.get("full_oll", false) else "two_look"
+		var pll_key := "full" if options.get("full_pll", false) else "two_look"
 		var oll_ids := []
 		var pll_ids := []
 		for alg: Dictionary in Content.ALGORITHMS:
-			if alg["set"] == "OLL" and alg["two_look"]:
+			if alg["set"] == "OLL" and alg.get(oll_key, false):
 				oll_ids.append(alg["id"])
-			elif alg["set"] == "PLL" and alg["two_look"]:
+			elif alg["set"] == "PLL" and alg.get(pll_key, false):
 				pll_ids.append(alg["id"])
 		solve_last_layer(oll_ids, pll_ids, "oll", "pll")
 

@@ -2,6 +2,33 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-04 — Task S.4: algorithm drills (save v7)
+- **Full OLL (57) and PLL (21)** in `Content.ALGORITHMS` (new fields `full`, `case` = OLL number; the 2-look entries are
+  part of the full sets too: Sune = OLL 27, Line = OLL 45, T/Y/A/U/H/Z perms…). Written as most cubers learn them; the V perm
+  has a `y`, the rest are rotation-free or undo their `x`.
+  **`test_full_oll_pll_data`** proves them: each keeps the first two layers (read relative to the centres), each PLL keeps
+  the top oriented, and the cases are **57 different OLL cases** (up to a U turn) and **21 different PLL cases** (up to U
+  turns before and after). **`test_drill_cases`**: every case set up by the drill is solved by its own algorithm + AUF.
+- **Drills in the Solve Station** ("Drills" toggle): the picker shows the sets (`Content.DRILLS`: 2-look OLL 9, 2-look PLL 8,
+  Full PLL 21, Full OLL 57, with "learned/total"). A drill is one case on a 3×3, **yellow on top** (z2, random AUF before and
+  after), the clock running from the moment it appears (recognition + execution) until solved; the case's name stays hidden
+  until then. After: "Ja perm · best 7.80 (PB!) · clean 1/5 · R' U L' U2 R U' R' U2 R L · Enter: next case". Under the
+  set's target (10 s, keyboard) is **clean**; **5 clean solves learn a case**. The next case is one not learned yet, fewest
+  clean first. The side panel lists every case with best time and clean count (✓ = learned; the algorithm in a tooltip).
+  Drills aren't hand-solve records and give no Flow.
+- **Learn all of Full PLL / Full OLL and the main cube's showcase uses one-look PLL / OLL** (`StagedSolver.solve(..., {full_oll,
+  full_pll})`, `ShowcaseSolve.solver_options`): the last layer drops from ~33 to ~27 moves. News lines for a learned case and set.
+- **GameState:** `drills` {id: {best, clean, count}}, `record_drill(set, case, seconds)`, `is_case_learned()`,
+  `get_drill_record()`, `get_drill_set_progress()`, `is_drill_set_learned()`, signals `drill_case_learned`,
+  `drill_set_learned`. **Save v7** (`"drills"`), v6 → v7 migration. Planned: **v8 prestige (6.2), v9 achievements (7.1)**.
+  `SolveSession.start_drill(alg, now, rng)`. Screenshot tool: `DRILL=solving|done`; shots in `docs/screenshots/S.4-drills/`.
+- Tests (2695 checks, `All good.`): the data proof above; clean / PB / learned (once) / set learned / 2-look cases counting for
+  the full set / unknown ids; save v7 + migration; yellow on top and the clock from the case appearing; the station end to
+  end (sets in the picker, hidden name, record, status with name + algorithm, 8 rows, Enter, Drills off); the showcase
+  switching to one-look PLL.
+- **Not done here:** 2×2 CLL drills (later, S.4b); the Algorithm Lab (5.6) should count learned sets as research.
+- **Next: S.5 daily scramble + FMC.**
+
 ## 2026-11-04 — Task S.3: hand-solve rewards (D13 = 2–3×)
 - **The player's level** (owner): best ~30 s on a real 3×3, consistently under 1:00. That corrects the earlier "almost
   professional" (PLAYER_RESEARCH, PLAN, ROADMAP updated). Targets are tuned for keyboard solving at that level.
