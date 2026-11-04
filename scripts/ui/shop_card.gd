@@ -29,7 +29,8 @@ func _ready() -> void:
 	mouse_exited.connect(_set_hovered.bind(false))
 
 
-## view: {icon: Texture2D, title, line1, line2, owned, cost (strings), affordable: bool, locked: bool}
+## view: {icon: Texture2D, title, line1, line2, owned, cost (strings), affordable: bool, locked: bool, active: bool}
+## `active`: shown bright but not pressable (the Lab project being researched).
 func set_view(view: Dictionary) -> void:
 	_icon.texture = view.get("icon")
 	_title.text = view.get("title", "")
@@ -42,7 +43,7 @@ func set_view(view: Dictionary) -> void:
 	affordable = view.get("affordable", false) and not locked
 	disabled = not affordable
 	_cost.theme_type_variation = &"CostAffordable" if affordable else &"CostUnaffordable"
-	_content.modulate.a = 1.0 if affordable else (DIM_LOCKED if locked else DIM_UNAFFORDABLE)
+	_content.modulate.a = 1.0 if affordable or view.get("active", false) else (DIM_LOCKED if locked else DIM_UNAFFORDABLE)
 	_update_lift()
 
 

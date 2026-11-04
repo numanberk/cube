@@ -44,7 +44,7 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 
 ## Tapping (3 taps/s, 120 min)
 
-- Items bought: 1360 (88 different)
+- Items bought: 1364 (88 different)
 - Every helper, upgrade, method and puzzle owned at: never
 - Longest wait for something new: 36:26 (after Assembly Line V, before Research Grants V)
 
@@ -58,9 +58,9 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 3:10 | upgrade | Stackmat Timer | 50 | +1:05 |
 | 3:27 | upgrade | Practice Partners I | 50 | +0:17 |
 | 4:11 | puzzle | 3×3 | 150 | +0:44 |
-| 4:39 | method | Learn CFOP | 200 | +0:28 |
-| 5:02 | upgrade | Practice Partners II | 150 | +0:23 |
-| 5:39 | upgrade | Club Snacks | 600 | +0:37 |
+| 5:02 | upgrade | Practice Partners II | 150 | +0:51 |
+| 5:24 | method | Learn CFOP | 200 | +0:22 |
+| 5:39 | upgrade | Club Snacks | 600 | +0:15 |
 | 5:48 | upgrade | Club Training I | 600 | +0:09 |
 | 6:05 | upgrade | Magnetic Cube | 1.50K | +0:18 |
 | 6:19 | upgrade | Practice Partners III | 1.25K | +0:14 |
@@ -69,8 +69,7 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 6:39 | helper | Local Competition | 9.00K | +0:10 |
 | 6:56 | upgrade | Sponsorship Deal | 25.00K | +0:16 |
 | 7:00 | upgrade | Club Training III | 15.00K | +0:05 |
-| 7:05 | method | Learn Roux | 25.00K | +0:05 |
-| 7:07 | helper | Solving Robot | 1.50K | +0:02 |
+| 7:07 | helper | Solving Robot | 1.50K | +0:07 |
 | 7:17 | upgrade | Robot Firmware v2 | 8.00K | +0:10 |
 | 7:19 | upgrade | Servo Tuning I | 15.00K | +0:03 |
 | 7:28 | upgrade | Robot Sparring | 40.00K | +0:09 |
@@ -91,8 +90,8 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 10:03 | upgrade | Factory Supply | 6.00M | +0:01 |
 | 10:04 | upgrade | Club Training IV | 480.0K | +0:01 |
 | 10:36 | helper | Cubing Federation | 500.0M | +0:32 |
-| 11:06 | method | Learn ZZ | 50.00M | +0:31 |
-| 11:08 | puzzle | 5×5 | 300.0M | +0:01 |
+| 11:05 | method | Learn Roux | 25.00K | +0:30 |
+| 11:08 | puzzle | 5×5 | 300.0M | +0:02 |
 | 11:11 | upgrade | Research Grants I | 18.00M | +0:03 |
 | 11:11 | upgrade | Assembly Line III | 30.00M | +0:00 |
 | 11:11 | upgrade | Research Grants II | 54.00M | +0:00 |
@@ -133,12 +132,13 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 19:48 | upgrade | Club Training V | 480.0M | +0:54 |
 | 20:09 | upgrade | Launch Windows IV | 16.00Qa | +0:21 |
 | 28:17 | upgrade | Entanglement IV | 320.0Qa | +8:08 |
-| 31:07 | method | God's Number | 30.00B | +2:49 |
-| 35:37 | upgrade | Servo Tuning V | 12.00B | +4:30 |
+| 31:06 | method | Learn ZZ | 50.00M | +2:49 |
+| 35:37 | upgrade | Servo Tuning V | 12.00B | +4:31 |
 | 39:36 | upgrade | Comp Experience V | 72.00B | +3:59 |
 | 48:02 | upgrade | Assembly Line V | 960.0B | +8:27 |
 | 1:24:28 | upgrade | Research Grants V | 14.40T | +36:26 |
-| 1:31:08 | research | Finger Tricks | 500 | +6:39 |
+| 1:31:07 | method | God's Number | 30.00B | +6:38 |
+| 1:31:08 | research | Finger Tricks | 500 | +0:01 |
 | 1:33:08 | research | 2-look OLL | 5.00K | +2:00 |
 
 ### Income over time
@@ -154,9 +154,9 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 
 ## Never tapping (0 taps/s, 120 min)
 
-- Items bought: 609 (19 different)
+- Items bought: 613 (19 different)
 - Every helper, upgrade, method and puzzle owned at: never
-- Longest wait for something new: 1:02:06 (after Quantum Solver, until 2:00:00)
+- Longest wait for something new: 52:11 (after Quantum Solver, before God's Number)
 
 ### First purchase of each item
 
@@ -165,22 +165,22 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 0:00 | helper | Cubing Friend | 0 | +0:00 |
 | 7:26 | helper | Cubing Club | 60 | +7:26 |
 | 10:15 | puzzle | 3×3 | 150 | +2:49 |
-| 11:28 | method | Learn CFOP | 200 | +1:13 |
-| 14:11 | helper | Solving Robot | 1.50K | +2:43 |
+| 12:13 | method | Learn CFOP | 200 | +1:58 |
+| 14:11 | helper | Solving Robot | 1.50K | +1:58 |
 | 17:18 | helper | Local Competition | 9.00K | +3:07 |
-| 19:09 | method | Learn Roux | 25.00K | +1:50 |
-| 21:31 | helper | Cube Factory | 120.0K | +2:22 |
-| 24:30 | puzzle | 4×4 | 400.0K | +2:59 |
+| 21:31 | helper | Cube Factory | 120.0K | +4:13 |
+| 23:09 | method | Learn Roux | 25.00K | +1:38 |
+| 24:30 | puzzle | 4×4 | 400.0K | +1:21 |
 | 25:17 | helper | Speedcubing Lab | 1.80M | +0:47 |
 | 28:29 | helper | Pro Team | 30.00M | +3:13 |
-| 30:05 | method | Learn ZZ | 50.00M | +1:36 |
-| 33:36 | helper | Cubing Federation | 500.0M | +3:31 |
+| 33:36 | helper | Cubing Federation | 500.0M | +5:07 |
 | 37:35 | helper | Cube Museum | 8.00B | +3:59 |
 | 37:37 | puzzle | 5×5 | 300.0M | +0:02 |
 | 41:59 | helper | AI Solver | 130.0B | +4:22 |
 | 48:45 | helper | Orbital Cube Station | 2.00T | +6:46 |
-| 50:05 | method | God's Number | 30.00B | +1:20 |
+| 50:05 | method | Learn ZZ | 50.00M | +1:20 |
 | 57:54 | helper | Quantum Solver | 40.00T | +7:49 |
+| 1:50:06 | method | God's Number | 30.00B | +52:11 |
 
 ### Income over time
 
@@ -196,9 +196,9 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 ## Active: tapping + Gold-pace hand solves (3 taps/s, 30 min)
 
 - Hand solves in the Solve Station: 7 (each just inside the tier's target on the biggest cube owned, back to back)
-- Items bought: 1274 (85 different)
+- Items bought: 1277 (84 different)
 - Every helper, upgrade, method and puzzle owned at: never
-- Longest wait for something new: 6:34 (after Assembly Line V, before God's Number)
+- Longest wait for something new: 6:34 (after Assembly Line V, before Learn ZZ)
 
 ### First purchase of each item
 
@@ -210,19 +210,18 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 0:51 | upgrade | Stackmat Timer | 50 | +0:11 |
 | 0:59 | upgrade | Practice Partners I | 50 | +0:07 |
 | 1:16 | puzzle | 3×3 | 150 | +0:18 |
-| 1:27 | method | Learn CFOP | 200 | +0:10 |
-| 1:38 | upgrade | Practice Partners II | 150 | +0:11 |
+| 1:38 | upgrade | Practice Partners II | 150 | +0:21 |
 | 1:53 | upgrade | Club Snacks | 600 | +0:15 |
 | 1:57 | upgrade | Club Training I | 600 | +0:04 |
 | 2:06 | upgrade | Magnetic Cube | 1.50K | +0:08 |
-| 2:12 | upgrade | Practice Partners III | 1.25K | +0:06 |
+| 2:11 | method | Learn CFOP | 200 | +0:05 |
+| 2:12 | upgrade | Practice Partners III | 1.25K | +0:01 |
 | 2:14 | upgrade | Club Training II | 1.80K | +0:01 |
 | 2:16 | upgrade | Club Coaching | 3.00K | +0:02 |
 | 2:19 | helper | Local Competition | 9.00K | +0:03 |
 | 2:25 | upgrade | Sponsorship Deal | 25.00K | +0:05 |
 | 2:26 | upgrade | Club Training III | 15.00K | +0:02 |
-| 2:28 | method | Learn Roux | 25.00K | +0:02 |
-| 2:28 | helper | Solving Robot | 1.50K | +0:01 |
+| 2:28 | helper | Solving Robot | 1.50K | +0:02 |
 | 2:32 | upgrade | Robot Firmware v2 | 8.00K | +0:03 |
 | 2:33 | upgrade | Servo Tuning I | 15.00K | +0:01 |
 | 2:35 | upgrade | Robot Sparring | 40.00K | +0:03 |
@@ -275,8 +274,8 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 5:49 | upgrade | Neural Upgrades III | 32.50T | +0:07 |
 | 5:58 | upgrade | Launch Windows III | 500.0T | +0:09 |
 | 6:00 | upgrade | Research Grants IV | 14.40B | +0:03 |
-| 6:28 | upgrade | Entanglement III | 10.00Qa | +0:28 |
-| 6:28 | method | Learn ZZ | 50.00M | +0:00 |
+| 6:28 | method | Learn Roux | 25.00K | +0:28 |
+| 6:28 | upgrade | Entanglement III | 10.00Qa | +0:00 |
 | 6:39 | upgrade | Team Bootcamp IV | 240.0B | +0:11 |
 | 6:47 | upgrade | Regional Branches IV | 4.00T | +0:08 |
 | 7:03 | upgrade | Exhibit Halls IV | 64.00T | +0:16 |
@@ -288,7 +287,7 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 13:57 | upgrade | Servo Tuning V | 12.00B | +3:06 |
 | 15:52 | upgrade | Comp Experience V | 72.00B | +1:54 |
 | 19:54 | upgrade | Assembly Line V | 960.0B | +4:02 |
-| 26:28 | method | God's Number | 30.00B | +6:34 |
+| 26:28 | method | Learn ZZ | 50.00M | +6:34 |
 
 ### Income over time
 

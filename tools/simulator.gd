@@ -54,6 +54,10 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}) -> Dictiona
 	for def: Dictionary in Content.PUZZLES:
 		if float(def["unlock_cost"]) > 0.0 and not def["requires_prestige"]:
 			item_count += 1  # puzzles you can buy before prestige
+	for def: Dictionary in Content.get_lab_projects():
+		if def["kind"] == "research":
+			item_count += 1  # Lab projects (5.6); methods are counted above
+	var learned_method := g.method
 
 	var t := 0.0
 	var tap_credit := 0.0
@@ -74,6 +78,17 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}) -> Dictiona
 		g.add_helper_moves(STEP)
 		g.update_flow(STEP)
 		g.update_research(STEP)
+		if g.method != learned_method:  # a method's Lab research finished: that's when it counts (and is logged)
+			learned_method = g.method
+			purchases += 1
+			var method_key := "method:" + learned_method
+			if not seen.has(method_key):
+				seen[method_key] = true
+				events.append({"t": t, "kind": "method", "id": learned_method,
+						"name": _item_name({"kind": "method", "id": learned_method}),
+						"cost": float(Content.get_method(learned_method)["cost"])})
+				if seen.size() == item_count and all_bought_at < 0.0:
+					all_bought_at = t
 		if not hand.is_empty():
 			hand_wait -= STEP
 			if hand_wait <= 0.0:
@@ -109,7 +124,7 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}) -> Dictiona
 				choose_split(g)
 				split_timer = SPLIT_INTERVAL
 			var key := "%s:%s" % [target["kind"], target["id"]]
-			if not seen.has(key):
+			if target["kind"] != "method" and not seen.has(key):  # a method is logged when its research finishes
 				seen[key] = true
 				events.append({
 					"t": t, "kind": target["kind"], "id": target["id"],

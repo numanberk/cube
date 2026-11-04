@@ -337,12 +337,11 @@ const PUZZLES := [
 ]
 
 ## Algorithm Lab (task 5.6): research that runs in real time, also while the game is closed (capped like offline progress).
-## One project at a time (`slots`; the trophy tree can add more). Paid when started, its effect counts when it finishes.
+## One project at a time (a second slot may come with the trophy tree, 6.3). Paid when started, its effect counts when it finishes.
 ## Every method after the Beginner Method is a project too (see get_lab_projects(); learning a method = researching it).
 ## A project with a `drill_set` is done for free the moment the player learns that set in the Solve Station drills (S.4).
 ##   id, icon, name, description, cost (Solves), seconds, effect (an upgrade effect: Content.EFFECT_TYPES), requires (ids)
 const LAB := {
-	"slots": 1,
 	"projects": [
 		{"id": "finger_tricks", "icon": "lube", "name": "Finger Tricks", "description": "Flick, push, regrip. Taps ×2.",
 			"cost": 500.0, "seconds": 120.0, "effect": {"type": "tap_mult", "value": 2.0}, "requires": []},
@@ -369,12 +368,13 @@ static func get_lab_projects() -> Array[Dictionary]:
 		var previous := ""
 		for def: Dictionary in METHODS.slice(1):
 			_lab_projects.append({"id": "method_" + def["id"], "kind": "method", "method": def["id"], "icon": def["icon"],
-					"name": def["name"], "description": def["description"], "cost": float(def["cost"]),
+					"name": def["name"], "topic": String(def["name"]).trim_prefix("Learn "), "description": def["description"], "cost": float(def["cost"]),
 					"seconds": float(def.get("research_seconds", 60.0)), "requires": [] if previous == "" else [previous]})
 			previous = "method_" + def["id"]
 		for def: Dictionary in LAB["projects"]:
 			var project: Dictionary = def.duplicate(true)
 			project["kind"] = "research"
+			project["topic"] = def["name"]
 			_lab_projects.append(project)
 	return _lab_projects
 

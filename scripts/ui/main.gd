@@ -295,11 +295,15 @@ func _refresh_upgrade_tiles() -> void:
 			affordable_count += 1
 		var cost_text := Num.format(cost)
 		if researching:  # learning a method is Lab research (5.6)
-			cost_text = "Researching %s" % Num.solve_time(float(Game.research["left"])).get_slice(".", 0)
+			cost_text = "Researching  %s" % Num.clock(float(Game.research["left"]))
+		var lab_note := ""
+		if not learned and not researching and not Game.research.is_empty():
+			lab_note = "\nThe Lab is busy with %s: this can start when it's done." \
+					% Content.get_lab_project(String(Game.research["id"])).get("topic", "")
 		tile.set_view({
 			"icon": Content.icon(def["icon"]), "title": def["name"],
-			"description": "%s\n%s\nLearning it takes %s of research in the Lab." % [def["description"], _method_effect_text(def, learned),
-					Num.format_duration(float(def.get("research_seconds", 0.0)))],
+			"description": "%s\n%s\nLearning it takes %s of research in the Lab.%s" % [def["description"], _method_effect_text(def, learned),
+					Num.format_duration(float(def.get("research_seconds", 0.0))), lab_note],
 			"cost": cost_text, "affordable": can_buy, "owned": learned,
 		})
 		(owned_order if learned else order).append(tile)
@@ -369,10 +373,12 @@ func _pop_solves(delta: float) -> void:
 		_burst_timer = BURST_INTERVAL
 
 
-## "Cubing Friend · ready!", "Learn ZZ · 1m 14s", "Cube Lube · 15 Solves" (no estimate yet: what's left) or, with `long`,
-## "Learn ZZ · 46.00M more Solves · about 1m 14s".
+## "Cubing Friend · ready!", "Learn ZZ · 1m 14s", "Cube Lube · 15 Solves" (no estimate yet: what's left),
+## "Research CFOP · 0:32" (Lab research) or, with `long`, "Learn ZZ · 46.00M more Solves · about 1m 14s".
 func _goal_text(goal: Dictionary, long: bool = false) -> String:
 	var name: String = ("another " if goal["more"] else "") + String(goal["name"])
+	if goal["unit"] == "time":  # Lab research (5.6): paid already, only its time left
+		return "%s  ·  %s%s" % [name, Num.clock(float(goal["seconds"])), " left in the Lab" if long else ""]
 	if float(goal["missing"]) <= 0.0:
 		return "%s  —  ready%s!" % [name, " to buy" if goal["unit"] == "Solves" else ""]
 	var seconds := float(goal["seconds"])
@@ -736,9 +742,13 @@ func _connect_news() -> void:
 	Game.hand_tier_reached.connect(news.on_hand_tier)
 	Game.research_finished.connect(func(id: String) -> void:
 		var project := Content.get_lab_project(id)
-		news.push("lab", "Research done: %s." % project.get("name", id))
+		if project.get("kind", "") == "method":
+			return  # purchased("method") already gives the news line (and the buy sound)
+		news.push("lab", "Research done: %s." % project.get("topic", id))
 		Audio.play_unlock())
-	Game.research_started.connect(func(_id: String) -> void: _refresh())
+	Game.research_started.connect(func(_id: String) -> void:
+		Audio.play_buy()
+		_refresh())
 	Game.daily_rewarded.connect(func(amount: float) -> void:
 		news.push("daily", "Daily scramble done! +%s Solves. A new one comes tomorrow." % Num.format(amount)))
 	Game.drill_set_learned.connect(func(set_id: String) -> void:
@@ -833,7 +843,7 @@ func _refresh_lab() -> void:
 		lab_status.text = "The Lab is free: start a project. Research keeps going while the game is closed."
 		lab_progress.value = 0.0
 	else:
-		lab_status.text = "Researching %s  ·  %s left" % [running["name"], Num.format_duration(float(running["left"]))]
+		lab_status.text = "Researching %s  ·  %s left" % [running["topic"], Num.clock(float(running["left"]))]
 		lab_progress.value = float(running["fraction"])
 	var startable := 0
 	var order: Array[ShopCard] = []
@@ -851,14 +861,16 @@ func _refresh_lab() -> void:
 			startable += 1
 		var line2 := "Takes %s" % Num.format_duration(float(def["seconds"]))
 		if is_running:
-			line2 = "Researching  ·  %s left" % Num.format_duration(float(running["left"]))
+			line2 = "Researching  ·  %s left" % Num.clock(float(running["left"]))
 		elif done:
 			line2 = "Done"
+		elif not running.is_empty():
+			line2 += "  ·  the Lab is busy"
 		elif String(def.get("drill_set", "")) != "":
 			line2 += "  ·  or learn %s in the Solve Station drills" % Content.get_drill_set(def["drill_set"]).get("name", "")
 		card.set_view({
 			"icon": Content.icon(def["icon"]), "title": def["name"], "line1": def["description"], "line2": line2,
-			"owned": "✓" if done else "", "affordable": can_start,
+			"owned": "✓" if done else "", "affordable": can_start, "active": is_running,
 			"cost": "" if done or is_running else "%s Solves" % Num.format(float(def["cost"])),
 		})
 		(done_order if done else order).append(card)
@@ -867,7 +879,7 @@ func _refresh_lab() -> void:
 		lab_list.move_child(order[index], index)
 	var title := "Lab"
 	if not running.is_empty():
-		title = "Lab · %s" % Num.solve_time(float(running["left"])).get_slice(".", 0)
+		title = "Lab · %s" % Num.clock(float(running["left"]))
 	elif startable > 0:
 		title = "Lab (%d)" % startable
 	tabs.set_tab_title(LAB_TAB, title)

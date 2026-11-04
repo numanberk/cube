@@ -1275,6 +1275,13 @@ func test_welcome_panel() -> void:
 	check((panel.get_node("%Away") as Label).text == "You were away for 2h 15m.", "it says how long you were away")
 	check((panel.get_node("%Earned") as Label).text == "+%s Solves" % Num.format(earned), "it shows what you earned")
 	check(not (panel.get_node("%Notice") as Label).visible, "no damaged-save notice")
+	check((panel.get_node("%Detail") as Label).text == "Your helpers kept solving while you were gone.", "it says the helpers kept solving")
+	var lab_only: Control = load("res://scenes/welcome_panel.tscn").instantiate()
+	root.add_child(lab_only)
+	lab_only.show_report({"seconds": 600.0, "solves": 0.0, "research": "CFOP"}, "")
+	check((lab_only.get_node("%Detail") as Label).text == "The Lab finished CFOP." and not (lab_only.get_node("%Earned") as Label).visible,
+			"no helpers, only research: it says just that")
+	lab_only.free()
 	main._animate_counter(1.0)
 	check_near(main._shown_solves, game.solves - earned, "the counter waits for Collect")
 	main._unhandled_input(key_event(KEY_SPACE, true, false))
@@ -3382,7 +3389,56 @@ func test_lab_research() -> void:
 		for i in int(Content.DRILLS["clean_needed"]):
 			g.record_drill("2look_oll", alg["id"], 1.0)
 	check(g.is_research_done("two_look_oll") and is_equal_approx(g.solves, solves_before), "learning 2-look OLL in drills finishes its Lab project, free")
+	# ...even while it's the project running: it finishes, and the Lab is free again.
+	check(g.start_research("two_look_pll") and g.research["id"] == "two_look_pll", "start 2-look PLL")
+	for alg in Content.get_drill_cases("2look_pll"):
+		for i in int(Content.DRILLS["clean_needed"]):
+			g.record_drill("2look_pll", alg["id"], 1.0)
+	check(g.is_research_done("two_look_pll") and g.research.is_empty(), "drilling the running project's set finishes it and frees the Lab")
 	g.free()
+
+
+func test_lab_goals() -> void:
+	var g := new_game()
+	g.cheat_add_solves(1e4)
+	var kinds := func() -> Array:
+		var found: Array = []
+		for goal in g.get_goals(10):
+			found.append(goal["kind"])
+		return found
+	check(kinds.call().has("method") and not kinds.call().has("research"), "the next method is a goal")
+	g.buy_method("cfop")
+	check(not kinds.call().has("method") and g.get_next_goal().get("kind", "") != "method", "...but not while it's being researched")
+	var running: Dictionary = {}
+	for goal in g.get_goals(10):
+		if goal["kind"] == "research":
+			running = goal
+	check(not running.is_empty() and running["name"] == "Research CFOP" and running["unit"] == "time"
+			and is_equal_approx(float(running["seconds"]), float(Content.get_method("cfop")["research_seconds"])), "the research is a goal, with its time left")
+	g.free()
+
+
+func test_lab_content() -> void:
+	var ids := {}
+	for def: Dictionary in Content.get_lab_projects():
+		var id: String = def["id"]
+		check(not ids.has(id), "Lab project %s: unique id" % id)
+		check(FileAccess.file_exists("res://assets/icons/%s.svg" % def["icon"]), "Lab project %s: its icon exists" % id)
+		check(float(def["cost"]) > 0.0 and float(def["seconds"]) > 0.0 and float(def["seconds"]) <= GameState.MAX_OFFLINE_SECONDS,
+				"Lab project %s: a cost and a time (at most the offline cap)" % id)
+		check(String(def.get("topic", "")) != "", "Lab project %s: a topic" % id)
+		if def["kind"] == "research":
+			check(Content.EFFECT_TYPES.has(def["effect"]["type"]), "Lab project %s: a known effect type" % id)
+			if def.has("drill_set"):
+				check(not Content.get_drill_set(def["drill_set"]).is_empty(), "Lab project %s: its drill set exists" % id)
+		for need: String in def.get("requires", []):
+			check(ids.has(need), "Lab project %s: requires %s, listed before it" % [id, need])
+		ids[id] = true
+
+
+func test_num_clock() -> void:
+	check(Num.clock(32.0) == "0:32" and Num.clock(240.0) == "4:00" and Num.clock(3723.0) == "1:02:03", "clock: m:ss, h:mm:ss")
+	check(Num.clock(0.2) == "0:01" and Num.clock(0.0) == "0:00" and Num.clock(-5.0) == "0:00", "clock: rounds up, never negative")
 
 
 func test_lab_offline_and_saves() -> void:
@@ -3400,14 +3456,42 @@ func test_lab_offline_and_saves() -> void:
 	away.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]) + 600.0)
 	check(away.is_research_done("finger_tricks") and away.research.is_empty(), "10 minutes away: the research finished offline")
 	check(away.offline_report.get("research", "") == "Finger Tricks", "and the welcome back report names it")
-	# Offline research is capped like offline progress (8 h): a 3-hour project started 20 hours ago isn't done.
+	# Time away counts down a long project; a damaged save can't claim more time left than the project takes.
 	var slow := new_game()
 	slow.cheat_add_solves(1e12)
-	slow.research = {"id": "full_oll", "left": 3.0 * 3600.0 + 9.0 * 3600.0}
+	slow.research_done["two_look_oll"] = true
+	slow.research = {"id": "full_oll", "left": 3.0 * 3600.0}
 	var slow_data := slow.get_save_data()
 	var later := new_game()
-	later.apply_save_data(JSON.parse_string(JSON.stringify(slow_data)), float(slow_data["saved_at"]) + 20.0 * 3600.0)
-	check(not later.is_research_done("full_oll") and is_equal_approx(float(later.research["left"]), 4.0 * 3600.0), "offline research is capped at 8 h")
+	later.apply_save_data(JSON.parse_string(JSON.stringify(slow_data)), float(slow_data["saved_at"]) + 2.0 * 3600.0)
+	check(not later.is_research_done("full_oll") and is_equal_approx(float(later.research["left"]), 3600.0), "2 h away: 1 h of Full OLL left")
+	slow_data["lab"]["current"]["left"] = 50.0 * 3600.0
+	later.apply_save_data(JSON.parse_string(JSON.stringify(slow_data)), float(slow_data["saved_at"]))
+	check(is_equal_approx(float(later.research["left"]), 3.0 * 3600.0), "a damaged time left is clamped to the project's length")
+	# Damaged or impossible Lab data is dropped, not trusted.
+	var bad: Dictionary = slow_data.duplicate(true)
+	bad["lab"] = {"current": {"id": "full_oll", "left": 10.0}, "done": ["lookahead", "nonsense"]}
+	later.apply_save_data(JSON.parse_string(JSON.stringify(bad)), float(bad["saved_at"]))
+	check(later.research.is_empty() and later.research_done.is_empty(), "projects whose requirements aren't done (and unknown ids) are dropped")
+	bad["lab"] = {"current": {"id": "method_zz", "left": "x"}, "done": "oops"}
+	later.apply_save_data(JSON.parse_string(JSON.stringify(bad)), float(bad["saved_at"]))
+	check(later.research.is_empty(), "a method that isn't the next one can't be running")
+	bad["lab"] = [1, 2]
+	later.apply_save_data(JSON.parse_string(JSON.stringify(bad)), float(bad["saved_at"]))
+	check(later.research.is_empty() and later.research_done.is_empty(), "a Lab that isn't a dictionary loads as empty")
+	# A drill set learned before the Lab existed (a v8 save) counts as its project done.
+	var drilled := new_game()
+	for alg in Content.get_drill_cases("2look_pll"):
+		for i in int(Content.DRILLS["clean_needed"]):
+			drilled.record_drill("2look_pll", alg["id"], 1.0)
+	var drilled_data := drilled.get_save_data()
+	drilled_data.erase("lab")
+	drilled_data["version"] = 8
+	var drilled_loaded := new_game()
+	drilled_loaded.apply_save_data(drilled_data, float(drilled_data["saved_at"]))
+	check(drilled_loaded.is_research_done("two_look_pll") and not drilled_loaded.is_research_done("two_look_oll"), "drill sets learned before v9 finish their Lab project on load")
+	drilled.free()
+	drilled_loaded.free()
 	# Done projects are saved; v8 saves get an empty Lab (and keep their methods).
 	g.finish_research()
 	data = g.get_save_data()
@@ -3439,7 +3523,10 @@ func test_lab_tab() -> void:
 	card.pressed.emit()
 	check(game.research.get("id", "") == "finger_tricks", "pressing the card starts it")
 	main._refresh()
-	check((main.get_node("%LabStatus") as Label).text.begins_with("Researching Finger Tricks") and tabs.get_tab_title(main.LAB_TAB).begins_with("Lab · "), "the tab shows what's running and the time left")
+	check((main.get_node("%LabStatus") as Label).text.begins_with("Researching Finger Tricks") and tabs.get_tab_title(main.LAB_TAB) == "Lab · 2:00", "the tab shows what's running and the time left")
+	check(card._content.modulate.a == 1.0 and card.disabled, "the running project is bright but can't be pressed again")
+	check(main._goal_text({"kind": "research", "name": "Research Finger Tricks", "more": false, "unit": "time", "missing": 120.0,
+			"seconds": 120.0, "progress": 0.0}) == "Research Finger Tricks  ·  2:00", "a research goal reads as its time left")
 	game.finish_research()
 	main._refresh()
 	check(card._owned.text == "✓" and not card.affordable, "a done project is ticked")

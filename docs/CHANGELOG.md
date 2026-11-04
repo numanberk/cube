@@ -4,7 +4,7 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
 
 ## 2026-11-04 — Task 5.6: the Algorithm Lab (save v9)
 - **Real-time research, also while the game is closed** (capped at 8 h like offline progress). One project at a time
-  (`Content.LAB["slots"]`; the trophy tree can add more later). Paid when started; the effect counts when it finishes.
+  (a second slot may come with the trophy tree, 6.3). Paid when started; the effect counts when it finishes.
 - **Projects** (`Content.get_lab_projects()`): **every method after the Beginner Method** is now research ("learning a
   method = researching it": CFOP 45 s, Roux 4 min, ZZ 20 min, God's Number 1 h; `research_seconds` in METHODS), plus
   `Content.LAB["projects"]`: **Finger Tricks** (taps ×2, 2 min), **2-look OLL** / **2-look PLL** (−10 % moves per solve each,
@@ -20,7 +20,8 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   (methods already learned stay learned). Planned: **v10 prestige (6.2), v11 achievements (7.1)**.
 - **UI:** a **Lab** tab (status line + bar, one card per visible project: time, cost, "Researching · 3m 42s left", ✓ when
   done; the tab title shows "Lab · 3:42" or "Lab (2)"). Method tiles in Upgrades show "Researching 0:32" and their research
-  time in the tooltip. News line + sting when research finishes. The simulator researches too (it picks Lab projects like
+  time in the tooltip. News line + sting when research finishes. Running research is its own goal in the goal strip
+  ("Research CFOP · 0:32"); a method being researched is no longer a "buy" goal. The simulator researches too (it picks Lab projects like
   upgrades and ticks the Lab).
 - **Balance:** the longest first-hour wait fell to 11:58 (was 25:40); active speedup ×2.61. Robot/4×4/5×5 are still early
   (7:07 / 8:11 / 11:08): **5.8**.
@@ -28,6 +29,19 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   effect, not twice, requirements), CFOP as research, drill sets finishing projects free; save/load mid-research (v9),
   finishing offline + the report, the 8 h cap, done projects saved, v8 → v9 keeps methods; the Lab tab (start, status,
   tab title, ✓). Screenshot tool `LAB=1`; shot in `docs/screenshots/5.6-lab/`.
+- **Review fixes (diff-reviewer; the project agents in `.claude/agents/` weren't loaded in this session, so a
+  general-purpose agent ran with diff-reviewer's instructions):** drill sets learned before v9 finish their project on
+  load; the saved Lab is checked (unknown ids, unmet requirements, a method that isn't the next one, wrong types are
+  dropped; time left clamped to the project's length); countdowns use the new `Num.clock()` ("0:32", "1:02:03") instead
+  of a mangled cube time; one news line and one sound per method (research_finished skips methods; starting research
+  plays the buy sound); names without "Learn " (`topic`) in status, goals, news and the welcome-back line, which no
+  longer claims helpers kept solving when only the Lab did; the running Lab card is bright (ShopCard `active`); a busy
+  Lab says so on method tiles and Lab cards; the simulator logs a method when its research finishes and counts Lab
+  projects in "everything bought". New tests: Lab content data, goals, damaged saves, drilling the running project,
+  `Num.clock`, the welcome line.
+- **For 5.8:** with one Lab slot the methods hog it (Roux 4 min, ZZ 20 min, God's Number 1 h back to back), so the bot
+  only gets to Finger Tricks (500 Solves!) at 1:31. Either give methods their own slot, make the bot weigh cheap
+  projects, or shorten method research. Method times in BALANCE.md now show when a method is *learned*.
 - **Next: 5.7b "pick one of two" choices** (5.7 Helper Promotion only if 5.8 needs it), then **5.8 rebalance**.
 
 ## 2026-11-04 — Task 0.5: project subagents (tooling only, no game changes)

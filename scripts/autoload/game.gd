@@ -778,7 +778,7 @@ func get_next_goal() -> Dictionary:
 			continue
 		candidates.append({"kind": "upgrade", "id": def["id"], "name": def["name"], "cost": float(def["cost"]), "more": false})
 	var next_method := get_next_method()
-	if not next_method.is_empty():
+	if not next_method.is_empty() and String(research.get("id", "")) != "method_" + String(next_method["id"]):
 		candidates.append({"kind": "method", "id": next_method["id"], "name": next_method["name"],
 				"cost": float(next_method["cost"]), "more": false})
 	var next_puzzle := get_next_locked_puzzle()
@@ -1207,8 +1207,12 @@ func get_goals(limit: int = 3) -> Array[Dictionary]:
 		if not upgrades.has(def["id"]) and _upgrade_requirements_met(def):
 			add.call(cost_goal.call("upgrade", def["id"], def["name"], float(def["cost"]), false))
 	var next_method := get_next_method()
-	if not next_method.is_empty():
+	if not next_method.is_empty() and String(research.get("id", "")) != "method_" + String(next_method["id"]):
 		add.call(cost_goal.call("method", next_method["id"], next_method["name"], float(next_method["cost"]), false))
+	var running := get_research_progress()
+	if not running.is_empty():  # the Lab project being researched (5.6): already paid, just time left
+		add.call({"kind": "research", "id": running["id"], "name": "Research " + String(running["topic"]), "more": false, "unit": "time",
+				"missing": running["left"], "seconds": running["left"], "progress": running["fraction"]})
 	var next_puzzle := get_next_locked_puzzle()
 	if next_puzzle != "":
 		add.call(cost_goal.call("puzzle", next_puzzle, Content.get_puzzle(next_puzzle)["name"],
@@ -1236,6 +1240,8 @@ func get_goals(limit: int = 3) -> Array[Dictionary]:
 func _goal_before(a: Dictionary, b: Dictionary) -> bool:
 	if float(a["seconds"]) != float(b["seconds"]):
 		return float(a["seconds"]) < float(b["seconds"])
+	if (a["unit"] == "time") != (b["unit"] == "time"):
+		return b["unit"] == "time"
 	if (a["unit"] == "XP") != (b["unit"] == "XP"):
 		return b["unit"] == "XP"
 	return float(a["missing"]) < float(b["missing"])
@@ -1299,10 +1305,7 @@ func is_research_visible(id: String) -> bool:
 	var def := Content.get_lab_project(id)
 	if def.is_empty() or is_research_done(id) or String(research.get("id", "")) == id:
 		return false
-	for need: String in def.get("requires", []):
-		if not is_research_done(need):
-			return false
-	return total_solves >= float(def["cost"]) * 0.5
+	return _lab_requirements_done(def) and total_solves >= float(def["cost"]) * 0.5
 
 
 ## Pays for a project and starts it. False if it can't start (see can_start_research).
@@ -1333,13 +1336,13 @@ func finish_research() -> void:
 		_complete_research(String(research["id"]))
 
 
-## {id, name, left, total, fraction} for the running project, or {}.
+## {id, name, topic (the name without "Learn "), left, total, fraction} for the running project, or {}.
 func get_research_progress() -> Dictionary:
 	if research.is_empty():
 		return {}
 	var def := Content.get_lab_project(String(research["id"]))
 	var total := maxf(0.001, float(def.get("seconds", 1.0)))
-	return {"id": research["id"], "name": def.get("name", ""), "left": maxf(0.0, float(research["left"])), "total": total,
+	return {"id": research["id"], "name": def.get("name", ""), "topic": def.get("topic", ""), "left": maxf(0.0, float(research["left"])), "total": total,
 			"fraction": clampf(1.0 - float(research["left"]) / total, 0.0, 1.0)}
 
 
@@ -1607,16 +1610,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		drills[id] = {"best": best if best > 0.0 else INF, "clean": maxi(0, int(saved.get("clean", 0))),
 				"count": maxi(0, int(saved.get("count", 0)))}
 	daily = _clean_daily(data.get("daily", {}))
-	research = {}
-	research_done.clear()
-	var saved_lab: Dictionary = data.get("lab", {})
-	for id: Variant in saved_lab.get("done", []):
-		var project := Content.get_lab_project(str(id))
-		if not project.is_empty() and project["kind"] == "research":
-			research_done[str(id)] = true
-	var saved_current: Dictionary = saved_lab.get("current", {})
-	if not Content.get_lab_project(String(saved_current.get("id", ""))).is_empty() and not is_research_done(String(saved_current["id"])):
-		research = {"id": String(saved_current["id"]), "left": maxf(0.0, float(saved_current.get("left", 0.0)))}
+	_load_lab(data.get("lab", {}))
 	var saved_golden: Dictionary = data.get("golden", {})
 	golden_next = clampf(float(saved_golden.get("next", golden_next)), 0.0, float(Content.GOLDEN["spawn_max"]))
 	golden_glow_left = 0.0
@@ -1643,7 +1637,42 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		if total_solves > before or (running != "" and research.is_empty()):
 			offline_report = {"seconds": elapsed, "solves": total_solves - before}
 			if running != "" and research.is_empty():
-				offline_report["research"] = Content.get_lab_project(running).get("name", "")
+				offline_report["research"] = Content.get_lab_project(running).get("topic", "")
+
+
+## The saved Lab (5.6), checked like the rest of a save: unknown projects, ones whose requirements aren't done and a
+## running project's impossible time left are dropped or clamped. A drill set learned in the Solve Station (S.4, maybe
+## before the Lab existed) counts as its project done.
+func _load_lab(saved: Variant) -> void:
+	research = {}
+	research_done.clear()
+	var lab: Dictionary = saved if typeof(saved) == TYPE_DICTIONARY else {}
+	var done_ids: Array = lab.get("done", []) if typeof(lab.get("done", [])) == TYPE_ARRAY else []
+	var done_set := {}
+	for id: Variant in done_ids:
+		done_set[str(id)] = true
+	for def: Dictionary in Content.get_lab_projects():  # in order, so a requirement is decided before what needs it
+		if def["kind"] != "research":
+			continue
+		var drilled := String(def.get("drill_set", "")) != "" and is_drill_set_learned(def["drill_set"])
+		if (done_set.has(def["id"]) and _lab_requirements_done(def)) or drilled:
+			research_done[def["id"]] = true
+	var current: Dictionary = lab.get("current", {}) if typeof(lab.get("current", {})) == TYPE_DICTIONARY else {}
+	var id := str(current.get("id", ""))
+	var def := Content.get_lab_project(id)
+	if def.is_empty() or is_research_done(id) or not _lab_requirements_done(def):
+		return
+	if def["kind"] == "method" and get_next_method().get("id", "") != def["method"]:
+		return
+	var left := float(current.get("left", 0.0)) if typeof(current.get("left")) in [TYPE_FLOAT, TYPE_INT] else 0.0
+	research = {"id": id, "left": clampf(left, 0.0, float(def["seconds"]))}
+
+
+func _lab_requirements_done(def: Dictionary) -> bool:
+	for need: Variant in def.get("requires", []):
+		if not is_research_done(str(need)):
+			return false
+	return true
 
 
 ## Upgrades old save formats. Bump SAVE_VERSION and add a step here whenever

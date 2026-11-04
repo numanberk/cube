@@ -30,10 +30,14 @@ func show_report(report: Dictionary, notice: String) -> bool:
 	_detail.visible = earned
 	if earned:
 		_away.text = "You were away for %s." % Num.format_duration(report["seconds"])
+		_earned.visible = _solves > 0.0
 		_earned.text = "+%s Solves" % Num.format(_solves)
-		_detail.text = "Your helpers kept solving while you were gone."
+		var lines: Array[String] = []
+		if _solves > 0.0:
+			lines.append("Your helpers kept solving while you were gone.")
 		if String(report.get("research", "")) != "":  # the Lab finished something meanwhile (5.6)
-			_detail.text += "\nThe Lab finished %s." % report["research"]
+			lines.append("The Lab finished %s." % report["research"])
+		_detail.text = "\n".join(lines)
 	_notice.visible = notice != ""
 	_notice.text = notice
 	_collect.text = "Collect" if earned else "OK"

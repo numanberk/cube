@@ -35,6 +35,14 @@ static func format_duration(seconds: float) -> String:
 	return "%dh %dm" % [s / 3600, (s % 3600) / 60]
 
 
+## A countdown as a clock: 32 -> "0:32", 240 -> "4:00", 3723 -> "1:02:03" (rounded up, so it never shows 0:00 early).
+static func clock(seconds: float) -> String:
+	var s := maxi(0, ceili(seconds - 0.0001))
+	if s >= 3600:
+		return "%d:%02d:%02d" % [s / 3600, (s % 3600) / 60, s % 60]
+	return "%d:%02d" % [s / 60, s % 60]
+
+
 ## A speedcubing time as csTimer and the WCA write it: 9.87, 1:02.34. INF (a DNF) gives "DNF".
 static func solve_time(seconds: float) -> String:
 	if is_inf(seconds) or is_nan(seconds):
