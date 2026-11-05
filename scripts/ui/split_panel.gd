@@ -20,6 +20,7 @@ func _ready() -> void:
 	Game.split_changed.connect(refresh)
 	Game.puzzle_unlocked.connect(func(_id: String) -> void: rebuild())
 	Game.state_reset.connect(rebuild)
+	Game.championship_won.connect(func(_won: int) -> void: rebuild())
 	rebuild()
 
 

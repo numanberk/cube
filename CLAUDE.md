@@ -175,6 +175,7 @@ SCROLL=1 bash tools/screenshot.sh /tmp/shots endgame              # helper list 
 LAB=1 bash tools/screenshot.sh /tmp/shots mid                     # the Lab tab: one project done, one running -> mid_lab.png
 PICK=speed_practice bash tools/screenshot.sh /tmp/shots mid       # a choice made (Upgrades tab) -> mid_pickspeed_practice.png
 COMPETE=1 bash tools/screenshot.sh /tmp/shots endgame            # the Compete screen open -> endgame_compete.png
+COMPETE=won bash tools/screenshot.sh /tmp/shots endgame          # just after a championship (6.2) -> endgame_competewon.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

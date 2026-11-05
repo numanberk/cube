@@ -76,6 +76,9 @@ func _ready() -> void:
 	settings_button.pressed.connect(settings_panel.open)
 	compete_button.pressed.connect(open_compete)
 	compete_panel.closed.connect(func() -> void: Audio.set_music_override(""))
+	compete_panel.compete_enabled = true  # the championship reset exists since 6.2
+	compete_panel.compete_pressed.connect(func() -> void: Game.compete())
+	Game.championship_won.connect(_on_championship_won)
 	solve_button.pressed.connect(func() -> void: solve_station.open(Game.get_focused_puzzle_id()))
 	Settings.changed.connect(_on_setting_changed)
 	buy_one.pressed.connect(set_buy_amount.bind(1))
@@ -249,8 +252,8 @@ func _refresh_helper_cards() -> void:
 			card.visible = true
 			card.set_view({
 				"icon": Content.icon(Content.LOCKED_ICON), "title": "???",
-				"line1": "A new helper appears at %s lifetime Solves" % Num.format(unlock_at),
-				"line2": "%s / %s" % [Num.format(Game.total_solves), Num.format(unlock_at)],
+				"line1": "A new helper appears at %s Solves this run" % Num.format(unlock_at),
+				"line2": "%s / %s" % [Num.format(Game.get_run_solves()), Num.format(unlock_at)],
 				"owned": "", "cost": "", "locked": true,
 			})
 		else:
@@ -320,7 +323,7 @@ func _refresh_upgrade_tiles() -> void:
 		var locked_out := Game.is_upgrade_locked_out(id)
 		var partners := Game.get_choice_partners(id)
 		# A choice (5.7b) shows with its partner: both while open, the loser greyed out once one is picked.
-		tile.visible = owned or Game.is_upgrade_available(id) or (locked_out and Game.total_solves >= cost * 0.5)
+		tile.visible = owned or Game.is_upgrade_available(id) or (locked_out and Game.get_run_solves() >= cost * 0.5)
 		if not tile.visible:
 			continue
 		any_visible = true
@@ -922,6 +925,21 @@ func _on_lab_card_pressed(id: String) -> void:
 
 func _on_state_reset() -> void:
 	news = NewsFeed.new()
+	_rebuild_after_reset()
+
+
+## A World Championship (6.2) started a new run: the screen goes back to the 2×2 like a new game, but the news feed
+## keeps its lines and says what happened.
+func _on_championship_won(trophies_won: int) -> void:
+	compete_panel.close()
+	news.push("championship", "World Champion! +%s %s, +%s %% moves. New run!" % [
+		Num.format(float(trophies_won)), "trophy" if trophies_won == 1 else "trophies",
+		Num.format(roundf((Game.get_trophy_mult() - 1.0) * 100.0))])
+	Audio.play_unlock()
+	_rebuild_after_reset()
+
+
+func _rebuild_after_reset() -> void:
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	_start_showcase()
 	_build_puzzle_row()

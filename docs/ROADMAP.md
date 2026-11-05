@@ -282,7 +282,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       *Done when:* there's a screenshot and tests cover the formula.
       *(Done 2026-11-04: divisor **4e10** (`Content.CHAMPIONSHIP`): ~50 trophies (×2) at 90 min, ~15 at 60, ~166 at 120.
       The screen's Compete button is a disabled preview until 6.2.)*
-- [ ] **6.2 Reset logic + save v10:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
+- [x] **6.2 Reset logic + save v10:** keeps trophies, achievements, puzzle mastery, unlocked tracks and settings; resets Solves, helpers,
       upgrades, puzzles and methods. 7×7 and Megaminx become unlockable after the first championship.
       *Done when:* tests check what resets and what stays, and there's a v9 → v10 migration test. (Save v6 is S.6's
       Golden Scramble, v7 S.4's drills, v8 S.5's daily, v9 5.6's Lab — decide whether research survives a prestige; a running buff should survive prestige or end, decide when building it;
@@ -296,6 +296,9 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       settings stay. Change the lists if 6.2 decides otherwise. The Compete button shows from ~33 min and reads
       "Compete +1" at ~39 min, far before D6's ~90 min: once competing works, consider showing it later (or not
       inviting a +2 % reset), and tune with 6.4.
+      *(Done 2026-11-05: `Game.compete()`, save v10 (`championship`: trophies, wins, run Solves, puzzles reached), the
+      Compete button works. Research resets, buffs end, drill-learned Lab projects stay done, music stays. The button
+      still shows from ~33 min: left for 6.4 to tune with the bot.)*
 - [ ] **6.3 Trophy perk tree (PR):** permanent perks as data, arranged in 4 branches: Practice (start with 3×3, +offline cap),
       Team (start with 10 Friends, helper boosts), Competition (unlocks Competitions 8.3, medal bonuses) and Automation
       (unlocks 6.3b). As in Idle Skilling, **the first node of each branch unlocks a system**. Nodes need their parent.
@@ -307,6 +310,9 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       *Done when:* tests cover each auto-buyer, auto-Compete's threshold, and that nothing runs before it's bought.
 - [ ] **6.4 Tune prestige (D6: ~90 min):**
       *Done when:* the sim's first prestige lands at 80–100 min, and the second run reaches the same point in ≤ 45 min, as real pacing tests.
+      *(Notes from 6.2 and the 2026-11-05 fun pass: the tapping bot really has ~2.7e14 lifetime Solves at 90 min (6.1
+      interpolated 1.05e14), so a first championship gives ~81 trophies (+162 %), not ~51. The Compete button shows
+      from ~33 min; decide when it should appear. Mastery reaches level 100 on most puzzles within the first run.)*
 
 ## Phase 7 — Goals
 - [ ] **7.0 Career moments (fun pass, 2026-11-04):** short story beats at key unlocks, as data, shown in the news feed and as a

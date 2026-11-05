@@ -24,14 +24,16 @@ signal drill_set_learned(set_id: String)    ## every case of a drill set is lear
 signal daily_rewarded(amount: float)  ## the first daily scramble finished today paid its reward (S.5)
 signal research_started(project_id: String)   ## Algorithm Lab (5.6)
 signal research_finished(project_id: String)  ## a project's effect counts from now (methods also emit purchased("method"))
+signal championship_won(trophies_won: int)  ## a World Championship reset the run (6.2); the UI rebuilds after it
 signal golden_spawned
 signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 9  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
-                         ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
-                         ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research
+const SAVE_VERSION := 10  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+                          ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
+                          ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
+                          ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached)
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0
 const MIN_OFFLINE_SECONDS := 10.0
@@ -51,6 +53,8 @@ var save_path := SAVE_PATH
 
 var solves := 0.0          ## Spendable currency.
 var total_solves := 0.0    ## Lifetime Solves earned; never goes down.
+var run_solves := 0.0      ## Solves earned in this run (since the last World Championship, 6.2): trophies and "shows at
+                           ## half its cost" read this, so a new run reveals the shop step by step again.
 var total_moves := 0.0     ## Lifetime moves made.
 ## Puzzles (D9, task 4.2): every unlocked puzzle runs at once. Helper moves are split across them by `split`
 ## (a weight per puzzle, shown as shares that add up to 100 %); taps go to the focused puzzle.
@@ -67,8 +71,10 @@ var upgrades: Dictionary = {}   ## upgrade id -> true (owned)
 var solve_records: Dictionary = {}
 var _solve_bests: Dictionary = {}  ## puzzle id -> {"single": s, 5: s, 12: s, ...}; INF = none/DNF. Cached, not saved.
 ## Unspent trophies from World Championships (Phase 6): each gives Content.CHAMPIONSHIP["bonus_per_trophy"] more moves on
-## every puzzle. Nothing grants them until the championship reset (6.2), which also saves them (save v10).
+## every puzzle. Won by compete() (6.2), saved (v10), spent by the perk tree later (6.3).
 var trophies := 0
+var championships := 0          ## World Championships won (6.2); the first one opens the 7×7, the Megaminx and "Finals"
+var puzzles_reached: Dictionary = {}  ## puzzle id -> true for every puzzle ever unlocked (kept through prestige: its music stays)
 var method := "beginner"        ## id of the newest method learned (Content.METHODS); every earlier one is learned too
 var offline_report: Dictionary = {}  ## {"seconds", "solves"} after loading, if anything was earned
 var load_notice := ""  ## Set when the save was damaged and a backup (or nothing) was loaded; the UI shows it once.
@@ -169,6 +175,7 @@ func add_moves_to(puzzle_id: String, amount: float) -> void:
 		var reward := count * get_solve_value(puzzle_id)
 		solves += reward
 		total_solves += reward
+		run_solves += reward
 		if total_solves >= _next_solves_milestone:
 			var passed := _next_solves_milestone
 			while total_solves >= passed * 10.0:
@@ -316,14 +323,14 @@ func buy_buildings(id: String, count: int) -> int:
 	return count
 
 
-## Lifetime Solves at which a helper appears in the shop (its "unlock_at", or half its base cost).
+## Solves this run (6.2) at which a helper appears in the shop (its "unlock_at", or half its base cost).
 func get_building_unlock_at(id: String) -> float:
 	var def := Content.get_building(id)
 	return float(def.get("unlock_at", float(def["base_cost"]) * 0.5))
 
 
 func is_building_unlocked(id: String) -> bool:
-	return int(buildings.get(id, 0)) > 0 or total_solves >= get_building_unlock_at(id)
+	return int(buildings.get(id, 0)) > 0 or run_solves >= get_building_unlock_at(id)
 
 
 func buy_building(id: String) -> bool:
@@ -340,7 +347,7 @@ func is_upgrade_available(id: String) -> bool:
 	if upgrades.has(id):
 		return false
 	var def := Content.get_upgrade(id)
-	if def.is_empty() or total_solves < float(def["cost"]) * 0.5 or is_upgrade_locked_out(id):
+	if def.is_empty() or run_solves < float(def["cost"]) * 0.5 or is_upgrade_locked_out(id):
 		return false
 	var requires: Dictionary = def.get("requires", {})
 	for building_id: String in requires:
@@ -410,10 +417,10 @@ func is_method_learned(id: String) -> bool:
 	return index >= 0 and index <= Content.get_method_index(method)
 
 
-## Only the next method in the chain can be learned, and it shows up (like an upgrade) at half its cost in lifetime Solves.
+## Only the next method in the chain can be learned, and it shows up (like an upgrade) at half its cost in Solves this run.
 func is_method_available(id: String) -> bool:
 	var next := get_next_method()
-	return not next.is_empty() and next["id"] == id and total_solves >= float(next["cost"]) * 0.5 \
+	return not next.is_empty() and next["id"] == id and run_solves >= float(next["cost"]) * 0.5 \
 			and String(research.get("id", "")) != "method_" + id
 
 
@@ -555,9 +562,9 @@ func is_puzzle_unlocked(puzzle_id: String) -> bool:
 	return unlocked_puzzles.has(puzzle_id)
 
 
-## Prestige comes in Phase 6; until then the puzzles that require it stay out of reach.
+## The 7×7 and Megaminx (requires_prestige) and the "Finals" track open with the first World Championship (6.2).
 func has_won_championship() -> bool:
-	return false
+	return championships > 0
 
 
 # --- World Championship (Phase 6) ------------------------------------------------
@@ -572,10 +579,9 @@ static func solves_for_trophies(count: int) -> float:
 	return float(count) * float(count) * float(Content.CHAMPIONSHIP["divisor"])
 
 
-## Solves earned in this run (since the last championship). No championship has happened yet, so it's the lifetime
-## total; 6.2 gives it its own counter, reset by competing.
+## Solves earned in this run (since the last championship).
 func get_run_solves() -> float:
-	return total_solves
+	return run_solves
 
 
 ## Trophies competing now would give.
@@ -591,6 +597,47 @@ func can_compete() -> bool:
 ## The Compete button shows up at half the first trophy's Solves (like an upgrade at half its cost), or once trophies exist.
 func is_compete_visible() -> bool:
 	return trophies > 0 or has_won_championship() or get_run_solves() >= solves_for_trophies(1) * 0.5
+
+
+## Enters the World Championship (6.2): wins get_pending_trophies() trophies and starts a new run. Keeps what
+## Content.CHAMPIONSHIP["keeps"] promises (trophies, mastery, hand-solve records and their tier bonuses, drills, dailies,
+## music, lifetime stats; drill sets learned keep their Lab projects done) and resets the rest (Solves, run Solves,
+## helpers, upgrades so choices reopen, puzzles back to the 2×2, methods, Lab research, Golden/Flow buffs).
+## Returns the trophies won (0 = can't compete yet, nothing changes).
+func compete() -> int:
+	if not can_compete():
+		return 0
+	var gain := get_pending_trophies()
+	trophies += gain
+	championships += 1
+	solves = 0.0
+	run_solves = 0.0
+	unlocked_puzzles.clear()
+	puzzle_progress.clear()
+	_add_puzzle(Content.PUZZLES[0]["id"])
+	focused_puzzle = Content.PUZZLES[0]["id"]
+	split = {focused_puzzle: 1.0}
+	for def: Dictionary in Content.BUILDINGS:
+		buildings[def["id"]] = 0
+	upgrades.clear()
+	method = Content.METHODS[0]["id"]
+	research = {}
+	research_done.clear()
+	for def: Dictionary in Content.get_lab_projects():  # a drill set learned by hand stays learned (S.4)
+		if _is_drilled(def):
+			research_done[def["id"]] = true
+	invalidate_upgrade_cache()
+	buff = {}  # a glowing golden sticker isn't a buff: it stays and can still be clicked in the new run
+	flow = {}
+	offline_report = {}
+	_tier_reached.clear()
+	check_time_tiers(false)  # the new run's slow team doesn't pop "Sub-30" again... until it's really faster
+	_helper_best.clear()
+	check_helper_times(false)
+	championship_won.emit(gain)
+	if persistence_enabled:
+		save_game()
+	return gain
 
 
 ## The moves multiplier from `count` unspent trophies (-1 = the ones owned now).
@@ -736,6 +783,7 @@ func _add_puzzle(puzzle_id: String) -> void:
 	if unlocked_puzzles.has(puzzle_id) or Content.get_puzzle(puzzle_id).is_empty():
 		return
 	unlocked_puzzles.append(puzzle_id)
+	puzzles_reached[puzzle_id] = true
 	# keep ladder order whatever order they were added in
 	var order := {}
 	for i in Content.PUZZLES.size():
@@ -783,12 +831,13 @@ func get_next_mastery_milestone(puzzle_id: String) -> Dictionary:
 	return {}
 
 
-## Moves on a puzzle are multiplied by its level bonus, its "moves" milestones, every "all_moves" milestone, its hand-solve
-## tier, specialist upgrades ("puzzle_mult", 5.7b) and unspent trophies (Phase 6).
+## Moves on a puzzle are multiplied by its level bonus, its "moves" milestones, every "all_moves" milestone (from any
+## puzzle with mastery, unlocked this run or not: mastery is kept through a championship, 6.2), its hand-solve tier,
+## specialist upgrades ("puzzle_mult", 5.7b) and unspent trophies (Phase 6).
 func get_puzzle_moves_mult(puzzle_id: String) -> float:
 	var per_level := 1.0 + float(Content.MASTERY["per_level_moves"]) * (get_mastery_level(puzzle_id) - 1)
 	var everywhere := 1.0
-	for id in unlocked_puzzles:
+	for id: String in _mastery_levels:
 		everywhere *= _milestone_mult(id, "all_moves")
 	return per_level * _milestone_mult(puzzle_id, "moves") * everywhere * get_hand_tier_mult(puzzle_id) \
 			* _upgrade_mult("puzzle_mult", puzzle_id) * get_trophy_mult()
@@ -841,12 +890,16 @@ func _or_focused(puzzle_id: String) -> String:
 
 ## Tracks the player can hear: their unlock puzzle is unlocked and the file exists.
 func get_unlocked_track_ids() -> Array[String]:
-	var unlocked := get_unlocked_puzzle_ids()
 	var ids: Array[String] = []
 	for def: Dictionary in Content.TRACKS:
-		if def["file"] != "" and unlocked.has(def["unlock"]):
+		if def["file"] != "" and is_track_unlock_reached(def["unlock"]):
 			ids.append(def["id"])
 	return ids
+
+
+## A track's `unlock` is a puzzle ever unlocked (music stays through a championship) or "championship" (the first win).
+func is_track_unlock_reached(unlock: String) -> bool:
+	return has_won_championship() if unlock == "championship" else puzzles_reached.has(unlock) or unlocked_puzzles.has(unlock)
 
 
 ## The track that belongs to a puzzle ("" if it has none or isn't available yet).
@@ -1062,6 +1115,7 @@ func record_daily(puzzle_id: String, mode: String, value: float) -> Dictionary:
 				float(Content.DAILY["min_solves_value"]) * get_solve_value(focused_puzzle))
 		solves += reward
 		total_solves += reward
+		run_solves += reward
 		today["rewarded"] = true
 		daily_rewarded.emit(reward)
 	return {"best": float(bests.get(puzzle_id, INF)), "pb_today": pb, "reward": reward}
@@ -1215,6 +1269,7 @@ func _apply_golden_buff(def: Dictionary) -> Dictionary:
 					float(def["min_solves_value"]) * get_solve_value(focused_puzzle))
 			solves += amount
 			total_solves += amount
+			run_solves += amount
 			return {"id": "lucky", "name": def["name"], "solves": amount,
 					"text": "%s: +%s Solves (%d minutes' worth)" % [def["name"], Num.format(amount), int(def["minutes"])]}
 	return {}
@@ -1397,17 +1452,17 @@ func is_research_done(id: String) -> bool:
 
 
 ## Can this project be started now: not done, not running, the slot free, its requirements done, in reach (half its cost
-## in lifetime Solves, like upgrades) and affordable.
+## in Solves this run, like upgrades) and affordable.
 func can_start_research(id: String) -> bool:
 	return is_research_visible(id) and research.is_empty() and solves >= float(Content.get_lab_project(id)["cost"])
 
 
-## Shown in the Lab: not done, requirements done, and half its cost earned (lifetime), like an upgrade.
+## Shown in the Lab: not done, requirements done, and half its cost earned this run, like an upgrade.
 func is_research_visible(id: String) -> bool:
 	var def := Content.get_lab_project(id)
 	if def.is_empty() or is_research_done(id) or String(research.get("id", "")) == id:
 		return false
-	return _lab_requirements_done(def) and total_solves >= float(def["cost"]) * 0.5
+	return _lab_requirements_done(def) and run_solves >= float(def["cost"]) * 0.5
 
 
 ## Pays for a project and starts it. False if it can't start (see can_start_research).
@@ -1522,9 +1577,11 @@ func _effect_matches(effect: Dictionary, target: String) -> bool:
 func reset_state() -> void:
 	solves = 0.0
 	total_solves = 0.0
+	run_solves = 0.0
 	total_moves = 0.0
 	unlocked_puzzles.clear()
 	puzzle_progress.clear()
+	puzzles_reached.clear()
 	_add_puzzle(Content.PUZZLES[0]["id"])
 	focused_puzzle = Content.PUZZLES[0]["id"]
 	split = {focused_puzzle: 1.0}
@@ -1535,6 +1592,7 @@ func reset_state() -> void:
 		buildings[def["id"]] = 0
 	upgrades.clear()
 	trophies = 0
+	championships = 0
 	method = Content.METHODS[0]["id"]
 	solve_records.clear()
 	_solve_bests.clear()
@@ -1579,6 +1637,8 @@ func get_save_data() -> Dictionary:
 		"drills": drills.duplicate(true),
 		"daily": daily.duplicate(true),
 		"lab": {"current": research.duplicate(), "done": research_done.keys()},
+		"championship": {"trophies": trophies, "count": championships, "run_solves": run_solves,
+				"reached": puzzles_reached.keys()},
 	}
 
 
@@ -1676,8 +1736,17 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	reset_state()
 	data = _migrate(data)
 	solves = float(data.get("solves", 0.0))
-	total_solves = float(data.get("total_solves", 0.0))
+	total_solves = maxf(0.0, float(data.get("total_solves", 0.0)))
 	total_moves = float(data.get("total_moves", 0.0))
+	var saved_champ: Dictionary = data.get("championship", {}) if typeof(data.get("championship", {})) == TYPE_DICTIONARY else {}
+	trophies = maxi(0, int(saved_champ.get("trophies", 0)))
+	championships = maxi(0, int(saved_champ.get("count", 0)))
+	run_solves = clampf(float(saved_champ.get("run_solves", total_solves)), 0.0, total_solves)  # never more than lifetime
+	var saved_reached: Variant = saved_champ.get("reached", [])
+	if typeof(saved_reached) == TYPE_ARRAY:
+		for id: Variant in saved_reached:
+			if not Content.get_puzzle(str(id)).is_empty():
+				puzzles_reached[str(id)] = true
 	var saved_mastery: Dictionary = data.get("mastery", {})
 	for id: String in saved_mastery:
 		if not Content.get_puzzle(id).is_empty():
@@ -1773,8 +1842,7 @@ func _load_lab(saved: Variant) -> void:
 	for def: Dictionary in Content.get_lab_projects():  # in order, so a requirement is decided before what needs it
 		if def["kind"] != "research":
 			continue
-		var drilled := String(def.get("drill_set", "")) != "" and is_drill_set_learned(def["drill_set"])
-		if (done_set.has(def["id"]) and _lab_requirements_done(def)) or drilled:
+		if (done_set.has(def["id"]) and _lab_requirements_done(def)) or _is_drilled(def):
 			research_done[def["id"]] = true
 	invalidate_upgrade_cache()
 	var current: Dictionary = lab.get("current", {}) if typeof(lab.get("current", {})) == TYPE_DICTIONARY else {}
@@ -1786,6 +1854,11 @@ func _load_lab(saved: Variant) -> void:
 		return
 	var left := float(current.get("left", 0.0)) if typeof(current.get("left")) in [TYPE_FLOAT, TYPE_INT] else 0.0
 	research = {"id": id, "left": clampf(left, 0.0, float(def["seconds"]))}
+
+
+## A Lab project whose drill set (S.4) the player learned by hand: done for free, on load and after a championship.
+func _is_drilled(def: Dictionary) -> bool:
+	return def.get("kind", "") == "research" and String(def.get("drill_set", "")) != "" and is_drill_set_learned(def["drill_set"])
 
 
 func _lab_requirements_done(def: Dictionary) -> bool:
@@ -1859,6 +1932,14 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("lab"):
 			data["lab"] = {"current": {}, "done": []}
 		data["version"] = 9
+	if int(data["version"]) < 10:
+		# v10 adds World Championships: none won yet, so this run's Solves are the lifetime ones and every puzzle
+		# reached is one still unlocked.
+		if not data.has("championship"):
+			var reached: Array = (data.get("puzzles", {}) as Dictionary).get("unlocked", [])
+			data["championship"] = {"trophies": 0, "count": 0, "run_solves": float(data.get("total_solves", 0.0)),
+					"reached": reached.duplicate()}
+		data["version"] = 10
 	return data
 
 
@@ -1873,3 +1954,4 @@ func wipe_save() -> void:
 func cheat_add_solves(amount: float) -> void:
 	solves += amount
 	total_solves += amount
+	run_solves += amount

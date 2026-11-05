@@ -55,6 +55,7 @@ const PRESETS := {
 			"split": {"2x2": 0.1, "3x3": 0.15, "4x4": 0.2, "5x5": 0.25, "7x7": 0.3}},
 		"buildings": {"friend": 60, "club": 45, "robot": 35, "competition": 25, "factory": 15, "lab": 8},
 		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets", "firmware", "roux"],
+		"championship": {"trophies": 12, "count": 1, "run_solves": 9.0e7, "reached": []},  # after a championship
 	},
 	## Task 5.5: deep into a long run, every helper tier owned (the six past the Lab too), four cubes.
 	"endgame": {
@@ -79,6 +80,7 @@ const PRESETS := {
 			"split": {"2x2": 0.05, "3x3": 0.1, "4x4": 0.15, "5x5": 0.2, "7x7": 0.2, "megaminx": 0.3}},
 		"buildings": {"friend": 80, "club": 60, "robot": 45, "competition": 35, "factory": 25, "lab": 15},
 		"upgrades": ["lube", "stackmat", "cfop", "club_snacks", "magnets", "firmware", "roux"],
+		"championship": {"trophies": 20, "count": 1, "run_solves": 9.0e10, "reached": []},  # after a championship
 	},
 
 	# Everything unlocked and bought, lots of each helper.

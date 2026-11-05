@@ -3,8 +3,9 @@ extends Control
 ## The Compete screen (task 6.1): what a World Championship would give right now (trophies, the moves bonus before and
 ## after, progress to the next trophy, the formula) and exactly what you keep and what starts over
 ## (Content.CHAMPIONSHIP). Display only: main.gd opens it with Game.get_championship_preview(), refreshes it while
-## open, and plays "Finals" while it's up. The Compete button emits `compete_pressed`; it stays disabled until the
-## championship reset exists (6.2 sets `compete_enabled`). Escape, Close, "Not yet" or a click outside close it.
+## open, and plays "Finals" while it's up. The Compete button emits `compete_pressed` (main.gd calls Game.compete(),
+## task 6.2); it's disabled with no trophy to win, or while `compete_enabled` is off (a preview). Escape, Close,
+## "Not yet" or a click outside close it.
 
 signal closed
 signal compete_pressed
@@ -23,7 +24,7 @@ signal compete_pressed
 @onready var _compete: Button = %CompeteButton
 @onready var _hint: Label = %CompeteHint
 
-var compete_enabled := false  ## the reset (6.2) isn't built yet: the button is a preview
+var compete_enabled := false  ## false = a preview (the button stays disabled); main.gd turns it on (6.2)
 var preview: Dictionary = {}  ## the last Game.get_championship_preview() shown
 
 

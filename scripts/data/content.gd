@@ -5,7 +5,7 @@ extends RefCounted
 ##
 ## Building fields:
 ##   id, icon (file name in assets/icons/, no extension), name, description, base_cost (Solves), mps (moves/sec per unit),
-##   unlock_at (optional, lifetime Solves needed to show it; default base_cost * 0.5)
+##   unlock_at (optional, Solves this run needed to show it; default base_cost * 0.5)
 ##
 ## Upgrade fields:
 ##   id, icon (file name in assets/icons/), name, description, cost (Solves), effect, requires (optional {building_id: count})

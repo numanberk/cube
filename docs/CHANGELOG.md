@@ -2,6 +2,45 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-05 — Task 6.2: the championship reset (save v10)
+- **The owner asked to "start phase 6.1"**, but another session had already finished 6.1 (on `main` since 2026-11-04),
+  so this session did the next Phase 6 task, 6.2. A `fun-designer` pass ran first (end of Phase 5); its ideas are
+  waiting for the owner (see "For the owner" below), none became tasks.
+- **`Game.compete()`** wins `get_pending_trophies()` and starts a new run. **Starts over:** Solves, this run's Solves,
+  helpers (the first Friend is free again), upgrades (so choice pairs reopen), puzzles (back to the 2×2, focused, whole
+  split), methods, Lab research (running and done), Golden glow/attempt and running buffs, Flow. **Kept:** trophies,
+  wins, mastery, Solve Station records and their tier bonuses, drills, dailies, lifetime Solves/moves, settings, and
+  **music** (new `puzzles_reached`: every puzzle ever unlocked keeps its track; "Finals" opens with the first win).
+  A drill set learned by hand keeps its Lab project done (as on load). Returns the trophies won (0 = nothing happens);
+  signal `championship_won(trophies_won)`; saves at once.
+- **Run Solves:** new `run_solves`, earned wherever lifetime Solves are (solves, daily reward, Lucky solve, F9).
+  `get_run_solves()` reads it, so trophies count this run only, and every "shows at half its cost" check (helpers,
+  upgrades, methods, Lab projects, the locked helper card, a locked-out choice tile) uses it: a new run reveals the
+  shop step by step again. `has_won_championship()` = wins > 0, which opens the 7×7 and Megaminx on the ladder.
+- **Save v10:** `"championship": {trophies, count, run_solves, reached}`, cleaned on load (no negative trophies, run
+  Solves never above lifetime, unknown puzzles dropped). v9 → v10: no wins, run Solves = lifetime, reached = unlocked.
+  Next: **v11 achievements (7.1)**.
+- **UI:** the Compete button works (`compete_enabled`); after a win the screen rebuilds like a new game (showcase,
+  puzzle row, split panel, shop), keeps the news feed and adds "World Champion! +111 trophies, +222 % moves. New run!"
+  with the unlock sting. Screenshot option `COMPETE=won`; shots in `docs/screenshots/6.2-championship/`.
+- Tests (3866 checks, `All good.`): `test_championship_reset` (no trophy, no reset; everything kept and reset, one by
+  one; the shop hides again and reveals by run Solves; 7×7/Megaminx and their music after a win, never before; a second
+  championship adds up), `test_championship_save` (round trip, a damaged block, v9 → v10), the Compete screen
+  pressing Compete. Older tests now set `run_solves` where they faked a run.
+- **Not changed (for 6.4):** the Compete button still shows from ~33 min. **The fun pass measured** ~2.7e14 lifetime
+  Solves at 90 min (6.1 interpolated 1.05e14), so a first championship gives ~81 trophies (+162 %), not ~51; noted in 6.4.
+- **For the owner, from the fun pass (proposals only; pick any to become tasks):** (1) Puzzle Ranks: mastery past 100
+  (it fills up within the first run today, so "kept through prestige" carries nothing and Deliberate Practice gives
+  nothing even long-term); (2) run splits and a championship PB; (3) Deliberate Practice → "Comp Prep" (+% trophies);
+  (4) a World Ranking ladder of named rivals; (5) auto-buyers only rebuy what you bought before, with a build preset;
+  (6) a second Lab slot in-run (Full PLL blocks the one slot from ~47 min to ~1:46); (7) a championship ceremony plus
+  an optional ao5 "final round"; (8) Speed Practice as the hands-on build (stronger Flow); (9) **to confirm before
+  6.3:** PLAN §4.4 says only *unspent* trophies give +2 %, so buying a perk visibly lowers income (a spend-or-keep
+  puzzle); the alternative is a bonus from every trophy ever won. Quick wins: finish the
+  synergy chain past the Federation, trophies per minute on the Compete screen, named trophy thresholds, the trophy
+  bonus in the top bar.
+- **Next: 6.3** (trophy perk tree). Ask the owner to confirm (9) first.
+
 ## 2026-11-04 — Task 6.1: trophy formula and Compete screen
 - **Formula** (`Content.CHAMPIONSHIP`, PLAN §4.4): `trophies = floor(sqrt(run Solves / 4e10))`, each unspent trophy
   +2 % moves on every puzzle (taps and helpers; `get_trophy_mult()` is part of `get_puzzle_moves_mult()`).

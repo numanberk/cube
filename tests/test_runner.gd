@@ -196,6 +196,8 @@ func test_screenshot_presets_still_load() -> void:
 			else:
 				check(g.upgrades.has(id), "preset '%s' keeps upgrade '%s'" % [name, id])
 		check(g.offline_report.is_empty(), "preset '%s' grants no offline progress" % name)
+		var past_prestige := g.unlocked_puzzles.has("7x7") or g.unlocked_puzzles.has("megaminx")
+		check(not past_prestige or g.has_won_championship(), "preset '%s': a 7×7 or Megaminx comes with a championship" % name)
 		g.free()
 
 
@@ -3389,7 +3391,6 @@ func test_upgrade_cache_swaps() -> void:
 	var sim: RefCounted = load("res://tools/simulator.gd").new()
 	var idle := new_game()
 	idle.buildings["friend"] = 7
-	idle.total_solves = 100.0
 	var base: float = sim.income(idle, 0.0)
 	var lube_gain: float = sim._income_gain(idle, {"kind": "upgrade", "id": "lube"}, 0.0, base)
 	var partners_gain: float = sim._income_gain(idle, {"kind": "upgrade", "id": "ms_friend_1"}, 0.0, base)
@@ -3585,7 +3586,7 @@ func test_lab_offline_and_saves() -> void:
 	g.start_research("finger_tricks")
 	g.update_research(30.0)
 	var data := g.get_save_data()
-	check(int(data["version"]) == 9 and data["lab"]["current"]["id"] == "finger_tricks", "the running project is saved (v9)")
+	check(int(data["version"]) >= 9 and data["lab"]["current"]["id"] == "finger_tricks", "the running project is saved (v9)")
 	var loaded := new_game()
 	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
 	check(loaded.research.get("id", "") == "finger_tricks" and is_equal_approx(float(loaded.research["left"]), 90.0), "it loads mid-research (90 s left)")
@@ -3697,11 +3698,14 @@ func test_trophy_formula() -> void:
 	var g := new_game()
 	check(g.get_pending_trophies() == 0 and not g.can_compete() and not g.is_compete_visible(), "a new game can't compete yet")
 	check_near(g.get_trophy_mult(), 1.0, "no trophies: ×1")
-	g.total_solves = div * 0.5
+	g.run_solves = div * 0.5
 	check(g.is_compete_visible() and not g.can_compete(), "the Compete button shows at half the first trophy's Solves, like an upgrade")
-	g.total_solves = div
+	g.run_solves = div
 	check(g.can_compete() and g.get_pending_trophies() == 1, "one trophy to win: competing is possible")
-	check_near(g.get_run_solves(), g.total_solves, "before any championship the run is the whole lifetime")
+	var fresh := new_game()
+	fresh.cheat_add_solves(123.0)
+	check_near(fresh.get_run_solves(), 123.0, "Solves earned count for the run (and the lifetime)")
+	fresh.free()
 	# The bonus applies to every move: helpers and taps.
 	g.buildings["friend"] = 1
 	var helper_rate := g.get_puzzle_moves_per_second("2x2")
@@ -3718,7 +3722,7 @@ func test_trophy_formula() -> void:
 	check_near(g.total_moves - before, tap_moves * 1.2, "taps get it too")
 	# The preview the Compete screen shows.
 	g.trophies = 3
-	g.total_solves = (GameState.solves_for_trophies(5) + GameState.solves_for_trophies(6)) * 0.5
+	g.run_solves = (GameState.solves_for_trophies(5) + GameState.solves_for_trophies(6)) * 0.5
 	var p := g.get_championship_preview()
 	check(int(p["trophies"]) == 3 and int(p["gain"]) == 5 and int(p["after"]) == 8, "preview: 3 owned + 5 won = 8")
 	check_near(float(p["mult_now"]), 1.0 + 3.0 * per, "preview: the bonus now")
@@ -3772,7 +3776,7 @@ func test_compete_panel() -> void:
 	var button: Button = main.get_node("%CompeteButton")
 	var panel: CompetePanel = main.get_node("%CompetePanel")
 	check(not button.visible and not panel.visible, "a new game shows no Compete button")
-	game.total_solves = GameState.solves_for_trophies(51) + 1.0
+	game.run_solves = GameState.solves_for_trophies(51) + 1.0
 	main._refresh()
 	check(button.visible and button.text == "Compete +51" and button.tooltip_text == "World Championship: +51 trophies now.",
 			"the top bar shows what competing gives (short; the tooltip spells it out)")
@@ -3786,11 +3790,11 @@ func test_compete_panel() -> void:
 			and (panel.get_node("%ResetList") as VBoxContainer).get_child_count() == (Content.CHAMPIONSHIP["resets"] as Array).size(),
 			"it lists everything you keep and everything that starts over")
 	var compete: Button = panel.get_node("%CompeteButton")
-	check(compete.disabled and (panel.get_node("%CompeteHint") as Label).visible, "competing itself is a preview until the reset (6.2)")
+	check(not compete.disabled and not (panel.get_node("%CompeteHint") as Label).visible, "competing works (6.2): no preview hint")
 	var moves_before := game.total_moves
 	main._unhandled_input(key_event(KEY_SPACE, true, false))
 	check_near(game.total_moves, moves_before, "Space doesn't tap the cube while the screen is open")
-	game.total_solves = GameState.solves_for_trophies(52)
+	game.run_solves = GameState.solves_for_trophies(52)
 	main._refresh()
 	check((panel.get_node("%Gain") as Label).text == "+52 trophies", "the open screen keeps up with the run")
 	var escape := InputEventAction.new()
@@ -3807,7 +3811,160 @@ func test_compete_panel() -> void:
 	check((panel.get_node("%Gain") as Label).text == "No trophies yet" and compete.disabled, "no trophies: nothing to compete for")
 	check((panel.get_node("%NextLabel") as Label).text.ends_with("for your first trophy"), "...and it says what the first one needs")
 	check(CompetePanel.bonus_text(2.02) == "+102 %" and CompetePanel.bonus_text(1.0) == "+0 %", "bonus text")
+	# Pressing Compete wins the trophies and starts a new run (6.2).
+	game.buildings["friend"] = 5
+	button.pressed.emit()
+	check(panel.visible, "the screen opens again")
+	compete.pressed.emit()
+	check(game.trophies == 52 and game.championships == 1 and not panel.visible and audio.override_track_id == "",
+			"pressing Compete wins 52 trophies, closes the screen and the music goes back")
+	var view: PuzzleView3D = main.get_node("%PuzzleView")
+	check(int(game.buildings["friend"]) == 0 and view.puzzle_id == "2x2", "the new run starts on the 2×2 with no helpers")
+	for i in 3:
+		main.news.advance(10.0)
+	check(main.news.history.size() > 0 and String(main.news.history[0]).begins_with("World Champion! +52 trophies"),
+			"the news feed says so")
+	main._refresh()
+	check(button.visible and button.text == "Compete", "the button stays (trophies are owned) with nothing to win yet")
 	audio.stop_all()
 	main.free()
 	game.set_process(true)
 	game.reset_state()
+
+
+# --- World Championship reset (task 6.2) -------------------------------------------
+
+func test_championship_reset() -> void:
+	var g := new_game()
+	check(g.compete() == 0 and g.championships == 0, "no trophy to win: competing does nothing")
+	# A run with a bit of everything.
+	g.cheat_add_solves(GameState.solves_for_trophies(20) + 5.0)
+	g.unlock_puzzle("3x3")
+	g.unlock_puzzle("4x4")
+	g.buy_buildings("friend", 30)
+	g.buy_buildings("robot", 5)
+	g.buy_upgrade("lube")
+	g.buy_upgrade("small_cubes")
+	check(g.is_upgrade_locked_out("big_cubes"), "a choice made this run")
+	g.buy_method("cfop")
+	g.finish_research()
+	g.start_research("finger_tricks")
+	g.mastery_xp["3x3"] = 5000.0
+	g._mastery_levels["3x3"] = g._level_for_xp(5000.0)
+	var level_3x3 := g.get_mastery_level("3x3")
+	g.record_hand_solve("3x3", 30.0, "", 50)
+	var hand_bonus := g.get_hand_tier_mult("3x3")
+	for case: Dictionary in Content.get_drill_cases("2look_pll"):  # a drill set learned by hand
+		for i in int(Content.DRILLS["clean_needed"]):
+			g.record_drill("2look_pll", case["id"], 1.0)
+	check(g.is_research_done("two_look_pll"), "learning 2-look PLL by hand finished its Lab project")
+	g.buff = {"id": "frenzy", "mult": 7.0, "left": 20.0}
+	g.flow = {"mult": 2.0, "left": 60.0, "tier": 2}
+	g.golden_glow_left = 5.0  # a golden sticker glowing at the moment of competing
+	g._add_mastery_xp("4x4", g._mastery_xp_at(50))  # the 4×4 at level 50: +5 % moves on every puzzle
+	check(g.get_mastery_level("4x4") >= 50 and g.get_mastery_level("4x4") < 100, "the 4×4 reached mastery level 50")
+	var lifetime := g.total_solves
+	var lifetime_moves := g.total_moves
+	var drills := g.drills.duplicate(true)
+	check(g.get_unlocked_track_ids().has("parity") and not g.get_unlocked_track_ids().has("finals"), "the 4×4's music; no Finals yet")
+	check(g.get_next_locked_puzzle() == "5x5", "the ladder goes on to the 5×5")
+
+	var won := [0]
+	g.championship_won.connect(func(n: int) -> void: won[0] = n)
+	var gain := g.get_pending_trophies()
+	check(gain == 20 and g.compete() == 20 and won[0] == 20, "competing wins the pending trophies (20) and says so")
+	# Kept
+	check(g.trophies == 20 and g.championships == 1 and g.has_won_championship(), "trophies and the win are kept")
+	check_near(g.get_trophy_mult(), 1.4, "20 unspent trophies: +40 % moves")
+	check(g.get_mastery_level("3x3") == level_3x3, "puzzle mastery is kept")
+	check(g.get_hand_solve_count("3x3") == 1 and is_equal_approx(g.get_hand_tier_mult("3x3"), hand_bonus),
+			"Solve Station records and their tier bonus are kept")
+	check(g.drills == drills, "drill records are kept")
+	check(g.is_research_done("two_look_pll"), "...and a drill set learned by hand keeps its Lab project done")
+	check(is_equal_approx(g.total_solves, lifetime) and is_equal_approx(g.total_moves, lifetime_moves), "lifetime stats are kept")
+	var tracks := g.get_unlocked_track_ids()
+	check(tracks.has("parity") and tracks.has("first_sub_20") and tracks.has("finals"), "music stays unlocked, and Finals joins it")
+	# Reset
+	check(is_zero_approx(g.solves) and is_zero_approx(g.get_run_solves()), "Solves and this run's Solves start over")
+	check(g.unlocked_puzzles == (["2x2"] as Array[String]) and g.get_focused_puzzle_id() == "2x2" and is_equal_approx(g.get_puzzle_share("2x2"), 1.0),
+			"puzzles go back to the 2×2")
+	var helpers := 0
+	for id: String in g.buildings:
+		helpers += int(g.buildings[id])
+	check(helpers == 0 and g.get_building_cost("friend") == 0.0, "helpers start over (the first Friend is free again)")
+	check(g.upgrades.is_empty() and not g.is_upgrade_locked_out("big_cubes"), "upgrades start over, so the choices open again")
+	check(g.method == "beginner" and g.research.is_empty() and not g.is_research_done("finger_tricks"),
+			"methods and Lab research start over")
+	check(g.buff.is_empty() and g.flow.is_empty(), "running Golden and Flow buffs end")
+	check(is_equal_approx(g.golden_glow_left, 5.0), "a glowing golden sticker isn't a buff: it keeps glowing")
+	var with_4x4 := g.get_puzzle_moves_mult("2x2")
+	var level_4x4: int = g._mastery_levels["4x4"]
+	g._mastery_levels.erase("4x4")
+	var without_4x4 := g.get_puzzle_moves_mult("2x2")
+	g._mastery_levels["4x4"] = level_4x4
+	check(not g.is_puzzle_unlocked("4x4") and is_equal_approx(with_4x4 / without_4x4, 1.05),
+			"the 4×4's level-50 bonus (+5 % everywhere) still counts with the 4×4 locked again")
+	check(not g.can_compete() and g.is_compete_visible(), "nothing to win right away; the button stays")
+	# The new run reveals the shop by its own Solves, not the lifetime ones.
+	check(not g.is_building_unlocked("robot") and not g.is_upgrade_available("magnets"), "the Robot and Magnetic Cube hide again")
+	g.cheat_add_solves(float(Content.get_upgrade("lube")["cost"]))
+	check(g.is_upgrade_available("lube"), "...and show up at half their cost as the run goes")
+	# After the first win the ladder goes on past the 5×5.
+	g.cheat_add_solves(1e15)
+	for id: String in ["3x3", "4x4", "5x5"]:
+		g.unlock_puzzle(id)
+	check(g.get_next_locked_puzzle() == "7x7" and g.unlock_puzzle("7x7") and g.unlock_puzzle("megaminx"),
+			"the 7×7 and the Megaminx can be unlocked now")
+	check(g.get_unlocked_track_ids().has("twelve_faces"), "with their music")
+	# A second championship adds to the first.
+	var second := g.get_pending_trophies()
+	g.compete()
+	check(g.trophies == 20 + second and g.championships == 2, "a second championship adds its trophies")
+	g.free()
+
+	# Without a championship the 7×7 stays out of reach.
+	var before := new_game()
+	before.cheat_add_solves(1e15)
+	for id: String in ["3x3", "4x4", "5x5"]:
+		before.unlock_puzzle(id)
+	check(before.get_next_locked_puzzle() == "" and not before.unlock_puzzle("7x7"), "no championship: no 7×7")
+	before.free()
+
+
+func test_championship_save() -> void:
+	var g := new_game()
+	g.cheat_add_solves(GameState.solves_for_trophies(9))
+	g.unlock_puzzle("3x3")
+	g.unlock_puzzle("4x4")
+	g.compete()
+	g.cheat_add_solves(1234.0)
+	var data := g.get_save_data()
+	check(int(data["version"]) == 10 and GameState.SAVE_VERSION == 10, "saves as v10")
+	g.free()
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.trophies == 9 and loaded.championships == 1 and loaded.has_won_championship(), "trophies and wins load")
+	check_near(loaded.get_run_solves(), 1234.0, "this run's Solves load")
+	check(loaded.get_unlocked_track_ids().has("parity") and loaded.unlocked_puzzles.size() == 1,
+			"music from puzzles reached in an earlier run loads, though only the 2×2 is unlocked now")
+	loaded.free()
+	# A damaged save can't claim more run Solves than lifetime ones, or negative trophies.
+	data["championship"] = {"trophies": -4, "count": -1, "run_solves": 1e30, "reached": ["3x3", "banana"]}
+	var damaged := new_game()
+	damaged.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(damaged.trophies == 0 and damaged.championships == 0 and damaged.get_run_solves() <= damaged.total_solves,
+			"a damaged championship block is cleaned up")
+	check(damaged.puzzles_reached.has("3x3") and not damaged.puzzles_reached.has("banana"), "unknown puzzles are dropped")
+	damaged.free()
+	# v9 -> v10: no championship yet, the run is the whole lifetime, music from the puzzles unlocked.
+	var v9 := {"version": 9, "saved_at": 1000.0, "solves": 50.0, "total_solves": GameState.solves_for_trophies(3),
+		"total_moves": 10.0, "puzzles": {"unlocked": ["2x2", "3x3"], "progress": {}, "focus": "3x3", "split": {"3x3": 1.0}},
+		"mastery": {}, "buildings": {"friend": 3}, "upgrades": ["lube"], "method": "beginner", "solve_records": {},
+		"golden": {"next": 100.0, "buff": {}}, "drills": {}, "daily": {}, "lab": {"current": {}, "done": []}}
+	var old := new_game()
+	old.apply_save_data(v9, 1000.0)
+	check(old.trophies == 0 and old.championships == 0 and not old.has_won_championship(), "v9 → v10: no championship yet")
+	check_near(old.get_run_solves(), GameState.solves_for_trophies(3), "v9 → v10: this run's Solves are the lifetime ones")
+	check(old.get_pending_trophies() == 3 and old.puzzles_reached.has("3x3"), "...so the trophies wait, and the 3×3 counts as reached")
+	check(int(old.get_save_data()["version"]) == 10, "it saves as v10")
+	old.free()
