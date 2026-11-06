@@ -420,11 +420,12 @@ const PUZZLES := [
 
 ## World Championship (Phase 6, PLAN §4.4): the prestige. Competing turns this run's Solves into trophies:
 ## floor(sqrt(run Solves / divisor)). Each unspent trophy gives +bonus_per_trophy moves on every puzzle (taps and helpers).
-## The divisor comes from BALANCE.md (task 6.1): the tapping bot has ~1e14 lifetime Solves at 90 min, so the first
-## championship there gives ~50 trophies (×2 moves); ~15 at 60 min, ~166 at 120 min (sqrt: waiting pays, less and less).
+## The divisor is tuned with the balance bot (6.4): the bot competes once a championship would double its trophy bonus
+## (+50 trophies = ×2 the first time), and with 1e11 that's at ~89 min (D6: ~90); its second run then catches up in
+## ~41 min (≤ 50 %). The tapping bot has ~2.5e14 run Solves at 89 min, ~1e13 at 60 (9 trophies), 1.1e15 at 120 (105).
 ## `keeps` / `resets` are what the Compete screen lists; the reset itself (6.2) must match them.
 const CHAMPIONSHIP := {
-	"divisor": 4e10,
+	"divisor": 1e11,
 	"bonus_per_trophy": 0.02,
 	"keeps": [
 		"Trophies and trophy perks",

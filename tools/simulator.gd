@@ -19,6 +19,14 @@ const SPLIT_CHUNKS := 20      ## the split is chosen in 5 % steps
 const PUZZLE_GAIN_REFRESH := 15.0  ## re-estimate what unlocking the next puzzle is worth this often (it's slow)
 const HAND_OVERHEAD := 30.0   ## active profile: seconds between hand solves on top of the solve itself
 const SAMPLE_INTERVAL := 5.0  ## lifetime Solves are sampled this often (see "samples")
+## Prestige (6.4): the bot competes once a championship would at least double its trophy bonus (a common idle-game rule
+## of thumb: "prestige when it doubles your multiplier"), then spends trophies with PERK_PLAN and plays a second run.
+const COMPETE_FACTOR := 2.0
+## The perks the bot buys after a championship, in this order, each only while it keeps at least PERK_KEEP of its
+## trophies unspent (a perk is a trade: only unspent trophies give the +2 %, D14).
+const PERK_PLAN: Array[String] = ["team_captain", "warm_up", "comp_prep", "team_spirit", "practice_away",
+		"home_crowd", "club_founder", "appearance_fees", "big_cube_prep", "team_chemistry", "overnight"]
+const PERK_KEEP := 0.5
 
 var _now := 0.0
 var _purchases := 0
@@ -38,7 +46,15 @@ const CHECKPOINT_MINUTES: Array[float] = [1.0, 5.0, 15.0, 30.0, 60.0, 120.0]
 ## biggest unlocked cube, back to back (the solve's time + HAND_OVERHEAD for scramble and inspection).
 ## `forbid` lists upgrade ids the bot never buys: forbidding one side of each choice pair (5.7b) plays the other build,
 ## which the greedy bot would never pick by itself (task 5.8: the balance mustn't be tuned to one build).
-func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Array = []) -> Dictionary:
+##
+## `prestige` (6.4) makes it play past its first World Championship: {"second_run_minutes": m}. The first run ends when
+## it competes (logged as an event of kind "prestige", id "compete", and capped at `minutes`); it buys perks
+## (PERK_PLAN) and plays a second run for up to m minutes, stopping once it has earned the first run's Solves. Adds:
+##   prestige_at (-1 = never competed), trophies_won, perks (ids bought), second_run: {events, reached_at (seconds into
+##   the run when its run Solves matched the first run's, -1 = not in time), minutes}
+## events, purchases, checkpoints, samples and all_bought_at stay first-run only (first_run_minutes: where it ended;
+## second_run_purchases counts the second run's).
+func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Array = [], prestige: Dictionary = {}) -> Dictionary:
 	_puzzle_gain_cache.clear()
 	_forbid.clear()
 	for id: Variant in forbid:
@@ -80,6 +96,15 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 	var hand_solves := 0
 	var samples: Array = []  # [seconds, lifetime Solves] every SAMPLE_INTERVAL (how fast a run gets somewhere)
 	var sample_timer := 0.0
+	var first_events := events  # the first run's; a second run logs into its own list
+	var prestige_at := -1.0
+	var trophies_won := 0
+	var first_run_solves := 0.0
+	var run_start := 0.0
+	var reached_at := -1.0
+	var perks_bought: Array[String] = []
+	var second_run := false
+	var first_purchases := -1
 
 	while t < duration:
 		# Earn: taps, then helpers (same as GameState._process does each frame).
@@ -99,7 +124,7 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 				events.append({"t": t, "kind": "method", "id": learned_method,
 						"name": _item_name({"kind": "method", "id": learned_method}),
 						"cost": float(Content.get_method(learned_method)["cost"])})
-				if seen.size() == item_count and all_bought_at < 0.0:
+				if seen.size() == item_count and all_bought_at < 0.0 and not second_run:
 					all_bought_at = t
 		if not hand.is_empty():
 			hand_wait -= STEP
@@ -112,8 +137,11 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 				hand_wait = time + HAND_OVERHEAD
 		t += STEP
 		_now = t
+		if second_run and reached_at < 0.0 and g.run_solves >= first_run_solves:
+			reached_at = t - run_start
+			break  # the second run caught up: that's all it's measured for
 		sample_timer -= STEP
-		if sample_timer <= 0.0:
+		if not second_run and sample_timer <= 0.0:
 			samples.append([t, g.total_solves])
 			sample_timer = SAMPLE_INTERVAL
 		_purchases = purchases
@@ -142,12 +170,12 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 					"t": t, "kind": target["kind"], "id": target["id"],
 					"name": _item_name(target), "cost": cost,
 				})
-				if seen.size() == item_count and all_bought_at < 0.0:
+				if seen.size() == item_count and all_bought_at < 0.0 and not second_run:
 					all_bought_at = t
 			target = _pick_target(g, taps_per_sec)
 			replan_timer = REPLAN_INTERVAL
 
-		while next_checkpoint < CHECKPOINT_MINUTES.size() and t >= CHECKPOINT_MINUTES[next_checkpoint] * 60.0 - STEP * 0.5:
+		while not second_run and next_checkpoint < CHECKPOINT_MINUTES.size() and t >= CHECKPOINT_MINUTES[next_checkpoint] * 60.0 - STEP * 0.5:
 			if CHECKPOINT_MINUTES[next_checkpoint] <= minutes:
 				checkpoints.append({
 					"minute": CHECKPOINT_MINUTES[next_checkpoint],
@@ -159,12 +187,39 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 				})
 			next_checkpoint += 1
 
+		if not prestige.is_empty() and not second_run and should_compete(g):
+			first_run_solves = g.run_solves
+			first_purchases = purchases
+			trophies_won = g.compete()
+			prestige_at = t
+			events.append({"t": t, "kind": "prestige", "id": "compete", "name": "World Championship (+%d trophies)" % trophies_won,
+					"cost": 0.0})
+			perks_bought = buy_perks(g)
+			second_run = true
+			run_start = t
+			duration = t + float(prestige.get("second_run_minutes", 60.0)) * 60.0
+			events = []  # the second run's first purchases
+			seen.clear()
+			_puzzle_gain_cache.clear()
+			learned_method = g.method
+			target = {}
+			choose_split(g)
+			continue
+
+
 	g.free()
 	return {
 		"taps_per_sec": taps_per_sec,
 		"minutes": minutes,
-		"events": events,
-		"purchases": purchases,
+		"first_run_minutes": minutes if prestige_at < 0.0 else prestige_at / 60.0,  ## where the first run ended
+		"events": first_events,
+		"prestige_at": prestige_at,
+		"trophies_won": trophies_won,
+		"perks": perks_bought,
+		"second_run": {"events": events if second_run else [], "reached_at": reached_at,
+				"minutes": float(prestige.get("second_run_minutes", 60.0))},
+		"purchases": purchases if first_purchases < 0 else first_purchases,  ## first run only
+		"second_run_purchases": 0 if first_purchases < 0 else purchases - first_purchases,
 		"checkpoints": checkpoints,
 		"all_bought_at": all_bought_at,
 		"hand_solves": hand_solves,
@@ -172,6 +227,22 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 		"hand": hand,
 		"forbid": forbid,
 	}
+
+
+## Compete once the championship at least doubles the trophy bonus (COMPETE_FACTOR).
+func should_compete(g: GameState) -> bool:
+	var gain := g.get_pending_trophies()
+	return gain >= 1 and g.get_trophy_mult(g.trophies + gain) >= g.get_trophy_mult() * COMPETE_FACTOR
+
+
+## Buys perks in PERK_PLAN order while at least PERK_KEEP of the trophies stay unspent. Returns the ids bought.
+func buy_perks(g: GameState) -> Array[String]:
+	var bought: Array[String] = []
+	var floor_left := int(ceil(g.trophies * PERK_KEEP))
+	for id in PERK_PLAN:
+		if g.can_buy_perk(id) and g.trophies - int(Content.get_perk(id)["cost"]) >= floor_left and g.buy_perk(id):
+			bought.append(id)
+	return bought
 
 
 ## The biggest cube the player has (what an active player would practise on).
@@ -377,8 +448,24 @@ static func to_markdown(result: Dictionary) -> String:
 	var all_at: float = result["all_bought_at"]
 	lines.append("- Items bought: %d (%d different)" % [result["purchases"], events.size()])
 	lines.append("- Every helper, upgrade, method and puzzle owned at: %s" % ("never" if all_at < 0.0 else _clock(all_at)))
-	var gap := Pacing.longest_gap(events, 0.0, float(result["minutes"]) * 60.0)
+	var gap := Pacing.longest_gap(events, 0.0, float(result.get("first_run_minutes", result["minutes"])) * 60.0)
 	lines.append("- Longest wait for something new: %s (%s)" % [_clock(gap["length"]), gap["where"]])
+	var prestige_at := float(result.get("prestige_at", -1.0))
+	if prestige_at >= 0.0:
+		var second: Dictionary = result["second_run"]
+		var reached := float(second["reached_at"])
+		lines.append("- **First World Championship at %s: +%d trophies.** Perks bought: %s" % [_clock(prestige_at),
+				result["trophies_won"], ", ".join(PackedStringArray((result["perks"] as Array).map(
+				func(id: Variant) -> String: return Content.get_perk(str(id)).get("name", str(id)))))])
+		var caught_up := "not within %s min" % _num(second["minutes"]) if reached < 0.0 \
+				else "%s (%d %% of the first run)" % [_clock(reached), roundi(reached / prestige_at * 100.0)]
+		lines.append("- **Second run** (%d items bought) earned the first run's Solves at: %s" % [
+				result["second_run_purchases"], caught_up])
+		var firsts := PackedStringArray()
+		for e: Dictionary in second["events"]:
+			if e["kind"] in ["puzzle", "method"]:
+				firsts.append("%s %s" % [e["name"], _clock(float(e["t"]) - prestige_at)])
+		lines.append("- Second run puzzles and methods: %s" % (", ".join(firsts) if not firsts.is_empty() else "none"))
 	lines.append("")
 	lines.append("### First purchase of each item")
 	lines.append("")

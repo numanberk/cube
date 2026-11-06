@@ -261,7 +261,7 @@ func test_pacing_targets() -> void:
 	var Pacing: GDScript = load("res://tools/pacing.gd")
 	var sim: RefCounted = load("res://tools/simulator.gd").new()
 	var results := {
-		"tapping": sim.run(Pacing.TAPS_PER_SEC, Pacing.TAPPING_MINUTES),
+		"tapping": sim.run(Pacing.TAPS_PER_SEC, Pacing.TAPPING_MINUTES, {}, [], Pacing.TAPPING_PRESTIGE),
 		"idle": sim.run(0.0, Pacing.IDLE_MINUTES),
 		"active": sim.run(Pacing.TAPS_PER_SEC, Pacing.ACTIVE_MINUTES, Pacing.ACTIVE_HAND),
 	}
@@ -4387,4 +4387,33 @@ func test_auto_pause_and_cap() -> void:
 	check(g.run_automation() == 0 and int(g.buildings["friend"]) == 0, "nothing runs while paused (Welcome back open)")
 	g.automation_paused = false
 	check(g.run_automation() == int(Content.AUTOMATION["helper_buys_per_tick"]), "at most 100 helpers a tick")
+	g.free()
+
+
+func test_bot_prestige_rules() -> void:
+	# The balance bot's championship (6.4): compete once it at least doubles the trophy bonus; spend at most half.
+	var sim: RefCounted = load("res://tools/simulator.gd").new()
+	var g := new_game()
+	g.cheat_add_solves(GameState.solves_for_trophies(49))
+	check(not sim.should_compete(g), "49 trophies (×1.98) isn't worth competing for yet")
+	g.cheat_add_solves(GameState.solves_for_trophies(50) - g.get_run_solves())
+	check(sim.should_compete(g), "50 trophies (×2) is")
+	check(g.compete() == 50, "test setup: 50 trophies won")
+	var bought: Array[String] = sim.buy_perks(g)
+	check(not bought.is_empty() and g.trophies >= 25, "the bot buys perks but keeps at least half its trophies (%s)" % [bought])
+	g.free()
+
+
+func test_mult_cache_with_perks() -> void:
+	# 6.4 found _upgrade_mult using a cache key without perks while the perk sums used one with them: with any perk
+	# owned they wiped each other's cache on every call. Every cache user must agree on the key.
+	var g := perk_game(100)
+	g.buy_perk("team_captain")
+	g.get_moves_per_second()
+	g.get_trophy_mult()
+	g._synergy_mult("club")
+	check(g._mult_cache_owned == g._mult_cache_key(), "after every kind of lookup the cache is built for today's key")
+	var size := g._mult_cache.size()
+	g.get_moves_per_second()
+	check(size > 1 and g._mult_cache.size() == size, "...and stays filled (it isn't wiped between calls)")
 	g.free()

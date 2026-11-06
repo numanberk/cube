@@ -22,7 +22,8 @@ func _initialize() -> void:
 	for taps_text in taps_list:
 		var taps := float(taps_text)
 		var started := Time.get_ticks_msec()
-		var result: Dictionary = sim.run(taps, minutes, {}, forbid)
+		var prestige: Dictionary = Pacing.TAPPING_PRESTIGE if taps > 0.0 else {}  # the tapping bot competes (6.4)
+		var result: Dictionary = sim.run(taps, minutes, {}, forbid, prestige)
 		print("Simulated %s taps/s for %s min in %.1f s: %d items, all owned at %s" % [
 			taps_text, minutes, (Time.get_ticks_msec() - started) / 1000.0, result["purchases"],
 			"never" if float(result["all_bought_at"]) < 0.0 else Simulator._clock(result["all_bought_at"]),
@@ -80,7 +81,9 @@ func _header(minutes: float) -> String:
 		"The bot drives the real `GameState` in %s s steps for %s minutes. Every second (and after each purchase)" \
 				% [Simulator.STEP, Simulator._num(minutes)],
 		"it picks the visible item with the lowest *time to afford + cost ÷ Solves/s gained* and buys it as soon",
-		"as it can. Income counts helpers and taps. Times are m:ss from a fresh save.",
+		"as it can. Income counts helpers and taps. Times are m:ss from a fresh save. The tapping bot competes once a",
+		"championship would at least double its trophy bonus, buys perks, and plays a second run until it has earned",
+		"the first run's Solves (6.4).",
 		"",
 		"",
 	])

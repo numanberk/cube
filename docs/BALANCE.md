@@ -5,7 +5,9 @@ content or formula change and commit the result. Targets are in PLAN §2.
 
 The bot drives the real `GameState` in 0.1 s steps for 120 minutes. Every second (and after each purchase)
 it picks the visible item with the lowest *time to afford + cost ÷ Solves/s gained* and buys it as soon
-as it can. Income counts helpers and taps. Times are m:ss from a fresh save.
+as it can. Income counts helpers and taps. Times are m:ss from a fresh save. The tapping bot competes once a
+championship would at least double its trophy bonus, buys perks, and plays a second run until it has earned
+the first run's Solves (6.4).
 
 ## Pacing targets (PLAN §2)
 
@@ -16,14 +18,15 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 | First helper ≤ 20 s | Cubing Friend at 0:00 | pass |
 | First upgrade < 1 min | Practice Partners I at 0:12 | pass |
 | Something new every ≤ 3 min in the first hour | longest 2:51 (after Club Training V, before Small-Cube Specialist) | pass |
-| Something new every ≤ 10 min after the first hour | longest 13:40 (after Research Grants V, before Neural Upgrades II) | expected failure |
+| Something new every ≤ 10 min after the first hour | longest 6:26 (after Research Grants V, before World Championship (+50 trophies)) | pass |
 | 3×3 unlocked at ~5 min (4–6 min) | 4:22 | pass |
 | Solving Robot at ~10 min (8–12 min) | 8:34 | pass |
 | 4×4 unlocked at ~30 min (25–35 min) | 27:53 | pass |
 | 5×5 unlocked at ~60 min (50–70 min) | 52:28 | pass |
-| First World Championship at ~90 min (80–100 min, D6) | never (in 2:00:00) | expected failure |
-| 7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
-| Second run reaches the same point in ≤ 50 % of the time | not measured: the simulator only plays one run (multi-run sim comes with 6.4) | expected failure |
+| First World Championship at ~90 min (80–100 min, D6) | 1:28:58 | pass |
+| 7×7 in the 2nd–3rd run (measured: in the 2nd run) | 27:35 into the 2nd run | pass |
+| Megaminx in the 4th–5th run | not measured: the simulator plays two runs | expected failure |
+| Second run reaches the same point in ≤ 50 % of the time and ≤ 45 min | 40:45 (46 % of the first run's 1:28:58) | pass |
 | The bot's best split at 30 min is a real mix (no puzzle above 70 %) | 2×2 20 % · 3×3 45 % · 4×4 35 % | pass |
 | An active player (Gold-pace hand solves) gets there 2–3× sooner than the tapping bot (D13) | ×2.38 (the tapping bot's 4.19B Solves at 30:00, the active one at 12:35) | pass |
 | Never tapping still buys something within 5 min | Cubing Friend at 0:00 | pass |
@@ -33,16 +36,16 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 Targets today's content can't meet yet. They print in the tests but don't fail them.
 Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 
-- **Something new every ≤ 10 min after the first hour** — After the 5×5 (~52 min) the run thins out: ~14 min waits for AI Solver milestones by ~1:35. The first World Championship (~90 min, Phase 6) is meant to end the run before that.
-- **First World Championship at ~90 min (80–100 min, D6)** — Prestige doesn't exist yet (Phase 6); the bot must learn to Compete (6.4).
-- **7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run** — Needs prestige and multi-run simulation (6.2, 6.4).
-- **Second run reaches the same point in ≤ 50 % of the time** — Needs prestige and multi-run simulation (6.2, 6.4).
+- **Megaminx in the 4th–5th run** — Needs a simulator that plays 5 runs (too slow for the tests today; a later tuning task).
 
 ## Tapping (3 taps/s, 120 min)
 
-- Items bought: 802 (87 different)
+- Items bought: 758 (84 different)
 - Every helper, upgrade, method and puzzle owned at: never
-- Longest wait for something new: 13:40 (after Research Grants V, before Neural Upgrades II)
+- Longest wait for something new: 6:26 (after Research Grants V, before World Championship (+50 trophies))
+- **First World Championship at 1:28:58: +50 trophies.** Perks bought: Team Captain, Warm-up Routine, Comp Prep
+- **Second run** (747 items bought) earned the first run's Solves at: 40:45 (46 % of the first run)
+- Second run puzzles and methods: Learn CFOP 0:52, 4×4 6:18, Learn Roux 15:55, 5×5 17:43, 7×7 27:35, Learn ZZ 29:15
 
 ### First purchase of each item
 
@@ -131,10 +134,7 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 1:18:35 | helper | AI Solver | 6.70T | +4:24 |
 | 1:19:12 | upgrade | Neural Upgrades I | 6.70T | +0:38 |
 | 1:22:32 | upgrade | Research Grants V | 3.74T | +3:19 |
-| 1:36:12 | upgrade | Neural Upgrades II | 100.5T | +13:40 |
-| 1:44:24 | upgrade | Team Bootcamp V | 49.50T | +8:12 |
-| 1:48:21 | helper | Orbital Cube Station | 100.0T | +3:57 |
-| 1:51:36 | upgrade | Launch Windows I | 100.0T | +3:15 |
+| 1:28:58 | prestige | World Championship (+50 trophies) | 0 | +6:26 |
 
 ### Income over time
 
@@ -145,7 +145,6 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 | 15 | 82.76K | 52.72K | 37.13K | 12.86M | 2×2 30 % · 3×3 70 % |
 | 30 | 20.49M | 1.25M | 652.5M | 4.29B | 2×2 20 % · 3×3 45 % · 4×4 35 % |
 | 60 | 24.72B | 258.0M | 719.2B | 9.93T | 2×2 5 % · 3×3 21 % · 4×4 16 % · 5×5 58 % |
-| 120 | 693.2B | 3.59B | 56.67T | 1.11Qa | 2×2 0 % · 3×3 20 % · 4×4 20 % · 5×5 60 % |
 
 ## Never tapping (0 taps/s, 120 min)
 

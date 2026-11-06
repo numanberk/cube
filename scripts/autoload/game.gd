@@ -1806,11 +1806,11 @@ func invalidate_upgrade_cache() -> void:
 
 ## Product of every owned upgrade's (and finished Lab project's and trophy perk's) effect of this type (and target). Cached: with ~50 upgrades (5.2) this is called
 ## thousands of times a second by the balance bot. It's dropped by invalidate_upgrade_cache() (buying, finishing research,
-## a reset, a load) and, as a safety net, whenever the number of owned upgrades or finished projects changes.
+## a reset, a load) and, as a safety net, whenever the number of owned upgrades, finished projects or perks changes.
 func _upgrade_mult(effect_type: String, target: String = "") -> float:
-	if upgrades.size() + 1000 * research_done.size() != _mult_cache_owned:
+	if _mult_cache_key() != _mult_cache_owned:
 		_mult_cache.clear()
-		_mult_cache_owned = upgrades.size() + 1000 * research_done.size()
+		_mult_cache_owned = _mult_cache_key()
 	var key := effect_type + "|" + target
 	if _mult_cache.has(key):
 		return _mult_cache[key]

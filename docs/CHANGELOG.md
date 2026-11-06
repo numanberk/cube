@@ -2,6 +2,32 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-06 — Task 6.4: prestige tuned (Phase 6 done)
+- **The bot plays two runs now** (`tools/simulator.gd`, `run(..., prestige)`): it competes once a championship would
+  at least **double its trophy bonus** (`COMPETE_FACTOR`, the usual idle-game rule of thumb; 50 trophies the first
+  time), buys perks from `PERK_PLAN` while keeping at least half its trophies unspent (D14 makes spending a trade),
+  then plays a second run until it has earned the first run's Solves. BALANCE.md shows the championship, the perks
+  and the second run. The tapping profile uses `Pacing.TAPPING_PRESTIGE`; the idle, active and choice runs don't compete.
+- **Tuning:** `Content.CHAMPIONSHIP["divisor"]` **4e10 → 1e11**. Result: first championship at **1:28:58** (+50
+  trophies; D6 wants 80–100 min), second run caught up at **40:45** (46 % of the first; target ≤ 50 % and ≤ 45 min),
+  the 7×7 arrives 27:35 into the second run (perks: Team Captain, Warm-up Routine, Comp Prep). With 4e10 the bot
+  competed at 79:00 (one minute early).
+- **Pacing targets** (`tools/pacing.gd`): `first_prestige` is real now; new types `second_run` and `second_run_item`;
+  `big_puzzles` split into `seven_by_seven` (passes: in the 2nd run) and `megaminx` (still an expected failure: it needs
+  a 5-run simulation, too slow for the tests). `new_every_10_min` **now passes** (the run ends at the championship, so
+  the 13-min wait after Research Grants V at ~1:35 no longer happens; longest is 6:26). Its mark was removed.
+- **Bug fix from 6.3:** `_upgrade_mult` still used the old cache key without perks (the 6.3 edit had landed in
+  `_synergy_mult` instead), so **with any perk owned the multiplier cache never hit**: the game recomputed every
+  multiplier on every call after a first championship (the bot's second run ran 5× slower; in the game, every frame).
+  Fixed; numbers didn't change.
+- Tests (4285 checks, `All good.`): `test_bot_prestige_rules` (compete at ×2, keep half the trophies); `test_pacing_targets` now
+  covers the championship and the second run. `test_pacing_targets` takes about as long as before (~70 s for the
+  tapping profile: the run ends at 89 min and the second run at 41).
+- **Decided here (not owner decisions):** the Compete button keeps showing at half the first trophy's Solves (~38 min
+  now), a preview of what's coming; mastery maxing within the first run is left for a later task (the fun pass's
+  "Puzzle Ranks" idea would answer it).
+- **Phase 6 is done:** the commit asks for a `fun-designer` pass (end of phase).
+
 ## 2026-11-06 — Task 6.3b: auto-buyers and auto-Compete (save v12)
 - **Perks:** four children of the Automation root in `Content.PERKS`: **Team Manager** (cheapest helper, 15),
   **Shopping List** (upgrades, 20), **Puzzle Scout** (next puzzle, 20, needs Team Manager), **Comp Registration**

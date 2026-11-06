@@ -14,11 +14,15 @@ extends RefCounted
 ##   max_gap       no wait longer than `max` seconds for a new item between `from` and `to` seconds
 ##   split_mix     at checkpoint `minute`, the bot's split uses 2+ puzzles and none above `max_share`
 ##   unsupported   the simulator can't measure it yet (`reason` says what's missing); always an expected failure
+##   second_run    the second run (after the bot's first World Championship) earns the first run's Solves within
+##                 `max_fraction` of the first run's time and at most `max_minutes` (6.4)
+##   second_run_item  `kind`/`item` is bought in the second run
 ##   speedup       how many times sooner `profile` reaches the lifetime Solves `baseline` has at `minute`, between `min`
 ##                 and `max` (D13's "2–3×": the early economy compounds, so a raw Solves ratio would be far bigger)
 
 const TAPS_PER_SEC := 3.0  ## "Tapping" in PLAN §2
-const TAPPING_MINUTES := 120.0
+const TAPPING_MINUTES := 120.0  ## the first run's cap; the bot competes before it (6.4)
+const TAPPING_PRESTIGE := {"second_run_minutes": 60.0}  ## the tapping profile plays a second run after competing
 const IDLE_MINUTES := 10.0
 const ACTIVE_MINUTES := 30.0
 const ACTIVE_HAND := {"tier": 2}  ## the "active" profile: Gold-pace hand solves back to back (S.3)
@@ -42,7 +46,7 @@ const TARGETS: Array[Dictionary] = [
 	{
 		"id": "new_every_10_min", "text": "Something new every ≤ 10 min after the first hour", "profile": "tapping",
 		"type": "max_gap", "from": 3600.0, "to": 7200.0, "max": 600.0,
-		"expected_failure": "After the 5×5 (~52 min) the run thins out: ~14 min waits for AI Solver milestones by ~1:35. The first World Championship (~90 min, Phase 6) is meant to end the run before that.",
+		"expected_failure": "",
 	},
 	{
 		"id": "puzzle_3x3", "text": "3×3 unlocked at ~5 min (4–6 min)", "profile": "tapping",
@@ -67,17 +71,22 @@ const TARGETS: Array[Dictionary] = [
 	{
 		"id": "first_prestige", "text": "First World Championship at ~90 min (80–100 min, D6)", "profile": "tapping",
 		"type": "item_between", "kind": "prestige", "item": "compete", "min": 4800.0, "max": 6000.0,
-		"expected_failure": "Prestige doesn't exist yet (Phase 6); the bot must learn to Compete (6.4).",
+		"expected_failure": "",
 	},
 	{
-		"id": "big_puzzles", "text": "7×7 in the 2nd–3rd run, Megaminx in the 4th–5th run", "profile": "tapping",
-		"type": "unsupported", "reason": "the simulator only plays one run (multi-run sim comes with 6.4)",
-		"expected_failure": "Needs prestige and multi-run simulation (6.2, 6.4).",
+		"id": "seven_by_seven", "text": "7×7 in the 2nd–3rd run (measured: in the 2nd run)", "profile": "tapping",
+		"type": "second_run_item", "kind": "puzzle", "item": "7x7",
+		"expected_failure": "",
 	},
 	{
-		"id": "second_run", "text": "Second run reaches the same point in ≤ 50 % of the time", "profile": "tapping",
-		"type": "unsupported", "reason": "the simulator only plays one run (multi-run sim comes with 6.4)",
-		"expected_failure": "Needs prestige and multi-run simulation (6.2, 6.4).",
+		"id": "megaminx", "text": "Megaminx in the 4th–5th run", "profile": "tapping",
+		"type": "unsupported", "reason": "the simulator plays two runs",
+		"expected_failure": "Needs a simulator that plays 5 runs (too slow for the tests today; a later tuning task).",
+	},
+	{
+		"id": "second_run", "text": "Second run reaches the same point in ≤ 50 % of the time and ≤ 45 min", "profile": "tapping",
+		"type": "second_run", "max_fraction": 0.5, "max_minutes": 45.0,
+		"expected_failure": "",
 	},
 	{
 		"id": "split_mix", "text": "The bot's best split at 30 min is a real mix (no puzzle above 70 %)", "profile": "tapping",
@@ -126,7 +135,7 @@ static func evaluate(results: Dictionary) -> Array[Dictionary]:
 ## Checks one target against one simulator result. Returns {passed, actual}.
 static func check(target: Dictionary, result: Dictionary) -> Dictionary:
 	var events: Array = result["events"]
-	var run_end := float(result["minutes"]) * 60.0
+	var run_end := float(result.get("first_run_minutes", result["minutes"])) * 60.0
 	match target["type"]:
 		"first_by":
 			for e: Dictionary in events:
@@ -149,6 +158,22 @@ static func check(target: Dictionary, result: Dictionary) -> Dictionary:
 					var text := "%s" % ("one puzzle only" if split.size() < 2 else _split_text(split))
 					return {"passed": split.size() >= 2 and top <= float(target["max_share"]) + 0.001, "actual": text}
 			return {"passed": false, "actual": "no checkpoint at %s min" % target["minute"]}
+		"second_run":
+			var first := float(result.get("prestige_at", -1.0))
+			var second: Dictionary = result.get("second_run", {})
+			var reached := float(second.get("reached_at", -1.0))
+			if first < 0.0:
+				return {"passed": false, "actual": "never competed (in %s)" % clock(run_end)}
+			if reached < 0.0:
+				return {"passed": false, "actual": "not caught up in %s min" % second.get("minutes", 0)}
+			var limit := minf(first * float(target["max_fraction"]), float(target["max_minutes"]) * 60.0)
+			return {"passed": reached <= limit, "actual": "%s (%d %% of the first run's %s)" % [
+					clock(reached), roundi(reached / first * 100.0), clock(first)]}
+		"second_run_item":
+			for e: Dictionary in result.get("second_run", {}).get("events", []):
+				if e["kind"] == target["kind"] and e["id"] == target["item"]:
+					return {"passed": true, "actual": "%s into the 2nd run" % clock(float(e["t"]) - float(result["prestige_at"]))}
+			return {"passed": false, "actual": "not in the 2nd run"}
 		"max_gap":
 			var from := float(target["from"])
 			var to := minf(float(target["to"]), run_end)

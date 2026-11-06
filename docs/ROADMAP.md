@@ -317,11 +317,15 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       *(Done 2026-11-06: four perks under Automation (Team Manager, Shopping List, Puzzle Scout, Comp Registration),
       `Game.run_automation()` once a second, switches + auto-Compete target saved (v12), an "Auto" shop tab once
       Automation is owned. Auto-buyers don't run offline and don't learn methods / start Lab research.)*
-- [ ] **6.4 Tune prestige (D6: ~90 min):**
+- [x] **6.4 Tune prestige (D6: ~90 min):**
       *Done when:* the sim's first prestige lands at 80–100 min, and the second run reaches the same point in ≤ 45 min, as real pacing tests.
       *(Notes from 6.2 and the 2026-11-05 fun pass: the tapping bot really has ~2.7e14 lifetime Solves at 90 min (6.1
       interpolated 1.05e14), so a first championship gives ~81 trophies (+162 %), not ~51. The Compete button shows
       from ~33 min; decide when it should appear. Mastery reaches level 100 on most puzzles within the first run.)*
+      *(Done 2026-11-06: the bot competes when a championship doubles its trophy bonus, buys perks keeping half its
+      trophies, and plays a second run. Divisor 4e10 → **1e11**: first championship at 1:28:58 (+50 trophies), second
+      run caught up at 40:45 (46 %), 7×7 27 min into run 2; all are pacing tests now. The Compete button still shows at
+      half the first trophy (~38 min now): kept as a preview of the system. Mastery left as it is.)*
 
 ## Phase 7 — Goals
 - [ ] **7.0 Career moments (fun pass, 2026-11-04):** short story beats at key unlocks, as data, shown in the news feed and as a
