@@ -26,7 +26,17 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
 - **Decided here (not owner decisions):** the Compete button keeps showing at half the first trophy's Solves (~38 min
   now), a preview of what's coming; mastery maxing within the first run is left for a later task (the fun pass's
   "Puzzle Ranks" idea would answer it).
-- **Phase 6 is done:** the commit asks for a `fun-designer` pass (end of phase).
+- **Phase 6 is done.** End-of-phase fun pass (proposals for the owner; none is a task until picked):
+  (1) run clock, splits and a championship PB (S–M); (2) the first championship grants Automation + Team Manager, or
+  makes them much cheaper (S); (3) a podium ceremony, later an optional Finals ao5 for bonus trophies (S / M);
+  (4) "Muscle Memory": Lab research stays done through championships, plus a few long multi-run projects (M);
+  (5) run feats inside 7.1 achievements (win under 45 min, on Roux, never tapping…) (S); (6) Puzzle Ranks: mastery
+  rank-ups past Lv 100 (M); (7) auto-buyers run during offline catch-up, listed in Welcome back (M); (8) more WCA
+  events as championship unlocks: 6×6, One-Handed, Blindfolded (L). Quick wins: trophies/min on the Compete screen,
+  synergies past the Federation, D14 net effect in perk tooltips, a "Run N" badge, a "repeat my choices" toggle.
+  From the 11-05 pass: splits/PB, ceremony, Puzzle Ranks and a 2nd Lab slot are still the most valuable; the World
+  Ranking folds into 8.3; Comp Prep, rebuy-my-build and the unspent-trophies question are outdated (done or decided).
+  To measure: the Megaminx (1e14) may come late in run 2 rather than runs 4–5.
 
 ## 2026-11-06 — Task 6.3b: auto-buyers and auto-Compete (save v12)
 - **Perks:** four children of the Automation root in `Content.PERKS`: **Team Manager** (cheapest helper, 15),
