@@ -4135,14 +4135,21 @@ func test_each_perk() -> void:
 	check_near(g.get_solve_value("2x2"), value * 2.0, "Appearance Fees: ×2 Solves per solve")
 	tested["appearance_fees"] = true
 
-	# automation: opens the Automation system (6.3b fills it).
-	g.trophies = 10
-	check(not g.is_system_unlocked("automation") and g.get_perk_status("automation") == "available",
-			"Automation is buyable now, marked coming soon (owner, 2026-11-06)")
-	check(String(Content.get_perk("automation").get("soon", "")) != "", "...with its note")
-	g.buy_perk("automation")
-	check(g.is_system_unlocked("automation"), "...and opens the Automation system")
+	# automation: opens the Auto tab; each auto_* perk opens its auto-buyer (details in the test_auto_* tests).
+	g.trophies = 200
+	check(not g.is_system_unlocked("automation") and g.buy_perk("automation") and g.is_system_unlocked("automation"),
+			"Automation opens the Automation system (the Auto tab)")
 	tested["automation"] = true
+	for kind: String in Content.AUTOMATION["kinds"]:
+		var perk_id := "auto_" + kind
+		check(not g.is_auto_unlocked(kind), "%s isn't usable before its perk" % kind)
+		if perk_id == "auto_puzzles":
+			g.buy_perk("auto_helpers")
+		if perk_id == "auto_compete":
+			g.buy_perk("auto_upgrades")
+		check(g.buy_perk(perk_id) and g.is_auto_unlocked(kind), "%s opens the %s auto-buyer" % [perk_id, kind])
+		check(g.is_auto_on(kind) == (kind != "compete"), "...switched %s when bought" % ("off" if kind == "compete" else "on"))
+		tested[perk_id] = true
 	g.free()
 
 	for def: Dictionary in Content.PERKS:
@@ -4187,4 +4194,197 @@ func test_perks_kept_and_saved() -> void:
 	old.free()
 	g.reset_state()
 	check(g.perks.is_empty() and g.trophies == 0, "a wiped save has no perks")
+	g.free()
+
+
+# --- Auto-buyers (task 6.3b) -------------------------------------------------------------
+
+## A game in a new run with these Automation perks bought (their auto-buyers switched on, auto-Compete too).
+func auto_game(perk_ids: Array) -> GameState:
+	var g := perk_game(500)
+	g.buy_perk("automation")
+	for id: Variant in perk_ids:
+		check(g.buy_perk(str(id)), "bought %s" % id)
+	for kind: String in Content.AUTOMATION["kinds"]:
+		g.set_auto(kind, true)
+	g.trophies = 0  # no trophy bonus: income stays small and predictable
+	return g
+
+
+func test_auto_nothing_before_bought() -> void:
+	var g := perk_game(500)
+	g.cheat_add_solves(1e12)
+	for kind: String in Content.AUTOMATION["kinds"]:
+		g.automation[kind] = true  # even a save that says "on" can't run one that isn't bought
+		g.set_auto(kind, true)
+		check(not g.is_auto_on(kind), "%s isn't on before it's bought" % kind)
+	var solves_before := g.solves
+	check(g.run_automation() == 0 and is_equal_approx(g.solves, solves_before) and g.upgrades.is_empty()
+			and int(g.buildings["friend"]) == 0 and g.unlocked_puzzles.size() == 1 and g.championships == 1,
+			"nothing is bought, unlocked or competed before an auto-buyer is bought")
+	g.buy_perk("automation")
+	check(g.run_automation() == 0, "the Automation perk alone buys nothing either")
+	g.free()
+
+
+func test_auto_helpers() -> void:
+	var g := auto_game(["auto_helpers"])
+	g.cheat_add_solves(5000.0)
+	var bought := g.run_automation()
+	check(bought > 1 and int(g.buildings["friend"]) > 1, "Team Manager buys helpers (%d)" % bought)
+	var cheapest := INF
+	for def: Dictionary in Content.BUILDINGS:
+		if g.is_building_unlocked(def["id"]):
+			cheapest = minf(cheapest, g.get_building_cost(def["id"]))
+	check(g.solves < cheapest, "...until even the cheapest one is out of reach")
+	check(g.upgrades.is_empty() and g.unlocked_puzzles.size() == 1, "...and nothing but helpers")
+	check(not g.automation_running, "the running flag is cleared after a tick")
+	g.set_auto("helpers", false)
+	g.cheat_add_solves(5000.0)
+	var owned := int(g.buildings["friend"])
+	check(g.run_automation() == 0 and int(g.buildings["friend"]) == owned, "switched off, it buys nothing")
+	g.free()
+
+
+func test_auto_upgrades() -> void:
+	var g := auto_game(["auto_upgrades"])
+	g.buildings["friend"] = 200
+	g.buildings["club"] = 200
+	g.cheat_add_solves(1e9)
+	check(g.run_automation() > 0 and not g.upgrades.is_empty(), "Shopping List buys upgrades")
+	var cheapest_left := INF
+	for def: Dictionary in Content.get_upgrades():
+		check(not (g.upgrades.has(def["id"]) and String(def.get("choice_group", "")) != ""),
+				"...never a choice pair (%s): picking a side stays the player's" % def["id"])
+		if String(def.get("choice_group", "")) == "" and g.is_upgrade_available(def["id"]):
+			cheapest_left = minf(cheapest_left, float(def["cost"]))
+	check(g.solves < cheapest_left, "...every one it can afford, cheapest first")
+	check(int(g.buildings["friend"]) == 200, "...and no helpers")
+	g.free()
+
+
+func test_auto_puzzles() -> void:
+	var g := auto_game(["auto_helpers", "auto_puzzles"])
+	g.set_auto("helpers", false)
+	g.cheat_add_solves(299.0)
+	check(g.run_automation() == 0 and not g.is_puzzle_unlocked("3x3"), "Puzzle Scout waits until the next puzzle is affordable")
+	g.cheat_add_solves(1.0)
+	check(g.run_automation() == 1 and g.is_puzzle_unlocked("3x3") and g.get_focused_puzzle_id() == "3x3",
+			"...then unlocks it, like the Unlock button")
+	check(not g.is_puzzle_unlocked("4x4"), "...one at a time, and only what it can afford")
+	g.free()
+
+
+func test_auto_compete() -> void:
+	var g := auto_game(["auto_upgrades", "auto_compete", "auto_helpers"])
+	check(g.get_auto_compete_at() == int(Content.AUTOMATION["compete_at_default"]), "auto-Compete starts with the default target")
+	g.set_auto_compete_at(10)
+	g.cheat_add_solves(GameState.solves_for_trophies(9))
+	var won_before := g.championships
+	g.run_automation()
+	check(g.championships == won_before and g.get_pending_trophies() == 9, "below its target (9 < 10) it doesn't compete")
+	g.cheat_add_solves(GameState.solves_for_trophies(10) - g.get_run_solves())
+	var trophies_before := g.trophies
+	check(g.run_automation() == 1 and g.championships == won_before + 1, "at its target it competes")
+	check(g.trophies == trophies_before + 10, "...for the trophies it waited for")
+	# (The first Friend of a new run is free, so without the early stop the helper pass would buy it right away.)
+	check(int(g.buildings["friend"]) == 0 and g.upgrades.is_empty(), "...and buys nothing in that tick (a new run starts)")
+	check(g.is_auto_on("compete") and g.get_auto_compete_at() == 10, "...and stays on, with its target, for the next run")
+	g.set_auto_compete_at(1)
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	g.auto_compete_held = true
+	var held_wins := g.championships
+	g.run_automation()
+	check(g.championships == held_wins, "auto-Compete waits while the UI holds it (a hand solve, the Compete screen)")
+	g.auto_compete_held = false
+	g.run_automation()
+	check(g.championships == held_wins + 1, "...and competes once it's let go")
+	g.set_auto_compete_at(0)
+	check(g.get_auto_compete_at() == 1, "the target is at least 1 trophy")
+	var panel: Variant = load("res://scripts/ui/automation_panel.gd")  # untyped: AutomationPanel uses Game by name
+	check(panel.step(10, 1) == 15 and panel.step(10, -1) == 5 and panel.step(1, -1) == 1 and panel.step(12, -1) == 10,
+			"the Auto tab's − / + step through round numbers")
+	g.free()
+
+
+func test_auto_runs_once_a_second() -> void:
+	var g := auto_game(["auto_helpers"])
+	g.cheat_add_solves(5000.0)
+	g._process(0.5)
+	check(int(g.buildings["friend"]) == 0, "nothing before a second has passed")
+	g._process(0.6)
+	check(int(g.buildings["friend"]) > 0, "the auto-buyers run once a second")
+	g.free()
+
+
+func test_auto_save() -> void:
+	var g := auto_game(["auto_helpers", "auto_upgrades", "auto_compete"])
+	g.set_auto("upgrades", false)
+	g.set_auto_compete_at(75)
+	var data := g.get_save_data()
+	check(GameState.SAVE_VERSION >= 12 and int(data["version"]) == GameState.SAVE_VERSION, "saves as v12 or later")
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.is_auto_on("helpers") and not loaded.is_auto_on("upgrades") and loaded.is_auto_on("compete")
+			and loaded.get_auto_compete_at() == 75, "the switches and the target load")
+	loaded.free()
+	data["automation"] = {"helpers": "yes", "compete_at": -5, "banana": true}
+	var damaged := new_game()
+	damaged.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(not damaged.is_auto_on("helpers") and damaged.get_auto_compete_at() == 1 and not damaged.automation.has("banana"),
+			"damaged switches load as off, a bad target is clamped, unknown keys are dropped")
+	damaged.free()
+	var v11 := g.get_save_data()
+	v11["version"] = 11
+	v11.erase("automation")
+	var old := new_game()
+	old.apply_save_data(JSON.parse_string(JSON.stringify(v11)), float(v11["saved_at"]))
+	check(old.has_perk("auto_helpers") and old.is_auto_unlocked("helpers") and not old.is_auto_on("helpers"),
+			"v11 → v12: auto-buyers bought before load switched off")
+	check(old.get_auto_compete_at() == int(Content.AUTOMATION["compete_at_default"]), "...with the default target")
+	old.free()
+	g.free()
+
+
+func test_auto_saves_up() -> void:
+	var g := auto_game(["auto_helpers", "auto_puzzles"])
+	g.buildings["friend"] = 10
+	var reach := g.get_solves_per_second() * float(Content.AUTOMATION["save_seconds"])
+	check(reach > 15.0 and reach < 290.0, "test setup: the 3×3 is in reach from 290 Solves, not from 0 (%s)" % reach)
+	g.cheat_add_solves(290.0)
+	check_near(g.get_auto_reserve(), 300.0, "with Puzzle Scout on and the 3×3 close, Team Manager keeps its cost back")
+	var owned := int(g.buildings["friend"])
+	g.run_automation()
+	check(int(g.buildings["friend"]) == owned and g.solves >= 290.0, "...so it buys no helper while saving up")
+	g.cheat_add_solves(10.0)
+	g.run_automation()
+	check(g.is_puzzle_unlocked("3x3"), "...and Puzzle Scout gets the 3×3 as soon as it's affordable")
+	g.free()
+
+	var far := auto_game(["auto_helpers", "auto_puzzles"])
+	far.cheat_add_solves(20.0)
+	check_near(far.get_auto_reserve(), 0.0, "a puzzle far out of reach isn't saved for")
+	check(far.run_automation() > 0, "...so Team Manager keeps buying helpers")
+	far.free()
+
+	var shop := auto_game(["auto_helpers", "auto_upgrades"])
+	shop.buildings["friend"] = 10
+	var cheapest := INF
+	for def: Dictionary in Content.get_upgrades():
+		if String(def.get("choice_group", "")) == "" and shop.is_upgrade_available(def["id"]):
+			cheapest = minf(cheapest, float(def["cost"]))
+	shop.cheat_add_solves(1.0)
+	check(cheapest == INF or is_equal_approx(shop.get_auto_reserve(), cheapest) == (cheapest - 1.0
+			<= shop.get_solves_per_second() * float(Content.AUTOMATION["save_seconds"])),
+			"Shopping List's next upgrade is saved for when it's close")
+	shop.free()
+
+
+func test_auto_pause_and_cap() -> void:
+	var g := auto_game(["auto_helpers"])
+	g.cheat_add_solves(1e40)
+	g.automation_paused = true
+	check(g.run_automation() == 0 and int(g.buildings["friend"]) == 0, "nothing runs while paused (Welcome back open)")
+	g.automation_paused = false
+	check(g.run_automation() == int(Content.AUTOMATION["helper_buys_per_tick"]), "at most 100 helpers a tick")
 	g.free()

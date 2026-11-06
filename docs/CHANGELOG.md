@@ -2,6 +2,40 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-06 — Task 6.3b: auto-buyers and auto-Compete (save v12)
+- **Perks:** four children of the Automation root in `Content.PERKS`: **Team Manager** (cheapest helper, 15),
+  **Shopping List** (upgrades, 20), **Puzzle Scout** (next puzzle, 20, needs Team Manager), **Comp Registration**
+  (auto-Compete, 40, needs Shopping List). Each unlocks the system `auto_<kind>`. The root lost its "coming soon" note
+  and now opens the shop's **Auto** tab. Automation branch total: 105 trophies (the tree: 360).
+- **GameState:** `run_automation()` runs once a second from `_process` (`Content.AUTOMATION["interval"]`), in this order:
+  Compete (if on and the pending gain ≥ its target; the tick then stops, a new run started), the next puzzle, upgrades
+  (cheapest first, **never a `choice_group` upgrade**), helpers (the cheapest shown one, again and again, at most 100 a
+  tick). `is_auto_unlocked` / `is_auto_on` / `set_auto` / `get_auto_compete_at` / `set_auto_compete_at` (≥ 1). Nothing
+  runs for an auto-buyer that isn't bought, even if a save says "on". A newly bought auto-buyer starts **on**, except
+  **auto-Compete, which starts off** (otherwise buying it mid-run could end the run a second later, before you set a
+  target). `automation_running` is true during a tick: main.gd skips the buy click and the per-purchase refresh then.
+- **Save v12:** top-level `"automation"` ({kind: bool, "compete_at": int}); bad values load as off / clamped, unknown
+  keys dropped. v11 → v12: all off. **Achievements (7.1) are now v13.**
+- **UI:** `AutomationPanel` (scripts/ui/automation_panel.gd) in a new 5th shop tab "Auto", hidden until the Automation
+  perk is owned: a row per auto-buyer (perk icon, name, what it does or which perk opens it, On/Off), and − / + for
+  auto-Compete's target (round steps 1, 2, 3, 5, 10, 15, 20, 25, …). Screenshot option `AUTO=1`; shots in
+  `docs/screenshots/6.3b-automation/`.
+- Tests (4280 checks, `All good.`): `test_each_perk` covers the four new perks; `test_auto_nothing_before_bought`, `test_auto_helpers`,
+  `test_auto_upgrades` (no choice pair ever), `test_auto_puzzles`, `test_auto_compete` (below / at the target, nothing
+  else bought that tick, stays on), `test_auto_runs_once_a_second`, `test_auto_save` (round trip, damaged, v11 → v12).
+- **diff-reviewer fixes:** (1) Team Manager spent every Solve on cheap helpers, so Puzzle Scout / Shopping List
+  almost never bought (its 2-hour sim: the 4×4 at 30 min, the 5×5 never). Now `get_auto_reserve()`: while the next
+  puzzle or cheapest upgrade is ≤ 60 s of income away (`Content.AUTOMATION["save_seconds"]`), Team Manager keeps its
+  cost back. Same sim after: 4×4 at 9 min, 5×5 at 59 min, 7×7 at 61. (2) main.gd sets `Game.automation_paused` while
+  "Welcome back" is open (nothing runs) and `Game.auto_compete_held` while the Solve Station or the Compete screen is
+  open (no auto-Compete under the player). New tests `test_auto_saves_up`, `test_auto_pause_and_cap`, and the hold.
+  **Kept as is:** Puzzle Scout unlocks like the Unlock button, so it moves the whole split to the new puzzle and
+  focuses it (a custom split is replaced); the player can reset it in the Puzzles tab or switch Puzzle Scout off.
+- **Not done / for later:** auto-buyers don't run offline (only while the game is open), and don't learn methods or
+  start Lab research (methods are Lab projects since 5.6; a "Lab auto-queue" could be a later perk). The balance bot
+  still plays one run without perks; 6.4 should let it buy perks, including these, for the second-run target.
+- **Next: 6.4** (tune prestige; last task of Phase 6, so its commit asks for a fun pass).
+
 ## 2026-11-06 — Task 6.3: the trophy perk tree (save v11)
 - **Owner decisions first (new D14 in PLAN §7):** only **unspent** trophies give +2 % moves, so a perk is a trade (the
   shop says what it costs you). Nodes for systems that don't exist yet: the **Automation** first node is buyable now and

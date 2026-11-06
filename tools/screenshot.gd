@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--drill solving|done] [--daily fmc|timed]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--drill solving|done] [--daily fmc|timed]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -137,6 +137,14 @@ func _ready() -> void:
 		Game.invalidate_upgrade_cache()
 		main._refresh()
 		main.open_perks()
+	if args.has("auto"):  # 6.3b: the Auto tab: three auto-buyers bought (Shopping List switched off), Puzzle Scout not yet
+		Game.trophies = 200
+		for id: String in ["automation", "auto_helpers", "auto_upgrades", "auto_compete"]:
+			Game.buy_perk(id)
+		Game.set_auto("upgrades", false)
+		Game.set_auto_compete_at(50)
+		(main.get_node("%Tabs") as TabContainer).current_tab = main.AUTO_TAB
+		main._refresh()
 	if args.has("flow"):  # S.3: Flow running after a Gold hand solve
 		Game.record_hand_solve("3x3", 84.2, "", 58)
 		Game.flow["left"] = 105.0

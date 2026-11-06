@@ -306,7 +306,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       *(Done 2026-11-06: 13 perks in `Content.PERKS`, save v11, a "Perks" button in the top bar opens the tree. D14: only
       unspent trophies give the bonus; the Competition first node can't be bought until 8.3, the Automation one can
       (coming soon). Medal bonuses wait for 8.3's medals; the Competition branch has trophy bonuses for now.)*
-- [ ] **6.3b Auto-buyers and auto-Compete (PR):** toggles bought in the Automation branch: auto-buy the cheapest helper,
+- [x] **6.3b Auto-buyers and auto-Compete (PR):** toggles bought in the Automation branch: auto-buy the cheapest helper,
       auto-buy upgrades, auto-unlock the next puzzle, and auto-Compete when the trophy gain reaches a set amount.
       The logic is in `GameState` (checked once a second); the toggles live in a small Automation panel.
       Auto-buy upgrades **skips choice pairs** (`choice_group`, 5.7b): picking a side stays the player's decision.
@@ -314,6 +314,9 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       "automation")` says if it's owned. Add each auto-buyer as a child perk in `Content.PERKS` (branch "automation",
       `requires` ["automation"] or a sibling), drop the root's `soon` note, and show the panel only once it's owned.
       *Done when:* tests cover each auto-buyer, auto-Compete's threshold, and that nothing runs before it's bought.
+      *(Done 2026-11-06: four perks under Automation (Team Manager, Shopping List, Puzzle Scout, Comp Registration),
+      `Game.run_automation()` once a second, switches + auto-Compete target saved (v12), an "Auto" shop tab once
+      Automation is owned. Auto-buyers don't run offline and don't learn methods / start Lab research.)*
 - [ ] **6.4 Tune prestige (D6: ~90 min):**
       *Done when:* the sim's first prestige lands at 80–100 min, and the second run reaches the same point in ≤ 45 min, as real pacing tests.
       *(Notes from 6.2 and the 2026-11-05 fun pass: the tapping bot really has ~2.7e14 lifetime Solves at 90 min (6.1
@@ -326,10 +329,10 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       a lab, so the progression reads as a journey. *Done when:* each moment fires once at its trigger (test) and there's a
       screenshot.
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
-      all moves, with a toast when earned. Save v12. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
+      all moves, with a toast when earned. Save v13. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
       so they work as a map of the game, like Revolution Idle's.
-      *Done when:* there are tests for the conditions and the v11 → v12 migration, and a screenshot of the tab and toast.
+      *Done when:* there are tests for the conditions and the v12 → v13 migration, and a screenshot of the tab and toast.
 - [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
 

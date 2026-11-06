@@ -449,7 +449,7 @@ const CHAMPIONSHIP := {
 ## Spending is a trade (owner, 2026-11-06): only UNSPENT trophies give +2 % moves each, so a perk costs that bonus.
 ## Four branches; as in Idle Skilling the first node of each branch unlocks a system, and every other node needs its
 ## parent (`requires`). A node with `buyable: false` can't be bought yet (its system comes later, `soon` says when);
-## the nodes under it don't wait for it. `soon` on a buyable node is a "coming soon" note (Automation: task 6.3b).
+## the nodes under it don't wait for it. `soon` on a buyable node would be a "coming soon" note.
 ##   id, branch, icon, name, description, cost (trophies), requires (perk ids), effect, soon (optional), buyable (default true)
 ## effect.type is an upgrade effect (EFFECT_TYPES: counts like an owned upgrade) or one of PERK_EFFECT_TYPES.
 const PERK_EFFECT_TYPES := [
@@ -509,10 +509,36 @@ const PERKS := [
 		"effect": {"type": "solve_value_mult", "value": 2.0}},
 
 	{"id": "automation", "branch": "automation", "icon": "firmware", "name": "Automation",
-		"description": "Opens the Automation panel: auto-buyers for helpers, upgrades and puzzles, and auto-Compete.",
-		"cost": 10, "requires": [], "effect": {"type": "unlock", "system": "automation"},
-		"soon": "Coming soon: the auto-buyers arrive in the next update"},
+		"description": "Opens the Auto tab in the shop, where the auto-buyers below are switched on and off.",
+		"cost": 10, "requires": [], "effect": {"type": "unlock", "system": "automation"}},
+	{"id": "auto_helpers", "branch": "automation", "icon": "talent_scouts", "name": "Team Manager",
+		"description": "Buys the cheapest helper whenever you can afford it.", "cost": 15, "requires": ["automation"],
+		"effect": {"type": "unlock", "system": "auto_helpers"}},
+	{"id": "auto_upgrades", "branch": "automation", "icon": "factory_supply", "name": "Shopping List",
+		"description": "Buys every upgrade you can afford, cheapest first. Choices stay yours.", "cost": 20,
+		"requires": ["automation"], "effect": {"type": "unlock", "system": "auto_upgrades"}},
+	{"id": "auto_puzzles", "branch": "automation", "icon": "big_cubes", "name": "Puzzle Scout",
+		"description": "Unlocks the next puzzle as soon as you can afford it.", "cost": 20, "requires": ["auto_helpers"],
+		"effect": {"type": "unlock", "system": "auto_puzzles"}},
+	{"id": "auto_compete", "branch": "automation", "icon": "federation_rankings", "name": "Comp Registration",
+		"description": "Competes by itself once a championship would give the trophies you set.", "cost": 40,
+		"requires": ["auto_upgrades"], "effect": {"type": "unlock", "system": "auto_compete"}},
 ]
+
+## Auto-buyers (task 6.3b): bought as Automation perks (each unlocks the system "auto_<kind>"), switched on and off in
+## the shop's Auto tab, run by GameState once every `interval` seconds while the game is open (not offline).
+## Order each tick: Compete, then puzzles, upgrades, helpers (helpers get what's left).
+##   kinds: the auto-buyers; compete_at_default: the trophy gain auto-Compete waits for until the player sets one;
+##   helper_buys_per_tick: a cap on helpers bought in one tick (each pick is the cheapest one again)
+##   save_seconds: while Puzzle Scout / Shopping List is on and its next buy is this many seconds of income away (or
+##     less), Team Manager keeps that much in reserve, so cheap helpers don't eat every Solve (6.3b review)
+const AUTOMATION := {
+	"interval": 1.0,
+	"save_seconds": 60.0,
+	"kinds": ["helpers", "upgrades", "puzzles", "compete"],
+	"compete_at_default": 25,
+	"helper_buys_per_tick": 100,
+}
 
 
 ## Algorithm Lab (task 5.6): research that runs in real time, also while the game is closed (capped like offline progress).

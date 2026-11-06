@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/solve_station.tscn" id="7_station"]
 [ext_resource type="PackedScene" path="res://scenes/compete_panel.tscn" id="8_compete"]
 [ext_resource type="PackedScene" path="res://scenes/perk_panel.tscn" id="9_perks"]
+[ext_resource type="Script" path="res://scripts/ui/automation_panel.gd" id="10_auto"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_buy_amount"]
 
@@ -427,6 +428,29 @@ show_percentage = false
 [node name="LabList" type="VBoxContainer" parent="Margin/Rows/Columns/Right/Tabs/Lab/LabBox"]
 unique_name_in_owner = true
 layout_mode = 2
+
+[node name="Auto" type="ScrollContainer" parent="Margin/Rows/Columns/Right/Tabs"]
+visible = false
+layout_mode = 2
+horizontal_scroll_mode = 0
+metadata/_tab_index = 4
+
+[node name="AutomationPanel" type="VBoxContainer" parent="Margin/Rows/Columns/Right/Tabs/Auto"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("10_auto")
+
+[node name="AutoHint" type="Label" parent="Margin/Rows/Columns/Right/Tabs/Auto/AutomationPanel"]
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Auto-buyers run once a second while the game is open. Switch each one on or off here."
+autowrap_mode = 3
+
+[node name="AutoRows" type="VBoxContainer" parent="Margin/Rows/Columns/Right/Tabs/Auto/AutomationPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StackBox"
 
 [node name="NewsPanel" type="PanelContainer" parent="Margin/Rows/Columns/Right"]
 unique_name_in_owner = true

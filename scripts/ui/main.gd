@@ -7,6 +7,7 @@ const MAX_VISUAL_MOVES_PER_SECOND := 12.0
 const TAP_ACTION := &"tap"  ## Space / Enter (project.godot input map); held keys don't repeat
 const UPGRADES_TAB := 1
 const LAB_TAB := 3
+const AUTO_TAB := 4
 const SOLVE_POP_INTERVAL := 0.25   ## at most ~4 "+X Solves" pops a second, however many solves happen
 const BURST_INTERVAL := 0.5
 const COUNTER_EASE := 12.0         ## how fast the Solves counter catches up (higher = faster)
@@ -52,6 +53,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var compete_panel: CompetePanel = %CompetePanel
 @onready var perks_button: Button = %PerksButton
 @onready var perk_panel: PerkPanel = %PerkPanel
+@onready var automation_panel: AutomationPanel = %AutomationPanel
 
 var _helper_cards: Dictionary = {}    ## building id -> ShopCard
 var _upgrade_tiles: Dictionary = {}   ## upgrade id -> UpgradeTile
@@ -118,6 +120,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	Game.automation_paused = welcome_panel.visible  # auto-buyers (6.3b) wait until "Welcome back" is collected
+	Game.auto_compete_held = solve_station.visible or compete_panel.visible  # never reset the run under the player
 	if _goal_bar_mode():
 		var goals := Game.get_goals(1)
 		solve_progress.value = float(goals[0]["progress"]) if not goals.is_empty() else 1.0
@@ -958,6 +962,8 @@ func _rebuild_after_reset() -> void:
 func _on_purchased(kind: String, _id: String) -> void:
 	if kind == "method" and _showcase != null:
 		_showcase.method = Game.method  # the next showcase solve uses it
+	if Game.automation_running:  # auto-buyers (6.3b) buy quietly (no click every second); the 0.1 s refresh shows it
+		return
 	Audio.play_buy()
 	_refresh()
 
@@ -985,6 +991,9 @@ func _refresh_compete() -> void:
 		"trophy" if Game.trophies == 1 else "trophies", Num.format(roundf((Game.get_trophy_mult() - 1.0) * 100.0))]
 	if perk_panel.visible:
 		perk_panel.set_view(_perk_header(), _perk_views())
+	tabs.set_tab_hidden(AUTO_TAB, not Game.is_system_unlocked("automation"))  # the Auto tab (6.3b) comes with its perk
+	if tabs.current_tab == AUTO_TAB:
+		automation_panel.refresh()
 
 
 # --- Trophy perks (task 6.3) --------------------------------------------------------

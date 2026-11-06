@@ -31,10 +31,11 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 11  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 12  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
-                          ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks
+                          ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
+                          ## v12 (6.3b): auto-buyer toggles
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -75,6 +76,11 @@ var _solve_bests: Dictionary = {}  ## puzzle id -> {"single": s, 5: s, 12: s, ..
 ## every puzzle. Won by compete() (6.2), saved (v10), spent by the perk tree later (6.3).
 var trophies := 0
 var perks: Dictionary = {}      ## trophy perks bought (6.3): perk id -> true; kept through every championship
+var automation: Dictionary = {}  ## auto-buyers (6.3b, saved): kind -> on (bool) for Content.AUTOMATION kinds, + "compete_at"
+var automation_running := false  ## true while run_automation() buys: the UI keeps quiet about those purchases
+var automation_paused := false   ## set by the UI while "Welcome back" is open: no auto-buyer runs (6.3b)
+var auto_compete_held := false   ## set by the UI while a hand solve or the Compete screen is open: no auto-Compete
+var _automation_timer := 0.0
 var championships := 0          ## World Championships won (6.2); the first one opens the 7×7, the Megaminx and "Finals"
 var puzzles_reached: Dictionary = {}  ## puzzle id -> true for every puzzle ever unlocked (kept through prestige: its music stays)
 var method := "beginner"        ## id of the newest method learned (Content.METHODS); every earlier one is learned too
@@ -124,6 +130,10 @@ func _process(delta: float) -> void:
 	update_golden(delta)
 	update_flow(delta)
 	update_research(delta)
+	_automation_timer += delta
+	if _automation_timer >= float(Content.AUTOMATION["interval"]):
+		_automation_timer = 0.0
+		run_automation()
 	if persistence_enabled:
 		_autosave_timer += delta
 		if _autosave_timer >= AUTOSAVE_INTERVAL:
@@ -734,6 +744,11 @@ func buy_perk(id: String) -> bool:
 	perks[id] = true
 	invalidate_upgrade_cache()
 	_apply_run_start_perks(true)
+	var system := String(Content.get_perk(id).get("effect", {}).get("system", ""))
+	if system.begins_with("auto_"):
+		# a new auto-buyer starts switched on, except auto-Compete: it could end the run a second later, before the
+		# player has set its target
+		automation[system.trim_prefix("auto_")] = system != "auto_compete"
 	purchased.emit("perk", id)
 	return true
 
@@ -745,6 +760,103 @@ func is_system_unlocked(system: String) -> bool:
 		if effect.get("type", "") == "unlock" and effect.get("system", "") == system:
 			return true
 	return false
+
+
+# --- Auto-buyers (task 6.3b) --------------------------------------------------------
+
+## Is this auto-buyer (Content.AUTOMATION kinds: helpers, upgrades, puzzles, compete) bought?
+func is_auto_unlocked(kind: String) -> bool:
+	return is_system_unlocked("auto_" + kind)
+
+
+## Bought and switched on.
+func is_auto_on(kind: String) -> bool:
+	return is_auto_unlocked(kind) and bool(automation.get(kind, false))
+
+
+## Switches an auto-buyer on or off (nothing happens for one that isn't bought).
+func set_auto(kind: String, on: bool) -> void:
+	if is_auto_unlocked(kind):
+		automation[kind] = on
+
+
+## The trophy gain auto-Compete waits for.
+func get_auto_compete_at() -> int:
+	return maxi(1, int(automation.get("compete_at", Content.AUTOMATION["compete_at_default"])))
+
+
+func set_auto_compete_at(trophies_wanted: int) -> void:
+	automation["compete_at"] = clampi(trophies_wanted, 1, 1000000000)
+
+
+## One tick of the auto-buyers (from _process once a second; tests call it directly). Compete first (a new run makes
+## buying now pointless), then the next puzzle, then upgrades (cheapest first, never a choice pair: picking a side
+## stays the player's, 5.7b), then helpers (the cheapest one, again and again). Returns how many things it bought
+## (a championship counts as one).
+func run_automation() -> int:
+	var bought := 0
+	if automation_paused:
+		return 0
+	automation_running = true
+	if is_auto_on("compete") and not auto_compete_held and get_pending_trophies() >= get_auto_compete_at() and compete() > 0:
+		automation_running = false
+		return 1
+	if is_auto_on("puzzles"):
+		var next := get_next_locked_puzzle()
+		if can_unlock_puzzle(next) and unlock_puzzle(next):
+			bought += 1
+	if is_auto_on("upgrades"):
+		var wanted: Array[Dictionary] = []
+		for def: Dictionary in Content.get_upgrades():
+			if String(def.get("choice_group", "")) == "" and is_upgrade_available(def["id"]):
+				wanted.append(def)
+		wanted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["cost"]) < float(b["cost"]))
+		for def in wanted:
+			if solves < float(def["cost"]):
+				break
+			if buy_upgrade(def["id"]):
+				bought += 1
+	if is_auto_on("helpers"):
+		var reserve := get_auto_reserve()
+		for i in int(Content.AUTOMATION["helper_buys_per_tick"]):
+			var cheapest := _cheapest_helper()
+			if cheapest == "" or solves - get_building_cost(cheapest) < reserve or not buy_building(cheapest):
+				break
+			bought += 1
+	automation_running = false
+	return bought
+
+
+## Solves Team Manager leaves alone: the cost of the next puzzle (Puzzle Scout on) or the cheapest upgrade Shopping
+## List would buy, if it's at most Content.AUTOMATION["save_seconds"] of helper income away; else 0.
+func get_auto_reserve() -> float:
+	var reserve := 0.0
+	var reach := get_solves_per_second() * float(Content.AUTOMATION["save_seconds"])
+	if is_auto_on("puzzles"):
+		var next := get_next_locked_puzzle()
+		if next != "" and get_puzzle_unlock_cost(next) - solves <= reach:
+			reserve = maxf(reserve, get_puzzle_unlock_cost(next))
+	if is_auto_on("upgrades"):
+		var cheapest := INF
+		for def: Dictionary in Content.get_upgrades():
+			if String(def.get("choice_group", "")) == "" and is_upgrade_available(def["id"]):
+				cheapest = minf(cheapest, float(def["cost"]))
+		if cheapest < INF and cheapest - solves <= reach:
+			reserve = maxf(reserve, cheapest)
+	return reserve
+
+
+## The shown helper with the lowest next-copy cost ("" if none is shown).
+func _cheapest_helper() -> String:
+	var best := ""
+	var best_cost := INF
+	for def: Dictionary in Content.BUILDINGS:
+		if is_building_unlocked(def["id"]):
+			var cost := get_building_cost(def["id"])
+			if cost < best_cost:
+				best = def["id"]
+				best_cost = cost
+	return best
 
 
 ## How long offline progress (and the Lab's time away) can run: 8 h plus "offline_hours" perks.
@@ -1758,6 +1870,8 @@ func reset_state() -> void:
 	upgrades.clear()
 	trophies = 0
 	perks.clear()
+	automation = {"compete_at": int(Content.AUTOMATION["compete_at_default"])}
+	_automation_timer = 0.0
 	championships = 0
 	method = Content.METHODS[0]["id"]
 	solve_records.clear()
@@ -1805,6 +1919,7 @@ func get_save_data() -> Dictionary:
 		"lab": {"current": research.duplicate(), "done": research_done.keys()},
 		"championship": {"trophies": trophies, "count": championships, "run_solves": run_solves,
 				"reached": puzzles_reached.keys(), "perks": perks.keys()},
+		"automation": automation.duplicate(),
 	}
 
 
@@ -1909,6 +2024,13 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	championships = maxi(0, int(saved_champ.get("count", 0)))
 	run_solves = clampf(float(saved_champ.get("run_solves", total_solves)), 0.0, total_solves)  # never more than lifetime
 	_load_perks(saved_champ.get("perks", []))
+	var saved_auto: Variant = data.get("automation", {})
+	if typeof(saved_auto) == TYPE_DICTIONARY:
+		for kind: String in Content.AUTOMATION["kinds"]:
+			if typeof((saved_auto as Dictionary).get(kind)) == TYPE_BOOL:
+				automation[kind] = bool(saved_auto[kind])
+		if typeof((saved_auto as Dictionary).get("compete_at")) in [TYPE_INT, TYPE_FLOAT]:
+			set_auto_compete_at(int(saved_auto["compete_at"]))
 	var saved_reached: Variant = saved_champ.get("reached", [])
 	if typeof(saved_reached) == TYPE_ARRAY:
 		for id: Variant in saved_reached:
@@ -2127,6 +2249,11 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if typeof(champ) == TYPE_DICTIONARY and not (champ as Dictionary).has("perks"):
 			(champ as Dictionary)["perks"] = []
 		data["version"] = 11
+	if int(data["version"]) < 12:
+		# v12 adds the auto-buyer switches: nobody owned an auto-buyer, so all off.
+		if not data.has("automation"):
+			data["automation"] = {}
+		data["version"] = 12
 	return data
 
 

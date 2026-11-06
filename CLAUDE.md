@@ -50,6 +50,8 @@ scenes/puzzle_chip.tscn    class PuzzleChip: one card in the puzzle row (small L
                            share) or the next locked puzzle (padlock, cost, Unlock button)
 scripts/ui/news_feed.gd    class NewsFeed (main.news): the news feed under the shop (R.4): GameState events -> lines,
                            one per ~1.2 s, repeats merged, last 20 kept (%NewsList). Pure data, tested with fake time
+scripts/ui/automation_panel.gd  class AutomationPanel (%AutomationPanel, the shop's "Auto" tab, 6.3b): On/Off per
+                           auto-buyer + auto-Compete's target; rules in Game.run_automation(). Uses Game by name
 scripts/ui/split_panel.gd  class SplitPanel (%SplitPanel, the shop's "Puzzles" tab): per-puzzle share −/+ and presets
 scripts/ui/fx_layer.gd     class FxLayer (%FxLayer in main.tscn): pooled floating "+N" texts (max 20) + solve particle burst
 scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle/set_speed,
@@ -161,7 +163,7 @@ SIZE=1920x1080 bash tools/screenshot.sh docs/screenshots/1080p    # another reso
 PUZZLE=7x7 bash tools/screenshot.sh /tmp/shots mid                # another puzzle -> mid_7x7.png
 POSE=turn bash tools/screenshot.sh /tmp/shots mid                 # frozen moment: turn | solved -> mid_turn.png
 GRAPHICS=low bash tools/screenshot.sh /tmp/shots mid              # Graphics: Low -> mid_low.png
-TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 Upgrades / 2 Puzzles -> mid_tab1.png
+TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 Upgrades / 2 Puzzles / 3 Lab -> mid_tab1.png
 JUICE=1 bash tools/screenshot.sh /tmp/shots mid                   # taps + solve pop mid-animation -> mid_juice.png
 BUY=10 bash tools/screenshot.sh /tmp/shots mid                    # shop on ×10 (BUY=-1: Max) -> mid_buy10.png
 SETTINGS=1 bash tools/screenshot.sh /tmp/shots mid                # Settings panel open -> mid_settings.png
@@ -180,6 +182,7 @@ PICK=speed_practice bash tools/screenshot.sh /tmp/shots mid       # a choice mad
 COMPETE=1 bash tools/screenshot.sh /tmp/shots endgame            # the Compete screen open -> endgame_compete.png
 COMPETE=won bash tools/screenshot.sh /tmp/shots endgame          # just after a championship (6.2) -> endgame_competewon.png
 PERKS=1 bash tools/screenshot.sh /tmp/shots endgame              # the trophy perk tree open (6.3) -> endgame_perks.png
+AUTO=1 bash tools/screenshot.sh /tmp/shots endgame               # the shop's Auto tab (6.3b) -> endgame_auto.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
