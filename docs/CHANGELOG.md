@@ -2,6 +2,45 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-06 — Task 6.3: the trophy perk tree (save v11)
+- **Owner decisions first (new D14 in PLAN §7):** only **unspent** trophies give +2 % moves, so a perk is a trade (the
+  shop says what it costs you). Nodes for systems that don't exist yet: the **Automation** first node is buyable now and
+  marked "coming soon" (6.3b fills it in); the **Competition** first node shows "Arrives with Competitions" and can't be
+  bought until 8.3, and the rest of its branch doesn't wait for it.
+- **Data:** `Content.PERK_BRANCHES` (Practice, Team, Competition, Automation) and `Content.PERKS`, 13 perks:
+  Practice: Warm-up Routine (runs start with the 3×3, 5), Practice While Away (offline 12 h, 10), Big Cube Prep (+4×4, 40),
+  Overnight Sessions (16 h, 30). Team: Team Captain (10 Friends, 5), Team Spirit (helpers ×1.5, 15), Club Founder
+  (10 Clubs, 25), Team Chemistry (helpers ×2, 50). Competition: Competition Circuit (Competitions, 10, not buyable yet),
+  Comp Prep (×1.25 trophies, 15), Home Crowd (+3 % per unspent trophy, 20), Appearance Fees (Solves per solve ×2, 30).
+  Automation: Automation (10, coming soon). 265 trophies in all; a first championship gives ~81 (6.4 tunes it).
+  Effects are either an upgrade effect (counts in `_upgrade_mult` like Lab projects; new type **`helper_mult`**: helpers
+  only, not taps) or one of `Content.PERK_EFFECT_TYPES` (start_puzzle, start_helpers, offline_hours, trophy_bonus,
+  trophy_gain_mult, unlock). Icons reuse existing ones (game-icons.net wasn't reachable from the container).
+- **GameState:** `perks`, `has_perk`, `get_perk_status` (owned / available / locked / soon), `can_buy_perk`, `buy_perk`
+  (emits `purchased("perk", id)`), `is_system_unlocked("automation" | "competitions")`, `get_offline_cap_seconds()` (also
+  caps the Lab's time away), `get_bonus_per_trophy()`, `get_trophy_gain_mult()`. `trophies_for` / `solves_for_trophies`
+  take an optional gain multiplier (and `trophies_for` now checks itself against `solves_for_trophies`, so a trophy is
+  never lost to rounding at its threshold). **Run-start perks apply at once when bought** (a free 3×3 with the focus and
+  the whole split, like unlocking it; helpers topped up, never taken away) and after every championship.
+- **Save v11:** `championship.perks` (ids). Loading drops unknown ids, perks whose parent isn't owned and not-yet-buyable
+  ones. v10 → v11: no perks. **Achievements (7.1) are now v12** (ROADMAP and PLAN updated).
+- **UI:** a **"Perks · N"** button in the top bar (once you have trophies or perks) opens `PerkPanel`: four columns, nodes
+  by depth (a lone child sits under its parent), lines that turn green when owned, tooltips with the exact effect and
+  cost. Theme: `PerkOwned`, `PerkName`, `PerkTree` line colours. The Compete screen's formula shows Comp Prep / Home
+  Crowd; buying a perk adds a news line. Screenshot option `PERKS=1`; shot in `docs/screenshots/6.3-perks/`.
+- Tests (4054 checks, `All good.`): `test_perk_data` (branches, icons, effect types, parents earlier and in the same branch, one first
+  node per branch), `test_perk_buying`, `test_each_perk` (one check per perk; **a new perk fails it until it gets its own
+  check**), `test_perks_kept_and_saved` (kept through a championship, round trip, damaged list, v10 → v11).
+- **Not done / for later:** the balance bot doesn't buy perks or play a second run yet (6.4 needs both for "second run
+  ≤ 45 min"). Medal bonuses wait for 8.3's medals. The fun pass's ideas from 2026-11-05 still wait for the owner.
+- **Checks:** screenshot-checker found nothing broken ("Warm-up Routine" just fits its node). The balance bot's BALANCE.md
+  is unchanged (it never reaches a championship, so it never buys a perk). **diff-reviewer fixes:** the tree's node
+  height now matches perk_node.tscn (the bottom row overflowed by 8 px); the keep list no longer says "+2 %" (Home Crowd
+  makes it 3 %); perk sums are cached with the upgrade multipliers (they're read on every move); one news line per perk;
+  version checks in tests use SAVE_VERSION. **Left for 8.3** (noted under it in the ROADMAP): making `comp_circuit`
+  buyable would drop Competition perks bought without it on load, so 8.3 needs a migration that grants it.
+- **Next: 6.3b** (auto-buyers in the Automation branch; see the note under it in the ROADMAP).
+
 ## 2026-11-05 — Task 6.2: the championship reset (save v10)
 - **The owner asked to "start phase 6.1"**, but another session had already finished 6.1 (on `main` since 2026-11-04),
   so this session did the next Phase 6 task, 6.2. A `fun-designer` pass ran first (end of Phase 5); its ideas are

@@ -35,6 +35,8 @@ scripts/autoload/settings.gd  class GameSettings ("Settings"): every setting in 
 scenes/welcome_panel.tscn  class WelcomePanel: "Welcome back" (time away, +Solves, Collect) and damaged-save notices
 scenes/compete_panel.tscn  class CompetePanel: the Compete screen (6.1): trophies you'd win, bonus before/after, next
                            trophy, keep/reset lists (Content.CHAMPIONSHIP); display only, main.gd plays "Finals" meanwhile
+scenes/perk_panel.tscn    class PerkPanel: the trophy perk tree (6.3): a column per Content.PERK_BRANCHES, PerkNodes
+                           (scenes/perk_node.tscn) joined by lines; display only, main.gd buys with Game.buy_perk()
 scenes/settings_panel.tscn class SettingsPanel: sound, music mode, Jukebox, graphics, reduce motion, notation, reset save
 scenes/solve_station.tscn  class SolveStation (scripts/ui/solve_station.gd): the "Solve it yourself" overlay: keyboard
                            solving (csTimer or simple keys), drag-to-turn, key hints on the cube, scramble, inspection,
@@ -89,7 +91,7 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
 4. Big numbers are `float`. Format all player-facing numbers with `Num.format()`.
 5. **Save compatibility matters.** If you change the shape of `get_save_data()`, bump
    `SAVE_VERSION` and add a step in `_migrate()` so old saves still load.
-6. Cost formula: `ceil(base_cost * 1.15 ^ owned)`. Offline progress is capped at 8 hours.
+6. Cost formula: `ceil(base_cost * 1.15 ^ owned)`. Offline progress is capped at 8 hours (Practice perks raise it: `Game.get_offline_cap_seconds()`).
 7. Keep scenes editable in the Godot editor: use `%UniqueName` nodes, no deep `get_node` paths.
 8. **Style lives in `ui/theme.tres`.** No `theme_override_*` in scenes (a test enforces it); give a node a
    `theme_type_variation` instead (TitleLabel, SubtitleLabel, DimLabel, FaintLabel, TickerLabel, HintLabel,
@@ -97,7 +99,8 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    TightBox, CardTitle, CardLine, CardOwned, CostAffordable, CostUnaffordable, UpgradeGrid, ToggleChip, PopTap,
    PopSolve, TimerLabel, TimerWaiting, TimerDone, ScrambleLabel, SidePanel, StageChip, StageChipActive, StageChipDone,
    StageChipRow, TickerText, KeyHint, GoalBar, GoalLabel, GoalLabelDim, NewsPanel, NewsNew, NewsOld, GoldenButton,
-   BuffLabel, TimerGolden, FlowLabel, ChoiceBadge), or add a new variation.
+   BuffLabel, TimerGolden, FlowLabel, ChoiceBadge, PerkOwned, PerkName; PerkTree holds the tree's line colours), or add
+   a new variation.
 9. **Taps:** clicking the puzzle or the `tap` input action (Space / Enter, no repeat when held). Shop and other
    buttons use `focus_mode = none`, so Space never presses a focused button by accident.
    One accent colour: green `#3ccf8e` (dim `#2a9d6c`). Every new asset gets a line in `assets/CREDITS.md`.
@@ -176,6 +179,7 @@ LAB=1 bash tools/screenshot.sh /tmp/shots mid                     # the Lab tab:
 PICK=speed_practice bash tools/screenshot.sh /tmp/shots mid       # a choice made (Upgrades tab) -> mid_pickspeed_practice.png
 COMPETE=1 bash tools/screenshot.sh /tmp/shots endgame            # the Compete screen open -> endgame_compete.png
 COMPETE=won bash tools/screenshot.sh /tmp/shots endgame          # just after a championship (6.2) -> endgame_competewon.png
+PERKS=1 bash tools/screenshot.sh /tmp/shots endgame              # the trophy perk tree open (6.3) -> endgame_perks.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

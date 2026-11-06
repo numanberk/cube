@@ -225,7 +225,7 @@ next-goal bar. The small row cubes and the Megaminx keep speed mode / rewind. It
 - **Taps stay relevant:** later tap upgrades add a % of moves/s to each tap. Hold-to-repeat is **not** allowed.
 - **12 helpers** in total by the end of Phase 5, with costs reaching ~1e15.
 - **Prestige — World Championship:** `trophies = floor(sqrt(run_solves / 4e10))` (task 6.1 picked the divisor from
-  BALANCE.md: ~50 trophies at 90 min, `Content.CHAMPIONSHIP`). Each unspent trophy gives +2 % all moves. The Trophy shop has permanent perks. 7×7 and Megaminx are only reachable after prestige.
+  BALANCE.md: ~50 trophies at 90 min, `Content.CHAMPIONSHIP`). Each unspent trophy gives +2 % all moves (D14). The trophy perk tree (6.3, `Content.PERKS`) has permanent perks bought with trophies. 7×7 and Megaminx are only reachable after prestige.
 
 ### 4.6 What our player loves (player research)
 The game is made for one player first. Their favourite idle games (Idle Skilling 804 h, The Perfect Tower II 159 h,
@@ -291,7 +291,7 @@ docs/BALANCE.md, docs/screenshots/
 - Content stays as data (`Content.PUZZLES`, `Content.TRACKS`, `Content.ACHIEVEMENTS`, …). If `content.gd` gets huge,
   split it into `content_helpers.gd`, `content_upgrades.gd`, and so on.
 - **Save versions:** v1 → **v2 puzzles** (4.2) → **v3 mastery** (4.6) → **v4 methods** (5.1) → **v5 solve records** (S.2) →
-  **v6 Golden Scramble + buff** (S.6) → **v7 drill records** (S.4) → **v8 daily scramble** (S.5) → **v9 Algorithm Lab** (5.6) → **v10 World Championships** (6.2) → **v11 achievements** (7.1).
+  **v6 Golden Scramble + buff** (S.6) → **v7 drill records** (S.4) → **v8 daily scramble** (S.5) → **v9 Algorithm Lab** (5.6) → **v10 World Championships** (6.2) → **v11 trophy perks** (6.3) → **v12 achievements** (7.1).
   Every bump has a `_migrate()` step and a test that loads the older format. Saves are written to a temp file then
   renamed, with `save.bak` kept (task 0.4).
 - Settings live in `user://settings.cfg`, separate from the save, so a reset never wipes volume or graphics choices.
@@ -325,6 +325,10 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
   speed**: the active player reaches the tapping bot's 30-min lifetime Solves 2–3× sooner (×2.80 after 5.2; Flow was raised
   then, Gold ×2.6, because milestones made a flat boost worth less). A raw Solves
   ratio is far larger (×6 at 30 min) because the early economy compounds, so it isn't the target.
+- **D14 Trophy bonus and perks:** (owner, 2026-11-06) **only unspent trophies** give +2 % moves each, so every trophy perk
+  is a trade (a perk for some of that bonus). Perk tree nodes for systems that don't exist yet: the **Automation** first
+  node is buyable now, marked "coming soon" (6.3b fills it in); the **Competition** first node shows "Arrives with
+  Competitions" and can't be bought until 8.3, while the rest of that branch (trophy bonuses) works today.
 
 ### Open
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?

@@ -50,6 +50,8 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var welcome_panel: WelcomePanel = %WelcomePanel
 @onready var compete_button: Button = %CompeteButton
 @onready var compete_panel: CompetePanel = %CompetePanel
+@onready var perks_button: Button = %PerksButton
+@onready var perk_panel: PerkPanel = %PerkPanel
 
 var _helper_cards: Dictionary = {}    ## building id -> ShopCard
 var _upgrade_tiles: Dictionary = {}   ## upgrade id -> UpgradeTile
@@ -79,6 +81,8 @@ func _ready() -> void:
 	compete_panel.compete_enabled = true  # the championship reset exists since 6.2
 	compete_panel.compete_pressed.connect(func() -> void: Game.compete())
 	Game.championship_won.connect(_on_championship_won)
+	perks_button.pressed.connect(open_perks)
+	perk_panel.perk_pressed.connect(func(id: String) -> void: Game.buy_perk(id))
 	solve_button.pressed.connect(func() -> void: solve_station.open(Game.get_focused_puzzle_id()))
 	Settings.changed.connect(_on_setting_changed)
 	buy_one.pressed.connect(set_buy_amount.bind(1))
@@ -141,7 +145,7 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	# Space / Enter tap from anywhere. allow_echo = false: holding the key down doesn't repeat (PLAN: no hold-to-repeat).
 	if event.is_action_pressed(TAP_ACTION, false) and not settings_panel.visible and not welcome_panel.visible \
-			and not solve_station.visible and not compete_panel.visible:
+			and not solve_station.visible and not compete_panel.visible and not perk_panel.visible:
 		_on_tap_pressed()
 		get_viewport().set_input_as_handled()
 		return
@@ -975,6 +979,47 @@ func _refresh_compete() -> void:
 		Num.format(float(gain)), "trophy" if gain == 1 else "trophies"])
 	if compete_panel.visible:
 		compete_panel.set_preview(Game.get_championship_preview())
+	perks_button.visible = Game.trophies > 0 or not Game.perks.is_empty()
+	perks_button.text = "Perks · %s" % Num.format(float(Game.trophies))
+	perks_button.tooltip_text = "Trophy perks: %s unspent %s, +%s %% moves." % [Num.format(float(Game.trophies)),
+		"trophy" if Game.trophies == 1 else "trophies", Num.format(roundf((Game.get_trophy_mult() - 1.0) * 100.0))]
+	if perk_panel.visible:
+		perk_panel.set_view(_perk_header(), _perk_views())
+
+
+# --- Trophy perks (task 6.3) --------------------------------------------------------
+
+func open_perks() -> void:
+	perk_panel.open(_perk_header(), _perk_views())
+
+
+func _perk_header() -> String:
+	return "%s unspent %s  ·  +%s %% moves" % [Num.format(float(Game.trophies)), "trophy" if Game.trophies == 1 else "trophies",
+		Num.format(roundf((Game.get_trophy_mult() - 1.0) * 100.0))]
+
+
+## A PerkNode view for every perk, from Game.
+func _perk_views() -> Dictionary:
+	var views := {}
+	for def: Dictionary in Content.PERKS:
+		var id: String = def["id"]
+		var needs := PackedStringArray()
+		for need: Variant in def.get("requires", []):
+			if not Game.has_perk(str(need)):
+				needs.append(Content.get_perk(str(need)).get("name", str(need)))
+		views[id] = {
+			"icon": Content.icon(def["icon"]),
+			"title": def["name"],
+			"description": def["description"],
+			"cost": int(def["cost"]),
+			"status": Game.get_perk_status(id),
+			"affordable": Game.can_buy_perk(id),
+			"soon": def.get("soon", ""),
+			"needs": " and ".join(needs),
+			"have": Num.format(float(Game.trophies)),
+			"bonus": Num.format(Game.get_bonus_per_trophy() * 100.0),
+		}
+	return views
 
 
 # --- Settings ----------------------------------------------------------------------

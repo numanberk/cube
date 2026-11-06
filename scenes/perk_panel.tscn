@@ -1,0 +1,75 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/perk_panel.gd" id="1_perks"]
+
+[node name="PerkPanel" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_perks")
+
+[node name="Dim" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+layout_mode = 2
+
+[node name="Box" type="VBoxContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_type_variation = &"StackBox"
+
+[node name="Header" type="HBoxContainer" parent="Center/Panel/Box"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Center/Panel/Box/Header"]
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "Trophy Perks"
+
+[node name="TrophyCount" type="Label" parent="Center/Panel/Box/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 8
+theme_type_variation = &"SubtitleLabel"
+text = "111 trophies · +222 % moves"
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="Center/Panel/Box/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+text = "Close"
+
+[node name="Intro" type="Label" parent="Center/Panel/Box"]
+custom_minimum_size = Vector2(1000, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Perks are yours for good: they stay through every championship. Only unspent trophies add to your moves, so every perk costs you some of that bonus. Pick what is worth more."
+autowrap_mode = 3
+
+[node name="Branches" type="HBoxContainer" parent="Center/Panel/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ColumnsBox"

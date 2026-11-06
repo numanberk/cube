@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/ui/split_panel.gd" id="6_split"]
 [ext_resource type="PackedScene" path="res://scenes/solve_station.tscn" id="7_station"]
 [ext_resource type="PackedScene" path="res://scenes/compete_panel.tscn" id="8_compete"]
+[ext_resource type="PackedScene" path="res://scenes/perk_panel.tscn" id="9_perks"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_buy_amount"]
 
@@ -90,6 +91,14 @@ layout_mode = 2
 size_flags_vertical = 4
 theme_type_variation = &"BuffLabel"
 text = "Frenzy ×7 · 30s"
+
+[node name="PerksButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+text = "Perks"
 
 [node name="CompeteButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
@@ -492,6 +501,11 @@ visible = false
 layout_mode = 1
 
 [node name="CompetePanel" parent="." instance=ExtResource("8_compete")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+
+[node name="PerkPanel" parent="." instance=ExtResource("9_perks")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1

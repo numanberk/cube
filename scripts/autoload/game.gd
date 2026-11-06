@@ -25,17 +25,18 @@ signal daily_rewarded(amount: float)  ## the first daily scramble finished today
 signal research_started(project_id: String)   ## Algorithm Lab (5.6)
 signal research_finished(project_id: String)  ## a project's effect counts from now (methods also emit purchased("method"))
 signal championship_won(trophies_won: int)  ## a World Championship reset the run (6.2); the UI rebuilds after it
+## Buying a trophy perk (6.3) emits purchased("perk", id).
 signal golden_spawned
 signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 10  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 11  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
-                          ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached)
+                          ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks
 const AUTOSAVE_INTERVAL := 10.0
-const MAX_OFFLINE_SECONDS := 8.0 * 3600.0
+const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
 const BASE_TAP_MOVES := 1.0
 const COST_GROWTH := 1.15
@@ -73,6 +74,7 @@ var _solve_bests: Dictionary = {}  ## puzzle id -> {"single": s, 5: s, 12: s, ..
 ## Unspent trophies from World Championships (Phase 6): each gives Content.CHAMPIONSHIP["bonus_per_trophy"] more moves on
 ## every puzzle. Won by compete() (6.2), saved (v10), spent by the perk tree later (6.3).
 var trophies := 0
+var perks: Dictionary = {}      ## trophy perks bought (6.3): perk id -> true; kept through every championship
 var championships := 0          ## World Championships won (6.2); the first one opens the 7×7, the Megaminx and "Finals"
 var puzzles_reached: Dictionary = {}  ## puzzle id -> true for every puzzle ever unlocked (kept through prestige: its music stays)
 var method := "beginner"        ## id of the newest method learned (Content.METHODS); every earlier one is learned too
@@ -95,7 +97,7 @@ var research_done: Dictionary = {}         ## finished non-method Lab projects (
 var daily: Dictionary = {}                 ## S.5 (saved): {date, rewarded, times {puzzle: s}, fmc {puzzle: moves}, fmc_ever {puzzle: moves}}
 var daily_now := -1.0                      ## tests: the unix time "now" for the daily (-1 = the real clock)
 var _mult_cache: Dictionary = {}           ## _upgrade_mult results for the current set of owned upgrades
-var _mult_cache_owned := -1                ## upgrades.size() + 1000 × research_done.size() the cache was built for (-1 = stale)
+var _mult_cache_owned := -1                ## _mult_cache_key() the cache was built for (-1 = stale)
 var _offline_catch_up := false             ## true while offline progress is added: buffs don't count then
 
 
@@ -224,7 +226,8 @@ func get_tap_moves() -> float:
 ## Moves per second produced by ONE unit of a building.
 func get_building_mps(id: String) -> float:
 	var def := Content.get_building(id)
-	return float(def["mps"]) * _upgrade_mult("building_mult", id) * _upgrade_mult("global_mult") * _synergy_mult(id)
+	return float(def["mps"]) * _upgrade_mult("building_mult", id) * _upgrade_mult("global_mult") * _synergy_mult(id) \
+			* _upgrade_mult("helper_mult")
 
 
 func get_moves_per_second() -> float:
@@ -569,14 +572,32 @@ func has_won_championship() -> bool:
 
 # --- World Championship (Phase 6) ------------------------------------------------
 
-## Trophies a championship gives for this many Solves earned in the run: floor(sqrt(solves / divisor)).
-static func trophies_for(run_solves: float) -> int:
-	return floori(sqrt(maxf(0.0, run_solves) / float(Content.CHAMPIONSHIP["divisor"])))
+## Trophies a championship gives for this many Solves earned in the run: floor(sqrt(solves / divisor) × gain_mult)
+## (gain_mult: "trophy_gain_mult" perks, 6.3). Checked against solves_for_trophies, so rounding never loses a trophy
+## right at its threshold.
+static func trophies_for(run_solves: float, gain_mult: float = 1.0) -> int:
+	var count := floori(sqrt(maxf(0.0, run_solves) / float(Content.CHAMPIONSHIP["divisor"])) * gain_mult)
+	if run_solves >= solves_for_trophies(count + 1, gain_mult):
+		count += 1
+	elif count > 0 and run_solves < solves_for_trophies(count, gain_mult):
+		count -= 1
+	return count
 
 
 ## Run Solves needed for a championship to give `count` trophies (the inverse of trophies_for).
-static func solves_for_trophies(count: int) -> float:
-	return float(count) * float(count) * float(Content.CHAMPIONSHIP["divisor"])
+static func solves_for_trophies(count: int, gain_mult: float = 1.0) -> float:
+	var root := float(count) / gain_mult
+	return root * root * float(Content.CHAMPIONSHIP["divisor"])
+
+
+## How many times more trophies a championship gives, from "trophy_gain_mult" perks (6.3).
+func get_trophy_gain_mult() -> float:
+	return _perk_product("trophy_gain_mult")
+
+
+## The moves bonus each unspent trophy gives: Content.CHAMPIONSHIP's 2 % plus "trophy_bonus" perks (6.3).
+func get_bonus_per_trophy() -> float:
+	return float(Content.CHAMPIONSHIP["bonus_per_trophy"]) + _perk_sum("trophy_bonus")
 
 
 ## Solves earned in this run (since the last championship).
@@ -586,7 +607,7 @@ func get_run_solves() -> float:
 
 ## Trophies competing now would give.
 func get_pending_trophies() -> int:
-	return trophies_for(get_run_solves())
+	return trophies_for(get_run_solves(), get_trophy_gain_mult())
 
 
 ## Competing needs at least one trophy to win.
@@ -600,7 +621,7 @@ func is_compete_visible() -> bool:
 
 
 ## Enters the World Championship (6.2): wins get_pending_trophies() trophies and starts a new run. Keeps what
-## Content.CHAMPIONSHIP["keeps"] promises (trophies, mastery, hand-solve records and their tier bonuses, drills, dailies,
+## Content.CHAMPIONSHIP["keeps"] promises (trophies and perks, mastery, hand-solve records and their tier bonuses, drills, dailies,
 ## music, lifetime stats; drill sets learned keep their Lab projects done) and resets the rest (Solves, run Solves,
 ## helpers, upgrades so choices reopen, puzzles back to the 2×2, methods, Lab research, Golden/Flow buffs).
 ## Returns the trophies won (0 = can't compete yet, nothing changes).
@@ -627,6 +648,7 @@ func compete() -> int:
 		if _is_drilled(def):
 			research_done[def["id"]] = true
 	invalidate_upgrade_cache()
+	_apply_run_start_perks(false)  # perks (6.3): start with the 3×3, 10 Friends, ...
 	buff = {}  # a glowing golden sticker isn't a buff: it stays and can still be clicked in the new run
 	flow = {}
 	offline_report = {}
@@ -642,16 +664,18 @@ func compete() -> int:
 
 ## The moves multiplier from `count` unspent trophies (-1 = the ones owned now).
 func get_trophy_mult(count: int = -1) -> float:
-	return 1.0 + float(Content.CHAMPIONSHIP["bonus_per_trophy"]) * float(trophies if count < 0 else count)
+	return 1.0 + get_bonus_per_trophy() * float(trophies if count < 0 else count)
 
 
 ## Everything the Compete screen shows: trophies now / won / after, the bonus before and after, and the next trophy.
-##   {run_solves, trophies, gain, after, mult_now, mult_after, next_at (run Solves for one more trophy), next_progress (0..1)}
+##   {run_solves, trophies, gain, after, mult_now, mult_after, next_at (run Solves for one more trophy), next_progress (0..1),
+##    bonus_per_trophy, gain_mult (perks, 6.3)}
 func get_championship_preview() -> Dictionary:
 	var run := get_run_solves()
-	var gain := trophies_for(run)
-	var floor_at := solves_for_trophies(gain)
-	var next_at := solves_for_trophies(gain + 1)
+	var gain_mult := get_trophy_gain_mult()
+	var gain := trophies_for(run, gain_mult)
+	var floor_at := solves_for_trophies(gain, gain_mult)
+	var next_at := solves_for_trophies(gain + 1, gain_mult)
 	return {
 		"run_solves": run,
 		"trophies": trophies,
@@ -661,7 +685,138 @@ func get_championship_preview() -> Dictionary:
 		"mult_after": get_trophy_mult(trophies + gain),
 		"next_at": next_at,
 		"next_progress": clampf((run - floor_at) / (next_at - floor_at), 0.0, 1.0),
+		"bonus_per_trophy": get_bonus_per_trophy(),
+		"gain_mult": gain_mult,
 	}
+
+
+# --- Trophy perks (task 6.3) -------------------------------------------------------
+
+func has_perk(id: String) -> bool:
+	return perks.has(id)
+
+
+## A perk can be bought at all now (Content.PERKS `buyable`, default true; false while its system doesn't exist yet).
+func is_perk_buyable_yet(id: String) -> bool:
+	var def := Content.get_perk(id)
+	return not def.is_empty() and bool(def.get("buyable", true))
+
+
+## Every perk it needs is owned. A needed perk that can't be bought yet doesn't block it (owner, 2026-11-06: the
+## Competition branch works before Competitions exist).
+func are_perk_requirements_met(id: String) -> bool:
+	for need: Variant in Content.get_perk(id).get("requires", []):
+		if not perks.has(str(need)) and is_perk_buyable_yet(str(need)):
+			return false
+	return true
+
+
+## "owned", "soon" (can't be bought yet), "locked" (a parent is missing), "available" (buyable; see can_buy_perk).
+func get_perk_status(id: String) -> String:
+	if perks.has(id):
+		return "owned"
+	if not is_perk_buyable_yet(id):
+		return "soon"
+	if not are_perk_requirements_met(id):
+		return "locked"
+	return "available"
+
+
+func can_buy_perk(id: String) -> bool:
+	return get_perk_status(id) == "available" and trophies >= int(Content.get_perk(id)["cost"])
+
+
+## Spends trophies on a perk. Its effect counts at once; a run-start perk (the 3×3, 10 Friends) also applies to this run.
+func buy_perk(id: String) -> bool:
+	if not can_buy_perk(id):
+		return false
+	trophies -= int(Content.get_perk(id)["cost"])
+	perks[id] = true
+	invalidate_upgrade_cache()
+	_apply_run_start_perks(true)
+	purchased.emit("perk", id)
+	return true
+
+
+## Has an "unlock" perk opened this system ("automation", "competitions")?
+func is_system_unlocked(system: String) -> bool:
+	for id: String in perks:
+		var effect: Dictionary = Content.get_perk(id).get("effect", {})
+		if effect.get("type", "") == "unlock" and effect.get("system", "") == system:
+			return true
+	return false
+
+
+## How long offline progress (and the Lab's time away) can run: 8 h plus "offline_hours" perks.
+func get_offline_cap_seconds() -> float:
+	return MAX_OFFLINE_SECONDS + _perk_sum("offline_hours") * 3600.0
+
+
+## The run-start perks, for a run that's starting (compete) or already running (a perk just bought): owned "start_puzzle"
+## puzzles get unlocked for free (in ladder order; the newest gets the focus and the whole split, like unlock_puzzle),
+## and "start_helpers" tops a helper up to its count. `emit`: tell the UI about new puzzles (not during compete, which
+## rebuilds the whole screen).
+func _apply_run_start_perks(emit: bool) -> void:
+	var added: Array[String] = []
+	for def: Dictionary in Content.PUZZLES:
+		var id: String = def["id"]
+		if _perk_starts_with_puzzle(id) and not unlocked_puzzles.has(id) and get_next_locked_puzzle() == id:
+			_add_puzzle(id)
+			added.append(id)
+	if not added.is_empty():
+		set_split_preset("newest")
+		focused_puzzle = unlocked_puzzles.back()
+	for perk_id: String in perks:
+		var effect: Dictionary = Content.get_perk(perk_id).get("effect", {})
+		if effect.get("type", "") == "start_helpers" and buildings.has(effect.get("target", "")):
+			buildings[effect["target"]] = maxi(int(buildings[effect["target"]]), int(effect.get("value", 0)))
+	if emit and not added.is_empty():
+		focus_changed.emit(focused_puzzle)
+		for id in added:
+			puzzle_unlocked.emit(id)
+
+
+func _perk_starts_with_puzzle(puzzle_id: String) -> bool:
+	for id: String in perks:
+		var effect: Dictionary = Content.get_perk(id).get("effect", {})
+		if effect.get("type", "") == "start_puzzle" and effect.get("puzzle", "") == puzzle_id:
+			return true
+	return false
+
+
+## Sum of the owned perks' values for one effect type. Cached with the upgrade multipliers (it's read on every move).
+func _perk_sum(effect_type: String) -> float:
+	var key := "perk_sum|" + effect_type
+	if _mult_cache_key() == _mult_cache_owned and _mult_cache.has(key):
+		return _mult_cache[key]
+	var total := 0.0
+	for id: String in perks:
+		var effect: Dictionary = Content.get_perk(id).get("effect", {})
+		if effect.get("type", "") == effect_type:
+			total += float(effect.get("value", 0.0))
+	_store_cached(key, total)
+	return total
+
+
+func _perk_product(effect_type: String) -> float:
+	var key := "perk_product|" + effect_type
+	if _mult_cache_key() == _mult_cache_owned and _mult_cache.has(key):
+		return _mult_cache[key]
+	var total := 1.0
+	for id: String in perks:
+		var effect: Dictionary = Content.get_perk(id).get("effect", {})
+		if effect.get("type", "") == effect_type:
+			total *= float(effect.get("value", 1.0))
+	_store_cached(key, total)
+	return total
+
+
+## Puts a value in the upgrade cache, first dropping the cache if it was built for another set of owned things.
+func _store_cached(key: String, value: float) -> void:
+	if _mult_cache_key() != _mult_cache_owned:
+		_mult_cache.clear()
+		_mult_cache_owned = _mult_cache_key()
+	_mult_cache[key] = value
 
 
 ## The next puzzle on the ladder that isn't unlocked yet and can be reached now ("" if none).
@@ -1422,9 +1577,9 @@ func _upgrade_requirements_met(def: Dictionary) -> bool:
 
 ## Synergies on a helper (5.3): ×(1 + value × copies of the source) for each owned synergy upgrade that targets it.
 func _synergy_mult(target: String) -> float:
-	if upgrades.size() + 1000 * research_done.size() != _mult_cache_owned:
+	if _mult_cache_key() != _mult_cache_owned:
 		_mult_cache.clear()
-		_mult_cache_owned = upgrades.size() + 1000 * research_done.size()
+		_mult_cache_owned = _mult_cache_key()
 	var key := "synergy_defs|" + target
 	if not _mult_cache.has(key):  # which owned synergies target this helper (only changes with the owned set)
 		var found: Array = []
@@ -1537,7 +1692,7 @@ func invalidate_upgrade_cache() -> void:
 	_mult_cache_owned = -1
 
 
-## Product of every owned upgrade's effect of this type (and target). Cached: with ~50 upgrades (5.2) this is called
+## Product of every owned upgrade's (and finished Lab project's and trophy perk's) effect of this type (and target). Cached: with ~50 upgrades (5.2) this is called
 ## thousands of times a second by the balance bot. It's dropped by invalidate_upgrade_cache() (buying, finishing research,
 ## a reset, a load) and, as a safety net, whenever the number of owned upgrades or finished projects changes.
 func _upgrade_mult(effect_type: String, target: String = "") -> float:
@@ -1563,8 +1718,18 @@ func _upgrade_mult(effect_type: String, target: String = "") -> float:
 		if lab_effect.get("type", "") != effect_type or not _effect_matches(lab_effect, target):
 			continue
 		mult *= float(lab_effect["value"])
+	for id: String in perks:  # trophy perks (6.3) with an upgrade effect count like owned upgrades too
+		var perk_effect: Dictionary = Content.get_perk(id).get("effect", {})
+		if perk_effect.get("type", "") != effect_type or not _effect_matches(perk_effect, target):
+			continue
+		mult *= float(perk_effect["value"])
 	_mult_cache[key] = mult
 	return mult
+
+
+## What the upgrade cache's safety net compares: the counts of owned upgrades, finished projects and perks.
+func _mult_cache_key() -> int:
+	return upgrades.size() + 1000 * research_done.size() + 1000000 * perks.size()
 
 
 ## Does an effect apply to this target ("" = any): its `target` (a helper) or one of its `puzzles` (5.7b specialists).
@@ -1592,6 +1757,7 @@ func reset_state() -> void:
 		buildings[def["id"]] = 0
 	upgrades.clear()
 	trophies = 0
+	perks.clear()
 	championships = 0
 	method = Content.METHODS[0]["id"]
 	solve_records.clear()
@@ -1638,7 +1804,7 @@ func get_save_data() -> Dictionary:
 		"daily": daily.duplicate(true),
 		"lab": {"current": research.duplicate(), "done": research_done.keys()},
 		"championship": {"trophies": trophies, "count": championships, "run_solves": run_solves,
-				"reached": puzzles_reached.keys()},
+				"reached": puzzles_reached.keys(), "perks": perks.keys()},
 	}
 
 
@@ -1742,6 +1908,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	trophies = maxi(0, int(saved_champ.get("trophies", 0)))
 	championships = maxi(0, int(saved_champ.get("count", 0)))
 	run_solves = clampf(float(saved_champ.get("run_solves", total_solves)), 0.0, total_solves)  # never more than lifetime
+	_load_perks(saved_champ.get("perks", []))
 	var saved_reached: Variant = saved_champ.get("reached", [])
 	if typeof(saved_reached) == TYPE_ARRAY:
 		for id: Variant in saved_reached:
@@ -1814,7 +1981,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	check_helper_times(false)
 	_next_solves_milestone = _milestone_above(total_solves)
 	var saved_at := float(data.get("saved_at", now))
-	var elapsed := clampf(now - saved_at, 0.0, MAX_OFFLINE_SECONDS)
+	var elapsed := clampf(now - saved_at, 0.0, get_offline_cap_seconds())
 	if elapsed >= MIN_OFFLINE_SECONDS:
 		var before := total_solves
 		_offline_catch_up = true  # a buff pauses while the game is closed
@@ -1826,6 +1993,20 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 			offline_report = {"seconds": elapsed, "solves": total_solves - before}
 			if running != "" and research.is_empty():
 				offline_report["research"] = Content.get_lab_project(running).get("topic", "")
+
+
+## The saved trophy perks (6.3): unknown ids and ones whose requirements aren't owned are dropped (in Content order, so a
+## parent is decided before its children).
+func _load_perks(saved: Variant) -> void:
+	perks.clear()
+	var wanted := {}
+	if typeof(saved) == TYPE_ARRAY:
+		for id: Variant in saved:
+			wanted[str(id)] = true
+	for def: Dictionary in Content.PERKS:
+		if wanted.has(def["id"]) and is_perk_buyable_yet(def["id"]) and are_perk_requirements_met(def["id"]):
+			perks[def["id"]] = true
+	invalidate_upgrade_cache()
 
 
 ## The saved Lab (5.6), checked like the rest of a save: unknown projects, ones whose requirements aren't done and a
@@ -1940,6 +2121,12 @@ func _migrate(data: Dictionary) -> Dictionary:
 			data["championship"] = {"trophies": 0, "count": 0, "run_solves": float(data.get("total_solves", 0.0)),
 					"reached": reached.duplicate()}
 		data["version"] = 10
+	if int(data["version"]) < 11:
+		# v11 adds trophy perks: none bought yet.
+		var champ: Variant = data.get("championship", {})
+		if typeof(champ) == TYPE_DICTIONARY and not (champ as Dictionary).has("perks"):
+			(champ as Dictionary)["perks"] = []
+		data["version"] = 11
 	return data
 
 

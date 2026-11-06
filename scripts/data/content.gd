@@ -20,6 +20,7 @@ const EFFECT_TYPES := [
 	"synergy",           # each owned "source" helper makes the "target" helper `value` (e.g. 0.02 = 2 %) faster (5.3)
 	"puzzle_mult",       # multiplies all moves (taps and helpers) on the puzzles in "puzzles" (5.7b specialists)
 	"mastery_xp_mult",   # multiplies mastery XP from every solve (5.7b)
+	"helper_mult",       # multiplies every helper's moves, not taps (trophy perks, 6.3)
 ]
 
 const BUILDINGS := [
@@ -426,7 +427,7 @@ const CHAMPIONSHIP := {
 	"divisor": 4e10,
 	"bonus_per_trophy": 0.02,
 	"keeps": [
-		"Trophies (+2 % moves each)",
+		"Trophies and trophy perks",
 		"Puzzle mastery levels",
 		"Solve Station records and their bonuses",
 		"Drill and daily results",
@@ -443,6 +444,76 @@ const CHAMPIONSHIP := {
 	],
 	"unlocks": "After your first championship, the 7×7 and Megaminx can be unlocked.",
 }
+
+## Trophy perk tree (task 6.3, PLAN §4.4): permanent perks bought with trophies, kept through every championship.
+## Spending is a trade (owner, 2026-11-06): only UNSPENT trophies give +2 % moves each, so a perk costs that bonus.
+## Four branches; as in Idle Skilling the first node of each branch unlocks a system, and every other node needs its
+## parent (`requires`). A node with `buyable: false` can't be bought yet (its system comes later, `soon` says when);
+## the nodes under it don't wait for it. `soon` on a buyable node is a "coming soon" note (Automation: task 6.3b).
+##   id, branch, icon, name, description, cost (trophies), requires (perk ids), effect, soon (optional), buyable (default true)
+## effect.type is an upgrade effect (EFFECT_TYPES: counts like an owned upgrade) or one of PERK_EFFECT_TYPES.
+const PERK_EFFECT_TYPES := [
+	"start_puzzle",      # every run starts with "puzzle" unlocked (applied at once when bought, too)
+	"start_helpers",     # every run starts with `value` copies of helper "target" (topped up at once when bought)
+	"offline_hours",     # adds `value` hours to the offline cap (8 h), which also caps the Lab's time away
+	"trophy_bonus",      # adds `value` to the moves bonus per unspent trophy (0.01 = +1 %)
+	"trophy_gain_mult",  # championships give × `value` trophies
+	"unlock",            # opens a system: "system" (checked with Game.is_system_unlocked)
+]
+
+const PERK_BRANCHES := [
+	{"id": "practice", "name": "Practice", "description": "Start every run further up the ladder, and stay away longer."},
+	{"id": "team", "name": "Team", "description": "Start with a team, and make every helper faster."},
+	{"id": "competition", "name": "Competition", "description": "More trophies, and more from each one."},
+	{"id": "automation", "name": "Automation", "description": "Let the game buy and compete for you."},
+]
+
+const PERKS := [
+	{"id": "warm_up", "branch": "practice", "icon": "small_cubes", "name": "Warm-up Routine",
+		"description": "Every run starts with the 3×3 unlocked.", "cost": 5, "requires": [],
+		"effect": {"type": "start_puzzle", "puzzle": "3x3"}},
+	{"id": "practice_away", "branch": "practice", "icon": "roux", "name": "Practice While Away",
+		"description": "Offline progress and the Lab keep going for 12 h instead of 8 h.", "cost": 10,
+		"requires": ["warm_up"], "effect": {"type": "offline_hours", "value": 4.0}},
+	{"id": "big_cube_prep", "branch": "practice", "icon": "big_cubes", "name": "Big Cube Prep",
+		"description": "Every run starts with the 4×4 unlocked too.", "cost": 40, "requires": ["warm_up"],
+		"effect": {"type": "start_puzzle", "puzzle": "4x4"}},
+	{"id": "overnight", "branch": "practice", "icon": "mastery_focus", "name": "Overnight Sessions",
+		"description": "Offline progress and the Lab keep going 4 h longer (16 h).", "cost": 30,
+		"requires": ["practice_away"], "effect": {"type": "offline_hours", "value": 4.0}},
+
+	{"id": "team_captain", "branch": "team", "icon": "friend", "name": "Team Captain",
+		"description": "Every run starts with 10 Cubing Friends.", "cost": 5, "requires": [],
+		"effect": {"type": "start_helpers", "target": "friend", "value": 10}},
+	{"id": "team_spirit", "branch": "team", "icon": "pro_scrims", "name": "Team Spirit",
+		"description": "Every helper works ×1.5 as fast.", "cost": 15, "requires": ["team_captain"],
+		"effect": {"type": "helper_mult", "value": 1.5}},
+	{"id": "club_founder", "branch": "team", "icon": "club", "name": "Club Founder",
+		"description": "Every run starts with 10 Cubing Clubs too.", "cost": 25, "requires": ["team_captain"],
+		"effect": {"type": "start_helpers", "target": "club", "value": 10}},
+	{"id": "team_chemistry", "branch": "team", "icon": "pro_team", "name": "Team Chemistry",
+		"description": "Every helper works ×2 as fast.", "cost": 50, "requires": ["team_spirit"],
+		"effect": {"type": "helper_mult", "value": 2.0}},
+
+	{"id": "comp_circuit", "branch": "competition", "icon": "competition", "name": "Competition Circuit",
+		"description": "Opens Competitions: timed events from Local to Worlds.", "cost": 10, "requires": [],
+		"effect": {"type": "unlock", "system": "competitions"}, "buyable": false, "soon": "Arrives with Competitions"},
+	{"id": "comp_prep", "branch": "competition", "icon": "stackmat", "name": "Comp Prep",
+		"description": "Championships give 25 % more trophies.", "cost": 15, "requires": ["comp_circuit"],
+		"effect": {"type": "trophy_gain_mult", "value": 1.25}},
+	{"id": "home_crowd", "branch": "competition", "icon": "live_stream", "name": "Home Crowd",
+		"description": "Each unspent trophy gives +3 % moves instead of +2 %.", "cost": 20, "requires": ["comp_circuit"],
+		"effect": {"type": "trophy_bonus", "value": 0.01}},
+	{"id": "appearance_fees", "branch": "competition", "icon": "sponsorship", "name": "Appearance Fees",
+		"description": "Solves per solve ×2 on every puzzle.", "cost": 30, "requires": ["comp_prep"],
+		"effect": {"type": "solve_value_mult", "value": 2.0}},
+
+	{"id": "automation", "branch": "automation", "icon": "firmware", "name": "Automation",
+		"description": "Opens the Automation panel: auto-buyers for helpers, upgrades and puzzles, and auto-Compete.",
+		"cost": 10, "requires": [], "effect": {"type": "unlock", "system": "automation"},
+		"soon": "Coming soon: the auto-buyers arrive in the next update"},
+]
+
 
 ## Algorithm Lab (task 5.6): research that runs in real time, also while the game is closed (capped like offline progress).
 ## One project at a time (a second slot may come with the trophy tree, 6.3). Paid when started, its effect counts when it finishes.
@@ -849,6 +920,13 @@ static func get_puzzle(id: String) -> Dictionary:
 
 static func get_track(id: String) -> Dictionary:
 	for def: Dictionary in TRACKS:
+		if def["id"] == id:
+			return def
+	return {}
+
+
+static func get_perk(id: String) -> Dictionary:
+	for def: Dictionary in PERKS:
 		if def["id"] == id:
 			return def
 	return {}

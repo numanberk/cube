@@ -64,9 +64,11 @@ func set_preview(data: Dictionary) -> void:
 	_next_label.text = "%s / %s Solves this run for %s" % [Num.format(run), Num.format(next_at),
 			"your first trophy" if gain == 0 else "trophy %s" % Num.format(float(gain + 1))]
 	_next_bar.value = float(data.get("next_progress", 0.0))
-	_formula.text = "Trophies = √(Solves this run ÷ %s), rounded down. Each unspent trophy: +%s %% moves." % [
+	var gain_mult := float(data.get("gain_mult", 1.0))
+	_formula.text = "Trophies = √(Solves this run ÷ %s)%s, rounded down. Each unspent trophy: +%s %% moves." % [
 		Num.format(float(Content.CHAMPIONSHIP["divisor"])),
-		Num.format(float(Content.CHAMPIONSHIP["bonus_per_trophy"]) * 100.0),
+		"" if is_equal_approx(gain_mult, 1.0) else " × %s" % Num.format(gain_mult),
+		Num.format(float(data.get("bonus_per_trophy", Content.CHAMPIONSHIP["bonus_per_trophy"])) * 100.0),
 	]
 	_compete.disabled = not compete_enabled or gain < 1
 	_compete.text = "Compete" if gain < 1 else "Compete for %s" % _gain.text.trim_prefix("+")

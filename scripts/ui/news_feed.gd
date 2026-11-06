@@ -75,6 +75,9 @@ func on_purchased(kind: String, id: String) -> void:
 					String(def.get("description", "")).get_slice(".", 0) + "."])
 		"puzzle":
 			push("puzzle", "New puzzle: %s. Your helpers start on it now." % Content.get_puzzle(id).get("name", id))
+		"perk":
+			var perk := Content.get_perk(id)
+			push("perk:" + id, "Trophy perk: %s. %s" % [perk.get("name", id), perk.get("description", "")])
 
 
 func on_time_tier(puzzle_id: String, tier: String, seconds: float) -> void:

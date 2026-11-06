@@ -14,7 +14,7 @@
 | Helper cost | `ceil(base_cost × 1.15^owned)` |
 | Helper unlock | Visible once lifetime Solves ≥ 50% of base cost (or `unlock_at`) |
 | Upgrade unlock | Visible once lifetime Solves ≥ 50% of cost, and its `requires` are met |
-| Offline | Seconds away × moves/sec, capped at 8 h |
+| Offline | Seconds away × moves/sec, capped at 8 h (12–16 h with Practice perks) |
 
 ## Helpers (current, task 5.8)
 | Helper | Base cost | Moves/s |

@@ -299,14 +299,20 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       *(Done 2026-11-05: `Game.compete()`, save v10 (`championship`: trophies, wins, run Solves, puzzles reached), the
       Compete button works. Research resets, buffs end, drill-learned Lab projects stay done, music stays. The button
       still shows from ~33 min: left for 6.4 to tune with the bot.)*
-- [ ] **6.3 Trophy perk tree (PR):** permanent perks as data, arranged in 4 branches: Practice (start with 3×3, +offline cap),
+- [x] **6.3 Trophy perk tree (PR):** permanent perks as data, arranged in 4 branches: Practice (start with 3×3, +offline cap),
       Team (start with 10 Friends, helper boosts), Competition (unlocks Competitions 8.3, medal bonuses) and Automation
       (unlocks 6.3b). As in Idle Skilling, **the first node of each branch unlocks a system**. Nodes need their parent.
       *Done when:* each perk has a test, and there's a screenshot of the tree.
+      *(Done 2026-11-06: 13 perks in `Content.PERKS`, save v11, a "Perks" button in the top bar opens the tree. D14: only
+      unspent trophies give the bonus; the Competition first node can't be bought until 8.3, the Automation one can
+      (coming soon). Medal bonuses wait for 8.3's medals; the Competition branch has trophy bonuses for now.)*
 - [ ] **6.3b Auto-buyers and auto-Compete (PR):** toggles bought in the Automation branch: auto-buy the cheapest helper,
       auto-buy upgrades, auto-unlock the next puzzle, and auto-Compete when the trophy gain reaches a set amount.
       The logic is in `GameState` (checked once a second); the toggles live in a small Automation panel.
       Auto-buy upgrades **skips choice pairs** (`choice_group`, 5.7b): picking a side stays the player's decision.
+      **From 6.3:** the Automation branch's first node (`automation`) exists and is buyable; `Game.is_system_unlocked(
+      "automation")` says if it's owned. Add each auto-buyer as a child perk in `Content.PERKS` (branch "automation",
+      `requires` ["automation"] or a sibling), drop the root's `soon` note, and show the panel only once it's owned.
       *Done when:* tests cover each auto-buyer, auto-Compete's threshold, and that nothing runs before it's bought.
 - [ ] **6.4 Tune prestige (D6: ~90 min):**
       *Done when:* the sim's first prestige lands at 80–100 min, and the second run reaches the same point in ≤ 45 min, as real pacing tests.
@@ -320,10 +326,10 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       a lab, so the progression reads as a journey. *Done when:* each moment fires once at its trigger (test) and there's a
       screenshot.
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
-      all moves, with a toast when earned. Save v11. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
+      all moves, with a toast when earned. Save v12. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
       so they work as a map of the game, like Revolution Idle's.
-      *Done when:* there are tests for the conditions and the v10 → v11 migration, and a screenshot of the tab and toast.
+      *Done when:* there are tests for the conditions and the v11 → v12 migration, and a screenshot of the tab and toast.
 - [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
 
@@ -348,6 +354,11 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       Each asks for a solves/s target held for 60 s with your current kit and puzzle. Medals (bronze/silver/gold) give
       permanent bonuses and collection drops. You can fail and come back later. Unlocked by the Competition branch (6.3).
       *Done when:* tests cover pass/fail, medal rewards and the unlock, and there's a screenshot.
+      **From 6.3:** the perk `comp_circuit` (Competition branch's first node) has `"buyable": false` and a `soon` note
+      until this task: remove both and check `Game.is_system_unlocked("competitions")`. Medal bonus perks go in that branch.
+      **Save safety:** players can own Comp Prep / Home Crowd / Appearance Fees without `comp_circuit` today, and
+      `_load_perks` drops perks whose parent isn't owned. So bump the save and add a `_migrate` step that grants
+      `comp_circuit` to anyone who owns one of its children (free: they never had a chance to buy it), with a test.
 - [ ] **8.4 Challenge runs (PR):** a championship run with a rule: Beginner method only, No helpers, One-handed
       (taps ×0.5), Big cubes only, No upgrades… Finishing one gives a permanent reward. 6–9 challenges as data.
       *Done when:* tests cover each rule's restriction and its reward, and there's a screenshot.

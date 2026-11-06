@@ -3939,7 +3939,7 @@ func test_championship_save() -> void:
 	g.compete()
 	g.cheat_add_solves(1234.0)
 	var data := g.get_save_data()
-	check(int(data["version"]) == 10 and GameState.SAVE_VERSION == 10, "saves as v10")
+	check(int(data["version"]) == GameState.SAVE_VERSION and GameState.SAVE_VERSION >= 10, "saves as v10 or later")
 	g.free()
 	var loaded := new_game()
 	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
@@ -3966,5 +3966,225 @@ func test_championship_save() -> void:
 	check(old.trophies == 0 and old.championships == 0 and not old.has_won_championship(), "v9 → v10: no championship yet")
 	check_near(old.get_run_solves(), GameState.solves_for_trophies(3), "v9 → v10: this run's Solves are the lifetime ones")
 	check(old.get_pending_trophies() == 3 and old.puzzles_reached.has("3x3"), "...so the trophies wait, and the 3×3 counts as reached")
-	check(int(old.get_save_data()["version"]) == 10, "it saves as v10")
+	check(int(old.get_save_data()["version"]) == GameState.SAVE_VERSION, "it saves as the current version")
 	old.free()
+
+
+# --- Trophy perk tree (task 6.3) -----------------------------------------------------
+
+## A game that has won `trophies` trophies in one championship (so perks can be bought).
+func perk_game(trophy_count: int) -> GameState:
+	var g := new_game()
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	g.compete()
+	g.trophies = trophy_count
+	return g
+
+
+func test_perk_data() -> void:
+	var ids := {}
+	var branches := {}
+	for branch: Dictionary in Content.PERK_BRANCHES:
+		branches[branch["id"]] = 0
+	for def: Dictionary in Content.PERKS:
+		var id: String = def["id"]
+		check(not ids.has(id), "perk ids are unique (%s)" % id)
+		check(branches.has(def["branch"]), "%s is in a known branch" % id)
+		check(ResourceLoader.exists(Content.ICON_DIR + String(def["icon"]) + ".svg"), "%s has an icon" % id)
+		check(int(def["cost"]) > 0, "%s costs trophies" % id)
+		var effect: Dictionary = def["effect"]
+		check(Content.EFFECT_TYPES.has(effect["type"]) or Content.PERK_EFFECT_TYPES.has(effect["type"]),
+				"%s has a known effect type (%s)" % [id, effect["type"]])
+		for need: Variant in def["requires"]:
+			check(ids.has(str(need)), "%s needs a perk listed before it (%s)" % [id, need])
+			check(Content.get_perk(str(need)).get("branch", "") == def["branch"], "%s needs a perk of its own branch" % id)
+		if (def["requires"] as Array).is_empty():
+			branches[def["branch"]] = int(branches[def["branch"]]) + 1
+		check(Content.get_perk(id) == def, "get_perk finds %s" % id)
+		ids[id] = true
+	for branch: String in branches:
+		check(int(branches[branch]) == 1, "the %s branch has exactly one first node" % branch)
+	check(Content.PERK_BRANCHES.size() == 4, "four branches: Practice, Team, Competition, Automation")
+	check(PerkPanel.layout_rows("practice").size() == 3 and (PerkPanel.layout_rows("practice")[0] as Array) == ["warm_up"],
+			"the tree layout puts a branch's first node alone on the top row")
+
+
+func test_perk_buying() -> void:
+	var g := perk_game(20)
+	check(g.get_perk_status("warm_up") == "available" and g.can_buy_perk("warm_up"), "a first node can be bought")
+	check(g.get_perk_status("practice_away") == "locked" and not g.buy_perk("practice_away"), "a node needs its parent")
+	var mult_before := g.get_trophy_mult()
+	check(g.buy_perk("warm_up") and g.has_perk("warm_up"), "buying a perk")
+	check(g.trophies == 15, "it costs its trophies (20 - 5)")
+	check(g.get_trophy_mult() < mult_before and is_equal_approx(g.get_trophy_mult(), 1.0 + 0.02 * 15),
+			"only unspent trophies give +2 %%, so spending lowers the bonus (owner, 2026-11-06)")
+	check(g.get_perk_status("warm_up") == "owned" and not g.buy_perk("warm_up"), "a perk is bought once")
+	check(g.get_perk_status("practice_away") == "available", "...and opens its children")
+	g.trophies = 3
+	check(not g.can_buy_perk("practice_away") and not g.buy_perk("practice_away") and g.trophies == 3, "too few trophies: nothing happens")
+	check(not g.buy_perk("banana"), "an unknown perk can't be bought")
+	g.free()
+	var fresh := new_game()
+	check(not fresh.can_buy_perk("warm_up"), "a new game has no trophies to spend")
+	fresh.free()
+
+
+## Every perk in Content.PERKS has its own check here; a new perk fails this test until it gets one.
+func test_each_perk() -> void:
+	var tested := {}
+
+	# warm_up: the 3×3 at the start of every run (and at once).
+	var g := perk_game(100)
+	check(g.buy_perk("warm_up") and g.is_puzzle_unlocked("3x3") and g.get_focused_puzzle_id() == "3x3",
+			"Warm-up Routine unlocks the 3×3 at once and focuses it")
+	check_near(g.get_puzzle_share("3x3"), 1.0, "...with the whole split, like unlocking it")
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	g.compete()
+	check(g.is_puzzle_unlocked("3x3") and g.get_focused_puzzle_id() == "3x3" and g.unlocked_puzzles.size() == 2,
+			"...and every new run starts with it")
+	tested["warm_up"] = true
+
+	# big_cube_prep: the 4×4 too.
+	check(g.buy_perk("big_cube_prep") and g.is_puzzle_unlocked("4x4") and g.get_focused_puzzle_id() == "4x4",
+			"Big Cube Prep unlocks the 4×4")
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	g.compete()
+	check(Array(g.unlocked_puzzles) == ["2x2", "3x3", "4x4"], "...and every run starts with the 2×2 to 4×4")
+	tested["big_cube_prep"] = true
+
+	# practice_away / overnight: the offline cap.
+	check_near(g.get_offline_cap_seconds(), 8.0 * 3600.0, "the offline cap is 8 h")
+	g.buy_perk("practice_away")
+	check_near(g.get_offline_cap_seconds(), 12.0 * 3600.0, "Practice While Away: 12 h")
+	tested["practice_away"] = true
+	g.buy_perk("overnight")
+	check_near(g.get_offline_cap_seconds(), 16.0 * 3600.0, "Overnight Sessions: 16 h")
+	tested["overnight"] = true
+	g.buildings["friend"] = 10
+	var data := g.get_save_data()
+	data["saved_at"] = 1000.0
+	var away := new_game()
+	away.apply_save_data(JSON.parse_string(JSON.stringify(data)), 1000.0 + 24.0 * 3600.0)
+	check_near(float(away.offline_report.get("seconds", 0.0)), 16.0 * 3600.0, "...a day away counts 16 h")
+	away.free()
+	g.free()
+
+	# team_captain / club_founder: helpers at the start of a run (topped up at once).
+	g = perk_game(100)
+	g.buildings["friend"] = 3
+	check(g.buy_perk("team_captain") and int(g.buildings["friend"]) == 10, "Team Captain tops Friends up to 10 at once")
+	g.buildings["friend"] = 25
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	g.compete()
+	check(int(g.buildings["friend"]) == 10, "...and every run starts with 10 Friends")
+	check(g.get_building_cost("friend") > 0.0, "...so the 11th isn't free")
+	tested["team_captain"] = true
+	check(g.buy_perk("club_founder") and int(g.buildings["club"]) == 10, "Club Founder: 10 Clubs")
+	g.buildings["club"] = 40
+	g.buy_perk("team_spirit")
+	check(int(g.buildings["club"]) == 40, "a run-start perk never takes helpers away")
+	tested["club_founder"] = true
+
+	# team_spirit / team_chemistry: every helper faster, taps not.
+	var g2 := perk_game(100)
+	g2.buy_perk("team_captain")
+	var friend_mps := g2.get_building_mps("friend")
+	var tap := g2.get_tap_moves()
+	g2.buy_perk("team_spirit")
+	check_near(g2.get_building_mps("friend"), friend_mps * 1.5, "Team Spirit: helpers ×1.5")
+	check_near(g2.get_tap_moves(), tap, "...taps are not helpers")
+	tested["team_spirit"] = true
+	g2.buy_perk("team_chemistry")
+	check_near(g2.get_building_mps("club"), float(Content.get_building("club")["mps"]) * 3.0, "Team Chemistry: ×2 more (×3 in all)")
+	tested["team_chemistry"] = true
+	g2.free()
+	g.free()
+
+	# comp_circuit: Competitions don't exist yet, so it can't be bought, and its children don't wait for it.
+	g = perk_game(100)
+	check(g.get_perk_status("comp_circuit") == "soon" and not g.buy_perk("comp_circuit"), "Competition Circuit arrives with Competitions (8.3)")
+	check(not g.is_system_unlocked("competitions"), "...so Competitions stay closed")
+	check(g.get_perk_status("comp_prep") == "available" and g.get_perk_status("home_crowd") == "available",
+			"...and the rest of its branch works today (owner, 2026-11-06)")
+	tested["comp_circuit"] = true
+
+	# comp_prep: ×1.25 trophies.
+	g.trophies = 50
+	g.cheat_add_solves(GameState.solves_for_trophies(8) - g.get_run_solves())
+	check(g.get_pending_trophies() == 8, "8 trophies before Comp Prep")
+	g.buy_perk("comp_prep")
+	check(g.get_pending_trophies() == 10, "Comp Prep: 25 %% more (8 -> 10)")
+	var preview := g.get_championship_preview()
+	check(int(preview["gain"]) == 10 and is_equal_approx(float(preview["gain_mult"]), 1.25), "...and the Compete screen shows it")
+	check(GameState.trophies_for(float(preview["next_at"]), 1.25) == 11 and GameState.trophies_for(float(preview["next_at"]) * 0.999, 1.25) == 10,
+			"...with the next trophy exactly where it arrives")
+	tested["comp_prep"] = true
+
+	# home_crowd: +3 % per unspent trophy.
+	g.trophies = 40
+	g.buy_perk("home_crowd")
+	check_near(g.get_bonus_per_trophy(), 0.03, "Home Crowd: +3 % per trophy")
+	check_near(g.get_trophy_mult(), 1.0 + 0.03 * 20, "...on the 20 trophies left")
+	check_near(g.get_bonus_per_trophy(), 0.03, "...read again from the cache")
+	tested["home_crowd"] = true
+
+	# appearance_fees: ×2 Solves per solve.
+	g.trophies = 30
+	var value := g.get_solve_value("2x2")
+	g.buy_perk("appearance_fees")
+	check_near(g.get_solve_value("2x2"), value * 2.0, "Appearance Fees: ×2 Solves per solve")
+	tested["appearance_fees"] = true
+
+	# automation: opens the Automation system (6.3b fills it).
+	g.trophies = 10
+	check(not g.is_system_unlocked("automation") and g.get_perk_status("automation") == "available",
+			"Automation is buyable now, marked coming soon (owner, 2026-11-06)")
+	check(String(Content.get_perk("automation").get("soon", "")) != "", "...with its note")
+	g.buy_perk("automation")
+	check(g.is_system_unlocked("automation"), "...and opens the Automation system")
+	tested["automation"] = true
+	g.free()
+
+	for def: Dictionary in Content.PERKS:
+		check(tested.has(def["id"]), "perk %s has a test in test_each_perk" % def["id"])
+
+
+func test_perks_kept_and_saved() -> void:
+	var g := perk_game(60)
+	for id: String in ["warm_up", "practice_away", "team_captain", "team_spirit", "comp_prep"]:
+		g.buy_perk(id)
+	var spent_left := g.trophies
+	g.cheat_add_solves(GameState.solves_for_trophies(4))
+	var won := g.compete()
+	check(won == 5 and g.trophies == spent_left + 5, "a championship keeps perks and adds trophies (4 × 1.25 = 5)")
+	check(g.has_perk("team_spirit") and g.perks.size() == 5, "perks are kept through a championship")
+	var data := g.get_save_data()
+	check(GameState.SAVE_VERSION >= 11 and int(data["version"]) == GameState.SAVE_VERSION, "saves as v11 or later")
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.perks.size() == 5 and loaded.has_perk("comp_prep") and loaded.trophies == g.trophies, "perks load")
+	check_near(loaded.get_building_mps("friend"), g.get_building_mps("friend"), "...and work after loading")
+	loaded.free()
+	# A damaged list: unknown ids, perks without their parent and not-yet-buyable ones are dropped.
+	(data["championship"] as Dictionary)["perks"] = ["banana", "overnight", "team_chemistry", "comp_circuit", "warm_up", 7]
+	var damaged := new_game()
+	damaged.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(damaged.perks.keys() == ["warm_up"], "a damaged perk list keeps only what could have been bought")
+	damaged.free()
+	(data["championship"] as Dictionary)["perks"] = "nope"
+	var broken := new_game()
+	broken.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(broken.perks.is_empty(), "a perk list that isn't a list loads as none")
+	broken.free()
+	# v10 -> v11: no perks yet.
+	var v10 := g.get_save_data()
+	v10["version"] = 10
+	(v10["championship"] as Dictionary).erase("perks")
+	var old := new_game()
+	old.apply_save_data(JSON.parse_string(JSON.stringify(v10)), float(v10["saved_at"]))
+	check(old.perks.is_empty() and old.trophies == g.trophies, "v10 → v11: no perks, trophies kept")
+	check(int(old.get_save_data()["version"]) == GameState.SAVE_VERSION, "...and it saves as the current version")
+	old.free()
+	g.reset_state()
+	check(g.perks.is_empty() and g.trophies == 0, "a wiped save has no perks")
+	g.free()
