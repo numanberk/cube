@@ -18,6 +18,10 @@ Template (newest first under "Open"):
 - (none)
 
 ## Handled
+- 2026-11-07 — "Make a plan on how to make the game look better; now it looks like an HTML file." → Diagnosed on
+  today's screenshots (flat boxes, no place, a small cube, 8 rows of text under it, one colour, body font for numbers, nothing
+  moving at rest): PLAN §4.7. New ROADMAP **Phase V — Look v2** (V.0–V.9). Open decisions **D15** (art direction),
+  **D15b** (sticker colours as category colours) and **D15c** (Phase V before Phase 7) asked in PLAN §7.
 - 2026-11-03 — "Fix cube control buttons to make it more intuitive." Asked: the owner picked **drag to turn**, **key hints
   on the cube** and a **simpler key layout option**, Solve Station only. → Done as S.8 (moved up) + new S.1b, see CHANGELOG.
 - 2026-11-03 — "It's just some random scrambles, I can't even understand what's going on after some point, and besides

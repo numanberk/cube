@@ -45,6 +45,50 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   the old tap tests now read the tap's value before tapping (the streak makes the next one bigger).
 - Screenshot option `TURNS=1` (your turns + the streak); shots in `docs/screenshots/s7-turns/`.
 - **Next: R.5** (Roux and ZZ in the solver), then R.6.
+## 2026-11-07 — Task V.0: the style gallery (Phase V starts)
+- **Owner decisions (2026-11-07, "go with your defaults"):** D15 = lo-fi desk stage + toy/sticker UI kit, competition
+  mood only on Compete and the Solve Station; D15b = sticker colours may mark categories (CLAUDE.md rule 9 reworded);
+  D15c = Phase V before Phase 7. Recorded in PLAN §7.
+- **Another session is building S.7 at the same time.** V.0 stays out of its way: no change to `game.gd`, `content.gd`,
+  `main.gd`, `main.tscn` or the save. Touched shared files: `tests/test_runner.gd` (new test placed right after
+  `test_theme_is_used_everywhere`, not at the end), `tools/screenshot.sh` (a `GALLERY` branch before the preset loop),
+  CLAUDE.md, docs. Whoever merges second: expect small text conflicts there, nothing semantic.
+- **New:** `scenes/dev/style_gallery.tscn` + `scripts/dev/style_gallery.gd` (`StyleGallery`). Pages `kit` and `parts`
+  (ROADMAP V.0 lists what's on each). Button states are drawn by a `Swatch` control straight from the theme, looked up
+  through its own `theme_type_variation` so variations fall back to `Button` like real buttons (asked by name alone,
+  Godot doesn't fall back to a variation's base type; the first try showed black text). `--font <ttf>` swaps the font
+  of the display styles on a theme copy, for candidate previews; nothing is saved.
+- `GALLERY=kit|parts|all bash tools/screenshot.sh <dir>` -> `gallery_<page>[_<font>].png`; `FONT=<ttf>` for candidates.
+- Test `test_style_gallery_covers_theme`: every theme variation appears in the gallery, the gallery only uses defined
+  variations, never names `Game`/`Settings`/`Audio`, and no game scene/script references it. 4424 checks, `All good.`
+- **Screenshots:** `docs/screenshots/V.0-gallery/` — `gallery_kit.png`, `gallery_parts.png` (today's theme, the "before"
+  for the whole phase), and display-font candidates `gallery_kit_Rubik.png`, `gallery_kit_Fredoka.png` (Baloo 2 was also
+  tried: looser and less fitting). Recommendation for V.1: **Fredoka** (rounded, matches the toy/sticker kit). Fonts were
+  downloaded from google/fonts (raw.githubusercontent.com works from the container; github.com/raw is blocked) and
+  not committed; V.1 adds the chosen one to `assets/fonts/` with its OFL text and a CREDITS line.
+- From the diff review: the swatches include hover+pressed and centre text in the box's content rect; an unknown page
+  or a missing `FONT` file fails loudly; shooting the gallery errors if any styled node is off screen (the test alone
+  only checks presence). Font previews swap only the bold display styles (Title, BigAccent, Timer, CardOwned/Title,
+  Primary/Golden buttons, pops, PerkName); bold Inter styles like CostAffordable and tabs keep Inter. Not done: the
+  `.tscn` has no uid (the editor adds one on first save); dev files would ship in an export (noted in 10.1).
+- The gallery shows GoldenButton has no hover+pressed style (falls back to plain Button); harmless today (it is not a
+  toggle), worth defining in V.2.
+- Seen on the gallery, for V.1/V.2: every surface is the same flat grey; Primary/Golden buttons are the only ones with
+  any weight; the IconTile background is barely visible; disabled states are nearly invisible on the panel colour.
+- **Next:** V.1 (type and numbers). It edits `main.tscn`'s top bar: pull `main` first so S.7's changes are in.
+
+## 2026-11-07 — Plan: Look v2 (owner: "it looks like an HTML file")
+- Docs only, no code. The owner asked for a plan to make the game look like a game. Fresh `fresh`/`mid`/`endgame`/
+  Upgrades-tab screenshots were the evidence; the diagnosis and 8 principles are in **PLAN §4.7**.
+- **New ROADMAP Phase V (V.0–V.9):** style gallery scene + screenshot preset (V.0), display font + number/StatChip system
+  and a new top bar (V.1), materials with depth and coloured icon stickers (V.2), background shader + a real stage with
+  a mat/pedestal, rim light and a bigger cube (V.3), decluttered main screen: ≤ 3 text rows under the puzzle, one goal
+  card, a puzzle shelf (V.4), shop cards with bars that fill towards their cost (V.5), a motion kit and panel transitions
+  (V.6), unlock banners and confetti (V.7), every overlay restyled (V.8), wordmark/icon/splash/resolutions (V.9).
+- **Asked the owner (PLAN §7, open):** D15 art direction ((a) lo-fi cubing desk, (b) competition stage, (c) toy/sticker
+  pop; recommended (a)+(c), (b) for Compete/Solve Station), D15b sticker colours as category colours (relaxes CLAUDE.md
+  rule 9 if yes), D15c Phase V before Phase 7. **V.0 can start without them; V.1 onwards needs D15.**
+- Not changed: CLAUDE.md rule 9 (waits for D15b). Phase 9.1 overlaps V.9; V.9 says to tick both.
 
 ## 2026-11-06 — Task 6.4: prestige tuned (Phase 6 done)
 - **The bot plays two runs now** (`tools/simulator.gd`, `run(..., prestige)`): it competes once a championship would

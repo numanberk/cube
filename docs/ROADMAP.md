@@ -331,6 +331,83 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       run caught up at 40:45 (46 %), 7×7 27 min into run 2; all are pacing tests now. The Compete button still shows at
       half the first trophy (~38 min now): kept as a preview of the system. Mastery left as it is.)*
 
+## Phase V — Look v2: from "web page" to "game" (owner, 2026-11-07) [D15]
+Why and the principles: PLAN §4.7. **D15 answered (2026-11-07):** lo-fi desk stage + toy/sticker UI kit, competition
+mood for Compete and the Solve Station; sticker colours as category colours; this phase before Phase 7. Every task: before/after screenshots in `docs/screenshots/V.n-…/`, `screenshot-checker` on
+`fresh`, `mid`, `endgame` and the presets it touches, Graphics Low still looks right, Reduce motion turns its motion off,
+no `theme_override_*` (rule 8). Retune the look in `ui/theme.tres`, not per scene; check it on the style gallery first (`GALLERY=all`, V.0), and add
+every new component or variation to the gallery (a test enforces variations).
+- [x] **V.0 Style gallery:** `scenes/dev/style_gallery.tscn` (`scripts/dev/style_gallery.gd`, class `StyleGallery`): every
+      UI building block in every state, on two pages because the logical screen is always 1280×720: **kit** (type ramp,
+      buttons drawn in normal/hover/pressed/disabled straight from the theme, tabs, bars, slider, chips, panels, icon
+      tiles) and **parts** (the real `ShopCard`, `UpgradeTile`, `PerkNode`, `PuzzleChip` scenes fed fake views, a 3D
+      puzzle, the Solve Station timers). It never uses `Game`. `GALLERY=kit|parts|all bash tools/screenshot.sh <dir>`;
+      `FONT=<ttf>` previews another display font on the display styles (`StyleGallery.DISPLAY_TYPES`).
+      *Done when:* the gallery screenshot shows every type variation in `ui/theme.tres` (a test lists the variations and
+      checks each is used in the gallery), and the display-font candidate shots are linked in the CHANGELOG.
+      *(Done 2026-11-07: `test_style_gallery_covers_theme` checks coverage; shooting the gallery fails if any styled node
+      is off screen. Shots in `docs/screenshots/V.0-gallery/`.)*
+- [ ] **V.1 Type and numbers [D15]:** a display font for counters, titles and buttons (OFL; V.0 shot *Rubik* and
+      *Fredoka* on the gallery (`docs/screenshots/V.0-gallery/gallery_kit_*.png`): **Fredoka** fits the toy/sticker kit best,
+      Rubik is the safer middle; ask the owner if they have a preference, else Fredoka; *Chakra Petch* or the *DSEG7*
+      7-segment face for timers on Compete / Solve Station), Inter
+      stays for body text; tabular figures on every changing number. A `StatChip` scene (icon + number + optional "/s"),
+      with icons for Solves (mini cube), moves, trophies, time. The top bar becomes: logo wordmark · **big Solves counter
+      with an outline/shadow** · `StatChip`s for solves/s and moves/s · icon buttons (settings gear) instead of words.
+      Counters roll digit by digit instead of snapping.
+      *Done when:* no player-facing stat is a "·"-joined sentence in the top bar, every counter has its icon, and
+      `fresh`/`mid`/`endgame` + 1080p screenshots show the new top bar without clipping at 30.00T and 1.00e30.
+- [ ] **V.2 Materials [D15, D15b]:** a palette of tokens in the theme (3 surface levels, text levels, 6 category colours,
+      green for "buyable", gold for trophies/golden). Panels and cards get depth with `StyleBoxFlat` features: drop shadow
+      (`shadow_size`/`shadow_offset`), a lighter top border and thicker darker bottom border (bevel), and a vertical
+      gradient where it helps (a `StyleBoxTexture` with a `GradientTexture2D`). Buttons press down 2 px. Icon tiles
+      become coloured "stickers": a rounded tile in the item's category colour with a gradient, the glyph in white with a
+      soft shadow, instead of white-on-grey.
+      *Done when:* the gallery and `mid` screenshots show three clearly separated depth levels (background, panel, card),
+      and helper/upgrade/Lab/trophy icons are told apart by colour at a glance.
+- [ ] **V.3 Background and stage [D15]:** a full-screen background (one canvas shader: gradient + vignette + very faint
+      noise, plus the direction's motif, e.g. lamp-lit desk bokeh for (a), slowly drifting sticker grid for (c)). In the
+      3D view: a surface under the puzzle (cubing mat / pedestal, generated in code like `PuzzleMeshes`), a warm key light,
+      a coloured rim light so the cube's silhouette pops, and the contact shadow on that surface. The puzzle grows to
+      ~50–60 % of the screen height; the camera reframes. Graphics Low: flat background colour, no rim light.
+      *Done when:* `mid`, `row6`, `endgame`, `POSE=solved` and `GRAPHICS=low` screenshots look right, `bench`/`bench_row`
+      frame times are no worse than +15 % (noted in the CHANGELOG), and the smoke run is clean.
+- [ ] **V.4 Declutter the main screen:** stage chips and the move ticker sit *on* the stage (overlaid at the bottom of the
+      3D view, translucent); the moves bar, "Next goal" line and the goal strip merge into one **goal card**; the hint line
+      ("Click the cube or press Space…") becomes a 9.2-style first-time hint; "Lifetime" moves to a tooltip on the Solves
+      counter; the puzzle row becomes a **shelf** of small puzzles on little stands instead of grey cards. The news box
+      hides (or shrinks to one line) while it's empty.
+      *Done when:* at most 3 rows of text are under the puzzle in `mid` and `endgame`, nothing the player had is lost
+      (each moved item is listed in the CHANGELOG with where it went), and 1080p still fits.
+- [ ] **V.5 Shop v2:** helper cards: the coloured icon sticker, name + one short line, a big owned count with milestone
+      pips (next ×2 at 10/25/50… owned), and a **bar along the bottom that fills towards the cost** (green and gently
+      breathing when affordable). Locked cards are silhouettes with a "?" and the bar to their unlock. Upgrade tiles get a
+      category-colour frame and a corner badge (Pick 1, Owned ✓). Tabs become pills with an icon and a round count bubble.
+      *Done when:* in `mid` and `BUY=10` screenshots you can tell at a glance which cards are buyable, which are close, and
+      how far the next locked one is, without reading the numbers.
+- [ ] **V.6 Motion kit:** `scripts/ui/ui_fx.gd` (static helpers, no rules): pop-in, slide-in, press, shake, number roll,
+      bar sheen, breathe. Panels (Settings, Compete, Perks, Welcome, Solve Station) open with a scale + fade over a
+      darkened, slightly blurred backdrop (`BackBufferCopy` + a cheap blur shader on High, plain dim on Low), and close the
+      same way. Buying a card squashes it and flies a "+1" to the owned count; a newly affordable card pops once.
+      *Done when:* every one of these honours Reduce motion (a test checks `ui_fx` returns instantly with it on),
+      a `JUICE=1` screenshot shows a panel mid-transition, and the 1,000 moves/s smoke run is clean.
+- [ ] **V.7 Big moments:** full-width banners for "New puzzle unlocked", "New helper", "Method learned" and a
+      championship won (title in the display font, the item's icon, a burst of confetti in the six sticker colours, a
+      short light sweep over the stage), queued so two never overlap; the solve burst uses the stage light (a brief
+      rim-light flash) instead of only 2D particles. Respects Reduce motion and is rate-limited at high speed.
+      *Done when:* a `BANNER=puzzle` screenshot preset exists, and a 10-minute sim-speed smoke run shows no banner spam.
+- [ ] **V.8 Overlays restyle:** Settings, Welcome back, Compete, Trophy Perks, Automation, Lab and the Solve Station use
+      the new kit: a title bar with the display font and an icon close button, panel frames from V.2, StatChips for
+      numbers, perk nodes as coloured stickers on a darker board with glowing owned paths. Compete and the Solve Station
+      take the "competition" mood from D15 (spotlight, timer digits).
+      *Done when:* `SETTINGS=1`, `COMPETE=1`, `PERKS=1`, `AUTO=1`, `LAB=1`, `SOLVE=solving`, `welcome` screenshots are
+      all in the new style and checked by `screenshot-checker`.
+- [ ] **V.9 Identity and polish:** a "Cube Idle" wordmark (SVG, ours; keep it easy to swap until D2), the window/taskbar
+      icon, a short boot splash (Godot's `boot_splash`), empty states for every list, hover/press sounds matched to the
+      new buttons, a final pass on spacing at 1280×720, 1920×1080 and 2560×1440 (overlaps 9.1; tick 9.1 too if done).
+      *Done when:* screenshots at all three sizes, and the owner says the look is right in `docs/FEEDBACK.md`
+      (playtest at the end of the phase, as usual).
+
 ## Phase 7 — Goals
 - [ ] **7.0 Career moments (fun pass, 2026-11-04):** short story beats at key unlocks, as data, shown in the news feed and as a
       pop: "Your first competition!", "A local shop sponsors you", "You open a cubing club"…, from a kid with a cube to running
@@ -402,7 +479,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       *Done when:* the owner signs off in `docs/FEEDBACK.md`.
 
 ## Phase 10 — Release
-- [ ] **10.1 Windows export [D2]:** export preset, `.ico` icon, version in the corner, 64-bit build.
+- [ ] **10.1 Windows export [D2]:** export preset (exclude the dev-only `scenes/dev/*` and `scripts/dev/*`), `.ico` icon, version in the corner, 64-bit build.
 - [ ] **10.2 itch.io [D4]:** page text, screenshots, `butler` upload, a feedback link.
 - [ ] **10.3 Steam (optional) [D4]:** Steamworks ($100 per game), store page, capsule art, GodotSteam for achievements and
       cloud saves. GodotSteam is an addon, so log it in the CHANGELOG.

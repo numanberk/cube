@@ -43,6 +43,8 @@ scenes/solve_station.tscn  class SolveStation (scripts/ui/solve_station.gd): the
                            timer, records panel (Phase S; records
                            themselves live in GameState: record_hand_solve, get_solve_bests, ...)
 scripts/data/content.gd    class Content: helpers + upgrades as plain data (balance here)
+scenes/dev/style_gallery.tscn  class StyleGallery (scripts/dev/style_gallery.gd): dev-only style gallery (V.0): every theme
+                           variation and card scene in every state, pages kit|parts; never used by the game
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
 scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only
 scenes/upgrade_tile.tscn   class UpgradeTile (scripts/ui/upgrade_tile.gd): one upgrade icon tile + tooltip panel
@@ -102,11 +104,12 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    PopSolve, TimerLabel, TimerWaiting, TimerDone, ScrambleLabel, SidePanel, StageChip, StageChipActive, StageChipDone,
    StageChipRow, TickerText, KeyHint, GoalBar, GoalLabel, GoalLabelDim, NewsPanel, NewsNew, NewsOld, GoldenButton,
    BuffLabel, TimerGolden, FlowLabel, StreakLabel, ChoiceBadge, PerkOwned, PerkName; PerkTree holds the tree's line colours), or add
-   a new variation.
+   a new variation (and show it in the style gallery, `scenes/dev/style_gallery.tscn`; a test checks).
 9. **Taps:** clicking the puzzle, the `tap` input action (Space / Enter, no repeat when held), or a turn of the main
    cube with the Solve Station keys (S.7, `main.handle_turn_key`; rotations aren't taps). Shop and other
    buttons use `focus_mode = none`, so Space never presses a focused button by accident.
-   One accent colour: green `#3ccf8e` (dim `#2a9d6c`). Every new asset gets a line in `assets/CREDITS.md`.
+   Green `#3ccf8e` (dim `#2a9d6c`) is the one "buy / affordable" colour. The six sticker colours may mark categories
+   (helpers, upgrades, puzzles, Lab, trophies, Solve Station; D15b), on frames and icons, not big fills. Every new asset gets a line in `assets/CREDITS.md`.
 
 ## Subagents
 `.claude/agents/` holds helpers for side jobs. The main session writes the code; don't split a task's code between
@@ -184,7 +187,10 @@ COMPETE=1 bash tools/screenshot.sh /tmp/shots endgame            # the Compete s
 COMPETE=won bash tools/screenshot.sh /tmp/shots endgame          # just after a championship (6.2) -> endgame_competewon.png
 PERKS=1 bash tools/screenshot.sh /tmp/shots endgame              # the trophy perk tree open (6.3) -> endgame_perks.png
 AUTO=1 bash tools/screenshot.sh /tmp/shots endgame               # the shop's Auto tab (6.3b) -> endgame_auto.png
-TURNS=1 bash tools/screenshot.sh /tmp/shots mid                   # your own key turns on the main cube + streak (S.7) -> mid_turns.png
+   BuffLabel, TimerGolden, FlowLabel, StreakLabel, ChoiceBadge, PerkOwned, PerkName; PerkTree holds the tree's line colours), or add
+   a new variation (and show it in the style gallery, `scenes/dev/style_gallery.tscn`; a test checks).
+9. **Taps:** clicking the puzzle, the `tap` input action (Space / Enter, no repeat when held), or a turn of the main
+   cube with the Solve Station keys (S.7, `main.handle_turn_key`; rotations aren't taps). Shop and other
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.

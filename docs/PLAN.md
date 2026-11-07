@@ -246,6 +246,41 @@ numbers in-game, no RNG walls (pity on every random drop), and every prestige la
   turns off squash, particles, camera sway and the speed-spin effect.
 - Assets are CC0/OFL/CC-BY only, each in `assets/CREDITS.md`.
 
+### 4.7 Look v2: from "web page" to "game" (owner, 2026-11-07; ROADMAP Phase V)
+The owner: *"now it looks like an HTML file."* Measured on today's screenshots (`mid`, `endgame`, the Upgrades tab, Perks):
+
+| Why it reads as a web page | Evidence on screen |
+|---|---|
+| **Flat panels, no depth** | Every surface is the same `StyleBoxFlat`: grey fill, 1 px border, 8 px corners, no shadow, no gradient, no bevel. That is the default look of a dark admin dashboard. |
+| **No place** | The background is one flat colour. The cube floats in a void with a faint radial glow; nothing sits under it, no light falls on anything. |
+| **Small hero** | The cube is ~200 px tall in a 680 px column (~28 % of the screen height). The stage around it is empty. |
+| **Text first** | Under the cube are 8 stacked rows of small text (stage chips, inspection line, puzzle chips, hint line, bar, next goal, goal strip, lifetime). The top bar is a sentence: `+73 solves/s · 258 moves/s`. Buttons are words ("Settings", "Close", "Locked"). |
+| **One colour** | Grey on grey with one green. No icon next to any number, so Solves, moves and trophies look the same. Icons are white silhouettes on grey squares, like a file list. |
+| **Body font everywhere** | Inter (a UI font) for counters, titles and buttons alike; no display face, no outlined or shadowed numbers. |
+| **Still at rest** | Between solves nothing in the UI moves: no bar filling towards the next purchase, no "you can buy this" pulse, panels pop open with no transition. |
+| **Empty boxes** | The news box shows "News from your team shows up here." for most of the game. |
+
+**Principles** (every Phase V task follows them):
+1. **The puzzle is the hero.** It gets ~50–60 % of the screen height, a surface to sit on and real light; UI frames it
+   instead of stacking under it.
+2. **A material, not a box.** Panels and buttons get depth: a soft drop shadow, a lighter top edge / darker bottom edge,
+   a subtle vertical gradient, a pressed state that moves down. Cards look like objects you can press.
+3. **Numbers are the reward.** Big counters use a display font with tabular figures and an outline/shadow, always next to
+   their own icon (a mini cube for Solves, a curved arrow for moves, a trophy). No "·"-joined sentences for stats: chips.
+4. **Colour means something.** The six sticker colours become category colours (helpers, upgrades, puzzles, Lab,
+   trophies, Solve Station); green stays the one "you can buy this" colour (**D15b**). The puzzle is still the most
+   colourful thing on screen, so UI colour is used on frames and icons, not big fills.
+5. **Less text, more shape.** Every line of text under the stage earns its place or moves into a tooltip, an icon or a
+   first-time hint. Target: at most 3 rows of text under the puzzle.
+6. **Always something moving towards a goal.** Each shop card shows a bar filling up to its cost; buyable things breathe;
+   counters roll; bars have a sheen. All of it off with **Reduce motion**.
+7. **One art direction (D15)** for background, stage, palette, fonts and the big moments, so it stops looking assembled.
+8. **Stays cheap.** GL Compatibility, one extra full-screen canvas shader at most, Graphics Low keeps today's cost.
+   Everything still goes through `ui/theme.tres` and type variations (rule 8), so a later session can retune it in one file.
+
+**How we iterate:** task V.0 builds a **style gallery** scene (every UI component, in every state, on one screen) with a
+screenshot preset, so the look can be tuned and compared without game state. Each later task posts before/after shots.
+
 ---
 
 ## 5. Phases
@@ -262,6 +297,7 @@ Each phase ends with something playable. Task details and "Done when" are in the
 | S | **Solve Station** (owner, 2026-11-03: before the rest of Phase 5) | The player is a keen speedcuber (~30 s best on a real 3×3) and idling alone was "just looking at the screen". Solve the puzzles yourself with csTimer keys, WCA inspection, records, algorithm drills, daily scrambles; real skill pays into the idle game. Golden Scramble and tap scaling moved here. **R.1–R.6** make the main cube readable: real staged showcase solves, cube times, goals, a news feed. | 14 |
 | 5 | **Depth** | Fills the first hour so something new arrives every few minutes. The Algorithm Lab finishes research while you're away. | 8 |
 | 6 | **Prestige: World Championship** | Gives the long loop. 7×7, Megaminx and the "Finals" track sit behind it. A perk tree whose branches unlock systems; auto-buyers. | 5 |
+| V | **Look v2** (owner, 2026-11-07: "it looks like an HTML file") | From dashboard to game: a style gallery, display font and number system, materials with depth, a real stage and background, a decluttered main screen, shop cards with progress, motion, big moments. §4.7. | 10 |
 | 7 | **Goals** | Long-term targets between prestiges: ~100 achievements, stats, the Cube Collection and the Comp Kit loadout. | 4 |
 | 8 | **Active play + Hall of Fame** | Competitions, Challenge runs, Coach rules, and the second prestige layer (D12). | 8 |
 | 9 | **Polish** | Resolution pass, first-time hints, credits screen, final music. | 4 |
@@ -330,6 +366,15 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
   is a trade (a perk for some of that bonus). Perk tree nodes for systems that don't exist yet: the **Automation** first
   node is buyable now, marked "coming soon" (6.3b fills it in); the **Competition** first node shows "Arrives with
   Competitions" and can't be bought until 8.3, while the rest of that branch (trophy bonuses) works today.
+
+- **D15 Art direction:** (owner, 2026-11-07: "go with your defaults") **(a) lo-fi cubing desk** for the background and
+  stage (warm, cozy, a cubing mat under a desk lamp, soft bokeh) **+ (c) toy/sticker pop** for the UI kit (chunky
+  bevelled buttons and cards, sticker-coloured frames, a rounded display font, confetti), and **(b) competition stage**
+  only on the Compete screen and in the Solve Station (spotlight, timer digits). See §4.7.
+  - **D15b Colours:** **yes**, the six sticker colours are category colours; green stays the only "buy / affordable"
+    colour (CLAUDE.md rule 9 updated).
+  - **D15c Order:** **Phase V comes before Phase 7.** (Another session was building S.7 at the same time, so Phase V
+    tasks avoid `game.gd`/`content.gd`/save changes and keep `main.gd`/`main.tscn` edits small until it lands.)
 
 ### Open
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?

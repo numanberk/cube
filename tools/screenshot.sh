@@ -27,6 +27,8 @@
 #   PERKS=1 bash tools/screenshot.sh /tmp/shots endgame    # the trophy perk tree open (6.3) -> endgame_perks.png
 #   AUTO=1 bash tools/screenshot.sh /tmp/shots endgame     # the shop's Auto tab (6.3b) -> endgame_auto.png
 #   TURNS=1 bash tools/screenshot.sh /tmp/shots mid         # your own key turns on the main cube + streak (S.7) -> mid_turns.png
+#   GALLERY=all bash tools/screenshot.sh /tmp/shots       # the style gallery (V.0): kit | parts | all -> gallery_kit.png
+#   GALLERY=kit FONT=/path/Rubik.ttf bash tools/screenshot.sh /tmp/shots  # ...with a candidate display font -> gallery_kit_Rubik.png
 #   bash tools/screenshot.sh /tmp/shots bench              # 7×7 at max speed, 600 frames per quality, logs frame times
 #
 # Presets live in tools/screenshot_presets.gd (fresh, mid, late, ...).
@@ -72,6 +74,8 @@ COMPETE="${COMPETE:-}"
 PERKS="${PERKS:-}"
 AUTO="${AUTO:-}"
 TURNS="${TURNS:-}"
+GALLERY="${GALLERY:-}"
+FONT="${FONT:-}"
 
 if [[ $# -gt 0 ]]; then
   PRESETS=("$@")
@@ -101,6 +105,31 @@ if [[ "$(uname -s)" == "Linux" ]]; then
 fi
 
 failed=0
+if [[ -n "$GALLERY" ]]; then
+  # The style gallery (task V.0, scripts/dev/style_gallery.gd): no presets, no game state; one PNG per page.
+  if [[ "$GALLERY" == "all" ]]; then PAGES=(kit parts); else PAGES=("$GALLERY"); fi
+  font_tag=""
+  if [[ -n "$FONT" ]]; then
+    [[ -f "$FONT" ]] || { echo "FONT not found: $FONT" >&2; exit 2; }
+    FONT="$(cd "$(dirname "$FONT")" && pwd)/$(basename "$FONT")"
+    font_tag="_$(basename "${FONT%.*}" | tr -c 'A-Za-z0-9_\n-' '_')"
+  fi
+  for page in "${PAGES[@]}"; do
+    out="$OUT_DIR/gallery_$page$font_tag.png"
+    rm -f "$out"
+    "${RUN[@]}" "$GODOT" --path "$ROOT" --rendering-driver opengl3 --audio-driver Dummy --resolution "$SIZE" \
+      --windowed --position 0,0 res://scenes/dev/style_gallery.tscn -- --page "$page" --out "$out" ${FONT:+--font "$FONT"} \
+      >"$LOG" 2>&1 || true
+    if [[ -f "$out" ]] && ! grep -qE "SCRIPT ERROR|Parse Error|ERROR:" "$LOG"; then
+      grep "^Saved " "$LOG" || echo "Saved $out"
+    else
+      echo "FAILED: gallery page '$page'" >&2
+      cat "$LOG" >&2
+      failed=1
+    fi
+  done
+  exit "$failed"
+fi
 for preset in "${PRESETS[@]}"; do
   out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}${POSE:+_$POSE}${GRAPHICS:+_$GRAPHICS}${TAB:+_tab$TAB}${JUICE:+_juice}${BUY:+_buy$BUY}${SETTINGS:+_settings}${SOLVE:+_solve$SOLVE}${SHOWCASE:+_showcase$SHOWCASE}${METHOD:+_$METHOD}${KEYS:+_keys$KEYS}${NEWS:+_news}${GOLDEN:+_golden$GOLDEN}${FLOW:+_flow}${DRILL:+_drill$DRILL}${DAILY:+_daily$DAILY}${SCROLL:+_scroll}${LAB:+_lab}${PICK:+_pick$PICK}${COMPETE:+_compete${COMPETE#1}}${PERKS:+_perks}${AUTO:+_auto}${TURNS:+_turns}.png"
   rm -f "$out"

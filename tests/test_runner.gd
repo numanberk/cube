@@ -854,6 +854,38 @@ func test_theme_is_used_everywhere() -> void:
 			check(theme.get_type_variation_base(variation) != &"", "%s uses theme variation %s, which the theme defines" % [scene_name, variation])
 
 
+func test_style_gallery_covers_theme() -> void:
+	# Task V.0: the style gallery shows every type variation of ui/theme.tres, so a new style is never left unseen.
+	var theme: Theme = load("res://ui/theme.tres")
+	var gallery_scene := FileAccess.get_file_as_string("res://scenes/dev/style_gallery.tscn")
+	check(gallery_scene != "" and not gallery_scene.contains("theme_override_"), "the gallery scene exists and has no overrides")
+	var gallery: StyleGallery = load("res://scenes/dev/style_gallery.tscn").instantiate()
+	root.add_child(gallery)
+	var used := {}
+	for page: String in StyleGallery.PAGES:
+		gallery.build(page)
+		used.merge(gallery.used_variations())
+	# (That each one is also on screen is checked when the gallery is shot: an off-screen node is an ERROR there.)
+	for type_name: StringName in theme.get_type_list():
+		if theme.get_type_variation_base(type_name) != &"":
+			check(used.has(type_name), "the style gallery has theme variation %s" % type_name)
+	for type_name: StringName in used:
+		check(type_name == &"Button" or theme.get_type_variation_base(type_name) != &"",
+				"the gallery's variation %s is defined in the theme" % type_name)
+	gallery.free()
+	# Not part of the game: no autoloads by name, and nothing in the game points at it.
+	var source := FileAccess.get_file_as_string("res://scripts/dev/style_gallery.gd")
+	check(RegEx.create_from_string("\\b(Game|Settings|Audio)\\.").search(source) == null,
+			"the gallery never uses the Game/Settings/Audio autoloads by name")
+	check(not FileAccess.get_file_as_string("res://project.godot").contains("style_gallery"), "project.godot doesn't use it")
+	for dir: String in ["res://scenes", "res://scripts/ui", "res://scripts/autoload", "res://scripts/data",
+			"res://scripts/cube", "res://scripts/util"]:
+		for file_name in DirAccess.get_files_at(dir):
+			if file_name.ends_with(".gd") or file_name.ends_with(".tscn"):
+				check(not FileAccess.get_file_as_string(dir.path_join(file_name)).contains("style_gallery"),
+						"%s doesn't reference the style gallery" % file_name)
+
+
 # --- Layout (task 2.2) -----------------------------------------------------------
 
 func test_next_goal() -> void:
