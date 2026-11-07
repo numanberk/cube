@@ -14,6 +14,7 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
 | V.1 Type and numbers | (its own) | 2026-11-07 | `ui/theme.tres`, the top bar in `main.tscn`, new `StatChip` scene, `assets/fonts/`, style gallery | `main.gd` (top bar), `tests/test_runner.gd`, `tools/screenshot.sh`?, CLAUDE.md | no |
+| 7.0a Career moments (rules) | `claude/wizardly-johnson-oma4wj` | 2026-11-07 | `Content.CAREER` block (new, in `content.gd`), the career section of `game.gd` (new), `news_feed.gd` (one handler) | `game.gd` (save/load/migrate, `compete`), `content.gd`, `tests/test_runner.gd`, CLAUDE.md? | **yes (v13)** |
 | R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
 
 *(These two rows were added for the sessions that started before this rule; their own files are an estimate. Each
@@ -441,10 +442,15 @@ every new component or variation to the gallery (a test enforces variations).
 in parallel with Phase V; its **screen** (tab, toast, pop, screenshot) waits until Phase V is done. Doing only the rules?
 Split the task here first (e.g. 7.1a rules: *Done when* its tests pass; 7.1b screen: the rest of its *Done when*), and
 claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`main.tscn` changes in a rules part.
-- [ ] **7.0 Career moments (fun pass, 2026-11-04):** short story beats at key unlocks, as data, shown in the news feed and as a
+- **7.0 Career moments (fun pass, 2026-11-04):** short story beats at key unlocks, as data, shown in the news feed and as a
       pop: "Your first competition!", "A local shop sponsors you", "You open a cubing club"…, from a kid with a cube to running
-      a lab, so the progression reads as a journey. *Done when:* each moment fires once at its trigger (test) and there's a
-      screenshot.
+      a lab, so the progression reads as a journey. Split (D15c, owner 2026-11-07) into:
+  - [ ] **7.0a Rules:** the moments as data (`Content.CAREER`), GameState fires each one once (kept through
+        championships, saved), a signal for the screen part; the news line text. No `main.gd`/`main.tscn` changes.
+        *Done when:* each moment fires once at its trigger (test), never again (also after a championship and a reload),
+        and the save change has a migration test.
+  - [ ] **7.0b Screen (after Phase V):** show each moment in the news feed and as a pop in the new kit.
+        *Done when:* there's a screenshot.
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
       all moves, with a toast when earned. Save v13. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
