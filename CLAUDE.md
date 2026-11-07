@@ -187,10 +187,9 @@ COMPETE=1 bash tools/screenshot.sh /tmp/shots endgame            # the Compete s
 COMPETE=won bash tools/screenshot.sh /tmp/shots endgame          # just after a championship (6.2) -> endgame_competewon.png
 PERKS=1 bash tools/screenshot.sh /tmp/shots endgame              # the trophy perk tree open (6.3) -> endgame_perks.png
 AUTO=1 bash tools/screenshot.sh /tmp/shots endgame               # the shop's Auto tab (6.3b) -> endgame_auto.png
-   BuffLabel, TimerGolden, FlowLabel, StreakLabel, ChoiceBadge, PerkOwned, PerkName; PerkTree holds the tree's line colours), or add
-   a new variation (and show it in the style gallery, `scenes/dev/style_gallery.tscn`; a test checks).
-9. **Taps:** clicking the puzzle, the `tap` input action (Space / Enter, no repeat when held), or a turn of the main
-   cube with the Solve Station keys (S.7, `main.handle_turn_key`; rotations aren't taps). Shop and other
+TURNS=1 bash tools/screenshot.sh /tmp/shots mid                   # your own key turns on the main cube + streak (S.7) -> mid_turns.png
+GALLERY=all bash tools/screenshot.sh /tmp/shots                   # the style gallery (V.0): kit | parts | all -> gallery_kit.png
+GALLERY=kit FONT=/path/Rubik.ttf bash tools/screenshot.sh /tmp/shots  # ...with a candidate display font -> gallery_kit_Rubik.png
 bash tools/screenshot.sh /tmp/shots bench bench_row               # 7×7 alone vs all 5 cubes at max speed: ms/frame
 ```
 - Writes `<dir>/<preset>.png` (default 1280×720), then open the PNGs with the Read tool to check them.
