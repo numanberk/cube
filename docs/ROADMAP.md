@@ -213,7 +213,20 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       solver. Shots in `docs/screenshots/r5-roux-zz/`.)*
 - [ ] **R.6 Big cubes in the solver:** 4×4–7×7 by reduction (centres → edge pairing → 3×3 stage, with **parity** as its own
       stage on even cubes), so the showcase works on every cube. Megaminx stays on scramble + rewind (Phase 11).
-      *Done when:* tests solve random scrambles on 4×4 and 5×5 with the stage goals checked, and the showcase holds the bench.
+      **Owner, 2026-11-07:** full real speed (no fast-forward: a 7×7 solve may take a minute or more to watch), and a
+      **human-style** solver (not commutator-only), split in two:
+  - [ ] **R.6a 4×4 and 5×5:** a pure class `BigCubeSolver` (`scripts/cube/big_cube_solver.gd`), stages **Centres** (first
+        centre, opposite centre, last four, built piece by piece with face turns, inner slices and slice-face-slice
+        inserts that never undo a finished piece), **Edges** (pair dedges/tredges with a few setup turns and one
+        slice-flip-slice insert, then a last-two-edges algorithm), **Parity** (4×4: OLL parity flips a dedge, PLL parity
+        swaps two; 5×5: the wing-flip edge parity; only when needed), then the **3×3 stage**: the reduced cube read as a
+        3×3 model and solved by `StagedSolver` with the learned method, its moves mapped back (3×3 layer 1 = every inner
+        layer). Pieces are tracked as positions/orientations with per-move tables, not by re-reading the model.
+        *Done when:* tests solve 50+ random scrambles each on 4×4 and 5×5 with every stage goal checked (centres solved,
+        every edge paired, parity fixed, solved), the showcase plays them, and there are screenshots.
+  - [ ] **R.6b 6×6 and 7×7:** the same stages with more centre orbits (obliques) and the bench check.
+        *Done when:* tests solve 6×6 and 7×7 scrambles with the stage goals checked, and `bench`/`bench_row` still hold
+        with the showcase on the 7×7.
 
 - [x] **S.3 Rewards [D13 = ~2–3×]:** hand solves pay into the idle game. Per-puzzle **time targets** as data (e.g. 3×3: 60/40/25/
       15/10 s, bronze → "WR pace"); reaching a tier for the first time gives a permanent bonus on that puzzle, every solve
