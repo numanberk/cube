@@ -367,19 +367,16 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
   node is buyable now, marked "coming soon" (6.3b fills it in); the **Competition** first node shows "Arrives with
   Competitions" and can't be bought until 8.3, while the rest of that branch (trophy bonuses) works today.
 
+- **D15 Art direction:** (owner, 2026-11-07: "go with your defaults") **(a) lo-fi cubing desk** for the background and
+  stage (warm, cozy, a cubing mat under a desk lamp, soft bokeh) **+ (c) toy/sticker pop** for the UI kit (chunky
+  bevelled buttons and cards, sticker-coloured frames, a rounded display font, confetti), and **(b) competition stage**
+  only on the Compete screen and in the Solve Station (spotlight, timer digits). See §4.7.
+  - **D15b Colours:** **yes**, the six sticker colours are category colours; green stays the only "buy / affordable"
+    colour (CLAUDE.md rule 9 updated).
+  - **D15c Order:** **Phase V comes before Phase 7.** (Another session was building S.7 at the same time, so Phase V
+    tasks avoid `game.gd`/`content.gd`/save changes and keep `main.gd`/`main.tscn` edits small until it lands.)
+
 ### Open
-- **D15 Art direction** (needed by V.1; asked 2026-11-07, see §4.7): which world does the game live in?
-  (a) **Lo-fi cubing desk:** warm and cozy, like the music (D7). The cube sits on a speed-cubing mat under a desk lamp,
-  a dark room with soft bokeh behind it; the Solves counter reads like a stackmat timer; cards look like paper/cardboard
-  tags on a dark wood or felt UI. (b) **Competition stage:** a WCA hall at night: spotlight on the cube, scoreboard-style
-  counters (7-segment timer digits), banners, a crowd glow. Exciting, but busier. (c) **Toy / sticker pop:** bold and
-  colourful like modern mobile idle games: chunky bevelled buttons, sticker-coloured frames, rounded display font,
-  confetti; least "realistic", most readable. *Recommended: (a) for the background and stage + (c)'s chunky UI kit,
-  and (b) saved for the Compete screen and Solve Station, where the competition mood fits.*
-  - **D15b Colour rule:** may the six sticker colours be used as category colours (CLAUDE.md rule 9 says "one accent
-    colour")? *Recommended: yes; green stays the only "buy / affordable" colour.*
-  - **D15c Order:** do Phase V **before Phase 7**? *Recommended: yes*, because the look is the owner's main complaint and
-    Phase 7 adds more screens (achievements, stats, collection) that should be built in the new style, not restyled later.
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?
 - **D4 Price** (needed by 10.2): free, pay-what-you-want on itch, or paid on Steam?
   *Either way, only CC0/CC-BY assets, so a paid release stays possible.*

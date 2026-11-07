@@ -2,6 +2,38 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-07 — Task V.0: the style gallery (Phase V starts)
+- **Owner decisions (2026-11-07, "go with your defaults"):** D15 = lo-fi desk stage + toy/sticker UI kit, competition
+  mood only on Compete and the Solve Station; D15b = sticker colours may mark categories (CLAUDE.md rule 9 reworded);
+  D15c = Phase V before Phase 7. Recorded in PLAN §7.
+- **Another session is building S.7 at the same time.** V.0 stays out of its way: no change to `game.gd`, `content.gd`,
+  `main.gd`, `main.tscn` or the save. Touched shared files: `tests/test_runner.gd` (new test placed right after
+  `test_theme_is_used_everywhere`, not at the end), `tools/screenshot.sh` (a `GALLERY` branch before the preset loop),
+  CLAUDE.md, docs. Whoever merges second: expect small text conflicts there, nothing semantic.
+- **New:** `scenes/dev/style_gallery.tscn` + `scripts/dev/style_gallery.gd` (`StyleGallery`). Pages `kit` and `parts`
+  (ROADMAP V.0 lists what's on each). Button states are drawn by a `Swatch` control straight from the theme, looked up
+  through its own `theme_type_variation` so variations fall back to `Button` like real buttons (asked by name alone,
+  Godot doesn't fall back to a variation's base type; the first try showed black text). `--font <ttf>` swaps the font
+  of the display styles on a theme copy, for candidate previews; nothing is saved.
+- `GALLERY=kit|parts|all bash tools/screenshot.sh <dir>` -> `gallery_<page>[_<font>].png`; `FONT=<ttf>` for candidates.
+- Test `test_style_gallery_covers_theme`: every theme variation appears in the gallery, the gallery only uses defined
+  variations, never names `Game`/`Settings`/`Audio`, and no game scene/script references it. 4424 checks, `All good.`
+- **Screenshots:** `docs/screenshots/V.0-gallery/` — `gallery_kit.png`, `gallery_parts.png` (today's theme, the "before"
+  for the whole phase), and display-font candidates `gallery_kit_Rubik.png`, `gallery_kit_Fredoka.png` (Baloo 2 was also
+  tried: looser and less fitting). Recommendation for V.1: **Fredoka** (rounded, matches the toy/sticker kit). Fonts were
+  downloaded from google/fonts (raw.githubusercontent.com works from the container; github.com/raw is blocked) and
+  not committed; V.1 adds the chosen one to `assets/fonts/` with its OFL text and a CREDITS line.
+- From the diff review: the swatches include hover+pressed and centre text in the box's content rect; an unknown page
+  or a missing `FONT` file fails loudly; shooting the gallery errors if any styled node is off screen (the test alone
+  only checks presence). Font previews swap only the bold display styles (Title, BigAccent, Timer, CardOwned/Title,
+  Primary/Golden buttons, pops, PerkName); bold Inter styles like CostAffordable and tabs keep Inter. Not done: the
+  `.tscn` has no uid (the editor adds one on first save); dev files would ship in an export (noted in 10.1).
+- The gallery shows GoldenButton has no hover+pressed style (falls back to plain Button); harmless today (it is not a
+  toggle), worth defining in V.2.
+- Seen on the gallery, for V.1/V.2: every surface is the same flat grey; Primary/Golden buttons are the only ones with
+  any weight; the IconTile background is barely visible; disabled states are nearly invisible on the panel colour.
+- **Next:** V.1 (type and numbers). It edits `main.tscn`'s top bar: pull `main` first so S.7's changes are in.
+
 ## 2026-11-07 — Plan: Look v2 (owner: "it looks like an HTML file")
 - Docs only, no code. The owner asked for a plan to make the game look like a game. Fresh `fresh`/`mid`/`endgame`/
   Upgrades-tab screenshots were the evidence; the diagnosis and 8 principles are in **PLAN §4.7**.

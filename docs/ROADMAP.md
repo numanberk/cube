@@ -328,21 +328,25 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       half the first trophy (~38 min now): kept as a preview of the system. Mastery left as it is.)*
 
 ## Phase V — Look v2: from "web page" to "game" (owner, 2026-11-07) [D15]
-Why and the principles: PLAN §4.7. **Ask the owner D15 (art direction), D15b (colours) and D15c (order) before V.1.**
-V.0 doesn't need them. Every task: before/after screenshots in `docs/screenshots/V.n-…/`, `screenshot-checker` on
+Why and the principles: PLAN §4.7. **D15 answered (2026-11-07):** lo-fi desk stage + toy/sticker UI kit, competition
+mood for Compete and the Solve Station; sticker colours as category colours; this phase before Phase 7. Every task: before/after screenshots in `docs/screenshots/V.n-…/`, `screenshot-checker` on
 `fresh`, `mid`, `endgame` and the presets it touches, Graphics Low still looks right, Reduce motion turns its motion off,
-no `theme_override_*` (rule 8). Retune the look in `ui/theme.tres`, not per scene.
-- [ ] **V.0 Style gallery:** `scenes/dev/style_gallery.tscn`: one screen showing every UI building block in every state:
-      buttons (Primary/Subtle/Golden/Toggle; normal, hover, pressed, disabled), a panel, tabs with a badge, a shop card
-      (affordable, not, locked, maxed), upgrade tiles (buyable, owned, pick-1), progress bars, chips, the type ramp
-      (Title/Subtitle/Dim/Faint…), stat counters with their icons, and the background + a small PuzzleView3D. It only
-      uses the theme and the real scenes (`ShopCard`, `UpgradeTile`, `PuzzleChip`) fed with fake views, never `Game`.
-      `GALLERY=1 bash tools/screenshot.sh <dir>` shoots it. For D15, also shoot 2–3 quick candidate looks of the gallery
-      (palette + font swaps in a throwaway theme copy, not committed as the theme) for the owner to pick from.
+no `theme_override_*` (rule 8). Retune the look in `ui/theme.tres`, not per scene; check it on the style gallery first (`GALLERY=all`, V.0), and add
+every new component or variation to the gallery (a test enforces variations).
+- [x] **V.0 Style gallery:** `scenes/dev/style_gallery.tscn` (`scripts/dev/style_gallery.gd`, class `StyleGallery`): every
+      UI building block in every state, on two pages because the logical screen is always 1280×720: **kit** (type ramp,
+      buttons drawn in normal/hover/pressed/disabled straight from the theme, tabs, bars, slider, chips, panels, icon
+      tiles) and **parts** (the real `ShopCard`, `UpgradeTile`, `PerkNode`, `PuzzleChip` scenes fed fake views, a 3D
+      puzzle, the Solve Station timers). It never uses `Game`. `GALLERY=kit|parts|all bash tools/screenshot.sh <dir>`;
+      `FONT=<ttf>` previews another display font on the display styles (`StyleGallery.DISPLAY_TYPES`).
       *Done when:* the gallery screenshot shows every type variation in `ui/theme.tres` (a test lists the variations and
-      checks each is used in the gallery), and the D15 candidate shots are linked in the CHANGELOG.
-- [ ] **V.1 Type and numbers [D15]:** a display font for counters, titles and buttons (OFL; candidates by direction:
-      *Rubik*, *Fredoka*, *Baloo 2* for (a)/(c), *Chakra Petch* or the *DSEG7* 7-segment face for timers/(b)), Inter
+      checks each is used in the gallery), and the display-font candidate shots are linked in the CHANGELOG.
+      *(Done 2026-11-07: `test_style_gallery_covers_theme` checks coverage; shooting the gallery fails if any styled node
+      is off screen. Shots in `docs/screenshots/V.0-gallery/`.)*
+- [ ] **V.1 Type and numbers [D15]:** a display font for counters, titles and buttons (OFL; V.0 shot *Rubik* and
+      *Fredoka* on the gallery (`docs/screenshots/V.0-gallery/gallery_kit_*.png`): **Fredoka** fits the toy/sticker kit best,
+      Rubik is the safer middle; ask the owner if they have a preference, else Fredoka; *Chakra Petch* or the *DSEG7*
+      7-segment face for timers on Compete / Solve Station), Inter
       stays for body text; tabular figures on every changing number. A `StatChip` scene (icon + number + optional "/s"),
       with icons for Solves (mini cube), moves, trophies, time. The top bar becomes: logo wordmark · **big Solves counter
       with an outline/shadow** · `StatChip`s for solves/s and moves/s · icon buttons (settings gear) instead of words.
@@ -471,7 +475,7 @@ no `theme_override_*` (rule 8). Retune the look in `ui/theme.tres`, not per scen
       *Done when:* the owner signs off in `docs/FEEDBACK.md`.
 
 ## Phase 10 — Release
-- [ ] **10.1 Windows export [D2]:** export preset, `.ico` icon, version in the corner, 64-bit build.
+- [ ] **10.1 Windows export [D2]:** export preset (exclude the dev-only `scenes/dev/*` and `scripts/dev/*`), `.ico` icon, version in the corner, 64-bit build.
 - [ ] **10.2 itch.io [D4]:** page text, screenshots, `butler` upload, a feedback link.
 - [ ] **10.3 Steam (optional) [D4]:** Steamworks ($100 per game), store page, capsule art, GodotSteam for achievements and
       cloud saves. GodotSteam is an addon, so log it in the CHANGELOG.
