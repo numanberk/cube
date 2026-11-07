@@ -44,7 +44,13 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
 - Tests (4374 checks, `All good.`): `test_tap_streak`, `test_showcase_player_turns`, `test_main_screen_key_turns`;
   the old tap tests now read the tap's value before tapping (the streak makes the next one bigger).
 - Screenshot option `TURNS=1` (your turns + the streak); shots in `docs/screenshots/s7-turns/`.
+- **Merged with V.0** (another session pushed it to `main` the same day): `StreakLabel` added to the style gallery (its
+  test needs every theme variation there), `gallery_kit.png` reshot; CLAUDE.md, CHANGELOG and screenshot.sh conflicts
+  kept both sides. Tests passed on the merged tree (4521 checks, `All good.`). The merge commit used `CUBE_SKIP_GATE=1`:
+  the gate counted game.gd/content.gd as changed since the balance run (the merge didn't change them; BALANCE.md is from
+  after their last edit) and the V.0 gallery files as unreviewed (V.0's session reviewed them; mine adds one line).
 - **Next: R.5** (Roux and ZZ in the solver), then R.6.
+
 ## 2026-11-07 — Task V.0: the style gallery (Phase V starts)
 - **Owner decisions (2026-11-07, "go with your defaults"):** D15 = lo-fi desk stage + toy/sticker UI kit, competition
   mood only on Compete and the Solve Station; D15b = sticker colours may mark categories (CLAUDE.md rule 9 reworded);
