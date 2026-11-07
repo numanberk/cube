@@ -534,9 +534,10 @@ func test_clicking_the_puzzle_taps() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	var view: PuzzleView3D = main.get_node("%PuzzleView")
+	var tap_moves := game.get_tap_moves()
 	view._gui_input(mouse_button(true, Vector2(150, 150)))
 	view._gui_input(mouse_button(false, Vector2(150, 150)))
-	check_near(game.total_moves, game.get_tap_moves(), "clicking the puzzle calls Game.tap()")
+	check_near(game.total_moves, tap_moves, "clicking the puzzle calls Game.tap()")
 	main.free()
 	game.reset_state()
 
@@ -904,14 +905,16 @@ func test_layout_and_keyboard_tap() -> void:
 	check(main.get_node_or_null("%TapButton") == null, "the old Turn button is gone")
 	check(main.get_node_or_null("%NextGoalLabel") != null and main.get_node_or_null("%SettingsButton") != null,
 			"the next-goal strip and the settings button exist")
+	var first_tap := game.get_tap_moves()
 	main._unhandled_input(key_event(KEY_SPACE, true, false))
-	check_near(game.total_moves, game.get_tap_moves(), "Space taps")
+	check_near(game.total_moves, first_tap, "Space taps")
+	var second_tap := game.get_tap_moves()  # a little more: the TPS streak (S.7) grew
 	main._unhandled_input(key_event(KEY_SPACE, true, true))
 	main._unhandled_input(key_event(KEY_SPACE, true, true))
-	check_near(game.total_moves, game.get_tap_moves(), "holding Space doesn't repeat (echo events are ignored)")
+	check_near(game.total_moves, first_tap, "holding Space doesn't repeat (echo events are ignored)")
 	main._unhandled_input(key_event(KEY_SPACE, false, false))
 	main._unhandled_input(key_event(KEY_ENTER, true, false))
-	check_near(game.total_moves, game.get_tap_moves() * 2.0, "Enter taps too")
+	check_near(game.total_moves, first_tap + second_tap, "Enter taps too")
 	main._refresh()
 	check((main.get_node("%NextGoalLabel") as Label).text.begins_with("Cubing Friend"), "the strip shows the next goal first")
 	main.free()
@@ -1388,8 +1391,9 @@ func test_parallel_puzzles() -> void:
 	check_near(g.solves, 5.0 * 1.0 + 2.0 * 4.0, "Solves = 5 x 1 (2x2) + 2 x 4 (3x3)")
 	# Taps go to the focused puzzle only.
 	g.set_focus("2x2")
-	g.tap()
-	check_near(g.get_move_progress("2x2"), g.get_tap_moves(), "a tap goes to the focused puzzle")
+	var tap_moves := g.get_tap_moves()
+	check_near(g.tap(), tap_moves, "tap() returns the moves it made")
+	check_near(g.get_move_progress("2x2"), tap_moves, "a tap goes to the focused puzzle")
 	check_near(g.get_move_progress("3x3"), 0.0, "...not to the others")
 	# Rates
 	g.cheat_add_solves(5.0)
@@ -2381,6 +2385,185 @@ func test_showcase_on_main_screen() -> void:
 	game.unlock_puzzle("4x4")
 	game.set_focus("4x4")
 	check(main._showcase == null and not chips.visible, "the 4×4 has no showcase yet (R.6)")
+	main.free()
+	game.reset_state()
+
+
+# --- Turns are taps + TPS streak (task S.7) ---------------------------------------------------------------------
+
+func test_tap_streak() -> void:
+	var g := new_game()
+	var data: Dictionary = Content.TAPS
+	check_near(g.streak, 0.0, "no streak at the start")
+	check_near(g.get_streak_mult(), 1.0, "...so taps are ×1")
+	check_near(g.get_tap_share(), float(data["helper_share"]), "no tap_share upgrades yet")
+	check_near(g.get_tap_moves(), g.get_tap_moves_flat() + g.get_tap_moves_from_helpers(), "tap = flat + the helpers' share")
+	# "tap_share" upgrades add a share of the focused puzzle's helper moves/s to every tap.
+	g.cheat_add_solves(1e9)
+	g.buy_buildings("friend", 20)
+	g.buy_building("robot")
+	check(g.buy_upgrade("metronome"), "buy Metronome Practice")
+	var share := float(data["helper_share"]) + float(Content.get_upgrade("metronome")["effect"]["value"])
+	check_near(g.get_tap_share(), share, "Metronome Practice adds its share")
+	check_near(g.get_tap_moves_from_helpers(), share * g.get_puzzle_moves_per_second("2x2") / g.get_puzzle_moves_mult("2x2"),
+			"a tap adds that share of the focused puzzle's helper moves/s")
+	check(g.get_tap_moves_from_helpers() > 0.0, "...which is something with a team")
+	g.buy_buildings("robot", 9)
+	check(g.buy_upgrade("tps_drills"), "buy TPS Drills (10 Robots)")
+	check_near(g.get_tap_share(), share + float(Content.get_upgrade("tps_drills")["effect"]["value"]), "the shares add up")
+	g.tap()
+	check_near(g.streak, float(data["fill_per_tap"]), "a tap fills the meter by fill_per_tap")
+	g.update_streak(1.0)
+	check_near(g.streak, maxf(0.0, float(data["fill_per_tap"]) - float(data["drain_per_second"])), "...and it drains")
+	# Steady turning at 3 TPS fills it; the streak multiplies the helpers' share of a tap up to streak_max_mult.
+	for i in 30 * 30:  # 30 s in 1/30 s steps, a tap every 10 steps
+		if i % 10 == 0:
+			g.tap()
+		g.update_streak(1.0 / 30.0)
+	check(g.streak > 0.95, "30 s at 3 TPS fills the meter (%s)" % g.streak)
+	g.streak = 1.0
+	check_near(g.get_streak_mult(), float(data["streak_max_mult"]), "a full meter: ×streak_max_mult")
+	check(absf(g.get_recent_tps() - 3.0) <= 0.5, "the shown TPS is about 3 (%s)" % g.get_recent_tps())
+	check_near(g.get_tap_moves(), g.get_tap_moves_flat() + g.get_tap_moves_from_helpers() * float(data["streak_max_mult"]),
+			"the streak multiplies the helpers' share (not the flat move: the first minutes' pacing stays)")
+	g.update_streak(30.0)
+	check_near(g.streak, 0.0, "stopping drains it")
+	check_near(g.get_recent_tps(), 0.0, "...and the TPS falls to 0")
+	# Slow tapping (1 a second) never builds a streak: it only grows above drain / fill taps a second.
+	for i in 30:
+		g.tap()
+		g.update_streak(1.0)
+	check(g.streak <= float(data["fill_per_tap"]) + 0.0001, "1 TPS never builds a streak (%s)" % g.streak)
+	check(float(data["drain_per_second"]) / float(data["fill_per_tap"]) < 3.0, "3 TPS is above the build threshold")
+	g.reset_state()
+	check_near(g.streak, 0.0, "reset clears the streak")
+	check_near(g.get_recent_tps(), 0.0, "...and the TPS")
+	check_near(g.get_tap_share(), float(data["helper_share"]), "...and the upgrades")
+	g.free()
+
+
+func test_showcase_player_turns() -> void:
+	var show := ShowcaseSolve.new("3x3", "cfop", 11)
+	var resumed := [0]
+	var finished := [0]
+	show.resumed.connect(func() -> void: resumed[0] += 1)
+	show.finished.connect(func() -> void: finished[0] += 1)
+	var view_model := PuzzleShapes.from_id("3x3")
+	view_model.apply_all(show.scramble)
+	for i in 8:
+		for move in show.tap():
+			view_model.apply(move)
+	check(show.phase == "solving", "the showcase is solving")
+	var m := show.model
+	for text: String in ["R", "U", "R'", "y"]:
+		for move in show.player_turn(m.parse(text)):
+			view_model.apply(move)
+	check(show.phase == "player" and show.player_moves.size() == 4, "key turns take the cube over")
+	check(show.advance(float(Content.TAPS["resume_after"]) * 0.5, 8.0).is_empty(), "while you pause briefly it waits")
+	check(show.phase == "player", "...still yours")
+	show.advance(float(Content.TAPS["resume_after"]), 8.0)
+	check(show.phase == "inspection" and resumed[0] == 1, "after resume_after the team takes it back")
+	var played := 0
+	for i in 3000:
+		for move in show.advance(0.05, 8.0):
+			view_model.apply(move)
+			played += 1
+		if show.phase == "solved":
+			break
+	check(show.phase == "solved" and finished[0] == 1 and not show.by_player, "the team solves it from where you left it")
+	check(view_model.is_solved(), "...really (%d moves)" % played)
+	# A click hands it back at once.
+	var clicked := ShowcaseSolve.new("3x3", "beginner", 12)
+	clicked.tap()
+	clicked.player_turn(clicked.model.parse("F"))
+	var moves := clicked.tap()
+	check(clicked.phase == "solving" and moves.size() >= 1, "a click ends your turn and plays on")
+	# You can finish the solve yourself.
+	var own := ShowcaseSolve.new("2x2", "beginner", 13)
+	own.finished.connect(func() -> void: finished[0] += 1)
+	for move in own.model.inverse_sequence(own.scramble):
+		own.player_turn(move)
+	check(own.model.is_solved(), "undoing the scramble solves it")
+	own.advance(float(Content.TAPS["resume_after"]) + 0.1, 8.0)
+	check(own.phase == "solved" and own.by_player and finished[0] == 2, "solved by you: it counts as solved")
+	own.advance(float(Content.SHOWCASE["solved_hold"]) + 0.1, 8.0)
+	check(own.phase == "inspection" and not own.by_player and own.player_moves.is_empty(), "then a new scramble")
+	# Turning a solved cube as a whole doesn't count as solving it.
+	var spun := ShowcaseSolve.new("3x3", "beginner", 14)
+	for move in spun.model.inverse_sequence(spun.scramble):
+		spun.player_turn(move)
+	spun.advance(float(Content.TAPS["resume_after"]) + 0.1, 8.0)
+	spun.advance(float(Content.SHOWCASE["solved_hold"]) + 0.1, 8.0)
+	var guard := 0
+	while spun.phase != "solved" and guard < 500:  # the team plays its whole solve
+		spun.tap()
+		guard += 1
+	spun.player_turn(spun.model.parse("y"))
+	spun.advance(float(Content.TAPS["resume_after"]) + 0.1, 8.0)
+	check(spun.phase == "solved" and not spun.by_player, "a y on the team's solved cube isn't your solve")
+	spun.player_turn(spun.model.parse("R"))
+	spun.player_turn(spun.model.parse("R'"))
+	spun.advance(float(Content.TAPS["resume_after"]) + 0.1, 8.0)
+	check(spun.phase == "solved" and not spun.by_player, "...nor is R R' on it")
+
+
+func test_main_screen_key_turns() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var settings: Node = root.get_node("Settings")
+	settings.persistence_enabled = false
+	settings.set_value("solve_keys", "cstimer")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var show: ShowcaseSolve = main._showcase
+	check(show != null, "the 2×2 has a showcase")
+	var tap_moves := game.get_tap_moves()
+	check(main.handle_turn_key(KEY_I), "I is a csTimer key")
+	check_near(game.total_moves, tap_moves, "a key turn is a tap")
+	check(show.phase == "player" and show.model.notation(show.player_moves[-1]) == "R", "...and turns R on the big cube")
+	var moves := game.total_moves
+	check(main.handle_turn_key(KEY_Y) and show.model.is_rotation(show.player_moves[-1]), "Y is the x rotation")
+	check_near(game.total_moves, moves, "a rotation isn't a tap")
+	check(not main.handle_turn_key(KEY_F12), "other keys aren't used")
+	check(game.streak > 0.0, "key turns build the streak")
+	main._unhandled_input(key_event(KEY_J, true, false))
+	check(show.model.notation(show.player_moves[-1]) == "U" and game.total_moves > moves, "J from the keyboard: U, a tap")
+	main._process(0.016)
+	check("Your turns" in (main.get_node("%MoveTicker") as RichTextLabel).text, "the ticker shows your turns")
+	main._refresh_golden()
+	var streak_label: Label = main.get_node("%StreakLabel")
+	check(not streak_label.visible, "no streak label while taps have no team share (it would multiply nothing)")
+	game.upgrades["metronome"] = true
+	game.invalidate_upgrade_cache()
+	main._refresh_golden()
+	check(streak_label.visible and "Streak" in streak_label.text, "the streak shows in the top bar: %s" % streak_label.text)
+	# Space while you're turning: csTimer's hand reset, and the cube stays yours.
+	main._key_session.right_hand = 2
+	main._unhandled_input(key_event(KEY_SPACE, true, false))
+	check(show.phase == "player" and main._key_session.right_hand == 1, "Space resets the hands and doesn't hand the cube back")
+	main._unhandled_input(key_event(KEY_SPACE, false, false))
+	# The simple layout follows the setting.
+	settings.set_value("solve_keys", "simple")
+	check(main.handle_turn_key(KEY_F, true) and show.model.notation(show.player_moves[-1]) == "F'", "simple: Shift+F = F'")
+	# Overlays keep the keys.
+	main.get_node("%SettingsPanel").visible = true
+	moves = game.total_moves
+	main._unhandled_input(key_event(KEY_R, true, false))
+	check_near(game.total_moves, moves, "no key turns while the settings are open")
+	main.get_node("%SettingsPanel").visible = false
+	# Without a showcase (4×4 until R.6), turns are still taps.
+	game.cheat_add_solves(1e9)
+	game.unlock_puzzle("3x3")
+	game.unlock_puzzle("4x4")
+	game.set_focus("4x4")
+	moves = game.total_moves
+	check(main._showcase == null and main.handle_turn_key(KEY_R) and game.total_moves > moves, "4×4: R is still a tap")
+	# A championship or reset changes focus without focus_changed: the keys follow the new puzzle.
+	game.reset_state()
+	main._rebuild_after_reset()
+	check(main._key_session.model.size == 2, "after a reset the keys turn the 2×2 again")
+	settings.set_value("solve_keys", "cstimer")
 	main.free()
 	game.reset_state()
 
@@ -3686,10 +3869,10 @@ func test_trophy_formula() -> void:
 		var at := GameState.solves_for_trophies(n)
 		check(GameState.trophies_for(at) == n and GameState.trophies_for(at * 0.999) == n - 1,
 				"solves_for_trophies(%d) is exactly where trophy %d arrives" % [n, n])
-	# The divisor is picked from BALANCE.md: the tapping bot has ~1e14 lifetime Solves at 90 min (D6).
-	var at_90 := GameState.trophies_for(1.05e14)
+	# The divisor is picked from BALANCE.md: the tapping bot competes at ~84 min with ~3.3e14 run Solves (D6, S.7).
+	var at_90 := GameState.trophies_for(3.3e14)
 	check(at_90 >= 30 and at_90 <= 80, "a ~90-minute run gives a few dozen trophies, not thousands (got %d)" % at_90)
-	check(GameState.trophies_for(1e13) < at_90 and GameState.trophies_for(1.1e15) > at_90 * 2, "waiting longer gives more, less than linearly")
+	check(GameState.trophies_for(1e13) < at_90 and GameState.trophies_for(1.5e15) > at_90 * 2, "waiting longer gives more, less than linearly")
 	var per := float(Content.CHAMPIONSHIP["bonus_per_trophy"])
 	check_near(per, 0.02, "each unspent trophy is +2 % moves (PLAN §4.4)")
 	check(not (Content.CHAMPIONSHIP["keeps"] as Array).is_empty() and not (Content.CHAMPIONSHIP["resets"] as Array).is_empty(),

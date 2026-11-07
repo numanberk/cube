@@ -230,10 +230,14 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       quick case: the focused puzzle 2–5 moves from solved; solve it within 10 s for a random buff (×7 moves for 30 s, or
       15 minutes' worth of Solves). Timing and buff logic in `GameState`.
       *Done when:* tests cover the spawn timer, the buff math and expiry, a buff survives save/load, and there's a screenshot.
-- [ ] **S.7 Turns are taps + TPS streak (was 5.4):** on the main screen the same keys turn the focused puzzle and each turn is a
+- [x] **S.7 Turns are taps + TPS streak (was 5.4):** on the main screen the same keys turn the focused puzzle and each turn is a
       tap. Taps add a % of moves/s, and a TPS streak meter builds a multiplier while you keep turning steadily.
       The big cube shows R.2's showcase solve by then: decide how your own turns take it over (see R.2).
       *Done when:* the sim shows taps give ≥ 10 % of income at 30 min at 3 turns/s, and tests cover the streak.
+      *(Done 2026-11-07: taps make a share of the focused puzzle's helper moves/s from three "tap_share" upgrades
+      (Metronome Practice, TPS Drills, Turning Clinic: 7 % in all); the TPS streak (leaky meter, builds above 1.5 TPS)
+      multiplies that share up to ×2. Your key turns pause the showcase; after 2.5 s (or a click) the team solves the cube
+      from where you left it. Pacing target `taps_matter`.)*
 - [x] **S.8 Mouse turning (optional):** drag across a sticker to turn its layer (drag on the background still turns the view).
       *Done when:* tests map drags to moves on 3×3 and 4×4. *(Done early, 2026-11-03, with S.1b.)*
 - [x] **S.1b Intuitive controls (owner, 2026-11-03):** in the Solve Station, key hints on and around the cube's faces

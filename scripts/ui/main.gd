@@ -8,6 +8,7 @@ const TAP_ACTION := &"tap"  ## Space / Enter (project.godot input map); held key
 const UPGRADES_TAB := 1
 const LAB_TAB := 3
 const AUTO_TAB := 4
+const PLAYER_TURN_TIME := 0.08      ## seconds per quarter turn for your own key turns on the main cube (S.7)
 const SOLVE_POP_INTERVAL := 0.25   ## at most ~4 "+X Solves" pops a second, however many solves happen
 const BURST_INTERVAL := 0.5
 const COUNTER_EASE := 12.0         ## how fast the Solves counter catches up (higher = faster)
@@ -26,6 +27,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var lab_progress: ProgressBar = %LabProgress
 @onready var buff_label: Label = %BuffLabel
 @onready var flow_label: Label = %FlowLabel
+@onready var streak_label: Label = %StreakLabel
 @onready var golden_button: Button = %GoldenButton
 @onready var hint_label: Label = %HintLabel
 @onready var settings_button: Button = %SettingsButton
@@ -72,6 +74,9 @@ var _locked_chip: PuzzleChip         ## the next puzzle to unlock
 var _hold_counter := false        ## keeps the counter still while the Welcome back panel is open
 var _showcase: ShowcaseSolve      ## the real solve the big cube plays (task R.2); null for puzzles without one yet
 var showcase_paused := false       ## screenshots freeze the showcase at a chosen move
+## Main-screen key turning (S.7): a SolveSession that only maps keys to moves (it stays "idle", so it never times or
+## applies anything); the same layout as the Solve Station (Settings "solve_keys"), with its hands and widths.
+var _key_session := SolveSession.new()
 var news := NewsFeed.new()          ## the news feed (task R.4): GameState events in, a line every ~1.2 s out
 
 
@@ -106,6 +111,7 @@ func _ready() -> void:
 	golden_button.pressed.connect(open_golden)
 	_build_puzzle_row()
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
+	_reset_key_session()
 	for id: String in StagedSolver.PUZZLES:  # builds the solver's tables now (~0.3 s, cached), not mid-game
 		StagedSolver.warm_up(id)
 	_start_showcase()
@@ -148,21 +154,65 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Space / Enter tap from anywhere. allow_echo = false: holding the key down doesn't repeat (PLAN: no hold-to-repeat).
-	if event.is_action_pressed(TAP_ACTION, false) and not settings_panel.visible and not welcome_panel.visible \
-			and not solve_station.visible and not compete_panel.visible and not perk_panel.visible:
+	if event.is_action_pressed(TAP_ACTION, false) and not _overlay_open():
 		_on_tap_pressed()
 		get_viewport().set_input_as_handled()
 		return
-	if not OS.is_debug_build():
-		return
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
+		return
+	if not _overlay_open() and not key.ctrl_pressed and not key.alt_pressed and not key.meta_pressed:
+		var code := key.physical_keycode if key.physical_keycode != KEY_NONE else key.keycode
+		if handle_turn_key(code, key.shift_pressed):
+			get_viewport().set_input_as_handled()
+			return
+	if not OS.is_debug_build():
 		return
 	match key.keycode:
 		KEY_F9:
 			Game.cheat_add_solves(1000.0)
 		KEY_F10:
 			Game.wipe_save()
+
+
+func _overlay_open() -> bool:
+	return settings_panel.visible or welcome_panel.visible or solve_station.visible or compete_panel.visible \
+			or perk_panel.visible
+
+
+## A Solve Station key on the main screen (S.7; tests call this directly): turns the big cube, and every turn (not a
+## whole-cube rotation) is a tap. Hand and width keys only change what the next key does. Returns true if the key is
+## one of the layout's keys (so it's used up), false for any other key.
+func handle_turn_key(code: int, shift: bool = false) -> bool:
+	var session := _key_session
+	if session.model == null:
+		return false
+	var known := Content.SOLVE_KEYS.has(code) or Content.SOLVE_HAND_KEYS.has(code) if session.layout == "cstimer" \
+			else Content.SOLVE_KEYS_SIMPLE.has(code) or Content.SOLVE_WIDTH_KEYS.has(code)
+	if not known:
+		return false
+	var hand_key := Content.SOLVE_HAND_KEYS.has(code) if session.layout == "cstimer" else Content.SOLVE_WIDTH_KEYS.has(code)
+	var move := session.press_key(code, 0.0, shift)
+	if move.is_empty():
+		if _showcase == null and not hand_key:  # a key with no move on this puzzle (Megaminx): still a tap, either layout
+			puzzle_view.scramble_step()
+			_tap_effects(Game.tap(), Vector2.INF, false)
+		return true
+	var rotation := session.model.is_rotation(move)
+	if _showcase != null:
+		for m in _showcase.player_turn(move):
+			puzzle_view.turn(m)
+	elif not rotation:
+		puzzle_view.scramble_step()  # puzzles without a showcase yet keep their scramble + rewind look
+	if not rotation:
+		_tap_effects(Game.tap(), Vector2.INF, false)
+	return true
+
+
+func _reset_key_session() -> void:
+	_key_session = SolveSession.new()
+	_key_session.layout = String(Settings.get_value("solve_keys"))
+	_key_session.model = PuzzleShapes.from_id(Game.get_focused_puzzle_id())
 
 
 # --- Building the shop -------------------------------------------------------
@@ -211,7 +261,7 @@ func _refresh() -> void:
 			"" if next_milestone.is_empty() else " → Lv %d: %s" % [next_milestone["level"], next_milestone["text"]],
 		]
 	var tap_moves := Game.get_tap_moves()
-	hint_label.text = "%sClick the cube or press Space: +%s %s   ·   drag to look around" % [
+	hint_label.text = "%sClick, Space or solve keys: +%s %s   ·   drag to look around" % [
 		_team_time_text(), Num.format(tap_moves), "move" if is_equal_approx(tap_moves, 1.0) else "moves",
 	]
 	_refresh_goal_strip(goals)
@@ -489,18 +539,31 @@ func _on_welcome_collected(solves: float) -> void:
 
 ## A tap from a click (`at` = where, global) or the keyboard (no position: the puzzle's centre).
 func _on_tap_pressed(at: Vector2 = Vector2.INF) -> void:
-	Game.tap()
+	var amount := Game.tap()
+	if at == Vector2.INF and _showcase != null and _showcase.phase == "player":
+		# Space while you're turning the cube yourself: csTimer's "hands back to the outer layers", not a hand-back
+		# to the team (only a click or a pause does that).
+		_key_session.left_hand = 1
+		_key_session.right_hand = 1
+		_tap_effects(amount, at)
+		return
 	if _showcase != null:
 		for move in _showcase.tap():  # a tap plays the next move of the showcase solve
 			puzzle_view.turn(move)
 	else:
 		puzzle_view.scramble_step()
-	puzzle_view.squash()
+	_tap_effects(amount, at)
+
+
+## What every tap shows: a squash (not for key turns: the turn itself is the feedback), a click, a "+N" pop.
+func _tap_effects(amount: float, at: Vector2, squash: bool = true) -> void:
+	if squash:
+		puzzle_view.squash()
 	var size := 3 if puzzle_view.model == null else (puzzle_view.model.size if puzzle_view.model.size > 0 else 6)
 	Audio.play_click(size)  # the Megaminx (size 0) clicks like a big cube
 	if at == Vector2.INF:
 		at = puzzle_view.get_global_rect().get_center()
-	fx.pop("+%s" % Num.format(Game.get_tap_moves()), at)
+	fx.pop("+%s" % Num.format(amount), at)
 
 
 func _on_solved(count: int, puzzle_id: String) -> void:
@@ -515,6 +578,7 @@ func _on_solved(count: int, puzzle_id: String) -> void:
 
 func _on_focus_changed(puzzle_id: String) -> void:
 	puzzle_view.set_puzzle(puzzle_id)
+	_reset_key_session()
 	_start_showcase()
 	_refresh_puzzle_row()
 
@@ -552,6 +616,7 @@ func _start_showcase(puzzle_id: String = "") -> void:
 		_showcase.started.connect(_on_showcase_started)
 		_showcase.stage_changed.connect(_on_showcase_stage)
 		_showcase.finished.connect(puzzle_view.flash)
+		_showcase.resumed.connect(_build_stage_chips)
 		puzzle_view.set_speed(0.0)
 		_on_showcase_started()
 	else:
@@ -581,8 +646,10 @@ func _on_showcase_stage(_index: int) -> void:
 func _play_showcase(delta: float) -> void:
 	var focus := Game.get_focused_puzzle_id()
 	var tps := ShowcaseSolve.tps_for(_showcase.method, Game.get_puzzle_moves_per_second(focus))
-	# Quarter turns a bit quicker than the pace, so a turn always ends before the next starts.
-	puzzle_view.turn_time = clampf(0.7 / maxf(tps, 1.0), 0.05, PuzzleView3D.TURN_TIME)
+	# Quarter turns a bit quicker than the pace, so a turn always ends before the next starts. The player's own key
+	# turns (S.7) are snappy, like the Solve Station's.
+	puzzle_view.turn_time = PLAYER_TURN_TIME if _showcase.phase == "player" \
+			else clampf(0.7 / maxf(tps, 1.0), 0.05, PuzzleView3D.TURN_TIME)
 	if not showcase_paused:
 		for move in _showcase.advance(delta, tps):
 			puzzle_view.turn(move)
@@ -599,11 +666,17 @@ func _showcase_ticker(solves_per_second: float) -> String:
 			var turns: Array = _showcase.stages[0]["moves"] if not _showcase.stages.is_empty() \
 					and _showcase.stages[0]["id"] == "inspection" else []
 			text = "[color=#ecedf2]Inspection[/color]   %s" % _moves_text(m, turns, _showcase.move_index if turns.size() > 0 else 0)
+		"player":  # S.7: your own key turns; the team takes over after a pause
+			text = "[color=#ecedf2]Your turns[/color]   %s   [color=#5d6370]·  the team takes over when you pause[/color]" \
+					% _moves_text(m, _showcase.player_moves, _showcase.player_moves.size())
 		"solved":
-			var count := 0
-			for stage in _showcase.chip_stages():
-				count += (stage["moves"] as Array).size()
-			text = "[color=#3ccf8e]Solved in %d moves  ·  %s[/color]" % [count, Content.get_method(_showcase.method).get("name", "")]
+			if _showcase.by_player:
+				text = "[color=#3ccf8e]You solved it![/color]"
+			else:
+				var count := 0
+				for stage in _showcase.chip_stages():
+					count += (stage["moves"] as Array).size()
+				text = "[color=#3ccf8e]Solved in %d moves  ·  %s[/color]" % [count, Content.get_method(_showcase.method).get("name", "")]
 		_:
 			var stage := _showcase.current_stage()
 			if not stage.is_empty():
@@ -855,6 +928,14 @@ func _refresh_golden() -> void:
 				rect.end.y - golden_button.size.y - 6.0)  # under the cube, so the golden sticker on top stays visible
 	if puzzle_view.is_golden_shown() != glowing and not solve_station.visible:
 		puzzle_view.set_golden(glowing)
+	# S.7: the TPS streak (taps and key turns). It multiplies a tap's team share, so it only shows once taps have one.
+	streak_label.visible = Game.streak > 0.005 and Game.get_tap_share() > 0.0
+	if streak_label.visible:
+		streak_label.text = "Streak ×%s  ·  %s TPS" % [Num.format(Game.get_streak_mult()), Num.format(Game.get_recent_tps())]
+		streak_label.tooltip_text = ("Keep turning or tapping steadily (more than %s a second): the team's share in every " \
+				+ "tap (%s %% of its moves/s) counts up to ×%s. Stop and it drains.") % [
+				Num.format(float(Content.TAPS["drain_per_second"]) / float(Content.TAPS["fill_per_tap"])),
+				Num.format(Game.get_tap_share() * 100.0), Num.format(float(Content.TAPS["streak_max_mult"]))]
 	flow_label.visible = not Game.flow.is_empty()
 	if flow_label.visible:  # S.3: Flow from hand solves in the Solve Station
 		flow_label.text = "Flow ×%s  ·  %s" % [Num.format(float(Game.flow["mult"])),
@@ -949,6 +1030,7 @@ func _on_championship_won(trophies_won: int) -> void:
 
 func _rebuild_after_reset() -> void:
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
+	_reset_key_session()  # a championship or reset changes focus without focus_changed
 	_start_showcase()
 	_build_puzzle_row()
 	_shown_solves = Game.solves
@@ -1048,3 +1130,5 @@ func _on_setting_changed(key: String) -> void:
 		_apply_display_settings()
 	elif key == "notation":
 		_refresh()
+	elif key == "solve_keys":
+		_reset_key_session()

@@ -26,6 +26,7 @@
 #   COMPETE=won bash tools/screenshot.sh /tmp/shots endgame  # just after a championship (6.2) -> endgame_competewon.png
 #   PERKS=1 bash tools/screenshot.sh /tmp/shots endgame    # the trophy perk tree open (6.3) -> endgame_perks.png
 #   AUTO=1 bash tools/screenshot.sh /tmp/shots endgame     # the shop's Auto tab (6.3b) -> endgame_auto.png
+#   TURNS=1 bash tools/screenshot.sh /tmp/shots mid         # your own key turns on the main cube + streak (S.7) -> mid_turns.png
 #   bash tools/screenshot.sh /tmp/shots bench              # 7×7 at max speed, 600 frames per quality, logs frame times
 #
 # Presets live in tools/screenshot_presets.gd (fresh, mid, late, ...).
@@ -70,6 +71,7 @@ PICK="${PICK:-}"
 COMPETE="${COMPETE:-}"
 PERKS="${PERKS:-}"
 AUTO="${AUTO:-}"
+TURNS="${TURNS:-}"
 
 if [[ $# -gt 0 ]]; then
   PRESETS=("$@")
@@ -100,10 +102,10 @@ fi
 
 failed=0
 for preset in "${PRESETS[@]}"; do
-  out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}${POSE:+_$POSE}${GRAPHICS:+_$GRAPHICS}${TAB:+_tab$TAB}${JUICE:+_juice}${BUY:+_buy$BUY}${SETTINGS:+_settings}${SOLVE:+_solve$SOLVE}${SHOWCASE:+_showcase$SHOWCASE}${METHOD:+_$METHOD}${KEYS:+_keys$KEYS}${NEWS:+_news}${GOLDEN:+_golden$GOLDEN}${FLOW:+_flow}${DRILL:+_drill$DRILL}${DAILY:+_daily$DAILY}${SCROLL:+_scroll}${LAB:+_lab}${PICK:+_pick$PICK}${COMPETE:+_compete${COMPETE#1}}${PERKS:+_perks}${AUTO:+_auto}.png"
+  out="$OUT_DIR/$preset${PUZZLE:+_$PUZZLE}${POSE:+_$POSE}${GRAPHICS:+_$GRAPHICS}${TAB:+_tab$TAB}${JUICE:+_juice}${BUY:+_buy$BUY}${SETTINGS:+_settings}${SOLVE:+_solve$SOLVE}${SHOWCASE:+_showcase$SHOWCASE}${METHOD:+_$METHOD}${KEYS:+_keys$KEYS}${NEWS:+_news}${GOLDEN:+_golden$GOLDEN}${FLOW:+_flow}${DRILL:+_drill$DRILL}${DAILY:+_daily$DAILY}${SCROLL:+_scroll}${LAB:+_lab}${PICK:+_pick$PICK}${COMPETE:+_compete${COMPETE#1}}${PERKS:+_perks}${AUTO:+_auto}${TURNS:+_turns}.png"
   rm -f "$out"
   "${RUN[@]}" "$GODOT" --path "$ROOT" --rendering-driver opengl3 --audio-driver Dummy --resolution "$SIZE" \
-    --windowed --position 0,0 res://tools/screenshot.tscn -- --preset "$preset" --out "$out" ${PUZZLE:+--puzzle "$PUZZLE"} ${POSE:+--pose "$POSE"} ${GRAPHICS:+--graphics "$GRAPHICS"} ${TAB:+--tab "$TAB"} ${JUICE:+--juice 1} ${BUY:+--buy "$BUY"} ${SETTINGS:+--settings 1} ${SOLVE:+--solve "$SOLVE"} ${SHOWCASE:+--showcase "$SHOWCASE"} ${METHOD:+--method "$METHOD"} ${KEYS:+--keys "$KEYS"} ${NEWS:+--news 1} ${GOLDEN:+--golden "$GOLDEN"} ${FLOW:+--flow 1} ${DRILL:+--drill "$DRILL"} ${DAILY:+--daily "$DAILY"} ${SCROLL:+--scroll 1} ${LAB:+--lab 1} ${PICK:+--pick "$PICK"} ${COMPETE:+--compete "$COMPETE"} ${PERKS:+--perks 1} ${AUTO:+--auto 1} \
+    --windowed --position 0,0 res://tools/screenshot.tscn -- --preset "$preset" --out "$out" ${PUZZLE:+--puzzle "$PUZZLE"} ${POSE:+--pose "$POSE"} ${GRAPHICS:+--graphics "$GRAPHICS"} ${TAB:+--tab "$TAB"} ${JUICE:+--juice 1} ${BUY:+--buy "$BUY"} ${SETTINGS:+--settings 1} ${SOLVE:+--solve "$SOLVE"} ${SHOWCASE:+--showcase "$SHOWCASE"} ${METHOD:+--method "$METHOD"} ${KEYS:+--keys "$KEYS"} ${NEWS:+--news 1} ${GOLDEN:+--golden "$GOLDEN"} ${FLOW:+--flow 1} ${DRILL:+--drill "$DRILL"} ${DAILY:+--daily "$DAILY"} ${SCROLL:+--scroll 1} ${LAB:+--lab 1} ${PICK:+--pick "$PICK"} ${COMPETE:+--compete "$COMPETE"} ${PERKS:+--perks 1} ${AUTO:+--auto 1} ${TURNS:+--turns 1} \
     >"$LOG" 2>&1 || true
   if [[ -f "$out" ]] && ! grep -qE "SCRIPT ERROR|Parse Error|ERROR:" "$LOG"; then
     grep "^Bench " "$LOG" || true

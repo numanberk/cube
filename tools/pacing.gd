@@ -17,6 +17,7 @@ extends RefCounted
 ##   second_run    the second run (after the bot's first World Championship) earns the first run's Solves within
 ##                 `max_fraction` of the first run's time and at most `max_minutes` (6.4)
 ##   second_run_item  `kind`/`item` is bought in the second run
+##   tap_share     at checkpoint `minute`, taps give at least `min` of the profile's income (S.7)
 ##   speedup       how many times sooner `profile` reaches the lifetime Solves `baseline` has at `minute`, between `min`
 ##                 and `max` (D13's "2–3×": the early economy compounds, so a raw Solves ratio would be far bigger)
 
@@ -51,6 +52,11 @@ const TARGETS: Array[Dictionary] = [
 	{
 		"id": "puzzle_3x3", "text": "3×3 unlocked at ~5 min (4–6 min)", "profile": "tapping",
 		"type": "item_between", "kind": "puzzle", "item": "3x3", "min": 240.0, "max": 360.0,
+		"expected_failure": "",
+	},
+	{
+		"id": "taps_matter", "text": "Taps give ≥ 10 % of income at 30 min (3 turns/s, S.7)", "profile": "tapping",
+		"type": "tap_share", "minute": 30.0, "min": 0.1,
 		"expected_failure": "",
 	},
 	{
@@ -157,6 +163,12 @@ static func check(target: Dictionary, result: Dictionary) -> Dictionary:
 						top = maxf(top, float(split[id]))
 					var text := "%s" % ("one puzzle only" if split.size() < 2 else _split_text(split))
 					return {"passed": split.size() >= 2 and top <= float(target["max_share"]) + 0.001, "actual": text}
+			return {"passed": false, "actual": "no checkpoint at %s min" % target["minute"]}
+		"tap_share":
+			for c: Dictionary in result.get("checkpoints", []):
+				if is_equal_approx(float(c["minute"]), float(target["minute"])):
+					var share := float(c.get("tap_share", 0.0))
+					return {"passed": share >= float(target["min"]), "actual": "%.1f %% of income" % (share * 100.0)}
 			return {"passed": false, "actual": "no checkpoint at %s min" % target["minute"]}
 		"second_run":
 			var first := float(result.get("prestige_at", -1.0))

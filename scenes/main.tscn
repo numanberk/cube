@@ -77,6 +77,15 @@ text = "0 solves/s"
 clip_text = true
 text_overrun_behavior = 3
 
+[node name="StreakLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 1
+theme_type_variation = &"StreakLabel"
+text = "Streak ×1.50 · 3.0 TPS"
+
 [node name="FlowLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
 visible = false

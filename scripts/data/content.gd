@@ -21,6 +21,7 @@ const EFFECT_TYPES := [
 	"puzzle_mult",       # multiplies all moves (taps and helpers) on the puzzles in "puzzles" (5.7b specialists)
 	"mastery_xp_mult",   # multiplies mastery XP from every solve (5.7b)
 	"helper_mult",       # multiplies every helper's moves, not taps (trophy perks, 6.3)
+	"tap_share",         # ADDS `value` (0.02 = 2 %) of the focused puzzle's helper moves/s to every tap (S.7)
 ]
 
 const BUILDINGS := [
@@ -178,6 +179,33 @@ const UPGRADES := [
 		"cost": 1500,
 		"effect": {"type": "building_mult", "target": "club", "value": 2.0},
 		"requires": {"club": 1},
+	},
+	{
+		"id": "metronome",
+		"icon": "stackmat",
+		"name": "Metronome Practice",
+		"description": "Turn to the beat: every tap also makes 2 % of the team's moves/s on the focused puzzle.",
+		"cost": 1.5e5,
+		"effect": {"type": "tap_share", "value": 0.02},
+		"requires": {"robot": 1},
+	},
+	{
+		"id": "tps_drills",
+		"icon": "speed_practice",
+		"name": "TPS Drills",
+		"description": "Faster fingers: every tap makes 3 % more of the team's moves/s on the focused puzzle.",
+		"cost": 2.0e7,
+		"effect": {"type": "tap_share", "value": 0.03},
+		"requires": {"robot": 10},
+	},
+	{
+		"id": "turning_clinic",
+		"icon": "club_coaching",
+		"name": "Turning Clinic",
+		"description": "A world-class coach fixes your regrips: every tap makes 2 % more of the team's moves/s on the focused puzzle.",
+		"cost": 1.5e12,
+		"effect": {"type": "tap_share", "value": 0.02},
+		"requires": {"museum": 3},
 	},
 	{
 		"id": "magnets",
@@ -421,11 +449,12 @@ const PUZZLES := [
 ## World Championship (Phase 6, PLAN §4.4): the prestige. Competing turns this run's Solves into trophies:
 ## floor(sqrt(run Solves / divisor)). Each unspent trophy gives +bonus_per_trophy moves on every puzzle (taps and helpers).
 ## The divisor is tuned with the balance bot (6.4): the bot competes once a championship would double its trophy bonus
-## (+50 trophies = ×2 the first time), and with 1e11 that's at ~89 min (D6: ~90); its second run then catches up in
-## ~41 min (≤ 50 %). The tapping bot has ~2.5e14 run Solves at 89 min, ~1e13 at 60 (9 trophies), 1.1e15 at 120 (105).
+## (+50 trophies = ×2 the first time), and with 1e11 that was at ~89 min (D6: ~90); S.7's tap share made runs faster,
+## so 1.3e11 now (1.6e11 pushed it past the ~1:26 wait for Neural Upgrades II, 1e11 brought it to 1:20): the tapping
+## bot competes at ~84 min with ~3.3e14 run Solves (50 trophies). See docs/BALANCE.md for the current figures.
 ## `keeps` / `resets` are what the Compete screen lists; the reset itself (6.2) must match them.
 const CHAMPIONSHIP := {
-	"divisor": 1e11,
+	"divisor": 1.3e11,
 	"bonus_per_trophy": 0.02,
 	"keeps": [
 		"Trophies and trophy perks",
@@ -825,6 +854,22 @@ const GOLDEN := {
 		{"id": "frenzy", "name": "Frenzy", "weight": 1.0, "mult": 7.0, "seconds": 30.0},
 		{"id": "lucky", "name": "Lucky solve", "weight": 1.0, "minutes": 15.0, "min_solves_value": 10.0},
 	],
+}
+
+
+## Taps (task S.7): a tap (a click, Space, or a turn of the main cube with the Solve Station keys) makes
+## BASE_TAP_MOVES × tap upgrades, plus a share of the focused puzzle's helper moves per second (`helper_share` + the
+## "tap_share" upgrades, which come mid-game so the first minutes' pacing stays), so tapping keeps mattering late. The TPS streak is a leaky meter (0..1): each tap adds `fill_per_tap`, it drains `drain_per_second`, so
+## it only grows above drain / fill taps a second (1.5 TPS here) and is full after ~13 s at 3 TPS.
+## A full meter multiplies taps by `streak_max_mult` (linear in between). `tps_window`: seconds the shown TPS averages.
+## `resume_after`: seconds after your last key turn before the team's showcase solve takes the big cube back.
+const TAPS := {
+	"helper_share": 0.0,  ## the share every tap has without upgrades ("tap_share" upgrades add to it)
+	"fill_per_tap": 0.05,
+	"drain_per_second": 0.075,
+	"streak_max_mult": 2.0,
+	"tps_window": 2.0,
+	"resume_after": 2.5,
 }
 
 

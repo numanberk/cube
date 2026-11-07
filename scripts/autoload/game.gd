@@ -97,6 +97,9 @@ var golden_attempt_left := 0.0             ## > 0 while a claimed Golden Scrambl
 var buff: Dictionary = {}                  ## the active buff: {id, mult, left} (saved; paused while closed), or {}
 var golden_rng := RandomNumberGenerator.new()
 var flow: Dictionary = {}                  ## Flow from hand solves (S.3): {mult, left, tier}; not saved (ends on quit)
+var streak := 0.0                          ## the TPS streak meter (S.7), 0..1 (Content.TAPS); not saved
+var _tap_clock := 0.0                      ## seconds counted by update_streak (for the shown TPS)
+var _tap_times: Array[float] = []          ## _tap_clock of the taps in the last Content.TAPS["tps_window"] seconds
 var drills: Dictionary = {}                ## algorithm id -> {best, clean, count} (S.4, saved)
 var research: Dictionary = {}              ## the Lab project being researched: {id, left} (5.6, saved), or {}
 var research_done: Dictionary = {}         ## finished non-method Lab projects (methods are tracked by `method`)
@@ -129,6 +132,7 @@ func _process(delta: float) -> void:
 	add_helper_moves(delta)
 	update_golden(delta)
 	update_flow(delta)
+	update_streak(delta)
 	update_research(delta)
 	_automation_timer += delta
 	if _automation_timer >= float(Content.AUTOMATION["interval"]):
@@ -148,8 +152,37 @@ func _notification(what: int) -> void:
 
 # --- Moves and solves --------------------------------------------------------
 
-func tap() -> void:
-	add_moves_to(focused_puzzle, get_tap_moves())
+## One tap (a click, Space/Enter, or a turn of the main cube with the keys, S.7): moves on the focused puzzle, after
+## which the TPS streak grows. Returns the tap's moves (as get_tap_moves() gave them before it).
+func tap() -> float:
+	var amount := get_tap_moves()
+	add_moves_to(focused_puzzle, amount)
+	var data: Dictionary = Content.TAPS
+	streak = minf(1.0, streak + float(data["fill_per_tap"]))
+	_tap_times.append(_tap_clock)
+	return amount
+
+
+## Time passing for the TPS streak (S.7): the meter drains, old taps leave the TPS window. Not run offline.
+func update_streak(delta: float) -> void:
+	if delta <= 0.0:
+		return
+	var data: Dictionary = Content.TAPS
+	_tap_clock += delta
+	streak = maxf(0.0, streak - float(data["drain_per_second"]) * delta)
+	var window := float(data["tps_window"])
+	while not _tap_times.is_empty() and _tap_clock - _tap_times[0] > window:
+		_tap_times.pop_front()
+
+
+## The TPS streak's multiplier on taps: 1 with an empty meter, Content.TAPS["streak_max_mult"] with a full one.
+func get_streak_mult() -> float:
+	return 1.0 + (float(Content.TAPS["streak_max_mult"]) - 1.0) * clampf(streak, 0.0, 1.0)
+
+
+## Taps a second over the last Content.TAPS["tps_window"] seconds (shown next to the streak).
+func get_recent_tps() -> float:
+	return _tap_times.size() / float(Content.TAPS["tps_window"])
 
 
 ## `seconds` of helper work: each puzzle gets its share of helper moves/s, with the variety bonus (Content.VARIETY).
@@ -229,8 +262,26 @@ func get_move_progress(puzzle_id: String = "") -> float:
 	return float(puzzle_progress.get(_or_focused(puzzle_id), 0.0))
 
 
+## Moves one tap makes on the focused puzzle (before that puzzle's own multipliers, like helper moves): the flat
+## part (tap upgrades) plus Content.TAPS["helper_share"] of the helper moves/s it gets, × the TPS streak (S.7).
+## The streak multiplies only the helpers' share, so it matters once there's a team and leaves the first minutes'
+## pacing (where the flat part is everything) as it was.
 func get_tap_moves() -> float:
+	return get_tap_moves_flat() + get_tap_moves_from_helpers() * get_streak_mult()
+
+
+func get_tap_moves_flat() -> float:
 	return BASE_TAP_MOVES * _upgrade_mult("tap_mult") * _upgrade_mult("global_mult")
+
+
+## The part of a tap that grows with the team: a share of the focused puzzle's helper moves per second (S.7).
+func get_tap_moves_from_helpers() -> float:
+	return get_tap_share() * _helper_rate(focused_puzzle)
+
+
+## The share of the focused puzzle's helper moves/s every tap adds: Content.TAPS["helper_share"] + "tap_share" effects.
+func get_tap_share() -> float:
+	return float(Content.TAPS["helper_share"]) + _upgrade_sum("tap_share")
 
 
 ## Moves per second produced by ONE unit of a building.
@@ -1839,6 +1890,29 @@ func _upgrade_mult(effect_type: String, target: String = "") -> float:
 	return mult
 
 
+## Like _upgrade_mult, but for effects that add up ("tap_share", S.7): the sum of every owned one's value.
+func _upgrade_sum(effect_type: String) -> float:
+	if _mult_cache_key() != _mult_cache_owned:
+		_mult_cache.clear()
+		_mult_cache_owned = _mult_cache_key()
+	var key := "sum|" + effect_type
+	if _mult_cache.has(key):
+		return _mult_cache[key]
+	var total := 0.0
+	var effects: Array[Dictionary] = []
+	for id: String in upgrades:
+		effects.append(Content.get_upgrade(id).get("effect", {}))
+	for id: String in research_done:
+		effects.append(Content.get_lab_project(id).get("effect", {}))
+	for id: String in perks:
+		effects.append(Content.get_perk(id).get("effect", {}))
+	for effect in effects:
+		if effect.get("type", "") == effect_type:
+			total += float(effect["value"])
+	_mult_cache[key] = total
+	return total
+
+
 ## What the upgrade cache's safety net compares: the counts of owned upgrades, finished projects and perks.
 func _mult_cache_key() -> int:
 	return upgrades.size() + 1000 * research_done.size() + 1000000 * perks.size()
@@ -1888,6 +1962,8 @@ func reset_state() -> void:
 	golden_rng.randomize()
 	golden_next = _roll_golden_wait()
 	flow = {}
+	streak = 0.0
+	_tap_times.clear()
 	drills.clear()
 	daily = {}
 	research = {}

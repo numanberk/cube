@@ -114,6 +114,7 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 			g.tap()
 		g.add_helper_moves(STEP)
 		g.update_flow(STEP)
+		g.update_streak(STEP)
 		g.update_research(STEP)
 		if g.method != learned_method:  # a method's Lab research finished: that's when it counts (and is logged)
 			learned_method = g.method
@@ -180,6 +181,7 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 				checkpoints.append({
 					"minute": CHECKPOINT_MINUTES[next_checkpoint],
 					"solves_per_sec": income(g, taps_per_sec),
+					"tap_share": tap_income(g, taps_per_sec) / maxf(1e-12, income(g, taps_per_sec)),
 					"moves_per_sec": g.get_moves_per_second() + taps_per_sec * g.get_tap_moves(),
 					"solves": g.solves,
 					"total_solves": g.total_solves,
@@ -273,12 +275,34 @@ func choose_split(g: GameState) -> void:
 		weights[id] = snappedf(weights[id] / total, 1.0 / SPLIT_CHUNKS)
 	g.split = weights
 	g.set_split(weights)  # normalises after rounding (and signals, harmlessly)
+	choose_focus(g)
+
+
+## Taps go to the focused puzzle, so the bot focuses the one where a tap earns the most (S.7: a tap makes a share of
+## that puzzle's helper moves/s, so a big-share puzzle beats the newest one; a player would keep their focus there too).
+## Sets it directly (no signals).
+func choose_focus(g: GameState) -> void:
+	var best := g.focused_puzzle
+	var best_value := -1.0
+	var keep := g.focused_puzzle
+	for id in g.get_unlocked_puzzle_ids():
+		g.focused_puzzle = id
+		var value := g.get_tap_moves() * g.get_puzzle_moves_mult(id) / g.get_moves_per_solve(id) * g.get_solve_value(id)
+		if value > best_value * 1.000001:
+			best_value = value
+			best = id
+	g.focused_puzzle = best if best_value > 0.0 else keep
 
 
 ## Solves per second from helpers plus tapping at `taps_per_sec`.
 func income(g: GameState, taps_per_sec: float) -> float:
-	var tap_solves := taps_per_sec * g.get_tap_moves() / g.get_moves_per_solve() * g.get_solve_value()  # focused puzzle
-	return g.get_solves_per_second() + tap_solves
+	return g.get_solves_per_second() + tap_income(g, taps_per_sec)
+
+
+## Solves per second from tapping alone (on the focused puzzle, after its multipliers like helper moves).
+func tap_income(g: GameState, taps_per_sec: float) -> float:
+	var focus := g.get_focused_puzzle_id()
+	return taps_per_sec * g.get_tap_moves() * g.get_puzzle_moves_mult(focus) / g.get_moves_per_solve() * g.get_solve_value()
 
 
 # --- Choosing what to buy ----------------------------------------------------

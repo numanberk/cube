@@ -2,6 +2,50 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-07 — Task S.7: turns are taps + TPS streak
+- **Owner (2026-11-07):** do the Phase S leftovers now, S.7 → R.5 → R.6, and ask if something needs their input.
+- **Key turns on the main screen:** the Solve Station keys (csTimer or simple, the same setting, hands and widths too)
+  turn the big cube (`main.handle_turn_key`, a `SolveSession` used only as a key → move mapper). Every turn is a tap;
+  whole-cube rotations aren't. Keys are ignored while an overlay is open. Puzzles without a showcase yet (4×4+ until
+  R.6) do a tap's scramble step.
+- **The showcase and your turns (R.2 left this to S.7):** your first turn pauses the showcase (`ShowcaseSolve.player_turn`,
+  phase "player"); the ticker reads "Your turns  R U R' …". After `Content.TAPS["resume_after"]` (2.5 s) without a turn,
+  or at the next click, the team takes the cube back and **solves it from wherever you left it** (short inspection, a
+  new StagedSolver solve; signal `resumed` rebuilds the stage chips). Finish the solve yourself and it reads "You solved
+  it!" (not for a mere rotation of a solved cube).
+- **Taps scale (was 5.4):** a tap = the flat part (tap upgrades, as before) + a share of the focused puzzle's helper
+  moves/s (`get_tap_moves_from_helpers`). The share comes from a new effect type **`tap_share`** (adds up, `_upgrade_sum`)
+  on three new upgrades: **Metronome Practice** +2 % (1.5e5, 1 Robot), **TPS Drills** +3 % (2e7, 10 Robots), **Turning
+  Clinic** +2 % (1.5e12, 3 Museums; it also fills a 3:38 gap before the hour mark that the faster mid-game opened).
+  `Content.TAPS["helper_share"]` (the base) is 0, so the first minutes' pacing didn't move (a 3 % base made the 3×3
+  arrive at 3:54 and the Robot at 7:42).
+- **TPS streak:** a leaky meter (`Game.streak`, 0..1, not saved): +0.05 a tap, −0.075 a second, so it builds above 1.5
+  TPS and is full after ~13 s at 3 TPS. It multiplies the helpers' share of a tap up to ×2 (not the flat part, again for
+  the early pacing). Top bar: "Streak ×1.62 · 3.0 TPS" (new `StreakLabel` variation) while the meter isn't empty.
+  `tap()` now returns the moves it made (the "+N" pop shows them).
+- **Balance bot:** `choose_focus` (after every split choice): it focuses the puzzle where a tap earns most. Without it,
+  every unlock moved its taps to the new, small-share puzzle, and with the tap share it never unlocked the 4×4. Its tap
+  income now counts the focused puzzle's moves multiplier (as the game does). New pacing target **`taps_matter`**
+  (type `tap_share`): taps ≥ 10 % of income at 30 min: **12.4 %**.
+- **Balance:** the faster mid-game moved the first championship to 1:20:41 (41 s inside D6's 80 min), so
+  `CHAMPIONSHIP["divisor"]` 1e11 → **1.3e11**: championship at **1:23:49**, second run caught up at 38:55 (46 %), 7×7
+  26:38 into run 2; 3×3 4:22, Robot 8:34, 4×4 28:07, 5×5 51:46 (unchanged early on). 1.6e11 pushed the run past the
+  ~1:26 wait for Neural Upgrades II (10:57 gap). Every target passes.
+- **For a later balance task (not fixed):** the Small-Cube / Big-Cube choice (5.7b) tilted. At 1 h the bot that never
+  buys Small-Cube Specialist has 26.1T Solves vs 15.9T for the main build (it was 10.3T vs 9.8T). Small-Cube ×2.5 or
+  ×2.25 fixed the ratio but made the run too fast (5×5 before 50 min, a 4–5 min gap before the hour), so it stays ×2.
+  The active profile's longest wait also grew (1:44 → 3:05; no target covers it).
+- **diff-reviewer fixes:** the key mapper is rebuilt after a championship or reset (focus changes there without
+  `focus_changed`; a Megaminx focus could crash the simple layout); the streak label hides while taps have no team share
+  (it multiplied nothing for the first ~10 min) and its tooltip says what it multiplies; Space while you're turning is
+  csTimer's hand reset and keeps the cube yours (a reflex Space used to hand it back); keys on a puzzle without a move
+  for them (Megaminx) still tap in both layouts; Num.format in the label; "You solved it!" only if the cube wasn't solved
+  when you took it (R R' on a solved cube isn't a solve).
+- Tests (4374 checks, `All good.`): `test_tap_streak`, `test_showcase_player_turns`, `test_main_screen_key_turns`;
+  the old tap tests now read the tap's value before tapping (the streak makes the next one bigger).
+- Screenshot option `TURNS=1` (your turns + the streak); shots in `docs/screenshots/s7-turns/`.
+- **Next: R.5** (Roux and ZZ in the solver), then R.6.
+
 ## 2026-11-06 — Task 6.4: prestige tuned (Phase 6 done)
 - **The bot plays two runs now** (`tools/simulator.gd`, `run(..., prestige)`): it competes once a championship would
   at least **double its trophy bonus** (`COMPETE_FACTOR`, the usual idle-game rule of thumb; 50 trophies the first

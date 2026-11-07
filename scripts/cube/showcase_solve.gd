@@ -11,10 +11,16 @@ extends RefCounted
 ##
 ## Phases: "inspection" (the scramble is shown; the inspection turns, like z2 y, play during it), "solving", "solved"
 ## (held for a moment, then a new scramble). Timing is Content.SHOWCASE.
+##
+## The player's own key turns (task S.7) take the cube over: `player_turn(move)` applies a move and enters the "player"
+## phase, where the showcase waits. After Content.TAPS["resume_after"] seconds without a turn (or at the next click) the
+## team takes it back: it solves the cube from wherever the player left it (a short inspection, then a new staged
+## solve), or, if the player solved it, it counts as solved.
 
 signal started                    ## a new scramble is ready: show `scramble` (the view resets to it)
 signal stage_changed(index: int)  ## `stage_index` moved on (the stage chips follow it)
 signal finished                   ## the solve is done (flash!)
+signal resumed                    ## the team took the cube back from the player: new `stages`, same cube (no reset)
 
 var puzzle_id := ""
 var method := "beginner"          ## used from the next scramble on (a method learned mid-solve waits for it)
@@ -26,6 +32,9 @@ var stage_index := 0              ## the stage being played (or about to be)
 var move_index := 0               ## next move within that stage
 var solves_shown := 0
 var model: TwistyModel            ## the puzzle as it looks once every returned move is played
+var player_moves: Array[Dictionary] = []  ## the player's turns since they took the cube (newest last, at most 12)
+var by_player := false            ## the last solve was finished by the player's own turns
+var _taken_solved := false        ## the cube was already solved when the player took it (undoing R with R' isn't a solve)
 
 var _rng := RandomNumberGenerator.new()
 var _timer := 0.0
@@ -66,7 +75,47 @@ func start_new() -> void:
 	move_index = 0
 	_timer = float(Content.SHOWCASE["inspection"])
 	_move_clock = 0.0
+	player_moves.clear()
+	by_player = false
 	started.emit()
+
+
+## The player turned the cube with the keys (S.7): the move is played now and the showcase waits for them.
+## Returns the moves to show (just this one).
+func player_turn(move: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if move.is_empty():
+		return out
+	if phase != "player":
+		player_moves.clear()
+		_taken_solved = model.is_solved()
+	model.apply(move)
+	out.append(move)
+	phase = "player"
+	player_moves.append(move)
+	if player_moves.size() > 12:
+		player_moves.pop_front()
+	_timer = float(Content.TAPS["resume_after"])
+	return out
+
+
+## The team takes the cube back from the player: solved already -> "solved", else a new staged solve from here.
+func _resume() -> void:
+	if model.is_solved():
+		stages = []
+		stage_index = 0
+		move_index = 0
+		by_player = not _taken_solved
+		resumed.emit()
+		_finish()
+		return
+	stages = StagedSolver.solve(model, method, solver_options)
+	phase = "inspection"
+	stage_index = 0
+	move_index = 0
+	_timer = float(Content.SHOWCASE["inspection"])
+	_move_clock = 0.0
+	resumed.emit()
 
 
 ## Moves to play for `delta` seconds at `tps` turns per second (0 = only taps turn it).
@@ -90,12 +139,18 @@ func advance(delta: float, tps: float) -> Array[Dictionary]:
 			_timer -= delta
 			if _timer <= 0.0:
 				start_new()
+		"player":
+			_timer -= delta
+			if _timer <= 0.0:
+				_resume()
 	return out
 
 
 ## A tap plays the next move now (in inspection it ends inspection first). Returns the moves to show.
 func tap() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	if phase == "player":  # a click hands the cube back to the team straight away
+		_resume()
 	if phase == "inspection":
 		out.append_array(_take_inspection())
 		_begin_solving()
