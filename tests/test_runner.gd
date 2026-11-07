@@ -3024,6 +3024,140 @@ func test_news_events_from_game() -> void:
 	g.free()
 
 
+func test_career_data() -> void:
+	var ids := {}
+	for def: Dictionary in Content.CAREER:
+		var id: String = def["id"]
+		check(not ids.has(id), "career ids are unique (%s)" % id)
+		ids[id] = true
+		check(String(def["text"]).length() > 10, "%s has a story line" % id)
+		check(Content.get_career_moment(id) == def, "get_career_moment finds %s" % id)
+		var trigger: Dictionary = def["trigger"]
+		var target := String(trigger.get("id", ""))
+		match String(trigger["type"]):
+			"helper":
+				check(not Content.get_building(target).is_empty(), "%s: helper %s exists" % [id, target])
+			"upgrade":
+				check(not Content.get_upgrade(target).is_empty(), "%s: upgrade %s exists" % [id, target])
+			"puzzle":
+				check(not Content.get_puzzle(target).is_empty(), "%s: puzzle %s exists" % [id, target])
+			"method":
+				check(Content.get_method_index(target) > 0, "%s: method %s exists" % [id, target])
+			"lifetime_solves", "championships":
+				check(float(trigger["value"]) > 0.0, "%s has a threshold" % id)
+			_:
+				check(false, "%s has a known trigger type (%s)" % [id, trigger["type"]])
+
+
+## Each moment fires once at its trigger, in data order, and never again (7.0a).
+func test_career_moments_fire_once() -> void:
+	var g := new_game()
+	var heard: Array[String] = []
+	g.career_moment.connect(func(id: String) -> void: heard.append(id))
+	check(g.check_career().is_empty(), "a new game has no story yet")
+	for def: Dictionary in Content.CAREER:
+		var trigger: Dictionary = def["trigger"]
+		var target := String(trigger.get("id", ""))
+		match String(trigger["type"]):
+			"lifetime_solves":
+				g.cheat_add_solves(float(trigger["value"]) - g.total_solves)
+			"helper":
+				g.buildings[target] = 1
+			"upgrade":
+				g.upgrades[target] = true
+			"puzzle":
+				g.puzzles_reached[target] = true
+			"method":
+				g.method = target
+			"championships":
+				g.championships = int(trigger["value"])
+		var fired := g.check_career()
+		check(Array(fired) == [def["id"]], "%s fires at its trigger (fired: %s)" % [def["id"], fired])
+		check(g.check_career().is_empty(), "...once")
+	check(heard.size() == Content.CAREER.size(), "every moment was signalled once (%d)" % heard.size())
+	# After a championship the same unlocks happen again: no repeats.
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	check(g.compete() > 0, "test setup: a championship")
+	g.cheat_add_solves(1000.0)
+	check(g.buy_building("friend") and g.buy_building("club") and g.unlock_puzzle("3x3"), "test setup: the same unlocks again")
+	check(heard.size() == Content.CAREER.size(), "nothing fires again in a new run")
+	var data := g.get_save_data()
+	var loaded := new_game()
+	loaded.career_moment.connect(func(id: String) -> void: heard.append(id))
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.career_seen.size() == Content.CAREER.size() and loaded.check_career().is_empty()
+			and heard.size() == Content.CAREER.size(), "...or after a reload")
+	loaded.free()
+	g.free()
+	# Buying fires at once (no wait for the once-a-second check); lifetime Solves are checked once a second.
+	var live := new_game()
+	var live_heard: Array[String] = []
+	live.career_moment.connect(func(id: String) -> void: live_heard.append(id))
+	live.buy_building("friend")
+	check(Array(live_heard) == ["first_friend"], "the first Friend's moment fires when it's bought (%s)" % [live_heard])
+	live.cheat_add_solves(5.0)
+	live._process(0.5)
+	check(not live_heard.has("first_solve"), "lifetime Solves wait for the once-a-second check")
+	live._process(0.6)
+	check(live_heard.has("first_solve"), "...then fire")
+	live.free()
+	var feed := NewsFeed.new()
+	feed.on_career_moment("first_4x4")
+	check(feed.advance(0.0) == Content.get_career_moment("first_4x4")["text"], "the news feed shows a moment's line")
+	feed.on_career_moment("banana")
+	check(feed.pending() == 0, "...and nothing for an unknown id")
+
+
+func test_career_save() -> void:
+	var g := new_game()
+	g.buildings["club"] = 3
+	g.check_career()
+	var data := g.get_save_data()
+	check(GameState.SAVE_VERSION >= 13 and int(data["version"]) == GameState.SAVE_VERSION, "saves as v13 or later")
+	data["career"] = ["banana", 5, "first_3x3", "cubing_club"]
+	var damaged := new_game()
+	damaged.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(damaged.career_seen.keys() == ["first_3x3", "cubing_club"], "unknown ids are dropped (%s)" % [damaged.career_seen.keys()])
+	damaged.free()
+	# v12 -> v13: what an old save already lived through is marked seen without a signal, the rest still comes.
+	var v12 := g.get_save_data()
+	v12["version"] = 12
+	v12.erase("career")
+	v12["buildings"]["friend"] = 2
+	v12["championship"]["reached"] = ["2x2", "3x3"]
+	var old := new_game()
+	var heard: Array[String] = []
+	old.career_moment.connect(func(id: String) -> void: heard.append(id))
+	old.apply_save_data(JSON.parse_string(JSON.stringify(v12)), float(v12["saved_at"]))
+	check(heard.is_empty() and old.career_seen.has("first_friend") and old.career_seen.has("cubing_club")
+			and old.career_seen.has("first_3x3"), "v12 → v13: moments already lived are seen, silently (%s)" % [old.career_seen.keys()])
+	check(not old.career_seen.has("first_robot") and old.check_career().is_empty(), "...and the others wait for their trigger")
+	# A trigger reached while away (CFOP research finishing) isn't signalled during the load (no UI listens yet),
+	# so it isn't lost: it fires at the first check afterwards.
+	var away := new_game()
+	away.cheat_add_solves(1e4)
+	away.research = {"id": "method_cfop", "left": 60.0}
+	var away_data := away.get_save_data()
+	away_data["saved_at"] = 1000.0
+	away.free()
+	var back := new_game()
+	var back_heard: Array[String] = []
+	back.career_moment.connect(func(id: String) -> void: back_heard.append(id))
+	back.apply_save_data(JSON.parse_string(JSON.stringify(away_data)), 1000.0 + 3600.0)
+	check(back.method == "cfop" and back_heard.is_empty() and not back.career_seen.has("learn_cfop"),
+			"CFOP learned while away: nothing signalled during the load (%s)" % [back_heard])
+	back._process(1.0)
+	check(back_heard.has("learn_cfop"), "...it fires at the first check after loading")
+	back.free()
+	old.buildings["robot"] = 1
+	check(Array(old.check_career()) == ["first_robot"], "...then fire")
+	check(int(old.get_save_data()["version"]) == GameState.SAVE_VERSION, "...and it saves as the current version")
+	old.free()
+	g.reset_state()
+	check(g.career_seen.is_empty(), "a wiped save starts the story over")
+	g.free()
+
+
 func test_news_on_main_screen() -> void:
 	var game: GameState = root.get_node("Game")
 	game.persistence_enabled = false

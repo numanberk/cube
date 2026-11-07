@@ -80,6 +80,13 @@ func on_purchased(kind: String, id: String) -> void:
 			push("perk:" + id, "Trophy perk: %s. %s" % [perk.get("name", id), perk.get("description", "")])
 
 
+## A career moment (7.0a): its story line. (7.0b connects Game.career_moment to this and adds the pop.)
+func on_career_moment(moment_id: String) -> void:
+	var text := String(Content.get_career_moment(moment_id).get("text", ""))
+	if text != "":
+		push("career:" + moment_id, text)
+
+
 func on_time_tier(puzzle_id: String, tier: String, seconds: float) -> void:
 	push("tier:" + puzzle_id, "%s team: %s! %s" % [Content.get_puzzle(puzzle_id).get("name", puzzle_id), tier, Num.cube_time(seconds)])
 

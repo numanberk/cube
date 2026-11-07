@@ -2,6 +2,31 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-07 — Task 7.0a: career moments, rules part (save v13)
+- **Parallel session** (PLAN §3) next to V.1 and R.6a; claimed 7.0a with **Save: yes (v13)**. Owner: rules only (D15c),
+  so 7.0 is split into **7.0a rules** (done here) and **7.0b screen** (after Phase V). `main.gd`/`main.tscn` untouched.
+- **Data:** `Content.CAREER`, 17 story beats in order, from "Your first solve!" through the first Friend, the 3×3, the
+  cubing club, CFOP, the robot, the first competition, a shop sponsor, the lab, the 4×4 ("Nobody warned you about
+  parity"), a million solves, going pro, the 5×5, the federation, World Champion, the 7×7 and the Megaminx. Triggers:
+  `lifetime_solves`, `helper`, `upgrade`, `puzzle` (reached in any run), `method` (or a later one), `championships`.
+- **GameState:** `check_career(emit = true)` fires each moment whose trigger is true and that hasn't fired, in data
+  order, as `career_moment(id)`; run on every purchase, after a championship, and once a second (lifetime Solves).
+  `career_seen` is kept through championships (helpers are bought again in a new run: no repeats) and saved.
+- **Save v13:** `"career": [ids]`; unknown ids dropped. v12 → v13 sets `"backfill"`: when that save is applied, every
+  moment that's already true is marked seen **silently** (no wall of old news), before time away is added (what
+  happened while away still fires). **Achievements (7.1) are now v14** (ROADMAP, PLAN §4 and D15c updated).
+- `NewsFeed.on_career_moment(id)` pushes the line (key `career:<id>`); **7.0b connects it** in `main.gd` and adds the
+  pop (see the note under 7.0b).
+- Tests: `test_career_data` (unique ids, known triggers, existing targets), `test_career_moments_fire_once` (each moment
+  at its trigger, once, in order; none again after a championship or a reload; buying fires at once, lifetime Solves
+  within a second; the news line), `test_career_save` (damaged list, v12 → v13 backfill, wipe, a trigger while away).
+- **diff-reviewer fixes:** a moment reached *during* a load (e.g. CFOP research finishing while away emits
+  `purchased`) was signalled before main.gd listens, then marked seen and lost; now nothing is signalled while
+  `apply_save_data` runs (`_applying_save`), and it fires at the first check after loading (test). The "no repeats in
+  a new run" check could pass without buying anything (fixed). The `world_champion` line no longer starts with
+  "World Champion!" (main.gd's own championship line does). Note for 7.0b in the ROADMAP: the career line lands just
+  before the event's own news line.
+
 ## 2026-11-07 — D15c changed: Phase 7 rules may start now (docs only, owner's request)
 - **Owner, 2026-11-07:** D15c was "Phase V before Phase 7". Now: Phase 7's **rules** (content, `GameState`, save,
   tests, balance bot) may start now, in parallel with Phase V; its **screens** still wait until Phase V is done, so

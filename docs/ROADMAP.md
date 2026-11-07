@@ -445,17 +445,22 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
 - **7.0 Career moments (fun pass, 2026-11-04):** short story beats at key unlocks, as data, shown in the news feed and as a
       pop: "Your first competition!", "A local shop sponsors you", "You open a cubing club"…, from a kid with a cube to running
       a lab, so the progression reads as a journey. Split (D15c, owner 2026-11-07) into:
-  - [ ] **7.0a Rules:** the moments as data (`Content.CAREER`), GameState fires each one once (kept through
+  - [x] **7.0a Rules:** the moments as data (`Content.CAREER`), GameState fires each one once (kept through
         championships, saved), a signal for the screen part; the news line text. No `main.gd`/`main.tscn` changes.
         *Done when:* each moment fires once at its trigger (test), never again (also after a championship and a reload),
         and the save change has a migration test.
-  - [ ] **7.0b Screen (after Phase V):** show each moment in the news feed and as a pop in the new kit.
+        *(Done 2026-11-07: 17 moments, `Game.career_moment(id)`, save v13 with a silent backfill for older saves,
+        `NewsFeed.on_career_moment(id)` ready for 7.0b to connect.)*
+  - [ ] **7.0b Screen (after Phase V):** show each moment in the news feed and as a pop in the new kit. In `main.gd`:
+        `Game.career_moment.connect(news.on_career_moment)` plus the pop (text: `Content.get_career_moment(id)["text"]`).
+        Note: GameState checks the career on `purchased`/`championship_won` before main.gd's own handlers run, so a
+        career line lands just before that event's own news line; push it after if that reads better.
         *Done when:* there's a screenshot.
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
-      all moves, with a toast when earned. Save v13. **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
+      all moves, with a toast when earned. Save v14 (v13 is 7.0a's career moments). **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
       so they work as a map of the game, like Revolution Idle's.
-      *Done when:* there are tests for the conditions and the v12 → v13 migration, and a screenshot of the tab and toast.
+      *Done when:* there are tests for the conditions and the v13 → v14 migration, and a screenshot of the tab and toast.
 - [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
 

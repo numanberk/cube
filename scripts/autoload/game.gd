@@ -24,6 +24,7 @@ signal drill_set_learned(set_id: String)    ## every case of a drill set is lear
 signal daily_rewarded(amount: float)  ## the first daily scramble finished today paid its reward (S.5)
 signal research_started(project_id: String)   ## Algorithm Lab (5.6)
 signal research_finished(project_id: String)  ## a project's effect counts from now (methods also emit purchased("method"))
+signal career_moment(moment_id: String)  ## a Content.CAREER story beat happened, once per player (7.0a)
 signal championship_won(trophies_won: int)  ## a World Championship reset the run (6.2); the UI rebuilds after it
 ## Buying a trophy perk (6.3) emits purchased("perk", id).
 signal golden_spawned
@@ -31,11 +32,11 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 12  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 13  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
                           ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
-                          ## v12 (6.3b): auto-buyer toggles
+                          ## v12 (6.3b): auto-buyer toggles; v13 (7.0a): career moments seen
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -81,6 +82,9 @@ var automation_running := false  ## true while run_automation() buys: the UI kee
 var automation_paused := false   ## set by the UI while "Welcome back" is open: no auto-buyer runs (6.3b)
 var auto_compete_held := false   ## set by the UI while a hand solve or the Compete screen is open: no auto-Compete
 var _automation_timer := 0.0
+var career_seen: Dictionary = {}  ## Content.CAREER ids that already fired (7.0a, saved; kept through championships)
+var _career_timer := 0.0
+var _applying_save := false  ## true inside apply_save_data: no career moment is signalled (no UI listens yet)
 var championships := 0          ## World Championships won (6.2); the first one opens the 7×7, the Megaminx and "Finals"
 var puzzles_reached: Dictionary = {}  ## puzzle id -> true for every puzzle ever unlocked (kept through prestige: its music stays)
 var method := "beginner"        ## id of the newest method learned (Content.METHODS); every earlier one is learned too
@@ -120,6 +124,8 @@ func _init() -> void:
 		check_time_tiers())
 	focus_changed.connect(func(_id: String) -> void: check_helper_times(false))
 	drill_set_learned.connect(_on_drill_set_learned_for_lab)
+	purchased.connect(func(_kind: String, _id: String) -> void: check_career())  # a new helper, puzzle, method...
+	championship_won.connect(func(_won: int) -> void: check_career())
 
 
 func _ready() -> void:
@@ -134,6 +140,10 @@ func _process(delta: float) -> void:
 	update_flow(delta)
 	update_streak(delta)
 	update_research(delta)
+	_career_timer += delta
+	if _career_timer >= 1.0:  # lifetime Solves grow without a purchase, so the career is also checked once a second
+		_career_timer = 0.0
+		check_career()
 	_automation_timer += delta
 	if _automation_timer >= float(Content.AUTOMATION["interval"]):
 		_automation_timer = 0.0
@@ -908,6 +918,46 @@ func _cheapest_helper() -> String:
 				best = def["id"]
 				best_cost = cost
 	return best
+
+
+# --- Career moments (task 7.0a) ---------------------------------------------------------
+
+## Fires every Content.CAREER moment whose trigger is now true and that hasn't fired before, in data order. `emit` false
+## marks them seen silently (an old save loading). While a save is being applied it does nothing (the UI isn't
+## listening yet: e.g. research that finished while away fires at the first check after loading). Returns the ids fired.
+func check_career(emit: bool = true) -> Array[String]:
+	var fired: Array[String] = []
+	if emit and _applying_save:
+		return fired  # loading: nobody listens yet, so it stays unseen until the next check
+	for def: Dictionary in Content.CAREER:
+		var id: String = def["id"]
+		if career_seen.has(id) or not is_career_trigger_met(def):
+			continue
+		career_seen[id] = true
+		fired.append(id)
+		if emit:
+			career_moment.emit(id)
+	return fired
+
+
+## Is a career moment's trigger true right now (see Content.CAREER)?
+func is_career_trigger_met(def: Dictionary) -> bool:
+	var trigger: Dictionary = def.get("trigger", {})
+	var id := String(trigger.get("id", ""))
+	match String(trigger.get("type", "")):
+		"lifetime_solves":
+			return total_solves >= float(trigger.get("value", INF))
+		"helper":
+			return int(buildings.get(id, 0)) > 0
+		"upgrade":
+			return upgrades.has(id)
+		"puzzle":
+			return puzzles_reached.has(id)
+		"method":
+			return Content.get_method_index(method) >= Content.get_method_index(id) and Content.get_method_index(id) >= 0
+		"championships":
+			return championships >= int(trigger.get("value", 1))
+	return false
 
 
 ## How long offline progress (and the Lab's time away) can run: 8 h plus "offline_hours" perks.
@@ -1944,6 +1994,8 @@ func reset_state() -> void:
 	upgrades.clear()
 	trophies = 0
 	perks.clear()
+	career_seen.clear()
+	_career_timer = 0.0
 	automation = {"compete_at": int(Content.AUTOMATION["compete_at_default"])}
 	_automation_timer = 0.0
 	championships = 0
@@ -1996,6 +2048,7 @@ func get_save_data() -> Dictionary:
 		"championship": {"trophies": trophies, "count": championships, "run_solves": run_solves,
 				"reached": puzzles_reached.keys(), "perks": perks.keys()},
 		"automation": automation.duplicate(),
+		"career": career_seen.keys(),
 	}
 
 
@@ -2091,6 +2144,7 @@ func _remove(path: String) -> void:
 ## Restores state from save data, then grants offline progress up to `now`.
 func apply_save_data(data: Dictionary, now: float) -> void:
 	reset_state()
+	_applying_save = true  # a moment reached here (e.g. research finished while away) fires at the first check after
 	data = _migrate(data)
 	solves = float(data.get("solves", 0.0))
 	total_solves = maxf(0.0, float(data.get("total_solves", 0.0)))
@@ -2100,6 +2154,11 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	championships = maxi(0, int(saved_champ.get("count", 0)))
 	run_solves = clampf(float(saved_champ.get("run_solves", total_solves)), 0.0, total_solves)  # never more than lifetime
 	_load_perks(saved_champ.get("perks", []))
+	var saved_career: Variant = data.get("career", [])
+	if typeof(saved_career) == TYPE_ARRAY:
+		for id: Variant in saved_career:
+			if not Content.get_career_moment(str(id)).is_empty():
+				career_seen[str(id)] = true
 	var saved_auto: Variant = data.get("automation", {})
 	if typeof(saved_auto) == TYPE_DICTIONARY:
 		for kind: String in Content.AUTOMATION["kinds"]:
@@ -2177,6 +2236,8 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	check_time_tiers(false)  # tiers reached before don't pop again
 	_helper_best.clear()
 	check_helper_times(false)
+	if typeof(data.get("career")) == TYPE_STRING and String(data["career"]) == "backfill":
+		check_career(false)  # a pre-v13 save: what already happened doesn't pop again (time away below still can)
 	_next_solves_milestone = _milestone_above(total_solves)
 	var saved_at := float(data.get("saved_at", now))
 	var elapsed := clampf(now - saved_at, 0.0, get_offline_cap_seconds())
@@ -2191,6 +2252,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 			offline_report = {"seconds": elapsed, "solves": total_solves - before}
 			if running != "" and research.is_empty():
 				offline_report["research"] = Content.get_lab_project(running).get("topic", "")
+	_applying_save = false
 
 
 ## The saved trophy perks (6.3): unknown ids and ones whose requirements aren't owned are dropped (in Content order, so a
@@ -2330,6 +2392,12 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("automation"):
 			data["automation"] = {}
 		data["version"] = 12
+	if int(data["version"]) < 13:
+		# v13 adds career moments (7.0a). An older save already lived through some of them: "backfill" marks every
+		# moment that's already true as seen when the save is applied, so they don't all pop at once.
+		if not data.has("career"):
+			data["career"] = "backfill"
+		data["version"] = 13
 	return data
 
 

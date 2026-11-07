@@ -364,7 +364,7 @@ docs/BALANCE.md, docs/screenshots/
 - Content stays as data (`Content.PUZZLES`, `Content.TRACKS`, `Content.ACHIEVEMENTS`, …). If `content.gd` gets huge,
   split it into `content_helpers.gd`, `content_upgrades.gd`, and so on.
 - **Save versions:** v1 → **v2 puzzles** (4.2) → **v3 mastery** (4.6) → **v4 methods** (5.1) → **v5 solve records** (S.2) →
-  **v6 Golden Scramble + buff** (S.6) → **v7 drill records** (S.4) → **v8 daily scramble** (S.5) → **v9 Algorithm Lab** (5.6) → **v10 World Championships** (6.2) → **v11 trophy perks** (6.3) → **v12 auto-buyer switches** (6.3b) → **v13 achievements** (7.1).
+  **v6 Golden Scramble + buff** (S.6) → **v7 drill records** (S.4) → **v8 daily scramble** (S.5) → **v9 Algorithm Lab** (5.6) → **v10 World Championships** (6.2) → **v11 trophy perks** (6.3) → **v12 auto-buyer switches** (6.3b) → **v13 career moments** (7.0a) → **v14 achievements** (7.1).
   Every bump has a `_migrate()` step and a test that loads the older format. Saves are written to a temp file then
   renamed, with `save.bak` kept (task 0.4).
 - Settings live in `user://settings.cfg`, separate from the save, so a reset never wipes volume or graphics choices.
@@ -415,7 +415,7 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
     the task in the roadmap (e.g. 7.1a rules / 7.1b screen) and tick only the part whose "Done when" is met. Its
     **screen part** (tabs, toasts, pops, screenshots) waits until Phase V is done, so it's built once in the new kit,
     not restyled. Phase 7 rules sessions keep `main.gd`/`main.tscn` untouched (no UI) and claim **Save: yes** in the
-    In progress table when they bump the save (7.1 does: v13), so only one runs at a time.
+    In progress table when they bump the save (7.0a did v13; 7.1 does v14), so only one runs at a time.
 
 ### Open
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?

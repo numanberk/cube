@@ -767,6 +767,61 @@ const NEWS := {
 }
 
 
+## Career moments (task 7.0): short story beats, from a kid with a cube to running a lab and winning the Worlds. Each
+## fires once per player (kept through championships, saved), in this order, the first time its trigger is true.
+## 7.0b shows them in the news feed and as a pop.
+##   id, text, trigger: {type, ...}:
+##     "lifetime_solves" value   lifetime Solves ≥ value
+##     "helper" id               at least one of that helper owned
+##     "upgrade" id              that upgrade owned
+##     "puzzle" id               that puzzle reached in any run (Game.puzzles_reached)
+##     "method" id               that method learned (or a later one)
+##     "championships" value     World Championships won ≥ value
+const CAREER: Array[Dictionary] = [
+	{"id": "first_solve", "text": "Your first solve! The little 2×2 in your pocket is a real puzzle after all.",
+		"trigger": {"type": "lifetime_solves", "value": 1.0}},
+	{"id": "first_friend", "text": "A friend from school asks how you do that. Now there are two of you.",
+		"trigger": {"type": "helper", "id": "friend"}},
+	{"id": "first_3x3", "text": "Your first 3×3. Twenty moves, if you're good. You're not, yet.",
+		"trigger": {"type": "puzzle", "id": "3x3"}},
+	{"id": "cubing_club", "text": "You open a cubing club after school. Six members, one of them a teacher.",
+		"trigger": {"type": "helper", "id": "club"}},
+	{"id": "learn_cfop", "text": "You learn CFOP from a video. Cross, F2L, OLL, PLL: everything changes.",
+		"trigger": {"type": "method", "id": "cfop"}},
+	{"id": "first_robot", "text": "You build a robot that solves cubes. It's slow. For now.",
+		"trigger": {"type": "helper", "id": "robot"}},
+	{"id": "first_competition", "text": "Your first competition! You come home with a certificate and a new main cube.",
+		"trigger": {"type": "helper", "id": "competition"}},
+	{"id": "sponsor", "text": "A local cube shop sponsors you. The stickers on your case are official now.",
+		"trigger": {"type": "upgrade", "id": "sponsorship"}},
+	{"id": "first_lab", "text": "You rent a room and call it a speedcubing lab. It has a whiteboard.",
+		"trigger": {"type": "helper", "id": "lab"}},
+	{"id": "first_4x4", "text": "Your first 4×4. Nobody warned you about parity.",
+		"trigger": {"type": "puzzle", "id": "4x4"}},
+	{"id": "million", "text": "A million solves. Somewhere, a stopwatch is very tired.",
+		"trigger": {"type": "lifetime_solves", "value": 1e6}},
+	{"id": "go_pro", "text": "You go pro. Your team has matching jackets.",
+		"trigger": {"type": "helper", "id": "pro_team"}},
+	{"id": "first_5x5", "text": "Your first 5×5. Big cubes, big plans.",
+		"trigger": {"type": "puzzle", "id": "5x5"}},
+	{"id": "federation", "text": "The federation asks you to help run it. You say yes before they finish the sentence.",
+		"trigger": {"type": "helper", "id": "federation"}},
+	{"id": "world_champion", "text": "Your hometown paper prints a photo of the new world champion. You're holding a 2×2.",
+		"trigger": {"type": "championships", "value": 1}},
+	{"id": "first_7x7", "text": "Your first 7×7. It takes two hands and a lot of patience.",
+		"trigger": {"type": "puzzle", "id": "7x7"}},
+	{"id": "first_megaminx", "text": "Your first Megaminx. Twelve faces. You count them twice.",
+		"trigger": {"type": "puzzle", "id": "megaminx"}},
+]
+
+
+static func get_career_moment(id: String) -> Dictionary:
+	for def: Dictionary in CAREER:
+		if def["id"] == id:
+			return def
+	return {}
+
+
 ## Hand-solve rewards (task S.3, D13: an active player earns ~2–3× an idle one). Per-puzzle time targets for the Solve
 ## Station, slowest first (seconds, keyboard solving). Tuned for our player (owner, 2026-11-03: best ~30 s on a real 3×3,
 ## consistently under 1:00); keyboard solving is slower than a real cube, so Gold 1:30 should be within reach and Master a
