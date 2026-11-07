@@ -3,7 +3,8 @@
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
 ## 2026-11-07 — Task 7.0a: career moments, rules part (save v13)
-- **Parallel session** (PLAN §3) next to V.1 and R.6a; claimed 7.0a with **Save: yes (v13)**. Owner: rules only (D15c),
+- **Parallel session** (PLAN §3) next to V.1 and R.6a; claimed 7.0a with **Save: yes (v13)**. Merged with
+  `origin/main` at `993750f` (nothing new there: V.1 and R.6a hadn't merged yet); the In progress row is removed. Owner: rules only (D15c),
   so 7.0 is split into **7.0a rules** (done here) and **7.0b screen** (after Phase V). `main.gd`/`main.tscn` untouched.
 - **Data:** `Content.CAREER`, 17 story beats in order, from "Your first solve!" through the first Friend, the 3×3, the
   cubing club, CFOP, the robot, the first competition, a shop sponsor, the lab, the 4×4 ("Nobody warned you about

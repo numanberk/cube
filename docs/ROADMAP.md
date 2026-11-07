@@ -14,7 +14,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
 | V.1 Type and numbers | (its own) | 2026-11-07 | `ui/theme.tres`, the top bar in `main.tscn`, new `StatChip` scene, `assets/fonts/`, style gallery | `main.gd` (top bar), `tests/test_runner.gd`, `tools/screenshot.sh`?, CLAUDE.md | no |
-| 7.0a Career moments (rules) | `claude/wizardly-johnson-oma4wj` | 2026-11-07 | `Content.CAREER` block (new, in `content.gd`), the career section of `game.gd` (new), `news_feed.gd` (one handler) | `game.gd` (save/load/migrate, `compete`), `content.gd`, `tests/test_runner.gd`, CLAUDE.md? | **yes (v13)** |
 | R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
 
 *(These two rows were added for the sessions that started before this rule; their own files are an estimate. Each
