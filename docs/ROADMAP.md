@@ -7,6 +7,18 @@ Tasks marked **(PR)** come from `docs/PLAYER_RESEARCH.md` (what our player loves
 the matching row there before starting one.
 If a task is too big for one session, split it here (e.g. 1.3a / 1.3b) and do the first part.
 
+## In progress (parallel sessions, PLAN §3)
+Claim a task here *before* writing code and push the claim to `main`; remove the row when the task is merged into
+`main`. Only one row may have **Save: yes**. Don't take a task whose own files are in another row, or that builds on one.
+
+| Task | Branch | Since | Own files | Shared files touched | Save |
+|---|---|---|---|---|---|
+| V.1 Type and numbers | (its own) | 2026-11-07 | `ui/theme.tres`, the top bar in `main.tscn`, new `StatChip` scene, `assets/fonts/`, style gallery | `main.gd` (top bar), `tests/test_runner.gd`, `tools/screenshot.sh`?, CLAUDE.md | no |
+| R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
+
+*(These two rows were added for the sessions that started before this rule; their own files are an estimate. Each
+session corrects its row when it merges.)*
+
 ## Milestone 1 — Playable core ✅
 - [x] Tap to make moves, moves complete solves
 - [x] 6 helpers with scaling costs

@@ -2,6 +2,15 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-07 — Rules for parallel sessions (docs only, owner's request)
+- **Owner, 2026-11-07:** up to 3 sessions may work at once, each on its own task and branch; code reaches `main`
+  only when a task is done. Replaces PLAN's "one session at a time" rule. Full rules: PLAN §3 "Parallel sessions";
+  short version in CLAUDE.md (top, and "Before you finish" step 4); a parallel session prompt is in PLAN §3.
+- New **In progress** table at the top of `ROADMAP.md`: claim a task there (own files, shared files, Save yes/no) and
+  push the claim to `main` before writing code. Only one row may bump the save version at a time.
+- V.1 and R.6a were already running when this was written; their rows were added for them (files estimated).
+- No code, tests or balance changed.
+
 ## 2026-11-07 — Task R.5: Roux and ZZ in the solver
 - **Roux** (`StagedSolver`, stages Block 1 / Block 2 / CMLL / LSE): each block is its bottom edge, then its two
   corner+edge pairs, cheapest first, by the same small table searches as F2L (`_build_block`). Steps are face turns

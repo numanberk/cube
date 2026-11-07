@@ -72,7 +72,8 @@ Every balance change is checked against this table by the simulator (task 0.3). 
 1. The owner opens a Claude session on `numanberk/cube` and pastes the **session prompt** below.
 2. Claude reads `CLAUDE.md`, this plan, `ROADMAP.md`, `CHANGELOG.md` and `FEEDBACK.md`.
    **Open feedback comes before the next roadmap task.**
-3. Claude does the **next unchecked task**. One task per session keeps changes small and easy to undo.
+3. Claude does the **next unchecked task** (the next one nobody has claimed, when sessions run in parallel: see
+   "Parallel sessions" below). One task per session keeps changes small and easy to undo.
 4. Claude runs `bash tools/run_tests.sh` (and `tools/screenshot.sh` for anything visual),
    updates ROADMAP and CHANGELOG, then commits and pushes.
 5. The owner pulls (GitHub Desktop → **Pull**) and plays the change in Godot.
@@ -84,9 +85,44 @@ Every balance change is checked against this table by the simulator (task 0.3). 
 
 For a specific task, replace the second sentence with e.g. "Do task 4.2."
 
+**Parallel session prompt (when another session is already running):**
+> Read CLAUDE.md, docs/PLAN.md, docs/ROADMAP.md, docs/CHANGELOG.md and docs/FEEDBACK.md.
+> Other sessions are working at the same time: follow "Parallel sessions" in PLAN §3. Do task X.Y — only that task.
+> First claim it in the In progress table at the top of ROADMAP and push that to main. When it's done, run the tests,
+> update ROADMAP and CHANGELOG, merge origin/main into your branch, run the checks again on the merged tree, then
+> merge into main and push main.
+
+### Parallel sessions (owner, 2026-11-07)
+Up to **3 sessions may work at once**, each on its own task and its own branch. They don't push code to `main` until
+their task is done; the first to finish merges first, and the others bring that into their branch before they merge.
+This replaces the old "one session at a time" rule. What keeps it cheap:
+1. **Claim before you code.** At the start, add a row to **In progress** at the top of `ROADMAP.md`: task, branch,
+   date, the files you expect to **own** (mostly yours alone) and the **shared** files you'll touch, and **Save: yes/no**.
+   Commit that docs-only change and push it to `main` right away, so every other session sees it.
+2. **Pick a task that doesn't collide.** Read the In progress table first. Don't take a task whose own files are
+   another row's own files, and don't take one that builds on a claimed task (e.g. R.6b needs R.6a, V.2 needs V.1:
+   a theme or a solver that is about to change). Phase order decisions (§7, e.g. D15c) still hold. If nothing fits,
+   tell the owner instead of starting.
+3. **One save change at a time.** Only one row may say **Save: yes** (a `SAVE_VERSION` bump / new `_migrate` step).
+   If your task needs a save change and another row holds it, stop and ask the owner. Two branches that both make
+   "v13" don't merge as text: one migration has to be rewritten.
+4. **Shared hot files:** `game.gd`, `content.gd`, `main.gd`, `main.tscn`, `ui/theme.tres`, `tests/test_runner.gd`,
+   `tools/screenshot.sh`, `tools/screenshot_presets.gd`, `CLAUDE.md`. Touch them as little as the task allows; add
+   new tests next to related ones (not at the end of the file) and new screenshot options as their own block, so two
+   branches don't edit the same lines.
+5. **Finishing = merging.** When your task is done: `git fetch origin main && git merge origin/main` into your branch
+   (merge, don't rebase: other sessions may have your branch's commits). Conflicts in CHANGELOG/ROADMAP/CLAUDE.md:
+   keep both sides (CHANGELOG newest first). Conflicts in code: resolve them by understanding both changes, never by
+   dropping one side. Then run what the commit gate asks for **again on the merged tree** (always the tests; the
+   balance bot / screenshots if the merge changed those files), have `diff-reviewer` look at the conflict
+   resolutions, push your branch, fast-forward `main` to it and push `main`. If `main` moved again meanwhile, repeat.
+   Remove your In progress row in that same merge. Mention in your CHANGELOG entry what you merged with.
+6. **Don't let a branch go stale.** If your task takes more than one session, merge `origin/main` into your branch at
+   the start of each session, not only at the end.
+
 ### Rules that prevent a mess
-- **One session at a time.** Two accounts editing at once will create conflicts.
-  **Every session merges its work into `main` and pushes it** (owner's rule, 2026-11-02), so the next one starts from current files.
+- **Parallel sessions follow the rules above.** Each one still does one task.
+  **Every finished task is merged into `main` and pushed** (owner's rule, 2026-11-02), so the next one starts from current files.
 - **Don't edit in Godot while a session is running.** Pull first, then edit, commit and push.
 - **Every task has a "Done when"** in the roadmap. A task isn't ticked until that's true.
 - **Tests stay green.** A red test is fixed before anything new is started.

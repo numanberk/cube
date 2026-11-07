@@ -8,6 +8,16 @@ anything, and update ROADMAP and CHANGELOG before you finish.
 **Do one roadmap task per session** (the next unchecked one, unless the owner names one).
 Handle open items in `docs/FEEDBACK.md` first. Never guess an open owner decision (PLAN §7): ask.
 
+**Up to 3 sessions may run at once** (owner, 2026-11-07; full rules: PLAN §3 "Parallel sessions"):
+- **Claim first:** before writing code, add your task to **In progress** at the top of `docs/ROADMAP.md` (branch,
+  own files, shared files, Save yes/no), commit that docs-only change and push it to `main`. Skip tasks claimed there,
+  tasks whose own files overlap a row, and tasks that build on a claimed one.
+- **One save change at a time:** only one row may bump `SAVE_VERSION`. Need one while another row holds it? Ask the owner.
+- **Keep shared hot files small** (`game.gd`, `content.gd`, `main.gd`, `main.tscn`, `ui/theme.tres`,
+  `tests/test_runner.gd`, `tools/screenshot.sh`): new tests next to related ones, not at the end of the file.
+- **Code reaches `main` only when the task is done:** merge `origin/main` into your branch, re-run the checks on the
+  merged tree, then merge into `main` and push (step 4 below). Remove your In progress row in that merge.
+
 ## What the game is
 An idle/incremental game about Rubik's cubes, for PC (Windows first).
 The player taps to turn a cube; every N moves completes a **solve**, and **Solves** are the currency.
@@ -154,9 +164,14 @@ Background agents are fine while you keep working (e.g. `balance-analyst` while 
    Visual changes: add a screenshot to `docs/screenshots/` (see "Screenshots" below).
 3. Add a dated entry at the top of `docs/CHANGELOG.md`: what changed, what's half-done,
    anything the next session should know.
-4. Commit with a clear message. Pull `main` before you start. **Owner's rule: every commit is merged into
-   `main` and pushed** (if your session has its own branch, push it, then fast-forward/merge it into `main`
-   and push `main` too). No pull request needed. The next session (possibly another account) starts from `main`.
+4. Commit with a clear message. Pull `main` before you start. **Owner's rule: every finished task is merged into
+   `main` and pushed** (push your branch, then fast-forward/merge it into `main` and push `main` too). No pull request
+   needed. The next session (possibly another account) starts from `main`.
+   **If other sessions are running** (In progress table): `git fetch origin main && git merge origin/main` into your
+   branch first (merge, not rebase). Keep both sides of doc conflicts (CHANGELOG newest first); resolve code
+   conflicts by understanding both changes. Then run the gate's checks again on the merged tree (always the tests),
+   let `diff-reviewer` look at the conflict resolutions, and only then fast-forward `main`. If `main` moved again
+   meanwhile, merge again. Say in the CHANGELOG what you merged with.
 
 ## Screenshots
 You can't see the game window, so look at it this way (works in the cloud container):
