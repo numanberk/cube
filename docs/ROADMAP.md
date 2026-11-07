@@ -437,6 +437,10 @@ every new component or variation to the gallery (a test enforces variations).
       (playtest at the end of the phase, as usual).
 
 ## Phase 7 — Goals
+**D15c (changed 2026-11-07):** the **rules** of a Phase 7 task (data, `GameState`, save, tests, sim) may be built now,
+in parallel with Phase V; its **screen** (tab, toast, pop, screenshot) waits until Phase V is done. Doing only the rules?
+Split the task here first (e.g. 7.1a rules: *Done when* its tests pass; 7.1b screen: the rest of its *Done when*), and
+claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`main.tscn` changes in a rules part.
 - [ ] **7.0 Career moments (fun pass, 2026-11-04):** short story beats at key unlocks, as data, shown in the news feed and as a
       pop: "Your first competition!", "A local shop sponsors you", "You open a cubing club"…, from a kid with a cube to running
       a lab, so the progression reads as a journey. *Done when:* each moment fires once at its trigger (test) and there's a

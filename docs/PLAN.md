@@ -409,8 +409,13 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
   only on the Compete screen and in the Solve Station (spotlight, timer digits). See §4.7.
   - **D15b Colours:** **yes**, the six sticker colours are category colours; green stays the only "buy / affordable"
     colour (CLAUDE.md rule 9 updated).
-  - **D15c Order:** **Phase V comes before Phase 7.** (Another session was building S.7 at the same time, so Phase V
-    tasks avoid `game.gd`/`content.gd`/save changes and keep `main.gd`/`main.tscn` edits small until it lands.)
+  - **D15c Order:** **Phase V comes before Phase 7's screens; Phase 7's rules may start now** (owner, 2026-11-07,
+    changed from "Phase V before Phase 7"). A Phase 7 task can run in parallel with Phase V (PLAN §3 "Parallel
+    sessions") as its **rules part**: data in `content.gd`, logic and save in `game.gd`, tests, the balance bot. Split
+    the task in the roadmap (e.g. 7.1a rules / 7.1b screen) and tick only the part whose "Done when" is met. Its
+    **screen part** (tabs, toasts, pops, screenshots) waits until Phase V is done, so it's built once in the new kit,
+    not restyled. Phase 7 rules sessions keep `main.gd`/`main.tscn` untouched (no UI) and claim **Save: yes** in the
+    In progress table when they bump the save (7.1 does: v13), so only one runs at a time.
 
 ### Open
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?

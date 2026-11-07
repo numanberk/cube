@@ -2,6 +2,14 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-07 — D15c changed: Phase 7 rules may start now (docs only, owner's request)
+- **Owner, 2026-11-07:** D15c was "Phase V before Phase 7". Now: Phase 7's **rules** (content, `GameState`, save,
+  tests, balance bot) may start now, in parallel with Phase V; its **screens** still wait until Phase V is done, so
+  they're built once in the new look. A rules-only session splits its task in the roadmap (7.1a rules / 7.1b
+  screen), leaves `main.gd`/`main.tscn` alone, and claims Save: yes when it bumps the save (7.1: v13). Written in
+  PLAN §7 D15c and at the top of ROADMAP Phase 7.
+- No code changed.
+
 ## 2026-11-07 — Rules for parallel sessions (docs only, owner's request)
 - **Owner, 2026-11-07:** up to 3 sessions may work at once, each on its own task and branch; code reaches `main`
   only when a task is done. Replaces PLAN's "one session at a time" rule. Full rules: PLAN §3 "Parallel sessions";
