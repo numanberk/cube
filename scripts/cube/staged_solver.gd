@@ -6,8 +6,9 @@ extends RefCounted
 ##   var stages := StagedSolver.solve(model, "cfop")   # model is not changed
 ##   for stage in stages: stage["id"], stage["name"], stage["moves"] (TwistyModel moves; may be empty = a "skip")
 ##
-## Applying every stage's moves in order solves the model. Supported: 3×3 (Beginner, CFOP) and 2×2 (layer by layer).
-## Other methods fall back to CFOP until R.5 adds Roux and ZZ; bigger cubes come in R.6. Visual only, never game state.
+## Applying every stage's moves in order solves the model. Supported: 3×3 (Beginner, CFOP, Roux, ZZ) and 2×2 (layer by
+## layer for every method). God's Number isn't a staged method: ShowcaseSolve plays it (here it falls back to CFOP).
+## Bigger cubes come in R.6. Visual only, never game state.
 ##
 ## How it works. Pieces are tracked as *slots*: a corner slot is position × 3 + twist, an edge slot position × 2 + flip
 ## (24 each). Every move becomes a table slot -> slot, built from the model's own geometry, so a whole move is a few
@@ -19,8 +20,15 @@ extends RefCounted
 ##   OLL / PLL   the same search over the last layer, with the algorithms in Content.ALGORITHMS as its steps.
 ##   Beginner    corners with repeated R U R' U', edges with the two classic inserts, then yellow cross, yellow edges,
 ##               corner cycle and the R' D' R D corner twist, as a beginner learns it.
+##   Roux (R.5)  first block (left 1×2×3) and second block (right): the bottom edge, then each corner+edge pair, by the
+##               same pair searches, with face turns only (so the centres stay put until LSE); CMLL: the top corners
+##               with the last-layer algorithms as steps (edges are free); LSE with M and U only, in the three steps
+##               Roux solvers use: orient the six edges, place UL/UR, then the M slice. The M slice's centre offset is
+##               tracked, since M moves the centres.
+##   ZZ (R.5)    EOLine: orient every edge (an exact table over the edge-orientation states, 2^12 codes) and place DF/DB without
+##               F/B quarter turns; F2L: left block then right block with R, U and L only; last layer: OCLL + PLL.
 
-const METHODS := ["beginner", "cfop"]
+const METHODS := ["beginner", "cfop", "roux", "zz"]
 const PUZZLES := ["2x2", "3x3"]
 const CROSS_COLOR := PuzzleShapes.COLOR_WHITE   ## 3×3: the cross colour, turned to the bottom (2×2: see read_state)
 ## Whole-cube rotations tried (in this order) to put the cross colour on the bottom. z2 keeps green in front.
@@ -37,7 +45,12 @@ const STAGE_NAMES := {
 	"first_layer": "First layer", "second_layer": "Second layer", "yellow_cross": "Yellow cross",
 	"yellow_edges": "Yellow edges", "corner_cycle": "Corner positions", "corner_twist": "Corner twist",
 	"orient": "Orient", "permute": "Permute",
+	"first_block": "First block", "second_block": "Second block", "cmll": "CMLL", "lse": "LSE",
+	"eoline": "EOLine", "zz_f2l": "F2L", "last_layer": "Last layer",
 }
+## Most moves an LSE step search (Roux) may take; real LSE steps are well under this.
+const MAX_LSE_DEPTH := 16
+const LSE_NODE_BUDGET := 200000  ## a safety stop for one LSE step search (a real step needs a few thousand)
 
 static var _shapes := {}  ## model size -> _Shape (tables are built once)
 
@@ -61,23 +74,29 @@ static func solve(model: TwistyModel, method: String = "cfop", options: Dictiona
 		run.solve_2x2(method)
 	elif method == "beginner":
 		run.solve_beginner()
+	elif method == "roux":
+		run.solve_roux(options)
+	elif method == "zz":
+		run.solve_zz(options)
 	else:
 		run.solve_cfop(options)
 	return run.stages
 
 
-## Builds the solver's tables for a puzzle now (they are cached for the whole session). The first solve otherwise
-## builds what it needs itself, which can take ~0.5 s on a 3×3; call this while loading, or from a thread.
-static func warm_up(puzzle_id: String = "3x3") -> void:
+## Builds the solver's tables for a puzzle now (they are cached for the whole session). The first solve of a method
+## otherwise builds what it needs itself (on a 3×3: Beginner ~80 ms, CFOP ~95, ZZ ~65, Roux ~225); call this while
+## loading, or from a thread. `methods`: only these (default: all), e.g. just the ones the player has learned.
+static func warm_up(puzzle_id: String = "3x3", methods: Array = METHODS) -> void:
 	if not supports(puzzle_id):
 		return
 	var model := PuzzleShapes.from_id(puzzle_id)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
 	model.scramble(25, rng)
-	for method: String in METHODS:
-		solve(model, method)
-	if model.size == 3:
+	for method: String in methods:
+		if method in METHODS:
+			solve(model, method)
+	if model.size == 3 and "cfop" in methods:
 		var run := _Run.new(_shape(3), PuzzleShapes.cube(3))
 		run.warm_up_cfop()
 
@@ -124,7 +143,8 @@ class _Shape:
 	var face_moves: Array[Dictionary] = []          ## the 18 outer-layer turns
 	var _tables := {}                               ## "face,turns,width,depth" -> [corner table, edge table]
 	var _patterns := {}                             ## key -> PackedByteArray of distances (see pattern_table)
-	var macro_tables := {}                          ## key -> {code: cost to the goal} (see _Run.table_search)
+	var macro_tables := {}                          ## cached per shape: cost tables ({code: cost}, see _Run.table_search),
+	                                                ## macro lists, the cross and EO tables
 	var u_face := 0
 	var d_face := 0
 
@@ -430,8 +450,18 @@ class _Run:
 				return stage_done("yellow_edges")
 			"oll", "orient":
 				return all_done(d_corners, _join(d_edges, mid_edges)) and _oriented(u_corners, u_edges)
-			"pll", "permute", "corner_twist":
+			"pll", "permute", "corner_twist", "lse", "last_layer":
 				return model.is_solved()
+			"first_block":
+				return all_done(block_corners(-1), block_edges(-1))
+			"second_block":
+				return all_done(_join(block_corners(-1), block_corners(1)), _join(block_edges(-1), block_edges(1)))
+			"cmll":
+				return stage_done("second_block") and all_done(u_corners, _none)
+			"eoline":
+				return edges_oriented_zz() and all_done(_none, line_edges())
+			"zz_f2l":
+				return all_done(d_corners, _join(d_edges, mid_edges)) and edges_oriented_zz()
 		if stage_id.begins_with("f2l_"):
 			var needed := int(stage_id.substr(4))
 			var solved := 0
@@ -1054,6 +1084,401 @@ class _Run:
 			elif alg["set"] == "PLL" and alg.get(pll_key, false):
 				pll_ids.append(alg["id"])
 		solve_last_layer(oll_ids, pll_ids, "oll", "pll")
+
+	# --- Roux and ZZ (task R.5) ---------------------------------------------------------
+
+	## Pieces of the left (side = -1) or right (+1) 1×2×3 block: its two bottom corners / its bottom and middle edges.
+	func block_corners(side: int) -> Array[int]:
+		var out: Array[int] = []
+		for c in d_corners:
+			if signf(shape.corner_pos[c].x) == side:
+				out.append(c)
+		return out
+
+	func block_edges(side: int) -> Array[int]:
+		var out: Array[int] = []
+		for e in _join(d_edges, mid_edges):
+			if signf(shape.edge_pos[e].x) == side:
+				out.append(e)
+		return out
+
+	## DF and DB: the ZZ line, and with the top edges the six Roux LSE edges.
+	func line_edges() -> Array[int]:
+		var out: Array[int] = []
+		for e in d_edges:
+			if absf(shape.edge_pos[e].x) < 0.1:
+				out.append(e)
+		return out
+
+	## Edge orientation the way ZZ (and every F/B-axis EO) counts it: a good edge can be solved without F or B quarter
+	## turns. Slots are counted from a piece's U/D sticker (else its F/B one) and a position's U/D face (else its F/B
+	## face), which is exactly that rule: an edge is good when it isn't flipped. U, D, R, L and F2/B2 keep it; F/B flip it.
+	func edges_oriented_zz() -> bool:
+		for e in edges.size():
+			if not _edge_good(edges[e]):
+				return false
+		return true
+
+	func _edge_good(slot: int) -> bool:
+		return slot % 2 == 0
+
+	## A block, piece by piece: its bottom edge first, then each corner+edge pair, the cheapest first. `macros` are the
+	## steps (single turns and short sequences); any that would disturb a finished piece or `keep_c`/`keep_e` is left out.
+	## Applies the moves and returns them.
+	func _build_block(side: int, macros: Array, keep_c: Array[int], keep_e: Array[int]) -> Array:
+		var moves: Array = []
+		var kc: Array[int] = keep_c.duplicate()
+		var ke: Array[int] = keep_e.duplicate()
+		var bottom := -1
+		for e in block_edges(side):
+			if e in d_edges:
+				bottom = e
+		var jobs: Array = [[-1, bottom]]
+		for c in block_corners(side):
+			for e in block_edges(side):
+				if e in mid_edges and is_equal_approx(shape.edge_pos[e].z, shape.corner_pos[c].z):
+					jobs.append([c, e])
+		if not edge_done(bottom):  # the bottom edge goes first: the pairs are built on it
+			var path: Variant = table_search("full", _none, [bottom] as Array[int], safe(macros, kc, ke))
+			if path != null:
+				moves.append_array(path)
+				apply_moves(path)
+		ke.append(bottom)
+		jobs.pop_front()
+		while not jobs.is_empty():
+			for job: Array in jobs.duplicate():  # a pair that's already solved is kept like a finished one
+				if _job_done(job):
+					kc.append(int(job[0]))
+					ke.append(int(job[1]))
+					jobs.erase(job)
+			var best: Array = []
+			var best_cost := -1
+			for job: Array in jobs:
+				var cost := cost_to_goal("full", [int(job[0])] as Array[int], [int(job[1])] as Array[int], safe(macros, kc, ke))
+				if cost >= 0 and (best_cost < 0 or cost < best_cost):
+					best = job
+					best_cost = cost
+			if best.is_empty():
+				break
+			var tc: Array[int] = [int(best[0])]
+			var te: Array[int] = [int(best[1])]
+			var path: Variant = table_search("full", tc, te, safe(macros, kc, ke))
+			if path == null:
+				break
+			moves.append_array(path)
+			apply_moves(path)
+			kc.append_array(tc)
+			ke.append_array(te)
+			jobs.erase(best)
+		return moves
+
+	## Single turns of the named layers (all three amounts each), plus X Y X' for X in `outer` and Y in `inner` (both
+	## directions of X, all three amounts of Y). Names are WCA notation, so slices work too: "M" in `outer` makes M U M',
+	## M' U2 M, ..., which pull an edge out of the M slice and put the centres back.
+	func _turn_macros(key: String, singles: Array, outer: Array, inner: Array) -> Array:
+		var cache_key := "turns|" + key
+		if shape.macro_tables.has(cache_key):
+			return shape.macro_tables[cache_key]
+		var macros := []
+		for name: String in singles:
+			for suffix: String in ["", "'", "2"]:
+				macros.append(macro([model.parse(name + suffix)], 0))
+		for x_name: String in outer:
+			for xs: Array in [["", "'"], ["'", ""]]:
+				for y_name: String in inner:
+					if y_name == x_name:
+						continue
+					for ys: String in ["", "'", "2"]:
+						macros.append(macro([model.parse(x_name + xs[0]), model.parse(y_name + ys), model.parse(x_name + xs[1])], 0))
+		shape.macro_tables[cache_key] = macros
+		return macros
+
+	## Every OLL and PLL algorithm (CMLL and the ZZ last layer use them as steps).
+	func _alg_macros(sets: Array, key: String = "") -> Array:
+		var cache_key := "algs|%s|%s" % [sets, key]
+		if shape.macro_tables.has(cache_key):
+			return shape.macro_tables[cache_key]
+		var macros := []
+		for alg: Dictionary in Content.ALGORITHMS:
+			if alg["set"] in sets and (key == "" or alg.get(key, false)):
+				macros.append(alg_macro(alg["id"]))
+		shape.macro_tables[cache_key] = macros
+		return macros
+
+	func solve_roux(_options: Dictionary = {}) -> void:
+		orient_for_cross()
+		var block_moves := _turn_macros("roux_block", ["R", "U", "F", "B", "L", "D"], ["L", "D", "F", "B", "R", "M"], ["U", "R"])
+		_record_applied("first_block", _build_block(-1, block_moves, _none, _none))
+		var sb_moves := _turn_macros("roux_sb", ["R", "U"], ["R", "M"], ["U"])
+		_record_applied("second_block", _build_block(1, sb_moves, block_corners(-1), block_edges(-1)))
+		var keep_c: Array[int] = _join(block_corners(-1), block_corners(1))
+		var keep_e: Array[int] = _join(block_edges(-1), block_edges(1))
+		var moves: Variant = table_search("full", u_corners, _none, _u_turns + safe(_alg_macros(["OLL", "PLL"]), keep_c, keep_e))
+		add_stage("cmll", moves if moves != null else [])
+		_record_applied("lse", _solve_lse())
+
+	func solve_zz(options: Dictionary = {}) -> void:
+		orient_for_cross()
+		var moves: Array = _solve_eo()
+		var line := _turn_macros("zz_line", ["U", "D", "R", "L"], [], [])
+		for name: String in ["F", "B"]:
+			line = line + [macro([model.make_move(model.face_names.find(name), 2)], 0)]
+		var path: Variant = table_search("full", _none, line_edges(), line)
+		if path != null:
+			moves.append_array(path)
+			apply_moves(path)
+		_record_applied("eoline", moves)
+		var rul := _turn_macros("zz_f2l", ["R", "U", "L"], ["L", "R"], ["U"])
+		var f2l: Array = _build_block(-1, rul, _none, line_edges())
+		f2l.append_array(_build_block(1, rul, block_corners(-1), _join(line_edges(), block_edges(-1))))
+		_record_applied("zz_f2l", f2l)
+		var keep_c: Array[int] = d_corners
+		var keep_e: Array[int] = _join(d_edges, mid_edges)
+		var oll_key := "full" if options.get("full_oll", false) else "two_look"
+		var pll_key := "full" if options.get("full_pll", false) else "two_look"
+		var ll: Array = []
+		var oll: Variant = table_search("orient", u_corners, u_edges, _u_turns + safe(_alg_macros(["OLL"], oll_key), keep_c, keep_e))
+		if oll != null:
+			ll.append_array(oll)
+			apply_moves(oll)
+		var pll: Variant = table_search("full", u_corners, u_edges, _u_turns + safe(_alg_macros(["PLL"], pll_key), keep_c, keep_e))
+		if pll != null:
+			ll.append_array(pll)
+			apply_moves(pll)
+		_record_applied("last_layer", ll)
+
+	# ZZ edge orientation: an exact table over every orientation state (bit i = edge position i is bad), built once.
+
+	## [dist (PackedByteArray, 4096), moves: [[target position per position], toggle mask per position]] per face turn.
+	func _eo_table() -> Array:
+		if shape.macro_tables.has("zz_eo"):
+			return shape.macro_tables["zz_eo"]
+		var count := shape.edge_pos.size()
+		var steps: Array = []
+		for move in shape.face_moves:
+			var et: PackedInt32Array = shape.tables(move)[1]
+			var to := PackedInt32Array()
+			var toggles := 0
+			for p in count:
+				var dest := et[p * 2]
+				to.append(dest / 2)
+				if dest % 2 == 1:
+					toggles |= 1 << p
+			steps.append([to, _moved_mask(toggles, to, count)])
+		var dist := PackedByteArray()
+		dist.resize(1 << count)
+		dist.fill(255)
+		dist[0] = 0
+		var frontier := PackedInt32Array([0])
+		var depth := 0
+		while not frontier.is_empty():
+			var next := PackedInt32Array()
+			for code in frontier:
+				for step: Array in steps:
+					var moved := _eo_step(code, step, count)
+					if dist[moved] == 255:
+						dist[moved] = depth + 1
+						next.append(moved)
+			frontier = next
+			depth += 1
+		var result := [dist, steps]
+		shape.macro_tables["zz_eo"] = result
+		return result
+
+	func _eo_step(code: int, step: Array, count: int) -> int:
+		var to: PackedInt32Array = step[0]
+		var out := 0
+		for p in count:
+			if code & (1 << p):
+				out |= 1 << to[p]
+		return out ^ int(step[1])
+
+	## Toggles are recorded at the starting position; move them to where the edge goes.
+	func _moved_mask(toggles: int, to: PackedInt32Array, count: int) -> int:
+		var out := 0
+		for p in count:
+			if toggles & (1 << p):
+				out |= 1 << to[p]
+		return out
+
+	func _eo_code() -> int:
+		var code := 0
+		for e in edges.size():
+			if not _edge_good(edges[e]):
+				code |= 1 << (edges[e] / 2)
+		return code
+
+	## Orients every edge in the fewest turns (walking down the exact table). Applies and returns the moves.
+	func _solve_eo() -> Array:
+		var table := _eo_table()
+		var dist: PackedByteArray = table[0]
+		var steps: Array = table[1]
+		var count := shape.edge_pos.size()
+		var moves: Array = []
+		var code := _eo_code()
+		var last_face := -1
+		while dist[code] > 0:
+			var stepped := false
+			for i in steps.size():
+				var move: Dictionary = shape.face_moves[i]
+				if int(move["face"]) == last_face:
+					continue
+				var next := _eo_step(code, steps[i], count)
+				if dist[next] < dist[code]:
+					moves.append(move)
+					code = next
+					last_face = int(move["face"])
+					stepped = true
+					break
+			if not stepped:
+				break
+		apply_moves(moves)
+		return moves
+
+	# Roux LSE: the six edges (UL, UR, UF, UB, DF, DB) and the top corners, turned with M and U only. A state is the
+	# six edges' slots, one top corner's slot (the others follow it) and the M slice's quarter turns (`m`, 0..3: the
+	# centres move with M, so the cube is solved only with m back at 0).
+
+	var _lse_nodes := 0
+
+	func _solve_lse() -> Array:
+		var lse_edges: Array[int] = _join(u_edges, line_edges())
+		var corner: int = u_corners[0]
+		var ms: Array[Dictionary] = [model.parse("M"), model.parse("M'"), model.parse("M2")]
+		var us: Array[Dictionary] = [model.make_move(shape.u_face, 1), model.make_move(shape.u_face, -1), model.make_move(shape.u_face, 2)]
+		var dm := {0: 1, 1: 3, 2: 2}
+		var steps: Array = []  # [move, edge table, corner table, m change, group (0 = M, 1 = U)]
+		for i in 3:
+			var t: Array = shape.tables(ms[i])
+			steps.append([ms[i], t[1], t[0], int(dm[i]), 0])
+		for i in 3:
+			var t: Array = shape.tables(us[i])
+			steps.append([us[i], t[1], t[0], 0, 1])
+		var state := PackedInt32Array()
+		for e in lse_edges:
+			state.append(edges[e])
+		state.append(corners[corner])
+		state.append(0)  # m
+		var ul_ur: Array[int] = []
+		for e in u_edges:
+			if absf(shape.edge_pos[e].x) > 0.1:
+				ul_ur.append(e)
+		var homes := PackedInt32Array()
+		for e in lse_edges:
+			homes.append(e * 2)
+		var n := lse_edges.size()
+		var eo_goal := func(s: PackedInt32Array) -> bool:
+			if s[n + 1] % 2 != 0:
+				return false
+			for k in n:
+				if s[k] % 2 != 0:
+					return false
+			return true
+		var place: Array[int] = [lse_edges.find(ul_ur[0]), lse_edges.find(ul_ur[1])]
+		var lr_goal := func(s: PackedInt32Array) -> bool:
+			return eo_goal.call(s) and s[n + 1] == 0 and s[place[0]] == homes[place[0]] and s[place[1]] == homes[place[1]] \
+					and s[n] == corner * 3
+		var done_goal := func(s: PackedInt32Array) -> bool:
+			if s[n + 1] != 0 or s[n] != corner * 3:
+				return false
+			for k in n:
+				if s[k] != homes[k]:
+					return false
+			return true
+		var lse_moves: Array[Dictionary] = [ms[0], ms[1], ms[2], us[0], us[1], us[2]]
+		var lr_table := shape.pattern_table("lse_lr", [[1, ul_ur[0]], [1, ul_ur[1]], [0, corner]], lse_moves)
+		var lr_h := func(s: PackedInt32Array) -> int:
+			return lr_table[s[place[0]] + 24 * s[place[1]] + 576 * s[n]]
+		var eo_dist := _lse_eo_table(lse_edges, steps)
+		var eo_h := func(s: PackedInt32Array) -> int:
+			return eo_dist[_lse_eo_code(s, lse_edges)]
+		var lr_both := func(s: PackedInt32Array) -> int:
+			return maxi(int(lr_h.call(s)), int(eo_h.call(s)))
+		var moves: Array = []
+		var four_c: Array = [steps[0], steps[1], steps[2], [us[2], shape.tables(us[2])[1], shape.tables(us[2])[0], 0, 1]]
+		for phase: Array in [[eo_goal, steps, eo_h], [lr_goal, steps, lr_both], [done_goal, four_c, Callable()]]:
+			var path: Array = []
+			var found := false
+			_lse_nodes = 0
+			for limit in MAX_LSE_DEPTH + 1:
+				if _lse_dfs(state, phase[1], phase[0], phase[2], limit, -1, path):
+					found = true
+					break
+			if not found:
+				break
+			for step: Array in path:
+				moves.append(step[0])
+				state = _lse_apply(state, step)
+		apply_moves(moves)
+		return moves
+
+	## LSE edge orientation: bit k = the edge at LSE position k is flipped, plus 64 × m. Distances to "no flips, m even"
+	## over the LSE turns, exact (256 states), built once.
+	func _lse_eo_table(lse_edges: Array[int], steps: Array) -> PackedByteArray:
+		if shape.macro_tables.has("lse_eo"):
+			return shape.macro_tables["lse_eo"]
+		var dist := PackedByteArray()
+		dist.resize(256)
+		dist.fill(255)
+		var frontier := PackedInt32Array([0, 128])
+		dist[0] = 0
+		dist[128] = 0
+		var depth := 0
+		while not frontier.is_empty():
+			var next := PackedInt32Array()
+			for code in frontier:
+				for step: Array in steps:
+					var et: PackedInt32Array = step[1]
+					var out := 0
+					for k in 6:
+						var dest := et[lse_edges[k] * 2 + ((code >> k) & 1)]
+						if dest % 2 == 1:
+							out |= 1 << lse_edges.find(dest / 2)
+					out += 64 * (((code >> 6) + int(step[3])) % 4)
+					if dist[out] == 255:
+						dist[out] = depth + 1
+						next.append(out)
+			frontier = next
+			depth += 1
+		shape.macro_tables["lse_eo"] = dist
+		return dist
+
+	func _lse_eo_code(s: PackedInt32Array, lse_edges: Array[int]) -> int:
+		var code := 0
+		for k in lse_edges.size():
+			if s[k] % 2 == 1:
+				code |= 1 << lse_edges.find(s[k] / 2)
+		return code + 64 * s[lse_edges.size() + 1]
+
+	func _lse_apply(s: PackedInt32Array, step: Array) -> PackedInt32Array:
+		var et: PackedInt32Array = step[1]
+		var ct: PackedInt32Array = step[2]
+		var out := s.duplicate()
+		var n := s.size() - 2
+		for k in n:
+			out[k] = et[s[k]]
+		out[n] = ct[s[n]]
+		out[n + 1] = (s[n + 1] + int(step[3])) % 4
+		return out
+
+	func _lse_dfs(s: PackedInt32Array, steps: Array, goal: Callable, h: Callable, limit: int, last_group: int, path: Array) -> bool:
+		if goal.call(s):
+			return true
+		_lse_nodes += 1
+		if _lse_nodes > LSE_NODE_BUDGET:
+			return false
+		var bound := 1 if not h.is_valid() else maxi(1, int(h.call(s)))
+		if path.size() + bound > limit:
+			return false
+		for step: Array in steps:
+			if int(step[4]) == last_group:
+				continue  # never two turns of the same layer in a row
+			path.append(step)
+			if _lse_dfs(_lse_apply(s, step), steps, goal, h, limit, int(step[4]), path):
+				return true
+			path.pop_back()
+		return false
+
 
 	func solve_beginner() -> void:
 		orient_for_cross()

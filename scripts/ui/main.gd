@@ -112,8 +112,8 @@ func _ready() -> void:
 	_build_puzzle_row()
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	_reset_key_session()
-	for id: String in StagedSolver.PUZZLES:  # builds the solver's tables now (~0.3 s, cached), not mid-game
-		StagedSolver.warm_up(id)
+	for id: String in StagedSolver.PUZZLES:  # builds the learned methods' tables now (cached), not mid-game
+		StagedSolver.warm_up(id, _learned_methods())
 	_start_showcase()
 	_shown_solves = Game.solves
 	welcome_panel.collected.connect(_on_welcome_collected)
@@ -173,6 +173,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			Game.cheat_add_solves(1000.0)
 		KEY_F10:
 			Game.wipe_save()
+
+
+## Every method up to the newest one learned (Content.METHODS is in learning order).
+func _learned_methods() -> Array:
+	var out := []
+	for def: Dictionary in Content.METHODS:
+		out.append(def["id"])
+		if def["id"] == Game.method:
+			break
+	return out
 
 
 func _overlay_open() -> bool:
@@ -725,6 +735,9 @@ const CHIP_NAMES := {
 	"cross": "Cross", "oll": "OLL", "pll": "PLL", "first_layer": "Layer 1", "second_layer": "Layer 2",
 	"yellow_cross": "Yellow cross", "yellow_edges": "Yellow edges", "corner_cycle": "Corners",
 	"corner_twist": "Twist", "orient": "Orient", "permute": "Permute",
+	"first_block": "Block 1", "second_block": "Block 2", "cmll": "CMLL", "lse": "LSE",  # Roux (R.5)
+	"eoline": "EOLine", "zz_f2l": "F2L", "last_layer": "Last layer",  # ZZ
+	"gods_number": "God's Number",
 }
 
 ## [{name, ids: [stage ids]}] in order.
@@ -1042,6 +1055,9 @@ func _rebuild_after_reset() -> void:
 
 
 func _on_purchased(kind: String, _id: String) -> void:
+	if kind == "method":
+		for id: String in StagedSolver.PUZZLES:  # a new method's tables are built once, now (Roux ~0.2 s)
+			StagedSolver.warm_up(id, [Game.method])
 	if kind == "method" and _showcase != null:
 		_showcase.method = Game.method  # the next showcase solve uses it
 	if Game.automation_running:  # auto-buyers (6.3b) buy quietly (no click every second); the 0.1 s refresh shows it

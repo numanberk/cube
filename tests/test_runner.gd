@@ -2189,8 +2189,10 @@ func test_staged_solver_solves() -> void:
 		"cfop": ["inspection", "cross", "f2l_1", "f2l_2", "f2l_3", "f2l_4", "oll", "pll"],
 		"beginner": ["inspection", "cross", "first_layer", "second_layer", "yellow_cross", "yellow_edges", "corner_cycle",
 				"corner_twist"],
+		"roux": ["inspection", "first_block", "second_block", "cmll", "lse"],  # R.5
+		"zz": ["inspection", "eoline", "zz_f2l", "last_layer"],
 	}
-	for method: String in ["cfop", "beginner"]:
+	for method: String in ["cfop", "beginner", "roux", "zz"]:
 		var result := _check_staged_solves("3x3", method, 200, 11)
 		check(result[0] == 0, "3x3 %s: 200 random scrambles are all solved (%d failed)" % [method, result[0]])
 		check(result[1] < 50.0, "3x3 %s: a solve takes under 50 ms on average after warm-up (%.1f ms)" % [method, result[1]])
@@ -2206,6 +2208,10 @@ func test_staged_solver_solves() -> void:
 	var beginner := _check_staged_solves("3x3", "beginner", 30, 12)
 	check(cfop[2] > 45.0 and cfop[2] < 75.0, "a CFOP solve is about 55-70 moves (%.1f)" % cfop[2])
 	check(beginner[2] > cfop[2] + 25.0, "the beginner method takes clearly more moves (%.1f)" % beginner[2])
+	var roux := _check_staged_solves("3x3", "roux", 30, 12)
+	var zz := _check_staged_solves("3x3", "zz", 30, 12)
+	check(roux[2] > 40.0 and roux[2] < cfop[2] + 5.0, "a Roux solve is short, about 45-60 moves (%.1f)" % roux[2])
+	check(zz[2] > 50.0 and zz[2] < 80.0, "a ZZ solve is about 55-70 moves (%.1f)" % zz[2])
 	for method: String in ["cfop", "beginner"]:
 		var result := _check_staged_solves("2x2", method, 200, 13)
 		check(result[0] == 0, "2x2 %s: 200 random scrambles are all solved (%d failed)" % [method, result[0]])
@@ -2240,11 +2246,32 @@ func test_staged_solver_details() -> void:
 	for stage: Dictionary in StagedSolver.solve(turned, "cfop"):
 		turned.apply_all(stage["moves"])
 	check(turned.is_solved(), "a cube held in another orientation is solved too")
-	# Methods without their own stages yet fall back to CFOP; unsupported puzzles give nothing.
+	# God's Number has no stages of its own in the solver (the showcase plays it): CFOP; unsupported puzzles give nothing.
 	var roux := PuzzleShapes.from_id("3x3")
 	roux.scramble(25)
-	var roux_stages := StagedSolver.solve(roux, "roux")
-	check(roux_stages.size() == 8 and roux_stages[6]["id"] == "oll", "Roux falls back to CFOP until R.5")
+	var roux_stages := StagedSolver.solve(roux, "gods_number")
+	check(roux_stages.size() == 8 and roux_stages[6]["id"] == "oll", "God's Number falls back to CFOP in the solver")
+	# Roux's LSE uses only M and U; ZZ's F2L only R, U and L (R.5). ZZ with the full OLL/PLL sets solves too.
+	var lse_faces := {}
+	var f2l_faces := {}
+	var face_rng := RandomNumberGenerator.new()
+	face_rng.seed = 31
+	for i in 10:
+		var cube := PuzzleShapes.from_id("3x3")
+		cube.scramble(25, face_rng)
+		for move: Dictionary in StagedSolver.solve(cube, "roux")[-1]["moves"]:
+			lse_faces[cube.notation(move).left(1)] = true
+		for move: Dictionary in StagedSolver.solve(cube, "zz")[2]["moves"]:
+			f2l_faces[cube.notation(move).left(1)] = true
+		var full := PuzzleShapes.from_id("3x3")
+		full.orientations = cube.orientations.duplicate()
+		for stage: Dictionary in StagedSolver.solve(cube, "zz", {"full_oll": true, "full_pll": true}):
+			full.apply_all(stage["moves"])
+		check(full.is_solved(), "ZZ with full OLL/PLL solves scramble %d" % i)
+	check(not lse_faces.is_empty() and lse_faces.keys().all(func(f: String) -> bool: return f in ["M", "U"]),
+			"Roux LSE is M and U only: %s" % str(lse_faces.keys()))
+	check(not f2l_faces.is_empty() and f2l_faces.keys().all(func(f: String) -> bool: return f in ["R", "U", "L"]),
+			"ZZ F2L is R, U and L only: %s" % str(f2l_faces.keys()))
 	check(StagedSolver.supports("3x3") and StagedSolver.supports("2x2"), "3x3 and 2x2 are supported")
 	check(not StagedSolver.supports("4x4") and not StagedSolver.supports("megaminx"), "bigger cubes come in R.6")
 	check(StagedSolver.solve(PuzzleShapes.from_id("4x4")).is_empty(), "an unsupported puzzle gives no stages")
@@ -2373,6 +2400,42 @@ func test_showcase_solve_rules() -> void:
 	check(tapped.stages[-1]["id"] == "pll", "the next solve is CFOP")
 	# 2×2 and the unsupported puzzles.
 	check(ShowcaseSolve.supports("2x2") and not ShowcaseSolve.supports("5x5"), "2×2/3×3 only, for now (R.6)")
+	# Roux and ZZ (R.5) are staged too; God's Number undoes the cube's history, labelled, and is short.
+	for method: String in ["roux", "zz", "gods_number"]:
+		var other := ShowcaseSolve.new("3x3", method, 21)
+		var shown := PuzzleShapes.from_id("3x3")
+		shown.apply_all(other.scramble)
+		var guard := 0
+		while other.phase != "solved" and guard < 300:
+			for move in other.tap():
+				shown.apply(move)
+			guard += 1
+		check(other.phase == "solved" and shown.is_solved(), "%s: the showcase solves the scramble (%d taps)" % [method, guard])
+	var gods := ShowcaseSolve.new("3x3", "gods_number", 22)
+	check(gods.chip_stages().size() == 1 and gods.chip_stages()[0]["name"] == "God's Number", "God's Number: one labelled stage")
+	check((gods.stages[0]["moves"] as Array).size() <= 25, "...no longer than the scramble (%d)" % (gods.stages[0]["moves"] as Array).size())
+	gods.tap()
+	gods.player_turn(gods.model.parse("R"))
+	gods.tap()  # a click: the team takes it back and plans from here
+	var rest := PuzzleShapes.from_id("3x3")
+	rest.orientations = gods.model.orientations.duplicate()
+	rest.apply_all((gods.stages[0]["moves"] as Array).slice(gods.move_index))
+	check(rest.is_solved(), "God's Number after your turns still solves the cube")
+	# Many turns of your own: the history gets long, so the team shows its shortest staged solve, never a long
+	# "God's Number".
+	var busy := ShowcaseSolve.new("3x3", "gods_number", 23)
+	var busy_rng := RandomNumberGenerator.new()
+	busy_rng.seed = 24
+	for i in 40:
+		busy.player_turn(busy.model.random_move(busy_rng))
+	busy.advance(float(Content.TAPS["resume_after"]) + 0.1, 8.0)
+	var named_gods := busy.stages.any(func(st: Dictionary) -> bool: return st["id"] == "gods_number")
+	var gods_moves := 0
+	for st: Dictionary in busy.stages:
+		if st["id"] == "gods_number":
+			gods_moves += (st["moves"] as Array).size()
+	check(gods_moves <= 25, "a God's Number stage is never longer than a scramble (%d)" % gods_moves)
+	check(named_gods or busy.stages.any(func(st: Dictionary) -> bool: return st["id"] == "lse"), "...else it's a Roux solve")
 	# Cubers write two-layer moves on a 3×3 in lower case.
 	var m := PuzzleShapes.from_id("3x3")
 	check(ShowcaseSolve.notation(m, m.parse("Rw'")) == "r'" and ShowcaseSolve.notation(m, m.parse("R2")) == "R2", "Rw' -> r'")
@@ -2392,12 +2455,13 @@ func test_showcase_on_main_screen() -> void:
 	root.add_child(main)
 	var view: PuzzleView3D = main.get_node("%PuzzleView")
 	var chips: HBoxContainer = main.get_node("%StageChips")
-	for method: String in ["beginner", "cfop"]:
+	var chip_counts := {"beginner": 7, "cfop": 4, "roux": 4, "zz": 3, "gods_number": 1}
+	for method: String in chip_counts:
 		game.method = method
 		main._start_showcase()
 		var show: ShowcaseSolve = main._showcase
 		check(show != null and show.method == method, "%s: the 3×3 gets a showcase solve" % method)
-		check(chips.visible and chips.get_child_count() == (7 if method == "beginner" else 4), "%s: one chip per stage (F2L shares one)" % method)
+		check(chips.visible and chips.get_child_count() == int(chip_counts[method]), "%s: one chip per stage (F2L shares one)" % method)
 		var moves_before := game.total_moves
 		var taps := 0
 		while show.phase != "solved" and taps < 400:

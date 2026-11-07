@@ -34,6 +34,7 @@ var solves_shown := 0
 var model: TwistyModel            ## the puzzle as it looks once every returned move is played
 var player_moves: Array[Dictionary] = []  ## the player's turns since they took the cube (newest last, at most 12)
 var by_player := false            ## the last solve was finished by the player's own turns
+var _history: Array[Dictionary] = []  ## every move since the scramble began (God's Number undoes them, R.5)
 var _taken_solved := false        ## the cube was already solved when the player took it (undoing R with R' isn't a solve)
 
 var _rng := RandomNumberGenerator.new()
@@ -69,7 +70,8 @@ func start_new() -> void:
 	model = PuzzleShapes.from_id(puzzle_id)
 	var length := int(Content.get_puzzle(puzzle_id).get("scramble_length", 25))
 	scramble = model.scramble(length, _rng)
-	stages = StagedSolver.solve(model, method, solver_options)
+	_history = scramble.duplicate()
+	stages = _plan()
 	phase = "inspection"
 	stage_index = 0
 	move_index = 0
@@ -90,6 +92,7 @@ func player_turn(move: Dictionary) -> Array[Dictionary]:
 		player_moves.clear()
 		_taken_solved = model.is_solved()
 	model.apply(move)
+	_history.append(move)
 	out.append(move)
 	phase = "player"
 	player_moves.append(move)
@@ -109,13 +112,27 @@ func _resume() -> void:
 		resumed.emit()
 		_finish()
 		return
-	stages = StagedSolver.solve(model, method, solver_options)
+	stages = _plan()
 	phase = "inspection"
 	stage_index = 0
 	move_index = 0
 	_timer = float(Content.SHOWCASE["inspection"])
 	_move_clock = 0.0
 	resumed.emit()
+
+
+## The solve from where the cube is now. God's Number (the last method) isn't a way people solve, and there's no
+## optimal solver here, so it undoes everything done to the cube since the scramble, merged (R.5), as one stage
+## labelled "God's Number": at most the scramble's length on a fresh scramble. After the player's own turns (S.7) or a
+## method learned mid-solve that history can get long; when it's longer than the scramble, the team shows its
+## shortest staged solve (Roux) instead, with Roux's own stage names, so nothing long is labelled God's Number.
+func _plan() -> Array[Dictionary]:
+	if method == "gods_number":
+		var undo := StagedSolver.simplify(model, model.inverse_sequence(StagedSolver.simplify(model, _history)))
+		if undo.size() <= int(Content.get_puzzle(puzzle_id).get("scramble_length", 25)):
+			return [{"id": "gods_number", "name": "God's Number", "moves": undo}]
+		return StagedSolver.solve(model, "roux", solver_options)
+	return StagedSolver.solve(model, method, solver_options)
 
 
 ## Moves to play for `delta` seconds at `tps` turns per second (0 = only taps turn it).
@@ -195,6 +212,7 @@ func _take_inspection() -> Array[Dictionary]:
 		move_index += 1
 	for m in out:
 		model.apply(m)
+		_history.append(m)
 	return out
 
 
@@ -217,6 +235,7 @@ func _next_move() -> Array[Dictionary]:
 		return out
 	var move: Dictionary = stages[stage_index]["moves"][move_index]
 	model.apply(move)
+	_history.append(move)
 	out.append(move)
 	move_index += 1
 	if move_index >= (stages[stage_index]["moves"] as Array).size():

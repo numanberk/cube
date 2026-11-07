@@ -205,9 +205,12 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       learned, a puzzle unlocked, a time tier crossed, ×10 Solves milestones, and the player's own Solve Station PBs (S.2).
       Events come from `GameState` signals; the feed only formats them. The last ~20 lines can be scrolled.
       *Done when:* tests cover which events make a line and the rate limit, and there's a screenshot.
-- [ ] **R.5 Roux and ZZ in the solver:** Roux (first block, second block, CMLL, LSE) and ZZ (EOLine, F2L, last layer) stages,
+- [x] **R.5 Roux and ZZ in the solver:** Roux (first block, second block, CMLL, LSE) and ZZ (EOLine, F2L, last layer) stages,
       so the showcase changes again when those methods are learned (God's Number shows a short optimal-looking solve, labelled).
       *Done when:* the same 200-scramble and stage-goal tests pass for both, and there are screenshots.
+      *(Done 2026-11-07: Roux = Block 1, Block 2, CMLL, LSE (M/U only), ~56 moves, ~3 ms; ZZ = EOLine, F2L (R/U/L),
+      Last layer, ~65 moves, ~2.5 ms. God's Number plays the cube's history undone (merged), labelled: not a real optimal
+      solver. Shots in `docs/screenshots/r5-roux-zz/`.)*
 - [ ] **R.6 Big cubes in the solver:** 4×4–7×7 by reduction (centres → edge pairing → 3×3 stage, with **parity** as its own
       stage on even cubes), so the showcase works on every cube. Megaminx stays on scramble + rewind (Phase 11).
       *Done when:* tests solve random scrambles on 4×4 and 5×5 with the stage goals checked, and the showcase holds the bench.

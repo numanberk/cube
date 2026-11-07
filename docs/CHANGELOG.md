@@ -2,6 +2,35 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-07 — Task R.5: Roux and ZZ in the solver
+- **Roux** (`StagedSolver`, stages Block 1 / Block 2 / CMLL / LSE): each block is its bottom edge, then its two
+  corner+edge pairs, cheapest first, by the same small table searches as F2L (`_build_block`). Steps are face turns
+  plus X Y X' sequences (`_turn_macros`), including **M U M'**-style ones that pull an edge out of the M slice and put the
+  centres back (without them ~4 % of second blocks got stuck: an edge at DF/DB can't leave with face turns once the
+  first block is built). CMLL is one 4-corner table search with every OLL/PLL algorithm as a step (edges are free).
+  **LSE uses only M and U**, in the three steps Roux solvers use (orient the six edges; UL/UR; the M slice, with M and
+  U2), as small IDA* searches over the six edges, one top corner and the M slice's centre offset (M moves the centres).
+  The orientation step has an exact table (256 states); without it the 6-flip case ran past the search budget.
+  ~56 moves, ~3 ms a solve after warm-up.
+- **ZZ** (EOLine / F2L / Last layer): edge orientation from an exact table over the 2^12 orientation states (walking
+  down it gives the fewest turns), the line (DF, DB) with U, D, R, L, F2, B2 so it stays oriented, F2L as a left then a
+  right block with R, U, L (and L U L' / R U R' inserts), then OCLL + PLL as one stage. ~65 moves, ~2.5 ms.
+  Lesson: in this solver's slot convention an edge is "good" (F/B-axis EO) exactly when its slot isn't flipped.
+- **God's Number** isn't a way people solve, and an optimal solver is out of reach here, so the showcase plays the cube's
+  whole history since the scramble, merged and undone (`ShowcaseSolve._plan`, `_history`), as one stage labelled
+  "God's Number" (≤ 25 moves). Honest note: it's "the scramble backwards", not a computed optimal solve.
+- Stage chips: Block 1, Block 2, CMLL, LSE · EOLine, F2L, Last layer · God's Number (`main.CHIP_NAMES`).
+- Tests: 200 random scrambles per method with every stage's goal checked (`test_staged_solver_solves`), realistic
+  lengths, LSE is M/U only, ZZ F2L is R/U/L only, the showcase solves with Roux/ZZ/God's Number (also after your own
+  turns), chip counts per method on the main screen. Shots: `docs/screenshots/r5-roux-zz/`.
+- **diff-reviewer** (also ran ~5,500 stress solves with slice moves and rotations mixed in: all solved, stage goals
+  met; Roux worst 13 ms): fixed: God's Number got long after the player's own turns (60 turns → a 61-move "God's
+  Number"), so a history longer than the scramble now shows the team's Roux solve instead (its own stage names);
+  start-up warms only the learned methods (Roux's first solve costs ~0.2 s; a newly learned method is warmed when it's
+  bought); the face-set tests are seeded over 10 scrambles; ZZ with full OLL/PLL is tested; God's Number after 40 turns
+  is tested; dead code removed. Not changed: a failed search (never seen) still ends a stage early, like CFOP's.
+- **Next: R.6** (big cubes in the solver).
+
 ## 2026-11-07 — Task S.7: turns are taps + TPS streak
 - **Owner (2026-11-07):** do the Phase S leftovers now, S.7 → R.5 → R.6, and ask if something needs their input.
 - **Key turns on the main screen:** the Solve Station keys (csTimer or simple, the same setting, hands and widths too)
