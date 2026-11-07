@@ -2,6 +2,19 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-07 — Plan: Look v2 (owner: "it looks like an HTML file")
+- Docs only, no code. The owner asked for a plan to make the game look like a game. Fresh `fresh`/`mid`/`endgame`/
+  Upgrades-tab screenshots were the evidence; the diagnosis and 8 principles are in **PLAN §4.7**.
+- **New ROADMAP Phase V (V.0–V.9):** style gallery scene + screenshot preset (V.0), display font + number/StatChip system
+  and a new top bar (V.1), materials with depth and coloured icon stickers (V.2), background shader + a real stage with
+  a mat/pedestal, rim light and a bigger cube (V.3), decluttered main screen: ≤ 3 text rows under the puzzle, one goal
+  card, a puzzle shelf (V.4), shop cards with bars that fill towards their cost (V.5), a motion kit and panel transitions
+  (V.6), unlock banners and confetti (V.7), every overlay restyled (V.8), wordmark/icon/splash/resolutions (V.9).
+- **Asked the owner (PLAN §7, open):** D15 art direction ((a) lo-fi cubing desk, (b) competition stage, (c) toy/sticker
+  pop; recommended (a)+(c), (b) for Compete/Solve Station), D15b sticker colours as category colours (relaxes CLAUDE.md
+  rule 9 if yes), D15c Phase V before Phase 7. **V.0 can start without them; V.1 onwards needs D15.**
+- Not changed: CLAUDE.md rule 9 (waits for D15b). Phase 9.1 overlaps V.9; V.9 says to tick both.
+
 ## 2026-11-06 — Task 6.4: prestige tuned (Phase 6 done)
 - **The bot plays two runs now** (`tools/simulator.gd`, `run(..., prestige)`): it competes once a championship would
   at least **double its trophy bonus** (`COMPETE_FACTOR`, the usual idle-game rule of thumb; 50 trophies the first
