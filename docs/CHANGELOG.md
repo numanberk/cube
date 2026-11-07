@@ -2,6 +2,45 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-07 — Task V.1: type and numbers (Fredoka, stat chips, a game-like top bar)
+- **Display font: Fredoka** (`assets/fonts/FredokaVariable.ttf`, OFL, credited; the owner didn't pick, so the V.0
+  default). It's on TitleLabel, BigAccentLabel, CardOwned, CardTitle, PrimaryButton, GoldenButton, PopSolve, PopTap,
+  PerkName and the new counter/stat styles (`FontVariation_display` 600 / `_display_bold` 700 in the theme). Inter
+  stays for body text. **Fredoka has no tabular figures** (Rubik does), so changing numbers get a minimum width
+  (`SolvesLabel` 150 px) so the counter doesn't push the chips; the chips themselves do shift a few pixels as their
+  values tick (`StatChip.value_min_width` exists if that ever bothers anyone). Both Fredoka variations fall back to
+  Inter for glyphs Fredoka lacks (✓ on finished Lab projects, →, ≥).
+- **Top bar:** mini-cube icon (`assets/icons/stat_solves.svg`, drawn for the game, CC0) + a "SOLVES" caption over the
+  number (`CounterLabel`: Fredoka 40 with a drop shadow; `CounterCaption`: spaced Inter caps). Then **`StatChip`s**
+  (`scenes/stat_chip.tscn`, new class): +solves/s, Streak (×1.62, 3.0 TPS), Flow (×2.6, 1:42), Golden buff (×7, 24s;
+  the buff's name moved to the tooltip). Order: solves/s, **Golden buff** (timed, so never the one left out), Flow,
+  Streak, moves/s. The chips sit in a **`FitRow`** (`scripts/ui/fit_row.gd`, new class): a
+  container that asks for no width (a clipped HBox still made the window wider) and leaves out a chip that doesn't
+  fit whole, so with every chip showing at 1280×720 the moves/s chip disappears instead of being cut in half
+  (screenshot-checker found the cut one). No fixed value widths after all: they left odd gaps in the chips.
+  Buttons got icons: Perks = trophy + count, Compete = podium, Solve it yourself = stopwatch, Settings = an icon-only
+  gear (`IconButton`). New icons from game-icons.net (credited). Removed variations: StreakLabel, FlowLabel, BuffLabel.
+- `main.gd` changes are limited to the top bar (`_refresh`'s first lines, `_animate_counter`, `_refresh_golden`'s
+  chip lines, `_refresh_compete`'s Perks text). The counter text is now just the number (tests updated).
+- Tests: new `test_top_bar_stats` (no "·" in any top-bar text, every chip has an icon, StatChip API, Settings is an
+  icon button, 1e30 on the counter); Streak/Flow tests read the chips. Gallery: counter + five chips + IconButton swatch.
+- `tools/screenshot.sh`: gallery runs have a 300 s `timeout` (a parse error left the gallery running forever).
+- Checked 1.00e30 Solves (shows "1.00No") with Perks, Compete, the buff, Flow and Streak all on, at 1280×720
+  (`endgame_1e30_all_chips.png`: solves/s, buff and Flow fit; Streak and moves/s are left out whole) and 1920×1080
+  (scratch script, not committed). The diff-reviewer's fixes: buff chip moved second, Inter fallback on Fredoka,
+  buff-chip test, gallery font preview covers the counter and chips. Screenshots: `docs/screenshots/V.1-type/`.
+- **Seen, not V.1's (already in the V.0-era shots):** long helper lines ("+132 moves/s each (+13.20K/…") and the
+  first goal-strip entry are cut with "…" → V.5 (shop cards) and V.4 (goal card).
+- **Not done here (moved):** the logo wordmark → V.9 (no room at 1280×720 until V.4 frees space); digit-by-digit
+  rolling → V.6 (the counter still eases up). Timer font (Chakra Petch / DSEG7) → V.8 with the Solve Station.
+- **Parallel sessions:** merged `origin/main` at `e785d31` (the parallel-session rules, D15c change, 7.0a career
+  moments with save v13); only the CHANGELOG conflicted (both kept). V.1's In progress row is removed in this merge;
+  its real own files: `ui/theme.tres`, `scenes/stat_chip.tscn` + `scripts/ui/stat_chip.gd`, the top bar of `main.tscn`,
+  `assets/fonts/Fredoka*`, `assets/icons/stat_*.svg` + `ui_settings.svg`, the style gallery; shared: `main.gd` (top-bar
+  lines), `tests/test_runner.gd`, `tools/screenshot.sh` (gallery timeout), CLAUDE.md, `assets/CREDITS.md`.
+- The review agents hit a usage limit mid-review and were resumed after the reset (11:35 UTC).
+- **Next: V.2** (materials). The other session works on R.6 (solver): `main.gd` overlaps only in different functions.
+
 ## 2026-11-07 — Task 7.0a: career moments, rules part (save v13)
 - **Parallel session** (PLAN §3) next to V.1 and R.6a; claimed 7.0a with **Save: yes (v13)**. Merged with
   `origin/main` at `993750f` (nothing new there: V.1 and R.6a hadn't merged yet); the In progress row is removed. Owner: rules only (D15c),

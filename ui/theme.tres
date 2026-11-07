@@ -1,6 +1,7 @@
 [gd_resource type="Theme" format=3]
 
 [ext_resource type="FontFile" path="res://assets/fonts/InterVariable.ttf" id="1_rqugq"]
+[ext_resource type="FontFile" path="res://assets/fonts/FredokaVariable.ttf" id="2_fredoka"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jf26r"]
 content_margin_left = 18.0
@@ -701,6 +702,86 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
+[sub_resource type="FontVariation" id="FontVariation_display"]
+base_font = ExtResource("2_fredoka")
+fallbacks = Array[Font]([ExtResource("1_rqugq")])
+variation_opentype = {
+2003265652: 600
+}
+
+[sub_resource type="FontVariation" id="FontVariation_display_bold"]
+base_font = ExtResource("2_fredoka")
+fallbacks = Array[Font]([ExtResource("1_rqugq")])
+variation_opentype = {
+2003265652: 700
+}
+
+[sub_resource type="FontVariation" id="FontVariation_caps"]
+base_font = ExtResource("1_rqugq")
+variation_opentype = {
+2003265652: 700
+}
+spacing_glyph = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_statchip"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 12.0
+content_margin_bottom = 4.0
+bg_color = Color(0.15294118, 0.16862746, 0.20392157, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_iconbtn"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.14901961, 0.16470589, 0.2, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.22, 0.27, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_iconbtn_hover"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.1764706, 0.19607843, 0.23921569, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2627451, 0.2901961, 0.3529412, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_iconbtn_pressed"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.101960786, 0.11372549, 0.13725491, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.16470589, 0.6156863, 0.42352942, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -735,7 +816,7 @@ PanelContainer/styles/panel = SubResource("StyleBoxFlat_47c11")
 PrimaryButton/base_type = &"Button"
 PrimaryButton/font_sizes/font_size = 22
 PrimaryButton/styles/focus = SubResource("StyleBoxEmpty_primary_focus")
-PrimaryButton/fonts/font = SubResource("FontVariation_2j8s8")
+PrimaryButton/fonts/font = SubResource("FontVariation_display")
 PrimaryButton/styles/hover = SubResource("StyleBoxFlat_mo6nk")
 PrimaryButton/styles/hover_pressed = SubResource("StyleBoxFlat_qijjd")
 PrimaryButton/styles/normal = SubResource("StyleBoxFlat_de4b7")
@@ -776,7 +857,7 @@ TickerLabel/font_sizes/font_size = 15
 TitleLabel/base_type = &"Label"
 TitleLabel/colors/font_color = Color(0.9254902, 0.93333334, 0.9490196, 1)
 TitleLabel/font_sizes/font_size = 36
-TitleLabel/fonts/font = SubResource("FontVariation_2j8s8")
+TitleLabel/fonts/font = SubResource("FontVariation_display_bold")
 TooltipLabel/colors/font_color = Color(0.9254902, 0.93333334, 0.9490196, 1)
 TooltipPanel/styles/panel = SubResource("StyleBoxFlat_2kqek")
 VBoxContainer/constants/separation = 8
@@ -812,11 +893,11 @@ CardMargin/constants/margin_top = 8
 CardOwned/base_type = &"Label"
 CardOwned/colors/font_color = Color(0.9255, 0.9333, 0.9490, 1.0)
 CardOwned/font_sizes/font_size = 26
-CardOwned/fonts/font = SubResource("FontVariation_2j8s8")
+CardOwned/fonts/font = SubResource("FontVariation_display_bold")
 CardTitle/base_type = &"Label"
 CardTitle/colors/font_color = Color(0.9255, 0.9333, 0.9490, 1.0)
 CardTitle/font_sizes/font_size = 17
-CardTitle/fonts/font = SubResource("FontVariation_2j8s8")
+CardTitle/fonts/font = SubResource("FontVariation_display")
 CostAffordable/base_type = &"Label"
 CostAffordable/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1.0)
 CostAffordable/font_sizes/font_size = 14
@@ -843,13 +924,13 @@ PopSolve/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1)
 PopSolve/colors/font_outline_color = Color(0.0549, 0.0627, 0.0784, 0.85)
 PopSolve/constants/outline_size = 6
 PopSolve/font_sizes/font_size = 28
-PopSolve/fonts/font = SubResource("FontVariation_2j8s8")
+PopSolve/fonts/font = SubResource("FontVariation_display_bold")
 PopTap/base_type = &"Label"
 PopTap/colors/font_color = Color(1, 1, 1, 1)
 PopTap/colors/font_outline_color = Color(0.0549, 0.0627, 0.0784, 0.85)
 PopTap/constants/outline_size = 5
 PopTap/font_sizes/font_size = 22
-PopTap/fonts/font = SubResource("FontVariation_2j8s8")
+PopTap/fonts/font = SubResource("FontVariation_display_bold")
 ToggleChip/base_type = &"Button"
 ToggleChip/colors/font_color = Color(0.6667, 0.6902, 0.7412, 1)
 ToggleChip/colors/font_hover_color = Color(0.9255, 0.9333, 0.949, 1)
@@ -867,7 +948,7 @@ HSlider/styles/slider = SubResource("StyleBoxFlat_slider")
 BigAccentLabel/base_type = &"Label"
 BigAccentLabel/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1)
 BigAccentLabel/font_sizes/font_size = 40
-BigAccentLabel/fonts/font = SubResource("FontVariation_2j8s8")
+BigAccentLabel/fonts/font = SubResource("FontVariation_display_bold")
 PuzzleChipPanel/base_type = &"PanelContainer"
 PuzzleChipPanel/styles/panel = SubResource("StyleBoxFlat_puzzle_chip")
 TimerLabel/base_type = &"Label"
@@ -926,25 +1007,13 @@ GoldenButton/colors/font_color = Color(0.9608, 0.7725, 0.2588, 1)
 GoldenButton/colors/font_hover_color = Color(1, 0.851, 0.4, 1)
 GoldenButton/colors/font_pressed_color = Color(1, 0.851, 0.4, 1)
 GoldenButton/font_sizes/font_size = 16
-GoldenButton/fonts/font = SubResource("FontVariation_2j8s8")
+GoldenButton/fonts/font = SubResource("FontVariation_display")
 GoldenButton/styles/normal = SubResource("StyleBoxFlat_golden")
 GoldenButton/styles/hover = SubResource("StyleBoxFlat_golden_hover")
 GoldenButton/styles/pressed = SubResource("StyleBoxFlat_golden_hover")
 GoldenButton/styles/focus = SubResource("StyleBoxEmpty_card_focus")
-BuffLabel/base_type = &"Label"
-BuffLabel/colors/font_color = Color(0.9608, 0.7725, 0.2588, 1)
-BuffLabel/font_sizes/font_size = 16
-BuffLabel/fonts/font = SubResource("FontVariation_2j8s8")
 TimerGolden/base_type = &"TimerLabel"
 TimerGolden/colors/font_color = Color(0.9608, 0.7725, 0.2588, 1)
-FlowLabel/base_type = &"Label"
-FlowLabel/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1)
-FlowLabel/font_sizes/font_size = 16
-FlowLabel/fonts/font = SubResource("FontVariation_2j8s8")
-StreakLabel/base_type = &"Label"
-StreakLabel/colors/font_color = Color(0.9255, 0.9294, 0.949, 1)
-StreakLabel/font_sizes/font_size = 16
-StreakLabel/fonts/font = SubResource("FontVariation_2j8s8")
 ChoiceBadge/base_type = &"Label"
 ChoiceBadge/colors/font_color = Color(0.1647, 0.6157, 0.4235, 1)
 ChoiceBadge/font_sizes/font_size = 11
@@ -958,6 +1027,40 @@ PerkName/base_type = &"Label"
 PerkName/colors/font_color = Color(0.9255, 0.9333, 0.949, 1)
 PerkName/constants/line_spacing = -2
 PerkName/font_sizes/font_size = 13
-PerkName/fonts/font = SubResource("FontVariation_2j8s8")
+PerkName/fonts/font = SubResource("FontVariation_display")
 PerkTree/colors/line = Color(0.2353, 0.2627, 0.3255, 1)
 PerkTree/colors/line_owned = Color(0.2353, 0.8118, 0.5569, 1)
+Button/constants/h_separation = 8
+Button/constants/icon_max_width = 22
+CounterLabel/base_type = &"Label"
+CounterLabel/colors/font_color = Color(0.96, 0.965, 0.975, 1)
+CounterLabel/colors/font_shadow_color = Color(0, 0, 0, 0.45)
+CounterLabel/constants/shadow_offset_x = 0
+CounterLabel/constants/shadow_offset_y = 3
+CounterLabel/font_sizes/font_size = 40
+CounterLabel/fonts/font = SubResource("FontVariation_display_bold")
+CounterCaption/base_type = &"Label"
+CounterCaption/colors/font_color = Color(0.4862745, 0.5137255, 0.57254905, 1)
+CounterCaption/font_sizes/font_size = 11
+CounterCaption/fonts/font = SubResource("FontVariation_caps")
+StatChip/base_type = &"PanelContainer"
+StatChip/styles/panel = SubResource("StyleBoxFlat_statchip")
+StatValue/base_type = &"Label"
+StatValue/colors/font_color = Color(0.9254902, 0.93333334, 0.9490196, 1)
+StatValue/font_sizes/font_size = 19
+StatValue/fonts/font = SubResource("FontVariation_display")
+StatValueAccent/base_type = &"StatValue"
+StatValueAccent/colors/font_color = Color(0.2353, 0.8118, 0.5569, 1)
+StatValueGold/base_type = &"StatValue"
+StatValueGold/colors/font_color = Color(0.9608, 0.7725, 0.2588, 1)
+StatUnit/base_type = &"Label"
+StatUnit/colors/font_color = Color(0.4862745, 0.5137255, 0.57254905, 1)
+StatUnit/font_sizes/font_size = 13
+IconButton/base_type = &"Button"
+IconButton/constants/icon_max_width = 24
+IconButton/styles/normal = SubResource("StyleBoxFlat_iconbtn")
+IconButton/styles/hover = SubResource("StyleBoxFlat_iconbtn_hover")
+IconButton/styles/pressed = SubResource("StyleBoxFlat_iconbtn_pressed")
+IconButton/styles/hover_pressed = SubResource("StyleBoxFlat_iconbtn_pressed")
+StatRow/base_type = &"HBoxContainer"
+StatRow/constants/separation = 5

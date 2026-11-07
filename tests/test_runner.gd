@@ -809,7 +809,7 @@ func test_settings_panel() -> void:
 	settings.set_value("notation", "scientific")
 	check(Num.format(1500.0) == "1.50e3", "scientific notation")
 	main._animate_counter(1.0)
-	check((main.get_node("%SolvesLabel") as Label).text == "1.50e3 Solves", "the UI uses the chosen notation")
+	check((main.get_node("%SolvesLabel") as Label).text == "1.50e3", "the UI uses the chosen notation")
 	settings.set_value("notation", "short")
 	check(Num.format(1500.0) == "1.50K", "back to short notation")
 	# Volumes and music
@@ -852,6 +852,82 @@ func test_theme_is_used_everywhere() -> void:
 		for found in variation_regex.search_all(text):
 			var variation := found.get_string(1)
 			check(theme.get_type_variation_base(variation) != &"", "%s uses theme variation %s, which the theme defines" % [scene_name, variation])
+
+
+func test_top_bar_stats() -> void:
+	# Task V.1: the top bar shows numbers as an icon + value (+ unit) chips, never "·"-joined sentences.
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	game.cheat_add_solves(1e30)
+	game.trophies = 12
+	game.flow = {"mult": 2.0, "left": 30.0}
+	var buff_def: Dictionary = Content.GOLDEN["buffs"][0]
+	game.buff = {"id": buff_def["id"], "mult": 7.0, "left": 20.0}
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	main._shown_solves = game.solves
+	main._animate_counter(0.0)
+	main._refresh()
+	main._refresh_golden()
+	check((main.get_node("%SolvesLabel") as Label).text == Num.format(1e30), "the counter shows just the number (the caption says Solves)")
+	var top_bar: Control = main.get_node("Margin/Rows/TopBar")
+	var texts: Array[String] = []
+	_collect_texts(top_bar, texts)
+	for text in texts:
+		check(not text.contains("·"), "no '·'-joined stat in the top bar: '%s'" % text)
+	for chip_name in ["SolvesRate", "MovesRate", "StreakChip", "FlowChip", "BuffChip"]:
+		var chip: StatChip = main.get_node("%" + chip_name)
+		check(chip.icon != null, "%s has an icon" % chip_name)
+	var flow_chip: StatChip = main.get_node("%FlowChip")
+	check(flow_chip.visible and flow_chip.get_text().begins_with("×2"), "the Flow chip shows its multiplier: %s" % flow_chip.get_text())
+	var buff_chip: StatChip = main.get_node("%BuffChip")
+	check(buff_chip.visible and buff_chip.get_text() == "×7 20s" and String(buff_def["name"]) in buff_chip.tooltip_text,
+			"the Golden buff chip: %s (%s)" % [buff_chip.get_text(), buff_chip.tooltip_text])
+	var stats: Node = main.get_node("%Stats")
+	check(stats.get_child(0).name == "SolvesRate" and stats.get_child(1).name == "BuffChip",
+			"the timed Golden buff comes right after solves/s, so it's the last chip to be left out")
+	var theme: Theme = load("res://ui/theme.tres")
+	var display: FontVariation = theme.get_font(&"font", &"CounterLabel")
+	check(not display.fallbacks.is_empty(), "the display font falls back to Inter for glyphs it lacks (✓, →)")
+	check(FileAccess.get_file_as_string("res://assets/CREDITS.md").contains("FredokaVariable.ttf"), "Fredoka is credited")
+	check((main.get_node("%SettingsButton") as Button).icon != null and (main.get_node("%SettingsButton") as Button).text == "",
+			"Settings is an icon button")
+	# FitRow: children that don't fit whole are left out (not cut), and the row never widens the bar.
+	var row := FitRow.new()
+	root.add_child(row)
+	check(row.get_combined_minimum_size().x == 0.0, "a FitRow asks for no width")
+	for i in 3:
+		var block := Control.new()
+		block.custom_minimum_size = Vector2(100, 20)
+		row.add_child(block)
+	row.size = Vector2(230, 30)
+	check(row.fitting_children().size() == 2, "230 px holds two 100 px children with a 12 px gap, not three")
+	row.size = Vector2(330, 30)
+	check(row.fitting_children().size() == 3, "...and all three at 330 px")
+	row.free()
+	var chip: StatChip = load("res://scenes/stat_chip.tscn").instantiate()
+	root.add_child(chip)
+	chip.set_stat("+73", "/s")
+	check(chip.get_text() == "+73 /s", "a chip reads value + unit")
+	chip.set_stat("42")
+	check(chip.get_text() == "42" and not (chip.get_node("%Unit") as Label).visible, "an empty unit is hidden")
+	chip.tone = "gold"
+	check((chip.get_node("%Value") as Label).theme_type_variation == &"StatValueGold", "tone picks the value's style")
+	chip.free()
+	main.free()
+	game.buff = {}
+	game.flow = {}
+	game.reset_state()
+
+
+func _collect_texts(node: Node, texts: Array[String]) -> void:
+	if node is Label and (node as Label).is_visible_in_tree():
+		texts.append((node as Label).text)
+	elif node is Button and (node as Button).is_visible_in_tree():
+		texts.append((node as Button).text)
+	for child in node.get_children():
+		_collect_texts(child, texts)
 
 
 func test_style_gallery_covers_theme() -> void:
@@ -1058,7 +1134,7 @@ func test_juice_pool_and_counter() -> void:
 	for i in 120:
 		main._animate_counter(1.0 / 60.0)
 	check_near(main._shown_solves, game.solves, "the counter reaches the real value")
-	check(label.text == "%s Solves" % Num.format(game.solves), "the label shows the real value at the end")
+	check(label.text == Num.format(game.solves), "the label shows the real value at the end")
 	game.solves = 10.0
 	main._animate_counter(1.0 / 60.0)
 	check_near(main._shown_solves, 10.0, "spending snaps the counter down at once")
@@ -2628,12 +2704,13 @@ func test_main_screen_key_turns() -> void:
 	main._process(0.016)
 	check("Your turns" in (main.get_node("%MoveTicker") as RichTextLabel).text, "the ticker shows your turns")
 	main._refresh_golden()
-	var streak_label: Label = main.get_node("%StreakLabel")
-	check(not streak_label.visible, "no streak label while taps have no team share (it would multiply nothing)")
+	var streak_chip: StatChip = main.get_node("%StreakChip")
+	check(not streak_chip.visible, "no streak chip while taps have no team share (it would multiply nothing)")
 	game.upgrades["metronome"] = true
 	game.invalidate_upgrade_cache()
 	main._refresh_golden()
-	check(streak_label.visible and "Streak" in streak_label.text, "the streak shows in the top bar: %s" % streak_label.text)
+	check(streak_chip.visible and streak_chip.get_text().begins_with("×") and "TPS" in streak_chip.get_text(),
+			"the streak shows in the top bar: %s" % streak_chip.get_text())
 	# Space while you're turning: csTimer's hand reset, and the cube stays yours.
 	main._key_session.right_hand = 2
 	main._unhandled_input(key_event(KEY_SPACE, true, false))
@@ -3404,7 +3481,9 @@ func test_hand_solve_rewards_on_screen() -> void:
 	check(reward.contains("Gold: Flow ×%s" % Num.format(float(Content.SOLVE_REWARDS["flow_by_tier"][3]))) and reward.contains("new tier"), "after a solve: tier, Flow and the new tier: %s" % reward)
 	station.close()
 	main._refresh_golden()
-	check((main.get_node("%FlowLabel") as Label).visible and (main.get_node("%FlowLabel") as Label).text.begins_with("Flow ×%s" % Num.format(float(Content.SOLVE_REWARDS["flow_by_tier"][3]))), "the top bar shows the Flow")
+	var flow_chip: StatChip = main.get_node("%FlowChip")
+	check(flow_chip.visible and flow_chip.get_text().begins_with("×%s " % Num.format(float(Content.SOLVE_REWARDS["flow_by_tier"][3]))),
+			"the top bar shows the Flow: %s" % flow_chip.get_text())
 	main.free()
 	game.reset_state()
 

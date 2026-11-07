@@ -34,8 +34,8 @@ Full design: `docs/DESIGN.md`.
 project.godot              Engine config; autoloads "Game", "Audio", "Settings" (in that order); input action "tap"
 default_bus_layout.tres    Audio buses: Master > Music, SFX
 scenes/main.tscn           The one screen (UI layout)
-ui/theme.tres              Project theme: Inter font, colours, button/tab/bar styles, type variations (see rule 8)
-assets/                    fonts/ (Inter, OFL) and later audio/, images/; every file listed in assets/CREDITS.md
+ui/theme.tres              Project theme: Inter (body) + Fredoka (display: counters, titles, buttons) fonts, colours, button/tab/bar styles, type variations (see rule 8)
+assets/                    fonts/ (Inter, Fredoka; OFL) and later audio/, images/; every file listed in assets/CREDITS.md
 scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable > Bodies/Stickers MultiMeshes)
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
 scripts/autoload/audio.gd  class AudioManager ("Audio"): play_click/solve/buy/unlock (rate-limited), bus volumes,
@@ -57,6 +57,9 @@ scenes/dev/style_gallery.tscn  class StyleGallery (scripts/dev/style_gallery.gd)
                            variation and card scene in every state, pages kit|parts; never used by the game
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
 scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only
+scenes/stat_chip.tscn      class StatChip (scripts/ui/stat_chip.gd): a top-bar stat pill: icon + value + unit (V.1);
+                           set_stat("+73", "/s"), tone normal|accent|gold; icons assets/icons/stat_*.svg
+scripts/ui/fit_row.gd      class FitRow: a row with no minimum width that hides a child that doesn't fit whole (top bar chips)
 scenes/upgrade_tile.tscn   class UpgradeTile (scripts/ui/upgrade_tile.gd): one upgrade icon tile + tooltip panel
 scenes/puzzle_chip.tscn    class PuzzleChip: one card in the puzzle row (small Low-quality PuzzleView3D, name, Solves/s,
                            share) or the next locked puzzle (padlock, cost, Unlock button)
@@ -113,7 +116,8 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    TightBox, CardTitle, CardLine, CardOwned, CostAffordable, CostUnaffordable, UpgradeGrid, ToggleChip, PopTap,
    PopSolve, TimerLabel, TimerWaiting, TimerDone, ScrambleLabel, SidePanel, StageChip, StageChipActive, StageChipDone,
    StageChipRow, TickerText, KeyHint, GoalBar, GoalLabel, GoalLabelDim, NewsPanel, NewsNew, NewsOld, GoldenButton,
-   BuffLabel, TimerGolden, FlowLabel, StreakLabel, ChoiceBadge, PerkOwned, PerkName; PerkTree holds the tree's line colours), or add
+   TimerGolden, ChoiceBadge, PerkOwned, PerkName, CounterLabel, CounterCaption, StatChip, StatRow, StatValue,
+   StatValueAccent, StatValueGold, StatUnit, IconButton; PerkTree holds the tree's line colours), or add
    a new variation (and show it in the style gallery, `scenes/dev/style_gallery.tscn`; a test checks).
 9. **Taps:** clicking the puzzle, the `tap` input action (Space / Enter, no repeat when held), or a turn of the main
    cube with the Solve Station keys (S.7, `main.handle_turn_key`; rotations aren't taps). Shop and other

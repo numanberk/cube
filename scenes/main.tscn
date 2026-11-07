@@ -10,6 +10,17 @@
 [ext_resource type="PackedScene" path="res://scenes/compete_panel.tscn" id="8_compete"]
 [ext_resource type="PackedScene" path="res://scenes/perk_panel.tscn" id="9_perks"]
 [ext_resource type="Script" path="res://scripts/ui/automation_panel.gd" id="10_auto"]
+[ext_resource type="PackedScene" path="res://scenes/stat_chip.tscn" id="11_stat"]
+[ext_resource type="Texture2D" path="res://assets/icons/stat_solves.svg" id="12_solves"]
+[ext_resource type="Texture2D" path="res://assets/icons/stat_moves.svg" id="13_moves"]
+[ext_resource type="Texture2D" path="res://assets/icons/stat_streak.svg" id="14_streak"]
+[ext_resource type="Texture2D" path="res://assets/icons/stat_flow.svg" id="15_flow"]
+[ext_resource type="Texture2D" path="res://assets/icons/stat_golden.svg" id="16_golden"]
+[ext_resource type="Texture2D" path="res://assets/icons/stat_trophy.svg" id="17_trophy"]
+[ext_resource type="Texture2D" path="res://assets/icons/competition.svg" id="18_compete"]
+[ext_resource type="Texture2D" path="res://assets/icons/stackmat.svg" id="19_solve"]
+[ext_resource type="Texture2D" path="res://assets/icons/ui_settings.svg" id="20_settings"]
+[ext_resource type="Script" path="res://scripts/ui/fit_row.gd" id="21_fitrow"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_buy_amount"]
 
@@ -60,47 +71,81 @@ theme_type_variation = &"TopBar"
 [node name="TopRow" type="HBoxContainer" parent="Margin/Rows/TopBar"]
 layout_mode = 2
 
-[node name="SolvesLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
-unique_name_in_owner = true
+[node name="SolvesBox" type="HBoxContainer" parent="Margin/Rows/TopBar/TopRow"]
 layout_mode = 2
 size_flags_vertical = 4
-theme_type_variation = &"TitleLabel"
-text = "0 Solves"
+tooltip_text = "Solves: what everything costs. Every finished solve on any puzzle earns some."
 
-[node name="RateLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
+[node name="SolvesIcon" type="TextureRect" parent="Margin/Rows/TopBar/TopRow/SolvesBox"]
+custom_minimum_size = Vector2(38, 38)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("12_solves")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="SolvesStack" type="VBoxContainer" parent="Margin/Rows/TopBar/TopRow/SolvesBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"TightBox"
+
+[node name="SolvesCaption" type="Label" parent="Margin/Rows/TopBar/TopRow/SolvesBox/SolvesStack"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"CounterCaption"
+text = "SOLVES"
+
+[node name="SolvesLabel" type="Label" parent="Margin/Rows/TopBar/TopRow/SolvesBox/SolvesStack"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"CounterLabel"
+text = "0"
+
+[node name="Stats" type="Container" parent="Margin/Rows/TopBar/TopRow"]
+unique_name_in_owner = true
+clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
-theme_type_variation = &"SubtitleLabel"
-text = "0 solves/s"
-clip_text = true
-text_overrun_behavior = 3
+mouse_filter = 2
+script = ExtResource("21_fitrow")
 
-[node name="StreakLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
+[node name="SolvesRate" parent="Margin/Rows/TopBar/TopRow/Stats" instance=ExtResource("11_stat")]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Solves a second, from every running puzzle"
+icon = ExtResource("12_solves")
+tone = "accent"
+tint_icon = false
+
+[node name="BuffChip" parent="Margin/Rows/TopBar/TopRow/Stats" instance=ExtResource("11_stat")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-size_flags_vertical = 4
-mouse_filter = 1
-theme_type_variation = &"StreakLabel"
-text = "Streak ×1.50 · 3.0 TPS"
+icon = ExtResource("16_golden")
+tone = "gold"
 
-[node name="FlowLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
+[node name="FlowChip" parent="Margin/Rows/TopBar/TopRow/Stats" instance=ExtResource("11_stat")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-size_flags_vertical = 4
-theme_type_variation = &"FlowLabel"
-text = "Flow ×2 · 2:00"
+icon = ExtResource("15_flow")
+tone = "accent"
 
-[node name="BuffLabel" type="Label" parent="Margin/Rows/TopBar/TopRow"]
+[node name="StreakChip" parent="Margin/Rows/TopBar/TopRow/Stats" instance=ExtResource("11_stat")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-size_flags_vertical = 4
-theme_type_variation = &"BuffLabel"
-text = "Frenzy ×7 · 30s"
+icon = ExtResource("14_streak")
+
+[node name="MovesRate" parent="Margin/Rows/TopBar/TopRow/Stats" instance=ExtResource("11_stat")]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Moves a second, from your whole team"
+icon = ExtResource("13_moves")
 
 [node name="PerksButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
@@ -109,6 +154,7 @@ layout_mode = 2
 size_flags_vertical = 4
 focus_mode = 0
 text = "Perks"
+icon = ExtResource("17_trophy")
 
 [node name="CompeteButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
@@ -117,6 +163,7 @@ layout_mode = 2
 size_flags_vertical = 4
 focus_mode = 0
 text = "Compete"
+icon = ExtResource("18_compete")
 
 [node name="SolveButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
@@ -125,13 +172,16 @@ size_flags_vertical = 4
 focus_mode = 0
 theme_type_variation = &"PrimaryButton"
 text = "Solve it yourself"
+icon = ExtResource("19_solve")
 
 [node name="SettingsButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
+tooltip_text = "Settings"
 focus_mode = 0
-text = "Settings"
+theme_type_variation = &"IconButton"
+icon = ExtResource("20_settings")
 
 [node name="Columns" type="HBoxContainer" parent="Margin/Rows"]
 layout_mode = 2

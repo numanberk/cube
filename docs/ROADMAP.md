@@ -13,10 +13,9 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| V.1 Type and numbers | (its own) | 2026-11-07 | `ui/theme.tres`, the top bar in `main.tscn`, new `StatChip` scene, `assets/fonts/`, style gallery | `main.gd` (top bar), `tests/test_runner.gd`, `tools/screenshot.sh`?, CLAUDE.md | no |
 | R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
 
-*(These two rows were added for the sessions that started before this rule; their own files are an estimate. Each
+*(Rows added for the sessions that started before this rule; their own files are an estimate. Each
 session corrects its row when it merges.)*
 
 ## Milestone 1 — Playable core ✅
@@ -375,7 +374,7 @@ every new component or variation to the gallery (a test enforces variations).
       checks each is used in the gallery), and the display-font candidate shots are linked in the CHANGELOG.
       *(Done 2026-11-07: `test_style_gallery_covers_theme` checks coverage; shooting the gallery fails if any styled node
       is off screen. Shots in `docs/screenshots/V.0-gallery/`.)*
-- [ ] **V.1 Type and numbers [D15]:** a display font for counters, titles and buttons (OFL; V.0 shot *Rubik* and
+- [x] **V.1 Type and numbers [D15]:** a display font for counters, titles and buttons (OFL; V.0 shot *Rubik* and
       *Fredoka* on the gallery (`docs/screenshots/V.0-gallery/gallery_kit_*.png`): **Fredoka** fits the toy/sticker kit best,
       Rubik is the safer middle; ask the owner if they have a preference, else Fredoka; *Chakra Petch* or the *DSEG7*
       7-segment face for timers on Compete / Solve Station), Inter
@@ -385,6 +384,10 @@ every new component or variation to the gallery (a test enforces variations).
       Counters roll digit by digit instead of snapping.
       *Done when:* no player-facing stat is a "·"-joined sentence in the top bar, every counter has its icon, and
       `fresh`/`mid`/`endgame` + 1080p screenshots show the new top bar without clipping at 30.00T and 1.00e30.
+      *(Done 2026-11-07: **Fredoka** (no reply to the font question, so the default). Counter = mini-cube icon + "SOLVES"
+      caption + the number in Fredoka with a shadow; `StatChip`s for solves/s, moves/s, Streak, Flow, Golden buff; Perks
+      is a trophy + count, Compete a podium, Settings a gear. Logo wordmark moved to V.9 (the top bar is full at
+      1280×720); digit-by-digit rolling moved to V.6 (the counter still eases up, as before).)*
 - [ ] **V.2 Materials [D15, D15b]:** a palette of tokens in the theme (3 surface levels, text levels, 6 category colours,
       green for "buyable", gold for trophies/golden). Panels and cards get depth with `StyleBoxFlat` features: drop shadow
       (`shadow_size`/`shadow_offset`), a lighter top border and thicker darker bottom border (bevel), and a vertical

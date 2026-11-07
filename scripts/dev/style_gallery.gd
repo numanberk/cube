@@ -18,9 +18,11 @@ const SETTLE_FRAMES := 20
 ## Variations that carry the "display" voice (counters, titles, buttons). --font swaps their font, so candidate
 ## display faces can be compared on the real components (task V.1 picks one).
 const DISPLAY_TYPES: Array[StringName] = [&"TitleLabel", &"BigAccentLabel", &"TimerLabel", &"CardOwned",
-		&"CardTitle", &"PrimaryButton", &"GoldenButton", &"PopSolve", &"PopTap", &"PerkName"]
+		&"CardTitle", &"PrimaryButton", &"GoldenButton", &"PopSolve", &"PopTap", &"PerkName",
+		&"CounterLabel", &"StatValue"]
 ## Button-like variations drawn as swatches in each state (a real Button can't be held in "hover" for a shot).
-const SWATCH_TYPES: Array[StringName] = [&"Button", &"PrimaryButton", &"SubtleButton", &"GoldenButton", &"ToggleChip"]
+const SWATCH_TYPES: Array[StringName] = [&"Button", &"PrimaryButton", &"SubtleButton", &"GoldenButton", &"ToggleChip",
+		&"IconButton"]
 const SWATCH_STATES := ["normal", "hover", "pressed", "hover_pressed", "disabled"]
 ## Every text style, with a sample that looks like what the game shows in it.
 const TEXT_SAMPLES := [
@@ -38,9 +40,6 @@ const TEXT_SAMPLES := [
 	[&"TickerLabel", "R U R' U' F2"],
 	[&"GoalLabel", "Practice Partners I — ready"],
 	[&"GoalLabelDim", "3×3 Mastery 5  ·  3s"],
-	[&"BuffLabel", "Golden Scramble ×3  ·  0:42"],
-	[&"FlowLabel", "Flow ×1.5  ·  12 s"],
-	[&"StreakLabel", "Streak ×1.6  ·  3 TPS"],
 	[&"ScrambleLabel", "D2 F' R2 U L2 B' R"],
 	[&"PerkName", "Team Captain"],
 	[&"PopTap", "+4"],
@@ -121,7 +120,7 @@ func _build_kit(columns: HBoxContainer) -> void:
 		name_label.custom_minimum_size = Vector2(104, 0)
 		row.add_child(name_label)
 		for state: String in SWATCH_STATES:
-			row.add_child(_swatch(type_name, state, "Buy" if type_name != &"ToggleChip" else "×10"))
+			row.add_child(_swatch(type_name, state, "×10" if type_name == &"ToggleChip" else "Buy"))
 		controls.add_child(row)
 	controls.add_child(_heading("Tabs, bars, chips"))
 	var tabs := TabContainer.new()
@@ -151,8 +150,7 @@ func _build_kit(columns: HBoxContainer) -> void:
 
 	var panels := _column(columns, "Panels")
 	for panel: Array in [[&"TopBar", "TopBar: the Solves counter"], [&"GoalStrip", "GoalStrip: next goals"],
-			[&"SidePanel", "SidePanel: shop / Solve Station"], [&"PuzzleChipPanel", "PuzzleChipPanel"],
-			[&"", "PanelContainer (default)"]]:
+			[&"SidePanel", "SidePanel: shop / Solve Station"], [&"PuzzleChipPanel", "PuzzleChipPanel"]]:
 		panels.add_child(_panel(panel[0], panel[1]))
 	var news := PanelContainer.new()
 	news.theme_type_variation = &"NewsPanel"
@@ -174,7 +172,32 @@ func _build_kit(columns: HBoxContainer) -> void:
 		tile.add_child(image)
 		tiles.add_child(tile)
 	panels.add_child(tiles)
-	panels.add_child(_label("IconTile", &"FaintLabel"))
+	panels.add_child(_heading("Top bar: counter, stat chips"))
+	var counter := HBoxContainer.new()
+	var cube := TextureRect.new()
+	cube.texture = _icon("stat_solves")
+	cube.custom_minimum_size = Vector2(38, 38)
+	cube.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	cube.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	counter.add_child(cube)
+	var stack := VBoxContainer.new()
+	stack.theme_type_variation = &"TightBox"
+	stack.add_child(_label("SOLVES", &"CounterCaption"))
+	stack.add_child(_label("30.00T", &"CounterLabel"))
+	counter.add_child(stack)
+	panels.add_child(counter)
+	var stat_chips := HFlowContainer.new()
+	panels.add_child(stat_chips)
+	var chip_scene: PackedScene = load("res://scenes/stat_chip.tscn")
+	for chip_view: Array in [["stat_solves", "accent", "+1.11B", "/s"], ["stat_moves", "normal", "724.3M", "/s"],
+			["stat_streak", "normal", "×1.62", "3.0 TPS"], ["stat_flow", "accent", "×2", "1:42"],
+			["stat_golden", "gold", "×7", "24s"]]:
+		var chip: Control = chip_scene.instantiate()
+		chip.set("icon", _icon(chip_view[0]))
+		chip.set("tone", chip_view[1])
+		chip.set("tint_icon", chip_view[0] != "stat_solves")
+		stat_chips.add_child(chip)
+		chip.call("set_stat", chip_view[2], chip_view[3])
 
 
 # --- Page "parts" -------------------------------------------------------------------------------------------------

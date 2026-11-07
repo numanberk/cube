@@ -17,7 +17,8 @@ const PuzzleChipScene := preload("res://scenes/puzzle_chip.tscn")
 const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 
 @onready var solves_label: Label = %SolvesLabel
-@onready var rate_label: Label = %RateLabel
+@onready var solves_rate: StatChip = %SolvesRate
+@onready var moves_rate: StatChip = %MovesRate
 @onready var puzzle_view: PuzzleView3D = %PuzzleView
 @onready var move_ticker: RichTextLabel = %MoveTicker
 @onready var stage_chips: HBoxContainer = %StageChips
@@ -25,9 +26,9 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var lab_list: VBoxContainer = %LabList
 @onready var lab_status: Label = %LabStatus
 @onready var lab_progress: ProgressBar = %LabProgress
-@onready var buff_label: Label = %BuffLabel
-@onready var flow_label: Label = %FlowLabel
-@onready var streak_label: Label = %StreakLabel
+@onready var buff_chip: StatChip = %BuffChip
+@onready var flow_chip: StatChip = %FlowChip
+@onready var streak_chip: StatChip = %StreakChip
 @onready var golden_button: Button = %GoldenButton
 @onready var hint_label: Label = %HintLabel
 @onready var settings_button: Button = %SettingsButton
@@ -254,10 +255,8 @@ func _build_shop() -> void:
 # --- Refreshing --------------------------------------------------------------
 
 func _refresh() -> void:
-	rate_label.text = "+%s solves/s   ·   %s moves/s" % [
-		Num.format(Game.get_solves_per_second()),
-		Num.format(Game.get_moves_per_second()),
-	]
+	solves_rate.set_stat("+%s" % Num.format(Game.get_solves_per_second()), "/s")
+	moves_rate.set_stat(Num.format(Game.get_moves_per_second()), "/s")
 	var focus := Game.get_focused_puzzle_id()
 	var next_milestone := Game.get_next_mastery_milestone(focus)
 	var goals := Game.get_goals(3)
@@ -445,14 +444,14 @@ func _method_effect_text(def: Dictionary, learned: bool) -> String:
 ## The Solves counter counts up smoothly instead of jumping; spending snaps it down at once.
 func _animate_counter(delta: float) -> void:
 	if _hold_counter:
-		solves_label.text = "%s Solves" % Num.format(_shown_solves)
+		solves_label.text = Num.format(_shown_solves)
 		return
 	var target := Game.solves
 	if target <= _shown_solves or absf(target - _shown_solves) <= maxf(0.5, target * 0.002):
 		_shown_solves = target
 	else:
 		_shown_solves = lerpf(_shown_solves, target, 1.0 - exp(-delta * COUNTER_EASE))
-	solves_label.text = "%s Solves" % Num.format(floorf(_shown_solves) if _shown_solves < target else _shown_solves)
+	solves_label.text = Num.format(floorf(_shown_solves) if _shown_solves < target else _shown_solves)
 
 
 ## "+X Solves" rising from the puzzle plus a particle burst, rate-limited so fast play stays readable.
@@ -923,13 +922,13 @@ func open_golden() -> void:
 func _on_golden_finished(success: bool, buff: Dictionary) -> void:
 	if success:
 		news.push("golden", "Golden Scramble solved! %s" % buff.get("text", ""))
-		fx.pop(String(buff.get("text", "")), buff_label.get_global_rect().get_center() + Vector2(0, 40), &"PopSolve", 2.0)
+		fx.pop(String(buff.get("text", "")), buff_chip.get_global_rect().get_center() + Vector2(0, 40), &"PopSolve", 2.0)
 	else:
 		news.push("golden", "The golden case got away.")
 
 
 ## The golden button sits at the bottom of the big cube's area while a sticker glows ("Golden Scramble! 9s"); the top bar shows
-## a running buff ("Frenzy ×7 · 24s").
+## a running buff (a gold chip: "×7  Frenzy 24s").
 func _refresh_golden() -> void:
 	var glowing := Game.golden_glow_left > 0.0 and not solve_station.visible
 	golden_button.visible = glowing
@@ -942,26 +941,28 @@ func _refresh_golden() -> void:
 	if puzzle_view.is_golden_shown() != glowing and not solve_station.visible:
 		puzzle_view.set_golden(glowing)
 	# S.7: the TPS streak (taps and key turns). It multiplies a tap's team share, so it only shows once taps have one.
-	streak_label.visible = Game.streak > 0.005 and Game.get_tap_share() > 0.0
-	if streak_label.visible:
-		streak_label.text = "Streak ×%s  ·  %s TPS" % [Num.format(Game.get_streak_mult()), Num.format(Game.get_recent_tps())]
-		streak_label.tooltip_text = ("Keep turning or tapping steadily (more than %s a second): the team's share in every " \
+	streak_chip.visible = Game.streak > 0.005 and Game.get_tap_share() > 0.0
+	if streak_chip.visible:
+		streak_chip.set_stat("×%s" % Num.format(Game.get_streak_mult()), "%s TPS" % Num.format(Game.get_recent_tps()))
+		streak_chip.tooltip_text = ("TPS streak. Keep turning or tapping steadily (more than %s a second): the team's share in every " \
 				+ "tap (%s %% of its moves/s) counts up to ×%s. Stop and it drains.") % [
 				Num.format(float(Content.TAPS["drain_per_second"]) / float(Content.TAPS["fill_per_tap"])),
 				Num.format(Game.get_tap_share() * 100.0), Num.format(float(Content.TAPS["streak_max_mult"]))]
-	flow_label.visible = not Game.flow.is_empty()
-	if flow_label.visible:  # S.3: Flow from hand solves in the Solve Station
-		flow_label.text = "Flow ×%s  ·  %s" % [Num.format(float(Game.flow["mult"])),
-				Num.solve_time(float(Game.flow["left"])).get_slice(".", 0)]
-		flow_label.tooltip_text = "Your last hand solve: every move counts ×%s until the Flow runs out. Solve again to keep it." \
+	flow_chip.visible = not Game.flow.is_empty()
+	if flow_chip.visible:  # S.3: Flow from hand solves in the Solve Station
+		flow_chip.set_stat("×%s" % Num.format(float(Game.flow["mult"])),
+				Num.solve_time(float(Game.flow["left"])).get_slice(".", 0))
+		flow_chip.tooltip_text = "Flow from your last hand solve: every move counts ×%s until the Flow runs out. Solve again to keep it." \
 				% Num.format(float(Game.flow["mult"]))
-	buff_label.visible = not Game.buff.is_empty()
-	if buff_label.visible:
+	buff_chip.visible = not Game.buff.is_empty()
+	if buff_chip.visible:
 		var buff_name := String(Game.buff["id"])
 		for def: Dictionary in Content.GOLDEN["buffs"]:
 			if def["id"] == Game.buff["id"]:
 				buff_name = def["name"]
-		buff_label.text = "%s ×%s  ·  %ds" % [buff_name, Num.format(float(Game.buff["mult"])), ceili(float(Game.buff["left"]))]
+		buff_chip.set_stat("×%s" % Num.format(float(Game.buff["mult"])), "%ds" % ceili(float(Game.buff["left"])))
+		buff_chip.tooltip_text = "Golden Scramble reward: %s, ×%s for %d more seconds." % [buff_name,
+				Num.format(float(Game.buff["mult"])), ceili(float(Game.buff["left"]))]
 
 
 # --- Algorithm Lab (task 5.6) ---------------------------------------------------------
@@ -1084,8 +1085,8 @@ func _refresh_compete() -> void:
 	if compete_panel.visible:
 		compete_panel.set_preview(Game.get_championship_preview())
 	perks_button.visible = Game.trophies > 0 or not Game.perks.is_empty()
-	perks_button.text = "Perks · %s" % Num.format(float(Game.trophies))
-	perks_button.tooltip_text = "Trophy perks: %s unspent %s, +%s %% moves." % [Num.format(float(Game.trophies)),
+	perks_button.text = Num.format(float(Game.trophies))  # the trophy icon says what it is; the tooltip says the rest
+	perks_button.tooltip_text = "Trophy perks (click to open): %s unspent %s, +%s %% moves." % [Num.format(float(Game.trophies)),
 		"trophy" if Game.trophies == 1 else "trophies", Num.format(roundf((Game.get_trophy_mult() - 1.0) * 100.0))]
 	if perk_panel.visible:
 		perk_panel.set_view(_perk_header(), _perk_views())

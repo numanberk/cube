@@ -8,6 +8,7 @@ The in-game Credits screen (task 9.3) must match this file.
 | File | Asset | Author | License | Source |
 |---|---|---|---|---|
 | `assets/fonts/InterVariable.ttf` | Inter 4.1 (variable) | The Inter Project Authors (Rasmus Andersson) | SIL Open Font License 1.1 — full text in `assets/fonts/Inter-OFL.txt` | https://github.com/rsms/inter/releases/tag/v4.1 |
+| `assets/fonts/FredokaVariable.ttf` | Fredoka (variable: wght 300–700, wdth 75–125), the display font (V.1) | The Fredoka Project Authors (Milena Brandão, Hafontia) | SIL Open Font License 1.1 — full text in `assets/fonts/Fredoka-OFL.txt` | https://github.com/google/fonts/tree/main/ofl/fredoka |
 
 ## Audio
 ### Sound effects
@@ -39,6 +40,9 @@ filtered noise). Released as **CC0** by the project; no third-party material.
 (title, artist, license, file) together; only CC0 or CC-BY.
 
 ## Images
+`assets/icons/stat_solves.svg` (the Solves icon: a small isometric cube in sticker colours) was drawn for Cube Idle
+(V.1) and is released as **CC0** by the project.
+
 Icons from [game-icons.net](https://game-icons.net) (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/).
 The black background square was removed so the game can tint them; no other changes.
 
@@ -83,3 +87,9 @@ The black background square was removed so the game can tint them; no other chan
 | `assets/icons/mastery_focus.svg` | graduate-cap | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/graduate-cap.html |
 | `assets/icons/pro_scrims.svg` | team-idea | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/team-idea.html |
 | `assets/icons/federation_rankings.svg` | podium | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/podium.html |
+| `assets/icons/stat_moves.svg` | clockwise-rotation | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/clockwise-rotation.html |
+| `assets/icons/stat_trophy.svg` | trophy | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/trophy.html |
+| `assets/icons/ui_settings.svg` | cog | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/cog.html |
+| `assets/icons/stat_streak.svg` | small-fire | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/small-fire.html |
+| `assets/icons/stat_flow.svg` | wave-crest | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/wave-crest.html |
+| `assets/icons/stat_golden.svg` | sparkles | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/sparkles.html |

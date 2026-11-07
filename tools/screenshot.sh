@@ -117,7 +117,8 @@ if [[ -n "$GALLERY" ]]; then
   for page in "${PAGES[@]}"; do
     out="$OUT_DIR/gallery_$page$font_tag.png"
     rm -f "$out"
-    "${RUN[@]}" "$GODOT" --path "$ROOT" --rendering-driver opengl3 --audio-driver Dummy --resolution "$SIZE" \
+    # timeout: a script that fails to parse leaves the scene running forever instead of quitting.
+    timeout 300 "${RUN[@]}" "$GODOT" --path "$ROOT" --rendering-driver opengl3 --audio-driver Dummy --resolution "$SIZE" \
       --windowed --position 0,0 res://scenes/dev/style_gallery.tscn -- --page "$page" --out "$out" ${FONT:+--font "$FONT"} \
       >"$LOG" 2>&1 || true
     if [[ -f "$out" ]] && ! grep -qE "SCRIPT ERROR|Parse Error|ERROR:" "$LOG"; then
