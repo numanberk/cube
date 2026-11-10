@@ -14,7 +14,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
 | R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
-| V.3 Background and stage | claude/lucid-lamport-e9ubpo | 2026-11-10 | `scenes/puzzle_view_3d.tscn`, `scripts/ui/puzzle_view_3d.gd`, `scripts/ui/shaders/*` (+ a new background shader), `scripts/cube/puzzle_meshes.gd` (mat mesh) | `main.tscn` (Background, stage sizes), `main.gd` (graphics apply), `ui/theme.tres`?, `tests/test_runner.gd`, `tools/screenshot.gd` | no |
 
 *(Rows added for the sessions that started before this rule; their own files are an estimate. Each
 session corrects its row when it merges.)*
@@ -400,13 +399,16 @@ every new component or variation to the gallery (a test enforces variations).
       *(Done 2026-11-10: `Palette/colors/*` tokens; panels float on a soft shadow, cards/buttons have a lit top edge
       and a slab and sink 2 px when pressed; `IconSticker` in category colours (helpers blue, upgrades orange, puzzles
       red, Lab purple, trophies yellow, station white). Gradient only on the stickers. Shots: `docs/screenshots/V.2-materials/`.)*
-- [ ] **V.3 Background and stage [D15]:** a full-screen background (one canvas shader: gradient + vignette + very faint
+- [x] **V.3 Background and stage [D15]:** a full-screen background (one canvas shader: gradient + vignette + very faint
       noise, plus the direction's motif, e.g. lamp-lit desk bokeh for (a), slowly drifting sticker grid for (c)). In the
       3D view: a surface under the puzzle (cubing mat / pedestal, generated in code like `PuzzleMeshes`), a warm key light,
       a coloured rim light so the cube's silhouette pops, and the contact shadow on that surface. The puzzle grows to
       ~50–60 % of the screen height; the camera reframes. *(The size moved to V.4, which frees the height.)* Graphics Low: flat background colour, no rim light.
       *Done when:* `mid`, `row6`, `endgame`, `POSE=solved` and `GRAPHICS=low` screenshots look right, `bench`/`bench_row`
       frame times are no worse than +15 % (noted in the CHANGELOG), and the smoke run is clean.
+      *(Done 2026-11-10: desk background shader (lamp glow behind the puzzle, slow bokeh, vignette, grain; flat on Low),
+      a framed cubing mat that tilts with the puzzle and is framed with it, warm key light, cool rim light (High only).
+      Bench High +10 % / +5 %. The puzzle's size moved to V.4. Shots: `docs/screenshots/V.3-stage/`.)*
 - [ ] **V.4 Declutter the main screen:** stage chips and the move ticker sit *on* the stage (overlaid at the bottom of the
       3D view, translucent); the moves bar, "Next goal" line and the goal strip merge into one **goal card**; the hint line
       ("Click the cube or press Space…") becomes a 9.2-style first-time hint; "Lifetime" moves to a tooltip on the Solves

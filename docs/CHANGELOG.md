@@ -21,8 +21,8 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   gets the height the ~8 rows under it leave (~220 px at 1280×720), and those rows are V.4's job. The goal moved into
   V.4's text and its *Done when* (noted in V.3's entry). Framing the mat too makes the 3×3 about 20 % smaller in the
   same view for now; V.4's height brings it back and more.
-- **Bench** (software Mesa in the container, so relative only; before → after, ms/frame): `bench` High 86.3 → 97.8
-  (+13 %), Low 39.2 → 37.2; `bench_row` High 105.8 → 110.2 (+4 %), Low 52.1 → 52.0. Within the +15 % budget; most of
+- **Bench** (software Mesa in the container, so relative only; before → after, ms/frame, final framing): `bench`
+  High 86.3 → 95.2 (+10 %), Low 39.2 → 38.8; `bench_row` High 105.8 → 111.3 (+5 %), Low 52.1 → 53.3. Within the +15 % budget; most of
   it is the full-screen shader on a software rasteriser. `tools/screenshot.gd` now sets the quality through
   `Settings` (`GRAPHICS=` and the bench), like the game, so Low/High also switch the background.
 - Tests: `test_stage_and_background` (the slab's size and evenly lit flat top; 2×2, 3×3, 7×7 and the Megaminx sit
