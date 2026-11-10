@@ -14,6 +14,8 @@ const BURST_INTERVAL := 0.5
 const COUNTER_EASE := 12.0         ## how fast the Solves counter catches up (higher = faster)
 const ShopCardScene := preload("res://scenes/shop_card.tscn")
 const PuzzleChipScene := preload("res://scenes/puzzle_chip.tscn")
+const STAGE_ZOOM := 0.92  ## the main puzzle frames a little tighter than its bounding sphere (V.4, see PuzzleView3D.frame_zoom)
+const FIRST_HINT_MOVES := 300.0  ## the "Click the cube" hint shows on the stage until this many lifetime moves (V.4)
 const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 
 @onready var solves_label: Label = %SolvesLabel
@@ -38,12 +40,18 @@ var _lamp_center := Vector2(-1.0, -1.0)  ## last lamp_center sent to the backgro
 @onready var settings_panel: SettingsPanel = %SettingsPanel
 @onready var solve_button: Button = %SolveButton
 @onready var solve_station: SolveStation = %SolveStation
-@onready var next_goal_label: Label = %NextGoalLabel
-@onready var goal_labels: Array[Label] = [%NextGoalLabel, %Goal1Label, %Goal2Label]
-@onready var goal_bars: Array[ProgressBar] = [%Goal0Bar, %Goal1Bar, %Goal2Bar]
+## The goal card (V.4): the main goal (moves to the next solve, or the top goal once solves are too fast to follow) with
+## its bar, then the next goals in two small slots.
+@onready var goal_labels: Array[Label] = [%Goal1Label, %Goal2Label]
+@onready var goal_bars: Array[ProgressBar] = [%Goal1Bar, %Goal2Bar]
 @onready var solve_progress: ProgressBar = %SolveProgress
 @onready var progress_label: Label = %ProgressLabel
-@onready var stats_label: Label = %StatsLabel
+@onready var solves_box: Control = %SolvesBox
+@onready var team_best: Label = %TeamBest
+@onready var goal_card: Control = %GoalCard
+@onready var stage_top: Control = %StageTop
+@onready var stage_overlay: Control = %StageOverlay
+@onready var news_panel: Control = %NewsPanel
 @onready var helper_list: VBoxContainer = %HelperList
 @onready var upgrade_list: GridContainer = %UpgradeList
 @onready var tabs: TabContainer = %Tabs
@@ -86,6 +94,11 @@ var news := NewsFeed.new()          ## the news feed (task R.4): GameState event
 
 func _ready() -> void:
 	puzzle_view.tapped.connect(_on_tap_pressed)
+	_show_news()  # hidden until the first line (V.4)
+	puzzle_view.frame_zoom = STAGE_ZOOM
+	# The card and badges (top) and the chips/ticker strip (bottom) sit on the stage: frame the puzzle between them.
+	stage_top.resized.connect(func() -> void: puzzle_view.frame_inset_top = stage_top.size.y)
+	stage_overlay.resized.connect(func() -> void: puzzle_view.frame_inset_bottom = stage_overlay.size.y)
 	settings_button.pressed.connect(settings_panel.open)
 	compete_button.pressed.connect(open_compete)
 	compete_panel.closed.connect(func() -> void: Audio.set_music_override(""))
@@ -263,26 +276,32 @@ func _refresh() -> void:
 	var focus := Game.get_focused_puzzle_id()
 	var next_milestone := Game.get_next_mastery_milestone(focus)
 	var goals := Game.get_goals(3)
+	var tap_moves := Game.get_tap_moves()
+	var how_to := "Click the cube, Space or solve keys: +%s %s  ·  drag to look around" % [
+		Num.format(tap_moves), "move" if is_equal_approx(tap_moves, 1.0) else "moves"]
 	if _goal_bar_mode() and not goals.is_empty():
 		# Too many solves a second to follow the moves bar: it tracks the top goal instead.
-		progress_label.text = "Next goal: %s" % _goal_text(goals[0], true)
+		progress_label.text = "Next goal: %s" % _goal_text(goals[0])
+		progress_label.tooltip_text = "Next goal: %s\n%s" % [_goal_text(goals[0], true), how_to]
 	else:
-		progress_label.text = "%s / %s moves  ·  %s mastery Lv %d%s" % [
+		progress_label.text = "%s / %s moves  ·  %s Lv %d" % [Num.format(Game.get_move_progress()),
+			Num.format(Game.get_moves_per_solve()), Content.get_puzzle(focus)["name"], Game.get_mastery_level(focus)]
+		progress_label.tooltip_text = "%s / %s moves to the next solve  ·  %s mastery Lv %d%s" % [
 			Num.format(Game.get_move_progress()), Num.format(Game.get_moves_per_solve()),
 			Content.get_puzzle(focus)["name"], Game.get_mastery_level(focus),
 			"" if next_milestone.is_empty() else " → Lv %d: %s" % [next_milestone["level"], next_milestone["text"]],
-		]
-	var tap_moves := Game.get_tap_moves()
-	hint_label.text = "%sClick, Space or solve keys: +%s %s   ·   drag to look around" % [
-		_team_time_text(), Num.format(tap_moves), "move" if is_equal_approx(tap_moves, 1.0) else "moves",
-	]
-	_refresh_goal_strip(goals)
+		] + "\n" + how_to
+	# The how-to line is a first-time hint on the stage; afterwards it lives in the goal card's tooltip (V.4).
+	hint_label.visible = Game.total_moves < FIRST_HINT_MOVES
+	hint_label.text = "Click the cube or press Space to turn it"
+	var best := _team_time_text()
+	team_best.visible = best != ""
+	team_best.text = best
+	_refresh_goal_strip(goals.slice(1) if _goal_bar_mode() and not goals.is_empty() else goals)
 	Audio.set_music_context(Game.get_unlocked_track_ids(), Game.get_track_for_puzzle(Game.get_focused_puzzle_id()))
 	_refresh_compete()
-	stats_label.text = "Lifetime: %s solves  ·  %s moves" % [
-		Num.format(Game.total_solves),
-		Num.format(Game.total_moves),
-	]
+	solves_box.tooltip_text = "Solves: what everything costs. Every finished solve on any puzzle earns some.\n" \
+			+ "Lifetime: %s solves  ·  %s moves" % [Num.format(Game.total_solves), Num.format(Game.total_moves)]
 
 	_place_lamp()
 	_refresh_helper_cards()
@@ -491,15 +510,12 @@ func _goal_text(goal: Dictionary, long: bool = false) -> String:
 	return "%s  ·  %s" % [name, eta]
 
 
-## The goal strip: the three soonest goals, each with its progress bar (the first, the next one, is brighter).
-func _refresh_goal_strip(goals: Array[Dictionary]) -> void:
+## The goal card's two small slots: the next goals after the main one, each with its progress bar.
+func _refresh_goal_strip(goals: Array) -> void:
 	for i in goal_labels.size():
 		var shown := i < goals.size()
-		goal_bars[i].visible = shown
-		goal_labels[i].get_parent().visible = shown or i == 0
+		goal_labels[i].get_parent().visible = shown
 		if not shown:
-			if i == 0:
-				goal_labels[0].text = "Keep solving"
 			continue
 		goal_labels[i].text = _goal_text(goals[i])
 		goal_labels[i].tooltip_text = _goal_text(goals[i], true)
@@ -706,7 +722,7 @@ func _team_time_text() -> String:
 	if is_inf(time):
 		return ""
 	var tier := Game.get_time_tier(focus)
-	return "Team best %s%s   ·   " % [Num.cube_time(time), " (%s)" % tier["name"] if not tier.is_empty() else ""]
+	return "Team best %s%s" % [Num.cube_time(time), "  ·  %s" % tier["name"] if not tier.is_empty() else ""]
 
 
 ## Long stages (a beginner's second layer is ~35 moves) show a window around the current move, so the line stays short.
@@ -848,7 +864,7 @@ func _refresh_puzzle_row() -> void:
 	_locked_chip.visible = next != ""
 	if next != "":
 		var cost := Game.get_puzzle_unlock_cost(next)
-		_locked_chip.show_locked(next, Content.get_puzzle(next)["name"], "%s Solves" % Num.format(cost), Game.solves >= cost)
+		_locked_chip.show_locked(next, Content.get_puzzle(next)["name"], Num.format(cost), Game.solves >= cost)
 
 
 func _on_unlock_pressed(puzzle_id: String) -> void:
@@ -888,6 +904,7 @@ func _connect_news() -> void:
 
 ## The list under the shop: newest first and bright, older ones dim; it scrolls back through the last 20.
 func _show_news() -> void:
+	news_panel.visible = not news.history.is_empty()  # V.4: no empty box; it appears with the first line
 	for child in news_list.get_children():
 		news_list.remove_child(child)
 		child.queue_free()
@@ -931,7 +948,8 @@ func _on_golden_finished(success: bool, buff: Dictionary) -> void:
 		news.push("golden", "The golden case got away.")
 
 
-## The golden button sits at the bottom of the big cube's area while a sticker glows ("Golden Scramble! 9s"); the top bar shows
+## The golden button sits at the top right of the stage, under the goal card (V.4: off the cube, so a tap on the cube
+## stays a tap), while a sticker glows ("Golden Scramble! 9s"); the top bar shows
 ## a running buff (a gold chip: "×7  Frenzy 24s").
 func _refresh_golden() -> void:
 	var glowing := Game.golden_glow_left > 0.0 and not solve_station.visible
@@ -940,8 +958,8 @@ func _refresh_golden() -> void:
 		golden_button.text = "Golden Scramble!  %ds" % ceili(Game.golden_glow_left)
 		golden_button.size = golden_button.get_combined_minimum_size()
 		var rect := puzzle_view.get_global_rect()
-		golden_button.global_position = Vector2(rect.get_center().x - golden_button.size.x / 2.0,
-				rect.end.y - golden_button.size.y - 6.0)  # under the cube, so the golden sticker on top stays visible
+		var top := stage_top.get_global_rect()
+		golden_button.global_position = Vector2(rect.end.x - golden_button.size.x - 6.0, top.end.y + 4.0)
 	if puzzle_view.is_golden_shown() != glowing and not solve_station.visible:
 		puzzle_view.set_golden(glowing)
 	# S.7: the TPS streak (taps and key turns). It multiplies a tap's team share, so it only shows once taps have one.
@@ -1032,6 +1050,7 @@ func _on_lab_card_pressed(id: String) -> void:
 
 func _on_state_reset() -> void:
 	news = NewsFeed.new()
+	_show_news()
 	_rebuild_after_reset()
 
 

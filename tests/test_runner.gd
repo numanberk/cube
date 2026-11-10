@@ -980,8 +980,9 @@ func test_theme_materials() -> void:
 		var box := theme.get_stylebox(panel[1], panel[0]) as StyleBoxFlat
 		check(box.bg_color.is_equal_approx(pal.call("surface_1")), "%s is a level-1 panel (surface_1)" % panel[0])
 		check(box.shadow_size >= 6 and box.shadow_color.a > 0.2, "%s floats on a soft shadow" % panel[0])
-	for card: StringName in [&"ShopCard", &"PuzzleChipPanel"]:
-		var box := theme.get_stylebox(&"panel" if card == &"PuzzleChipPanel" else &"normal", card) as StyleBoxFlat
+	# V.4: a shelf puzzle has no card of its own; its little stand is the level-2 slab.
+	for card: StringName in [&"ShopCard", &"PuzzleStand"]:
+		var box := theme.get_stylebox(&"panel" if card == &"PuzzleStand" else &"normal", card) as StyleBoxFlat
 		check(box.bg_color.is_equal_approx(pal.call("surface_2")), "%s is a level-2 card (surface_2)" % card)
 		check(box.shadow_offset.y >= 2.0 and box.border_width_top >= 1, "%s has a slab under it and a lit top edge" % card)
 	# Pressing sinks the face (and its text) into the slab without changing the button's size.
@@ -1218,8 +1219,8 @@ func test_layout_and_keyboard_tap() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	check(main.get_node_or_null("%TapButton") == null, "the old Turn button is gone")
-	check(main.get_node_or_null("%NextGoalLabel") != null and main.get_node_or_null("%SettingsButton") != null,
-			"the next-goal strip and the settings button exist")
+	check(main.get_node_or_null("%GoalCard") != null and main.get_node_or_null("%SettingsButton") != null,
+			"the goal card and the settings button exist")
 	var first_tap := game.get_tap_moves()
 	main._unhandled_input(key_event(KEY_SPACE, true, false))
 	check_near(game.total_moves, first_tap, "Space taps")
@@ -1231,7 +1232,8 @@ func test_layout_and_keyboard_tap() -> void:
 	main._unhandled_input(key_event(KEY_ENTER, true, false))
 	check_near(game.total_moves, first_tap + second_tap, "Enter taps too")
 	main._refresh()
-	check((main.get_node("%NextGoalLabel") as Label).text.begins_with("Cubing Friend"), "the strip shows the next goal first")
+	check((main.get_node("%Goal1Label") as Label).text.begins_with("Cubing Friend"),
+			"next to the moves bar, the goal card shows the next goal first")
 	main.free()
 	game.reset_state()
 
@@ -3186,9 +3188,12 @@ func test_goal_bar_on_main_screen() -> void:
 	var focus := game.get_focused_puzzle_id()
 	check(game.get_puzzle_solve_rate(focus) > Content.GOAL_BAR_SOLVES_PER_SECOND, "the late game solves far faster than 10/s")
 	check((main.get_node("%ProgressLabel") as Label).text.begins_with("Next goal:"), "so the moves bar becomes the next-goal bar")
-	check((main.get_node("%NextGoalLabel") as Label).text != "", "the strip shows the first goal")
-	check((main.get_node("%Goal1Label") as Label).text != "" and (main.get_node("%Goal2Bar") as ProgressBar).visible, "three goals with bars")
-	check((main.get_node("%HintLabel") as Label).text.begins_with("Team best "), "the team's best time is under the cube")
+	var goals: Array[Dictionary] = game.get_goals(3)
+	check((main.get_node("%ProgressLabel") as Label).text.contains(String(goals[0]["name"])), "the card's main slot is the first goal")
+	check((main.get_node("%Goal1Label") as Label).text.begins_with(String(goals[1]["name"]))
+			and (main.get_node("%Goal2Bar") as ProgressBar).is_visible_in_tree(), "...then the next two, with bars")
+	check((main.get_node("%TeamBest") as Label).visible and (main.get_node("%TeamBest") as Label).text.begins_with("Team best "),
+			"the team's best time is a badge on the stage")
 	main.free()
 	game.reset_state()
 	game.set_process(true)
@@ -5116,3 +5121,77 @@ func test_mult_cache_with_perks() -> void:
 	g.get_moves_per_second()
 	check(size > 1 and g._mult_cache.size() == size, "...and stays filled (it isn't wiped between calls)")
 	g.free()
+
+
+# --- V.4: a decluttered main screen -------------------------------------------------
+
+func test_main_screen_declutter() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	game.set_process(false)
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	main._refresh()
+	var stage: VBoxContainer = main.get_node("Margin/Rows/Columns/Stage")
+	var names: Array[String] = []
+	for child in stage.get_children():
+		names.append(child.name)
+	check(names == (["StageArea", "Shelf"] as Array[String]), "under the stage there's only the shelf (got %s)" % [names])
+	for path: String in ["%StageChips", "%MoveTicker", "%GoalCard", "%TeamBest", "%HintLabel"]:
+		check(main.get_node("%StageArea").is_ancestor_of(main.get_node(path)), "%s sits on the stage" % path)
+	check(main.get_node_or_null("%StatsLabel") == null, "no Lifetime line under the cube")
+	check((main.get_node("%SolvesBox") as Control).tooltip_text.contains("Lifetime: "), "Lifetime is in the Solves tooltip")
+	var hint: Label = main.get_node("%HintLabel")
+	check(hint.visible, "a new player sees the first-time hint")
+	check((main.get_node("%ProgressLabel") as Control).tooltip_text.contains("drag to look around"),
+			"the how-to stays in the goal card's tooltip")
+	check((main.get_node("%PuzzleView") as Control).tooltip_text == "", "no tooltip pops up over the puzzle itself")
+	var news_panel: Control = main.get_node("%NewsPanel")
+	check(not news_panel.visible, "no empty news box")
+	main.news.push("test", "Something happened.")
+	main.news.advance(10.0)
+	main._show_news()
+	check(news_panel.visible, "it appears with the first line")
+	var locked: PuzzleChip = main._locked_chip
+	var cost_text := Num.format(float(Content.get_puzzle("3x3")["unlock_cost"]))
+	check(is_zero_approx(locked._unlock.modulate.a) and locked._unlock.disabled and locked._name.text.contains(cost_text),
+			"a locked puzzle you can't afford is one line: name and cost (the button's slot is kept, invisible)")
+	await process_frame
+	await process_frame
+	var shelf_height := (main.get_node("%Shelf") as Control).get_combined_minimum_size().y
+	game.cheat_add_solves(float(Content.get_puzzle("3x3")["unlock_cost"]) * 2.0)
+	game.total_moves = 1e6
+	main._refresh()
+	await process_frame
+	await process_frame
+	check(is_equal_approx(locked._unlock.modulate.a, 1.0) and not locked._unlock.disabled and locked._name.text.contains(cost_text),
+			"once affordable, the Unlock button appears and the cost stays")
+	check(is_equal_approx((main.get_node("%Shelf") as Control).get_combined_minimum_size().y, shelf_height),
+			"...without the shelf changing height (%s → %s)" % [shelf_height, (main.get_node("%Shelf") as Control).get_combined_minimum_size().y])
+	check(not hint.visible, "after a while the first-time hint goes away")
+	# The goal card sits on the stage, so the puzzle is framed between it and the bottom strip, a little zoomed in.
+	await process_frame
+	await process_frame
+	var view: PuzzleView3D = main.get_node("%PuzzleView")
+	var top: Control = main.get_node("%StageTop")
+	var strip: Control = main.get_node("%StageOverlay")
+	check(view.frame_inset_top > 0.0 and is_equal_approx(view.frame_inset_top, top.size.y), "the view knows what the card covers")
+	check(view.frame_inset_bottom > 0.0 and is_equal_approx(view.frame_inset_bottom, strip.size.y), "...and the strip")
+	check(is_equal_approx(view.frame_zoom, main.STAGE_ZOOM), "and zooms in a little")
+	var cam: Camera3D = view._camera
+	var e := view._extent() / 2.0
+	var lowest := -INF
+	var highest := INF
+	for i in 8:
+		var corner := view._base_puzzle * Vector3(e if i & 1 else -e, e if i & 2 else -e, e if i & 4 else -e)
+		var at := cam.unproject_position(corner)
+		lowest = maxf(lowest, at.y)
+		highest = minf(highest, at.y)
+	var band_top := view.frame_inset_top
+	var band_bottom := view.size.y - view.frame_inset_bottom
+	check(highest >= band_top - 1.0 and lowest <= band_bottom + 1.0,
+			"the cube at rest sits between the card and the strip (%d..%d in %d..%d)" % [highest, lowest, band_top, band_bottom])
+	main.free()
+	game.set_process(true)
+	game.reset_state()

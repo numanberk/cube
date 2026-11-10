@@ -5,7 +5,7 @@
 [ext_resource type="Texture2D" path="res://assets/icons/locked.svg" id="3_lock"]
 
 [node name="PuzzleChip" type="PanelContainer"]
-custom_minimum_size = Vector2(112, 0)
+custom_minimum_size = Vector2(100, 0)
 theme_type_variation = &"PuzzleChipPanel"
 script = ExtResource("1_chip")
 
@@ -15,7 +15,7 @@ theme_type_variation = &"TightBox"
 
 [node name="ChipView" parent="Box" instance=ExtResource("2_view")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 84)
+custom_minimum_size = Vector2(76, 54)
 layout_mode = 2
 size_flags_horizontal = 4
 
@@ -23,14 +23,22 @@ size_flags_horizontal = 4
 unique_name_in_owner = true
 visible = false
 modulate = Color(1, 1, 1, 0.55)
-custom_minimum_size = Vector2(96, 52)
+custom_minimum_size = Vector2(76, 36)
 layout_mode = 2
 texture = ExtResource("3_lock")
 expand_mode = 1
 stretch_mode = 5
 
+[node name="Stand" type="PanelContainer" parent="Box"]
+custom_minimum_size = Vector2(68, 7)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+theme_type_variation = &"PuzzleStand"
+
 [node name="ChipName" type="Label" parent="Box"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 theme_type_variation = &"CardTitle"
 text = "3×3"
@@ -47,6 +55,7 @@ show_percentage = false
 
 [node name="ChipRate" type="Label" parent="Box"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 theme_type_variation = &"CardLine"
 text = "+4/s"

@@ -111,6 +111,27 @@ var record_moves := false
 var sway_enabled := true        ## idle sway; "Reduce motion" (3.4) turns it off
 var graphics_quality := "high"  ## see set_graphics()
 var reduce_motion := false      ## see set_reduce_motion()
+## Multiplies FRAME_DISTANCE for this view (< 1 zooms in). The main stage uses a little zoom (V.4): the bounding sphere
+## is a safe but loose frame, and what it would crop first is the mat's front edge, which the stage overlay covers anyway.
+var frame_zoom := 1.0:
+	set(value):
+		frame_zoom = value
+		_frame_camera()
+## Pixels at the top of the view covered by UI (V.4: the goal card sits on the stage): the puzzle is framed into the
+## part below it, so nothing hides behind the card.
+var frame_inset_top := 0.0:
+	set(value):
+		if is_equal_approx(value, frame_inset_top):
+			return
+		frame_inset_top = value
+		_frame_camera()
+## Pixels at the bottom covered by UI (V.4: the stage chips and ticker strip), like frame_inset_top.
+var frame_inset_bottom := 0.0:
+	set(value):
+		if is_equal_approx(value, frame_inset_bottom):
+			return
+		frame_inset_bottom = value
+		_frame_camera()
 var floor_enabled := true:      ## the cubing mat under the puzzle (V.3); chips turn it off
 	set(value):
 		floor_enabled = value
@@ -898,8 +919,12 @@ func _frame_camera() -> void:
 	# The camera looks down -Z from (0, y, distance). It must fit the puzzle's bounding sphere (it turns and sways)
 	# and the mat's corners (V.3). Height is the view's fixed axis; a narrow view is limited by its width.
 	var aspect := size.x / size.y if size.x > 0.0 and size.y > 0.0 else 1.0
-	var tan_v := tan(deg_to_rad(_camera.fov) / 2.0)
-	var tan_h := tan_v * aspect
+	var tan_full := tan(deg_to_rad(_camera.fov) / 2.0)
+	var tan_h := tan_full * aspect
+	# Only the band between frame_inset_top and frame_inset_bottom is free: frame into it (V.4).
+	var inset_top := clampf(frame_inset_top / size.y, 0.0, 0.4) if size.y > 0.0 else 0.0
+	var inset_bottom := clampf(frame_inset_bottom / size.y, 0.0, 0.4) if size.y > 0.0 else 0.0
+	var tan_v := tan_full * (1.0 - inset_top - inset_bottom)
 	var corners := _mat_corners()
 	var bottom := -radius
 	for corner in corners:
@@ -910,14 +935,19 @@ func _frame_camera() -> void:
 	for corner in corners:
 		distance = maxf(distance, corner.z + absf(corner.y - centre_y) / tan_v)
 		distance = maxf(distance, corner.z + absf(corner.x) / tan_h)
-	_camera.position = Vector3(0.0, centre_y, distance * FRAME_DISTANCE)
+	distance *= FRAME_DISTANCE * frame_zoom
+	# The free band's centre is (top - bottom) / 2 of the view below its middle: moving the camera up by that much (in
+	# world units at the puzzle) shows the puzzle there.
+	var lift := (inset_top - inset_bottom) * distance * tan_full
+	_camera.position = Vector3(0.0, centre_y + lift, distance)
 	_camera.near = 0.1
 
 	# Backdrop: a quad behind the puzzle that exactly fills the view.
 	var depth := _camera.position.z + radius * 1.5
-	var height := 2.0 * depth * tan_v
-	(_backdrop.mesh as QuadMesh).size = Vector2(height * aspect, height) * 1.02
-	_backdrop.position = Vector3(0.0, -centre_y, -depth)  # centred on the puzzle, not the camera
+	var height := 2.0 * depth * tan_full
+	var shift := absf(centre_y + lift) / (depth * tan_full)  # how far off the camera axis the puzzle sits (in half-views)
+	(_backdrop.mesh as QuadMesh).size = Vector2(height * aspect, height) * (1.02 + shift)  # still fills the view
+	_backdrop.position = Vector3(0.0, -centre_y - lift, -depth)  # a camera child: centred on the puzzle, not the camera
 	_camera.far = depth + 1.0
 
 

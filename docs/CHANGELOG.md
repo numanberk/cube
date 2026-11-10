@@ -2,6 +2,49 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-10 — Task V.4 (mostly done): declutter the main screen
+- **Not ticked: the size criterion is missed.** Done-when asks for the puzzle at ≥ 50 % of the screen height in `mid`;
+  it's **~40 % (the 3×3) / ~44 % with its mat** (before: ~28 %). The other criteria hold: under the puzzle there's only
+  the shelf (one text row; before 8 rows), nothing was lost (list below), 1080p fits. Reaching 50 % needs one of:
+  (a) a smaller cubing mat (V.3 sizes it from the puzzle's bounding radius), (b) the shelf moved onto the stage too
+  (e.g. a column on the stage's left), or (c) a stronger zoom: at `STAGE_ZOOM` 0.8 the 3×3 is ~46 % but the Megaminx
+  then runs into the goal card (it fills its bounding sphere, cubes don't), so it would need a per-puzzle zoom.
+  **Owner's choice;** the next session finishes V.4 with it.
+- **Where everything went (nothing removed):**
+  - Stage chips + move ticker ("Cross  F R' L' D F'  · 1 of 73 solves/s") → a translucent strip **on** the stage,
+    under the puzzle (`%StageOverlay`; node names `%StageChips`/`%MoveTicker` unchanged, so R.6a's code still works).
+  - Moves bar + "N / M moves · mastery" line, the "Next goal" line and the 3-goal strip → **one goal card** across
+    the top of the stage (`%GoalCard`): the main slot is the moves bar (or, once solves are too fast to follow, the
+    top goal), the two small slots are the next goals. Full texts are tooltips (the card's labels pass the mouse now).
+    In the moves mode the card shows two upcoming goals beside the bar (before: three in the strip).
+  - "Team best 0.21 s (Robot record pace)" → a badge on the stage under the card (`%TeamBest`).
+  - "Click, Space or solve keys: +N moves · drag to look around" → a **first-time hint** on the stage ("Click the cube
+    or press Space to turn it") until 300 lifetime moves (`FIRST_HINT_MOVES`); the full line with +N moves is in the
+    goal card's main tooltip. (A real first-time-hint system is still 9.2.)
+  - "Lifetime: N solves · N moves" → the **Solves counter's tooltip**.
+  - Puzzle cards → a **shelf**: each small puzzle on a little stand (`PuzzleStand`) with "2×2 · Lv 1" and its mastery
+    bar; time and share stay in its tooltip. The locked next puzzle reads "4×4 · 180.0M" (grey, green once
+    affordable) and its Unlock button shows once affordable; its slot is always kept, so the shelf never jumps.
+  - The news box hides while it has no lines.
+  - The Golden Scramble button moved from the bottom of the stage (now the strip) to its top right, under the card:
+    off the cube, so a tap on the cube stays a tap.
+- **Framing:** `PuzzleView3D.frame_inset_top` / `frame_inset_bottom` (pixels covered by UI: the puzzle is framed into
+  the band between; main.gd sets them from the card+badges and the strip whenever those resize) and `frame_zoom`
+  (the main stage uses 0.92). The glow backdrop follows the shifted camera. Small shelf views are unchanged.
+- Theme: new `Shelf`, `PuzzleStand`, `StageOverlay`, `StageBadge`, `StageHint` (in the style gallery);
+  `PuzzleChipPanel` is transparent now (the stand is the slab); the goal strip is a little slimmer; **`ToggleChip`
+  gets a disabled style** (it fell back to the default Button one, 12 px taller).
+- Tests: `test_main_screen_declutter` (only the shelf under the stage, overlays on it, Lifetime and how-to tooltips, no
+  tooltip over the puzzle, the hint comes and goes, the news box, the one-line locked puzzle, the shelf keeps its
+  height, the cube at rest projects between the card and the strip); goal-card and theme tests updated.
+- Screenshots: `docs/screenshots/V.4-declutter/` (`before_*` and after: fresh, mid, endgame, row6, mid_low,
+  mid_goldenglow).
+- **Review fixes (diff-reviewer, screenshot-checker):** the Golden button sat on the cube; the shelf jumped when the
+  unlock became affordable; an affordable puzzle hid its price; a tooltip popped up over the whole stage; the strip
+  covered the cube's front corner (now reserved by `frame_inset_bottom`); the glow backdrop was off-centre; the inset
+  lagged a refresh. The strip is more opaque, so its text reads over anything.
+- **Next:** finish V.4 (the size, owner's pick of a/b/c), then V.5 (shop v2).
+
 ## 2026-11-10 — Task V.3: background and stage (desk background, cubing mat, rim light)
 - **Background (D15 a, "lo-fi cubing desk"):** `scripts/ui/shaders/ui_background.gdshader` on main.tscn's
   `%Background`: a dark gradient, a warm desk-lamp glow centred behind the puzzle (`main._place_lamp()`, follows the

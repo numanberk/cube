@@ -14,7 +14,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
 | R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
-| V.4 Declutter the main screen | `ccr-134df3dd-c0lub2` | 2026-11-10 | `scenes/main.tscn`, `scenes/puzzle_chip.tscn` + `scripts/ui/puzzle_chip.gd` | `main.gd` (layout, stage chips move onto the stage: overlaps R.6a), `ui/theme.tres`, `tests/test_runner.gd`, `tools/screenshot.gd` | no |
 
 *(Rows added for the sessions that started before this rule; their own files are an estimate. Each
 session corrects its row when it merges.)*
@@ -420,6 +419,9 @@ every new component or variation to the gallery (a test enforces variations).
       *Done when:* at most 3 rows of text are under the puzzle in `mid` and `endgame`, nothing the player had is lost
       (each moved item is listed in the CHANGELOG with where it went), the puzzle is ≥ 50 % of the screen height in
       `mid`, and 1080p still fits.
+      *(2026-11-10: all but the size are done (one row under the puzzle, nothing lost, 1080p fits); the puzzle is ~40 %
+      (~44 % with its mat). Waiting for the owner to pick how to get to 50 %: a smaller mat, the shelf onto the stage,
+      or a per-puzzle zoom. See the CHANGELOG.)*
 - [ ] **V.5 Shop v2:** helper cards: the coloured icon sticker, name + one short line, a big owned count with milestone
       pips (next ×2 at 10/25/50… owned), and a **bar along the bottom that fills towards the cost** (green and gently
       breathing when affordable). Locked cards are silhouettes with a "?" and the bar to their unlock. Upgrade tiles get a

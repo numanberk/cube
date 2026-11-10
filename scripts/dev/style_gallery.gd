@@ -37,6 +37,8 @@ const TEXT_SAMPLES := [
 	[&"DimLabel", "Inspection  ·  1 of 73 solves/s"],
 	[&"FaintLabel", "Lifetime: 6.00K solves"],
 	[&"HintLabel", "Click the cube or press Space: +4 moves"],
+	[&"StageBadge", "Team best 0.21 s  ·  Robot record pace"],
+	[&"StageHint", "Click the cube or press Space to turn it"],
 	[&"TickerLabel", "R U R' U' F2"],
 	[&"GoalLabel", "Practice Partners I — ready"],
 	[&"GoalLabelDim", "3×3 Mastery 5  ·  3s"],
@@ -170,7 +172,9 @@ func _build_kit(columns: HBoxContainer) -> void:
 
 	var panels := _column(columns, "Panels")
 	for panel: Array in [[&"TopBar", "TopBar: the Solves counter"], [&"GoalStrip", "GoalStrip: next goals"],
-			[&"SidePanel", "SidePanel: shop / Solve Station"], [&"PuzzleChipPanel", "PuzzleChipPanel"]]:
+			[&"SidePanel", "SidePanel: shop / Solve Station"], [&"PuzzleChipPanel", "PuzzleChipPanel (shelf item)"],
+			[&"PuzzleStand", "PuzzleStand: under a shelf puzzle"], [&"Shelf", "Shelf: the puzzle row"],
+			[&"StageOverlay", "StageOverlay: chips + ticker on the stage"]]:
 		panels.add_child(_panel(panel[0], panel[1]))
 	var news := PanelContainer.new()
 	news.theme_type_variation = &"NewsPanel"
