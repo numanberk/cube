@@ -779,7 +779,7 @@ func test_stage_and_background() -> void:
 		var v: Vector3 = arrays[Mesh.ARRAY_VERTEX][i]
 		if is_equal_approx(v.y, 0.1) and absf(v.x) <= 1.95 + 0.0001 and absf(v.z) <= 1.45 + 0.0001:
 			flat_top += 1
-			if not (arrays[Mesh.ARRAY_NORMAL][i] as Vector3).is_equal_approx(Vector3.UP):
+			if (arrays[Mesh.ARRAY_NORMAL][i] as Vector3).dot(Vector3.UP) < 0.999:  # normals are stored compressed
 				tilted += 1
 	check(flat_top > 0 and tilted == 0, "the slab's flat top is lit evenly: every normal there points up (%d of %d tilted)" % [tilted, flat_top])
 	var view := new_view()
@@ -813,7 +813,8 @@ func test_stage_and_background() -> void:
 	view._drag_pitch = 0.4
 	view._pressing = true
 	view._process(0.02)
-	check(view._floor.basis.is_equal_approx(view._puzzle.basis) and not view._floor.basis.is_equal_approx(view._base_puzzle),
+	check(view._floor.basis.is_equal_approx(view._puzzle.basis.orthonormalized()) and view._floor.scale.is_equal_approx(Vector3.ONE)
+			and not view._floor.basis.is_equal_approx(view._base_puzzle),
 			"a look-around drag tilts the mat with the puzzle, so the puzzle never dips into it")
 	view._pressing = false
 	check(view._rim_light.visible, "High has the rim light")

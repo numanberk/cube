@@ -191,7 +191,7 @@ func _ready() -> void:
 	var mat_material := StandardMaterial3D.new()
 	mat_material.albedo_color = MAT_COLOR
 	mat_material.roughness = 0.9
-	mat_material.specular = 0.2
+	mat_material.metallic_specular = 0.2
 	_mat.material_override = mat_material
 	var inset_material := mat_material.duplicate() as StandardMaterial3D
 	inset_material.albedo_color = MAT_INSET_COLOR
@@ -706,7 +706,7 @@ func _animate_effects(delta: float) -> void:
 	# Turntable spins around the puzzle's own up axis; Puzzle tilts around the screen's horizontal axis.
 	_turntable.basis = _base_turntable.rotated(Vector3.UP, yaw)
 	_puzzle.basis = _base_puzzle.rotated(Vector3.RIGHT, pitch)
-	_floor.basis = _puzzle.basis  # a look-around drag (and the wobble) tilts the mat too, or the puzzle would dip into it
+	_floor.basis = _base_puzzle.rotated(Vector3.RIGHT, pitch)  # the drag/wobble tilt (not the squash), or the puzzle would dip into the mat
 
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta * FLASH_DECAY)
