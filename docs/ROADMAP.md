@@ -411,9 +411,12 @@ every new component or variation to the gallery (a test enforces variations).
       3D view, translucent); the moves bar, "Next goal" line and the goal strip merge into one **goal card**; the hint line
       ("Click the cube or press Space…") becomes a 9.2-style first-time hint; "Lifetime" moves to a tooltip on the Solves
       counter; the puzzle row becomes a **shelf** of small puzzles on little stands instead of grey cards. The news box
-      hides (or shrinks to one line) while it's empty.
+      hides (or shrinks to one line) while it's empty. **The puzzle view takes the freed height** (moved here from V.3:
+      the view only gets what the rows under it leave, ~220 px at 1280×720), so the puzzle reaches ~50–60 % of the
+      screen height; `PuzzleView3D._frame_camera` already frames puzzle + mat to whatever size the view gets.
       *Done when:* at most 3 rows of text are under the puzzle in `mid` and `endgame`, nothing the player had is lost
-      (each moved item is listed in the CHANGELOG with where it went), and 1080p still fits.
+      (each moved item is listed in the CHANGELOG with where it went), the puzzle is ≥ 50 % of the screen height in
+      `mid`, and 1080p still fits.
 - [ ] **V.5 Shop v2:** helper cards: the coloured icon sticker, name + one short line, a big owned count with milestone
       pips (next ×2 at 10/25/50… owned), and a **bar along the bottom that fills towards the cost** (green and gently
       breathing when affordable). Locked cards are silhouettes with a "?" and the bar to their unlock. Upgrade tiles get a

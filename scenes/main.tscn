@@ -21,6 +21,10 @@
 [ext_resource type="Texture2D" path="res://assets/icons/stackmat.svg" id="19_solve"]
 [ext_resource type="Texture2D" path="res://assets/icons/ui_settings.svg" id="20_settings"]
 [ext_resource type="Script" path="res://scripts/ui/fit_row.gd" id="21_fitrow"]
+[ext_resource type="Shader" path="res://scripts/ui/shaders/ui_background.gdshader" id="22_bg"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_background"]
+shader = ExtResource("22_bg")
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_buy_amount"]
 
@@ -43,6 +47,8 @@ grow_vertical = 2
 script = ExtResource("1_main")
 
 [node name="Background" type="ColorRect" parent="."]
+unique_name_in_owner = true
+material = SubResource("ShaderMaterial_background")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

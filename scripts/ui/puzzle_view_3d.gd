@@ -20,6 +20,10 @@ extends SubViewportContainer
 ## Graphics (task 1.5): "high" = MSAA 4×, rounded pieces, glow and shadow; "low" = no MSAA, bevelled pieces
 ## (about 5× fewer triangles), no glow or shadow. main.gd applies the player's choice from Settings.
 ## Reduce motion (set_reduce_motion) turns off sway, squash, bounce and the speed-mode wobble.
+## Stage v2 (task V.3): the puzzle sits on a cubing mat (Floor > Mat, a rounded slab made in code; the contact shadow
+## lies on it). Floor has the puzzle's resting tilt but not its sway, drag, squash or drop, so the puzzle moves on a
+## still mat. A warm key light, a cool rim light from behind (High only) so the silhouette pops, and a warm glow.
+## `floor_enabled = false` hides the mat (the small puzzle chips).
 ## Manual mode (Solve Station, task S.1): show_state(moves) shows an exact state (solved + those moves), turn(move)
 ## animates one given move, turn_time sets how fast (pros turn at 5-10 TPS, so the station uses a short time) and
 ## flash() celebrates without resetting the puzzle.
@@ -72,7 +76,14 @@ const SWAY_PITCH := 0.025
 const TICKER_LENGTH := 8        ## moves shown under the puzzle
 const BODY_STEPS_HIGH := 3      ## segments per rounded edge of a piece body
 const BODY_STEPS_LOW := 1       ## one segment = a simple bevel
-const STAGE_GLOW_COLOR := Color(0.25, 0.28, 0.36)
+const STAGE_GLOW_COLOR := Color(0.36, 0.29, 0.21)  ## warm, like the desk lamp in the background (V.3)
+const MAT_HALF_WIDTH := 0.95    ## the mat, × the puzzle's width: half its width...
+const MAT_HALF_DEPTH := 0.72    ## ...half its depth (front to back)...
+const MAT_THICKNESS := 0.07     ## ...and its thickness
+const MAT_GAP := 0.015          ## the puzzle floats this × its width above the mat (no z-fighting at the corners)
+const MAT_COLOR := Color("#0e0f13")
+const MAT_STEPS := 3
+const RIM_DIRECTION := Vector3(-0.45, -0.5, 0.75)  ## the rim light shines from behind the puzzle, towards the camera
 const CAMERA_DROP := 0.1        ## camera sits this × size below centre, so the puzzle rides higher (room for the shadow)
 const BackdropShader := preload("res://scripts/ui/shaders/stage_backdrop.gdshader")
 const ShadowShader := preload("res://scripts/ui/shaders/contact_shadow.gdshader")
@@ -85,6 +96,9 @@ const ShadowShader := preload("res://scripts/ui/shaders/contact_shadow.gdshader"
 @onready var _stickers: MultiMeshInstance3D = %Stickers
 @onready var _backdrop: MeshInstance3D = %Backdrop
 @onready var _shadow: MeshInstance3D = %Shadow
+@onready var _floor: Node3D = %Floor
+@onready var _mat: MeshInstance3D = %Mat
+@onready var _rim_light: DirectionalLight3D = %RimLight
 
 var model: TwistyModel
 var puzzle_id := ""
@@ -94,6 +108,11 @@ var record_moves := false
 var sway_enabled := true        ## idle sway; "Reduce motion" (3.4) turns it off
 var graphics_quality := "high"  ## see set_graphics()
 var reduce_motion := false      ## see set_reduce_motion()
+var floor_enabled := true:      ## the cubing mat under the puzzle (V.3); chips turn it off
+	set(value):
+		floor_enabled = value
+		if is_node_ready():
+			_floor.visible = value
 
 var _rng := RandomNumberGenerator.new()
 var _last_move := {}             ## last move generated (so the next one uses another face)
@@ -138,6 +157,7 @@ var _dragging := false
 var _drag_yaw := 0.0
 var _drag_pitch := 0.0
 var _ticker := PackedStringArray()  ## last few moves in notation, newest last
+var _mat_extent := 0.0             ## the puzzle width the mat mesh was made for
 var turn_time := TURN_TIME          ## seconds for a quarter turn with an empty queue (the Solve Station sets it shorter)
 var drag_turns := false             ## Solve Station (S.8): a drag that starts on the puzzle turns that layer, not the view
 var _press_hit := {}                ## where the press landed on the puzzle ({normal, point} in model space), or {}
@@ -161,10 +181,17 @@ func _ready() -> void:
 	backdrop_material.shader = BackdropShader
 	backdrop_material.set_shader_parameter("glow_color", STAGE_GLOW_COLOR)
 	_backdrop.material_override = backdrop_material
-	_shadow.mesh = QuadMesh.new()
+	_shadow.mesh = PlaneMesh.new()  # lies flat on the mat
 	var shadow_material := ShaderMaterial.new()
 	shadow_material.shader = ShadowShader
 	_shadow.material_override = shadow_material
+	var mat_material := StandardMaterial3D.new()
+	mat_material.albedo_color = MAT_COLOR
+	mat_material.roughness = 0.9
+	mat_material.specular = 0.2
+	_mat.material_override = mat_material
+	_floor.visible = floor_enabled
+	_rim_light.look_at_from_position(Vector3.ZERO, RIM_DIRECTION)
 	resized.connect(_frame_camera)
 	set_puzzle(DEFAULT_PUZZLE)
 
@@ -219,6 +246,7 @@ func set_graphics(quality: String) -> void:
 	_viewport.msaa_3d = Viewport.MSAA_4X if high else Viewport.MSAA_DISABLED
 	_backdrop.visible = high
 	_shadow.visible = high
+	_rim_light.visible = high
 	_body_mesh = _make_body_mesh(BODY_STEPS_HIGH if high else BODY_STEPS_LOW)
 	if _bodies.multimesh != null:
 		_bodies.multimesh.mesh = _body_mesh
@@ -873,15 +901,34 @@ func _frame_camera() -> void:
 	_backdrop.position = Vector3(0.0, extent * CAMERA_DROP, -depth)  # centred on the puzzle, not the camera
 	_camera.far = depth + 1.0
 
-	# Contact shadow: a flat ellipse just under the puzzle's lowest point (at rest).
+	# The mat (V.3): a slab under the puzzle's lowest point at rest, in the puzzle's tilted frame (Floor), so the
+	# puzzle sits on it. The contact shadow lies on its top. Turntable spins around the puzzle's up axis, so the
+	# lowest point doesn't depend on the turn.
 	var lowest := 0.0
-	var rest := _base_puzzle * _base_turntable
-	var piece_half := CUBIE_HALF if model.piece_geometry.is_empty() else 0.0
-	for p in model.home_positions:
-		lowest = minf(lowest, (rest * p).y - piece_half)
-	var width := extent * 1.5
-	(_shadow.mesh as QuadMesh).size = Vector2(width, width * 0.2)
-	_shadow.position = Vector3(0.0, lowest - extent * 0.04, -extent * 0.3)
+	for i in model.home_positions.size():
+		var home := model.home_positions[i]
+		if model.piece_geometry.is_empty():
+			lowest = minf(lowest, home.y - CUBIE_HALF)
+		else:  # Megaminx: its body polygons, relative to the piece's home
+			for polygon: PackedVector3Array in model.piece_geometry[i]["body"]:
+				for v in polygon:
+					lowest = minf(lowest, home.y + v.y)
+	var top := lowest - extent * MAT_GAP
+	var thickness := extent * MAT_THICKNESS
+	_floor.basis = _base_puzzle
+	if not is_equal_approx(_mat_extent, extent):  # framing runs on every resize; the mesh only changes with the puzzle
+		_mat_extent = extent
+		_mat.mesh = PuzzleMeshes.rounded_slab(Vector3(extent * MAT_HALF_WIDTH, thickness / 2.0, extent * MAT_HALF_DEPTH),
+				thickness * 0.45, MAT_STEPS)
+	_mat.position = Vector3(0.0, top - thickness / 2.0, 0.0)
+	var width := extent * 1.45
+	(_shadow.mesh as PlaneMesh).size = Vector2(width, width * 0.95)
+	_shadow.position = Vector3(0.0, top + extent * 0.002, 0.0)
+
+
+## The mat's top surface, in the puzzle's tilted frame (tests).
+func mat_top() -> float:
+	return _mat.position.y + (_mat.mesh as ArrayMesh).get_aabb().size.y / 2.0 if _mat.mesh != null else 0.0
 
 
 func _make_body_mesh(steps: int) -> ArrayMesh:

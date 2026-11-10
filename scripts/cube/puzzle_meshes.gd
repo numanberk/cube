@@ -36,6 +36,44 @@ static func rounded_box(half: float, radius: float, steps: int = 3) -> ArrayMesh
 	return st.commit()
 
 
+## A box of any proportions with rounded edges and corners (the cubing mat under the puzzle, V.3), centred on the
+## origin. `half` = half size per axis; every half must be larger than `radius`.
+static func rounded_slab(half: Vector3, radius: float, steps: int = 3) -> ArrayMesh:
+	var inner := half - Vector3.ONE * radius
+	var coords: Array[PackedFloat32Array] = []  # per axis: curve (steps), flat middle (1), curve (steps)
+	for axis in 3:
+		var line := PackedFloat32Array()
+		for i in steps + 1:
+			line.append(lerpf(-half[axis], -inner[axis], float(i) / steps))
+		for i in range(1, steps + 1):
+			line.append(lerpf(inner[axis], half[axis], float(i) / steps))
+		coords.append(line)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var axes: Array[Vector3] = [Vector3.RIGHT, Vector3.UP, Vector3.BACK]
+	for axis_index in 3:
+		for sign_value: float in [1.0, -1.0]:
+			var normal := axes[axis_index] * sign_value
+			var u_index := (axis_index + 1) % 3
+			var v_index := (axis_index + 2) % 3
+			var us := coords[u_index]
+			var vs := coords[v_index]
+			for i in us.size() - 1:
+				for j in vs.size() - 1:
+					var corners: Array[Vector3] = []
+					for uv: Vector2i in [Vector2i(i, j), Vector2i(i + 1, j), Vector2i(i + 1, j + 1), Vector2i(i, j + 1)]:
+						var p := normal * half[axis_index] + axes[u_index] * us[uv.x] + axes[v_index] * vs[uv.y]
+						var core := p.clamp(-inner, inner)
+						corners.append(core + (p - core).normalized() * radius)
+					# Godot's front faces are clockwise when seen from outside.
+					var order := PackedInt32Array([0, 3, 2, 0, 2, 1]) if sign_value > 0.0 else PackedInt32Array([0, 1, 2, 0, 2, 3])
+					for k in order:
+						var q := corners[k]
+						st.set_normal((q - q.clamp(-inner, inner)).normalized())
+						st.add_vertex(q)
+	return st.commit()
+
+
 ## A flat rounded rectangle in the XY plane facing +Z, centred on the origin (for stickers).
 static func rounded_rect(half: float, radius: float, segments: int = 4) -> ArrayMesh:
 	var inner := half - radius

@@ -62,8 +62,8 @@ func _ready() -> void:
 	if args.has("tab"):
 		(main.get_node("%Tabs") as TabContainer).current_tab = int(args["tab"])
 	var graphics: String = args.get("graphics", "")
-	if graphics != "":
-		view.set_graphics(graphics)
+	if graphics != "":  # through Settings, like the game: main.gd applies it to the view and the background (V.3)
+		Settings.set_value("quality", graphics)
 	if bench:
 		for quality: String in ["low", "high"]:  # high last, so the saved PNG shows it
 			await _bench(view, quality, bench_name)
@@ -247,7 +247,7 @@ func _quit(code: int) -> void:
 
 
 func _bench(view: PuzzleView3D, quality: String, bench_name: String) -> void:
-	view.set_graphics(quality)
+	Settings.set_value("quality", quality)  # the whole screen's quality (background too), as the player sets it
 	for i in BENCH_WARMUP:
 		await get_tree().process_frame
 	var started := Time.get_ticks_usec()

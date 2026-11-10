@@ -767,6 +767,74 @@ func test_view_graphics_quality() -> void:
 	view.free()
 
 
+func test_stage_and_background() -> void:
+	# Task V.3: the puzzle sits on a cubing mat, a rim light makes its outline pop, and a desk background (High only).
+	var slab := PuzzleMeshes.rounded_slab(Vector3(2.0, 0.1, 1.5), 0.05)
+	check(slab.get_aabb().size.is_equal_approx(Vector3(4.0, 0.2, 3.0)), "a rounded slab is as big as asked: %s" % slab.get_aabb().size)
+	var view := new_view()
+	for id: String in ["2x2", "3x3", "7x7", "megaminx"]:
+		view.set_puzzle(id)
+		var extent: float = view._extent()
+		var lowest := INF
+		for i in view.model.home_positions.size():
+			var home: Vector3 = view.model.home_positions[i]
+			if view.model.piece_geometry.is_empty():
+				lowest = minf(lowest, home.y - PuzzleView3D.CUBIE_HALF)
+			else:
+				for polygon: PackedVector3Array in view.model.piece_geometry[i]["body"]:
+					for v in polygon:
+						lowest = minf(lowest, home.y + v.y)
+		var gap: float = lowest - view.mat_top()  # both in the puzzle's tilted frame (Floor has its basis)
+		check(view._floor.visible and gap > 0.0 and gap < extent * 0.05,
+				"%s sits just above its mat (gap %.3f of width %.2f)" % [id, gap, extent])
+		check(view._floor.basis.is_equal_approx(view._base_puzzle), "%s: the mat has the puzzle's resting tilt" % id)
+		var mat_size: Vector3 = (view._mat.mesh as ArrayMesh).get_aabb().size
+		check(mat_size.x > extent and mat_size.z > extent, "%s: the mat is wider and deeper than the puzzle" % id)
+	view.squash()
+	view._process(0.02)
+	check(view._floor.basis.is_equal_approx(view._base_puzzle) and view._floor.scale.is_equal_approx(Vector3.ONE),
+			"a squash moves the puzzle, not the mat")
+	check(view._rim_light.visible, "High has the rim light")
+	view.set_graphics("low")
+	check(not view._rim_light.visible and view._floor.visible, "Low drops the rim light, keeps the mat (a few triangles)")
+	view.floor_enabled = false
+	check(not view._floor.visible, "floor_enabled = false hides the mat")
+	view.free()
+	var chip: PuzzleChip = load("res://scenes/puzzle_chip.tscn").instantiate()
+	root.add_child(chip)
+	check(not chip.view.floor_enabled, "the small puzzle chips have no mat")
+	chip.free()
+	# The background: the shader on High, a flat bg colour on Low, still with Reduce motion.
+	var settings: GameSettings = root.get_node("Settings")
+	settings.persistence_enabled = false
+	settings.reset_to_defaults()
+	settings.apply_all()
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var background: ColorRect = main.get_node("%Background")
+	var material := background.material as ShaderMaterial
+	check(material != null and material.shader.resource_path.ends_with("ui_background.gdshader"), "High draws the desk background")
+	settings.set_value("reduce_motion", true)
+	check(is_zero_approx(float(main._background_material.get_shader_parameter("drift"))), "Reduce motion stops the bokeh drifting")
+	settings.set_value("quality", "low")
+	check(background.material == null and _colour_distance(background.color, background.get_theme_color(&"bg", &"Palette")) < 0.003,
+			"Low: the flat bg colour, no shader")
+	settings.set_value("quality", "high")
+	check(background.material == main._background_material, "High brings it back")
+	main._place_lamp()
+	var lamp: Vector2 = main._background_material.get_shader_parameter("lamp_center")
+	var expected: Vector2 = (main.get_node("%PuzzleView") as Control).get_global_rect().get_center() / main.get_viewport_rect().size
+	check(lamp.is_equal_approx(expected), "the lamp glow sits behind the puzzle: %s" % lamp)
+	main.free()
+	settings.reset_to_defaults()
+	settings.apply_all()
+	settings.persistence_enabled = true
+	game.reset_state()
+
+
 func test_settings_panel() -> void:
 	var settings: GameSettings = root.get_node("Settings")
 	settings.persistence_enabled = false  # never write the real settings.cfg from tests

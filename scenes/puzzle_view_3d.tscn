@@ -4,7 +4,7 @@
 
 [sub_resource type="Environment" id="Environment_upf4m"]
 ambient_light_source = 2
-ambient_light_color = Color(0.62, 0.66, 0.75, 1)
+ambient_light_color = Color(0.66, 0.65, 0.68, 1)
 ambient_light_energy = 0.7
 
 [node name="PuzzleView3D" type="SubViewportContainer" unique_id=172532214]
@@ -24,7 +24,8 @@ environment = SubResource("Environment_upf4m")
 
 [node name="KeyLight" type="DirectionalLight3D" parent="Viewport" unique_id=44299064]
 transform = Transform3D(0.8660254, 0.38302222, -0.32139382, 0, 0.64278764, 0.76604444, 0.5, -0.66341394, 0.5566704, 0, 0, 0)
-light_energy = 1.1
+light_color = Color(1, 0.92, 0.8, 1)
+light_energy = 1.2
 
 [node name="FillLight" type="DirectionalLight3D" parent="Viewport" unique_id=1647419398]
 transform = Transform3D(-0.50000006, -0.22414386, 0.83651626, 0, 0.9659258, 0.25881904, -0.8660254, 0.12940954, -0.48296297, 0, 0, 0)
@@ -39,7 +40,19 @@ fov = 30.0
 unique_name_in_owner = true
 cast_shadow = 0
 
-[node name="Shadow" type="MeshInstance3D" parent="Viewport"]
+[node name="RimLight" type="DirectionalLight3D" parent="Viewport"]
+unique_name_in_owner = true
+light_color = Color(0.45, 0.65, 1, 1)
+light_energy = 0.9
+
+[node name="Floor" type="Node3D" parent="Viewport"]
+unique_name_in_owner = true
+
+[node name="Mat" type="MeshInstance3D" parent="Viewport/Floor"]
+unique_name_in_owner = true
+cast_shadow = 0
+
+[node name="Shadow" type="MeshInstance3D" parent="Viewport/Floor"]
 unique_name_in_owner = true
 cast_shadow = 0
 

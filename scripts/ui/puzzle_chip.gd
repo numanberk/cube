@@ -28,6 +28,7 @@ func _ready() -> void:
 	_unlock.pressed.connect(func() -> void: unlock_pressed.emit(puzzle_id))
 	view.set_graphics("low")
 	view.sway_enabled = false
+	view.floor_enabled = false  # no cubing mat at this size (V.4 puts the chips on a shelf)
 
 
 ## Reduce motion for the small view; small views never sway either way.

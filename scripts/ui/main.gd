@@ -20,6 +20,8 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var solves_rate: StatChip = %SolvesRate
 @onready var moves_rate: StatChip = %MovesRate
 @onready var puzzle_view: PuzzleView3D = %PuzzleView
+@onready var background: ColorRect = %Background
+@onready var _background_material: ShaderMaterial = background.material
 @onready var move_ticker: RichTextLabel = %MoveTicker
 @onready var stage_chips: HBoxContainer = %StageChips
 @onready var news_list: VBoxContainer = %NewsList
@@ -97,6 +99,7 @@ func _ready() -> void:
 	buy_ten.pressed.connect(set_buy_amount.bind(10))
 	buy_max.pressed.connect(set_buy_amount.bind(GameState.BUY_MAX))
 	_apply_display_settings()
+	puzzle_view.item_rect_changed.connect(_place_lamp)
 	Game.solved.connect(_on_solved)
 	Game.purchased.connect(_on_purchased)
 	Game.state_reset.connect(_on_state_reset)
@@ -1136,10 +1139,21 @@ func _perk_views() -> Dictionary:
 func _apply_display_settings() -> void:
 	puzzle_view.set_graphics(Settings.get_value("quality"))
 	var reduce: bool = Settings.get_value("reduce_motion")
+	# The desk background (V.3): High only; Low keeps the ColorRect's flat bg colour. Reduce motion stops the bokeh.
+	background.material = _background_material if Settings.get_value("quality") == "high" else null
+	_background_material.set_shader_parameter("drift", 0.0 if reduce else 1.0)
 	puzzle_view.set_reduce_motion(reduce)
 	fx.particles_enabled = not reduce
 	for id: String in _chips:
 		(_chips[id] as PuzzleChip).set_reduce_motion(reduce)
+
+
+## The background's lamp glow sits behind the puzzle, wherever the layout puts it.
+func _place_lamp() -> void:
+	var screen := get_viewport_rect().size
+	if screen.x > 0.0 and screen.y > 0.0:
+		var centre := puzzle_view.get_global_rect().get_center()
+		_background_material.set_shader_parameter("lamp_center", centre / screen)
 
 
 func _on_setting_changed(key: String) -> void:

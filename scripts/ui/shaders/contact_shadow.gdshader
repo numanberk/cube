@@ -1,8 +1,8 @@
-// Soft dark ellipse under the puzzle, as if it sat on the stage.
+// Soft dark ellipse under the puzzle, lying on the cubing mat (V.3).
 shader_type spatial;
 render_mode unshaded, blend_mix, cull_disabled, shadows_disabled, depth_draw_never;
 
-uniform float strength = 0.75;
+uniform float strength = 0.85;
 
 void fragment() {
 	float d = clamp(length(UV - 0.5) * 2.0, 0.0, 1.0);
