@@ -14,7 +14,7 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
 | R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
-| V.2 Materials | claude/lucid-lamport-e9ubpo | 2026-11-10 | `scripts/dev/style_gallery.gd`, `scenes/dev/style_gallery.tscn`, `scenes/shop_card.tscn`, `scenes/upgrade_tile.tscn`, `scenes/perk_node.tscn`, `scripts/ui/upgrade_tile.gd`, `scripts/ui/shop_card.gd`, new `assets/` textures | `ui/theme.tres`, `content.gd` (category colours?), `main.tscn`?, `tests/test_runner.gd` | no |
+| V.3 Background and stage | claude/lucid-lamport-e9ubpo | 2026-11-10 | `scenes/puzzle_view_3d.tscn`, `scripts/ui/puzzle_view_3d.gd`, `scripts/ui/shaders/*` (+ a new background shader), `scripts/cube/puzzle_meshes.gd` (mat mesh) | `main.tscn` (Background, stage sizes), `main.gd` (graphics apply), `ui/theme.tres`?, `tests/test_runner.gd`, `tools/screenshot.sh`? | no |
 
 *(Rows added for the sessions that started before this rule; their own files are an estimate. Each
 session corrects its row when it merges.)*
