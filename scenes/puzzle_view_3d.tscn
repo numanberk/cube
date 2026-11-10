@@ -52,6 +52,10 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 cast_shadow = 0
 
+[node name="MatInset" type="MeshInstance3D" parent="Viewport/Floor"]
+unique_name_in_owner = true
+cast_shadow = 0
+
 [node name="Shadow" type="MeshInstance3D" parent="Viewport/Floor"]
 unique_name_in_owner = true
 cast_shadow = 0

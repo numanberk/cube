@@ -77,11 +77,13 @@ const TICKER_LENGTH := 8        ## moves shown under the puzzle
 const BODY_STEPS_HIGH := 3      ## segments per rounded edge of a piece body
 const BODY_STEPS_LOW := 1       ## one segment = a simple bevel
 const STAGE_GLOW_COLOR := Color(0.36, 0.29, 0.21)  ## warm, like the desk lamp in the background (V.3)
-const MAT_HALF_WIDTH := 0.95    ## the mat, × the puzzle's width: half its width...
-const MAT_HALF_DEPTH := 0.72    ## ...half its depth (front to back)...
-const MAT_THICKNESS := 0.07     ## ...and its thickness
+const MAT_HALF_WIDTH := 1.3     ## the mat, × the puzzle's bounding radius (fits cubes and the Megaminx): half its width...
+const MAT_HALF_DEPTH := 1.0     ## ...half its depth (front to back)...
+const MAT_THICKNESS := 0.06     ## ...and its thickness, × the puzzle's width
 const MAT_GAP := 0.015          ## the puzzle floats this × its width above the mat (no z-fighting at the corners)
-const MAT_COLOR := Color("#0e0f13")
+const MAT_COLOR := Color("#2b2e38")        ## the mat's rim (its body)...
+const MAT_INSET_COLOR := Color("#0c0d11")  ## ...and the darker playing surface set into it, like a speed-cubing mat
+const MAT_RIM := 0.07           ## the rim's width, × the puzzle's bounding radius
 const MAT_STEPS := 3
 const RIM_DIRECTION := Vector3(-0.45, -0.5, 0.75)  ## the rim light shines from behind the puzzle, towards the camera
 const CAMERA_DROP := 0.1        ## camera sits this × size below centre, so the puzzle rides higher (room for the shadow)
@@ -98,6 +100,7 @@ const ShadowShader := preload("res://scripts/ui/shaders/contact_shadow.gdshader"
 @onready var _shadow: MeshInstance3D = %Shadow
 @onready var _floor: Node3D = %Floor
 @onready var _mat: MeshInstance3D = %Mat
+@onready var _mat_inset: MeshInstance3D = %MatInset
 @onready var _rim_light: DirectionalLight3D = %RimLight
 
 var model: TwistyModel
@@ -190,6 +193,9 @@ func _ready() -> void:
 	mat_material.roughness = 0.9
 	mat_material.specular = 0.2
 	_mat.material_override = mat_material
+	var inset_material := mat_material.duplicate() as StandardMaterial3D
+	inset_material.albedo_color = MAT_INSET_COLOR
+	_mat_inset.material_override = inset_material
 	_floor.visible = floor_enabled
 	_rim_light.look_at_from_position(Vector3.ZERO, RIM_DIRECTION)
 	resized.connect(_frame_camera)
@@ -918,17 +924,24 @@ func _frame_camera() -> void:
 	_floor.basis = _base_puzzle
 	if not is_equal_approx(_mat_extent, extent):  # framing runs on every resize; the mesh only changes with the puzzle
 		_mat_extent = extent
-		_mat.mesh = PuzzleMeshes.rounded_slab(Vector3(extent * MAT_HALF_WIDTH, thickness / 2.0, extent * MAT_HALF_DEPTH),
+		_mat.mesh = PuzzleMeshes.rounded_slab(Vector3(radius * MAT_HALF_WIDTH, thickness / 2.0, radius * MAT_HALF_DEPTH),
 				thickness * 0.45, MAT_STEPS)
+		var rim := radius * MAT_RIM
+		_mat_inset.mesh = PuzzleMeshes.rounded_slab(Vector3(radius * MAT_HALF_WIDTH - rim, thickness * 0.1,
+				radius * MAT_HALF_DEPTH - rim), thickness * 0.09, 1)
 	_mat.position = Vector3(0.0, top - thickness / 2.0, 0.0)
+	_mat_inset.position = Vector3(0.0, top - thickness * 0.08, 0.0)  # its top just above the rim's top
 	var width := extent * 1.45
 	(_shadow.mesh as PlaneMesh).size = Vector2(width, width * 0.95)
 	_shadow.position = Vector3(0.0, top + extent * 0.002, 0.0)
 
 
-## The mat's top surface, in the puzzle's tilted frame (tests).
+## The mat's highest surface (its inset), in the puzzle's tilted frame (tests).
 func mat_top() -> float:
-	return _mat.position.y + (_mat.mesh as ArrayMesh).get_aabb().size.y / 2.0 if _mat.mesh != null else 0.0
+	if _mat.mesh == null:
+		return 0.0
+	return maxf(_mat.position.y + (_mat.mesh as ArrayMesh).get_aabb().size.y / 2.0,
+			_mat_inset.position.y + (_mat_inset.mesh as ArrayMesh).get_aabb().size.y / 2.0)
 
 
 func _make_body_mesh(steps: int) -> ArrayMesh:
