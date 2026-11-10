@@ -881,8 +881,9 @@ func test_theme_materials() -> void:
 	# The styles use the tokens: background < panels < cards.
 	var main_scene := FileAccess.get_file_as_string("res://scenes/main.tscn")
 	var bg: Color = pal.call("bg")
-	check(main_scene.contains("color = Color(%s, %s, %s, 1)" % [snappedf(bg.r, 0.0001), snappedf(bg.g, 0.0001), snappedf(bg.b, 0.0001)]),
-			"the main screen's background is the bg token")
+	var bg_line := "color = Color(%s, %s, %s, 1)" % [snappedf(bg.r, 0.0001), snappedf(bg.g, 0.0001), snappedf(bg.b, 0.0001)]
+	check(main_scene.contains(bg_line), "the main screen's background is the bg token")
+	check(FileAccess.get_file_as_string("res://scenes/solve_station.tscn").contains(bg_line), "...and the Solve Station's")
 	for panel: Array in [[&"TopBar", &"panel"], [&"SidePanel", &"panel"], [&"PanelContainer", &"panel"],
 			[&"TabContainer", &"panel"], [&"NewsPanel", &"panel"]]:
 		var box := theme.get_stylebox(panel[1], panel[0]) as StyleBoxFlat
@@ -922,6 +923,19 @@ func test_theme_materials() -> void:
 	check((sticker.get_node("%Glyph") as TextureRect).modulate == Color.WHITE and (sticker.get_node("%Glyph") as TextureRect).texture != null,
 			"a blue sticker gets the white glyph")
 	sticker.free()
+	# Pressed cards sink their content with the face, and it comes back up when the card is disabled mid-press.
+	for scene: String in ["res://scenes/shop_card.tscn", "res://scenes/upgrade_tile.tscn", "res://scenes/perk_node.tscn"]:
+		var card: Button = load(scene).instantiate()
+		root.add_child(card)
+		card.set_view({"icon": Content.icon("friend"), "affordable": true, "status": "available", "cost": "1"})
+		var content: Control = card.get_node("%Content")
+		var rest := content.position.y
+		card.sync_press(BaseButton.DRAW_PRESSED)
+		check(is_equal_approx(content.position.y, rest + 2.0), "%s: held, the content sinks 2 px" % scene.get_file())
+		card.set_view({"icon": Content.icon("friend"), "affordable": false, "status": "available", "cost": "1"})
+		card.sync_press()  # disabled now: Godot never sends button_up, the draw mode is DRAW_DISABLED
+		check(is_equal_approx(content.position.y, rest), "%s: disabled mid-press, it comes back up" % scene.get_file())
+		card.free()
 	check(FileAccess.get_file_as_string("res://assets/CREDITS.md").contains("assets/images/ui/sticker.svg"), "the sticker texture is credited")
 	# On the main screen: helpers blue, Lab projects and methods purple, upgrades orange, a locked helper grey.
 	var game: GameState = root.get_node("Game")

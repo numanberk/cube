@@ -389,7 +389,7 @@ every new component or variation to the gallery (a test enforces variations).
       caption + the number in Fredoka with a shadow; `StatChip`s for solves/s, moves/s, Streak, Flow, Golden buff; Perks
       is a trophy + count, Compete a podium, Settings a gear. Logo wordmark moved to V.9 (the top bar is full at
       1280×720); digit-by-digit rolling moved to V.6 (the counter still eases up, as before).)*
-- [ ] **V.2 Materials [D15, D15b]:** a palette of tokens in the theme (3 surface levels, text levels, 6 category colours,
+- [x] **V.2 Materials [D15, D15b]:** a palette of tokens in the theme (3 surface levels, text levels, 6 category colours,
       green for "buyable", gold for trophies/golden). Panels and cards get depth with `StyleBoxFlat` features: drop shadow
       (`shadow_size`/`shadow_offset`), a lighter top border and thicker darker bottom border (bevel), and a vertical
       gradient where it helps (a `StyleBoxTexture` with a `GradientTexture2D`). Buttons press down 2 px. Icon tiles
@@ -397,6 +397,9 @@ every new component or variation to the gallery (a test enforces variations).
       soft shadow, instead of white-on-grey.
       *Done when:* the gallery and `mid` screenshots show three clearly separated depth levels (background, panel, card),
       and helper/upgrade/Lab/trophy icons are told apart by colour at a glance.
+      *(Done 2026-11-10: `Palette/colors/*` tokens; panels float on a soft shadow, cards/buttons have a lit top edge
+      and a slab and sink 2 px when pressed; `IconSticker` in category colours (helpers blue, upgrades orange, puzzles
+      red, Lab purple, trophies yellow, station white). Gradient only on the stickers. Shots: `docs/screenshots/V.2-materials/`.)*
 - [ ] **V.3 Background and stage [D15]:** a full-screen background (one canvas shader: gradient + vignette + very faint
       noise, plus the direction's motif, e.g. lamp-lit desk bokeh for (a), slowly drifting sticker grid for (c)). In the
       3D view: a surface under the puzzle (cubing mat / pedestal, generated in code like `PuzzleMeshes`), a warm key light,

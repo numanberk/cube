@@ -398,7 +398,7 @@ func _refresh_upgrade_tiles() -> void:
 		if can_buy:
 			affordable_count += 1
 		tile.set_view({
-			"icon": Content.icon(def["icon"]), "title": def["name"], "description": def["description"],
+			"icon": Content.icon(def["icon"]), "category": &"upgrades", "title": def["name"], "description": def["description"],
 			"cost": Num.format(cost), "affordable": can_buy, "owned": owned, "locked_out": locked_out,
 			"choice": _choice_text(id, partners, owned, locked_out),
 		})

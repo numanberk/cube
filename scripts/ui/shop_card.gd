@@ -30,8 +30,6 @@ var _tween: Tween
 func _ready() -> void:
 	mouse_entered.connect(_set_hovered.bind(true))
 	mouse_exited.connect(_set_hovered.bind(false))
-	button_down.connect(_set_held.bind(true))
-	button_up.connect(_set_held.bind(false))
 
 
 ## view: {icon: Texture2D, title, line1, line2, owned, cost (strings), affordable: bool, locked: bool, active: bool,
@@ -60,15 +58,31 @@ func _set_hovered(hovered: bool) -> void:
 	_update_lift()
 
 
-func _set_held(held: bool) -> void:
-	_held = held
-	_update_lift()
+## The pressed style sinks the face 2 px (V.2): the content, laid out by anchors, sinks with it. Read from the draw
+## mode (not button_down/up), so it also comes back up when the card is disabled mid-press or the mouse leaves.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAW:
+		sync_press.call_deferred()
+
+
+func sync_press(mode: int = -1) -> void:
+	if mode < 0:
+		mode = get_draw_mode()
+	var held := affordable and (mode == DRAW_PRESSED or mode == DRAW_HOVER_PRESSED)
+	if held != _held:
+		_held = held
+		if not held:
+			_content.position.y = 0.0  # back up at once, like the face
+		_update_lift()
 
 
 func _update_lift() -> void:
+	if _held:  # at once: a click is shorter than the lift tween
+		if _tween != null:
+			_tween.kill()
+		_content.position.y = PRESS_DEPTH
+		return
 	var target := -LIFT if _hovered and affordable else 0.0
-	if _held and affordable:
-		target = PRESS_DEPTH
 	if is_equal_approx(_content.position.y, target):
 		return
 	if _tween != null:

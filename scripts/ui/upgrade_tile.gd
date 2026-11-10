@@ -22,10 +22,20 @@ var _choice := ""        ## choices (5.7b): "Pick one: ..." line in the tooltip,
 var locked_out := false  ## the other upgrade of its pair was picked this run
 
 
-func _ready() -> void:
-	# The pressed style sinks 2 px (V.2); the content, laid out by anchors, sinks with it.
-	button_down.connect(func() -> void: _content.position.y = PRESS_DEPTH)
-	button_up.connect(func() -> void: _content.position.y = 0.0)
+## The pressed style sinks the face 2 px (V.2): the content, laid out by anchors, sinks with it (its offsets, so a
+## release puts it back exactly). Read from the draw mode, so it also comes back up when the button is disabled
+## mid-press or the mouse leaves it.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAW:
+		sync_press.call_deferred()
+
+
+func sync_press(mode: int = -1) -> void:
+	if mode < 0:
+		mode = get_draw_mode()
+	var sink := PRESS_DEPTH if mode == DRAW_PRESSED or mode == DRAW_HOVER_PRESSED else 0.0
+	_content.offset_top = sink
+	_content.offset_bottom = sink
 
 
 ## view: {icon: Texture2D, title, description, cost (strings), affordable: bool, owned: bool,
