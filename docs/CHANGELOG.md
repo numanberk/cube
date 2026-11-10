@@ -25,6 +25,8 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
 - **Cards sink their content** while held, read from the button's draw mode (not `button_down/up`: Godot sends no
   `button_up` when a button is disabled mid-press, e.g. by an auto-buyer, which the diff-reviewer caught), so it also
   comes back when the mouse leaves. ShopCard's sink is instant (a click is shorter than the hover-lift tween).
+  The test drives `sync_press()` directly; the `NOTIFICATION_DRAW` hook that calls it isn't reachable headless, so
+  keep that hook if you touch these scripts (second diff-reviewer pass: no other findings).
 - Main screen and Solve Station background → `bg`. The style gallery shows the palette swatches and one sticker per
   category; the Lab card and a method tile in the parts page are purple.
 - Tests: `test_theme_materials` (tokens, levels get lighter, category colours apart from each other and from the
