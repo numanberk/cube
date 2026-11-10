@@ -2,6 +2,32 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-10 — Task V.3: background and stage (desk background, cubing mat, rim light)
+- **Background (D15 a, "lo-fi cubing desk"):** `scripts/ui/shaders/ui_background.gdshader` on main.tscn's
+  `%Background`: a dark gradient, a warm desk-lamp glow centred behind the puzzle (`main._place_lamp()`, follows the
+  PuzzleView's rect), faint out-of-focus bokeh discs (mostly warm, a few cool) drifting up very slowly, a vignette and
+  a light grain. One full-screen pass, no textures. **Graphics Low:** no shader, the ColorRect's flat `bg` colour.
+  **Reduce motion:** the bokeh stops (`drift = 0`).
+- **Stage (3D view):** the puzzle sits on a **cubing mat**, a dark rounded slab made in code
+  (`PuzzleMeshes.rounded_slab(half: Vector3, radius, steps)`, new) under a new `%Floor` node that has the puzzle's
+  resting tilt but not its sway, drag, squash or drop-in, so the puzzle moves on a still mat. The contact shadow lies on
+  the mat (a PlaneMesh now). The mat sits just under the lowest point at rest (the Megaminx from its body polygons);
+  its mesh is cached per puzzle size. **Warm key light** (and a warmer stage glow), a **cool blue rim light** from behind
+  so the silhouette pops (High only). `floor_enabled = false` hides the mat: the small puzzle chips use it. The Solve
+  Station's view has the mat too (it reads as a timer mat).
+- **Puzzle size → V.4.** The roadmap asked V.3 to grow the puzzle to ~50–60 % of the screen height, but the view only
+  gets the height the ~8 rows under it leave (~220 px at 1280×720), and those rows are V.4's job. The goal moved into
+  V.4's text and its *Done when*; `_frame_camera` already frames puzzle + mat to whatever height the view gets.
+- **Bench** (software Mesa in the container, so relative only; before → after, ms/frame): `bench` High 86.3 → 97.8
+  (+13 %), Low 39.2 → 37.2; `bench_row` High 105.8 → 110.2 (+4 %), Low 52.1 → 52.0. Within the +15 % budget; most of
+  it is the full-screen shader on a software rasteriser. `tools/screenshot.gd` now sets the quality through
+  `Settings` (`GRAPHICS=` and the bench), like the game, so Low/High also switch the background.
+- Tests: `test_stage_and_background` (the slab's size; 2×2, 3×3, 7×7 and the Megaminx sit just above their mat, which
+  has the resting tilt and is bigger than the puzzle; a squash doesn't move the mat; rim light High only; chips have
+  no mat; the background shader on High, flat `bg` on Low, Reduce motion stops the drift, the lamp follows the puzzle).
+- Screenshots: `docs/screenshots/V.3-stage/` (before: `docs/screenshots/V.2-materials/`).
+- **Next: V.4** (declutter; now also the puzzle's size).
+
 ## 2026-11-10 — Task V.2: materials (palette tokens, depth, coloured icon stickers)
 - **Palette tokens** in `ui/theme.tres` as a plain theme type, `Palette/colors/*` (read with
   `get_theme_color(&"cat_lab", &"Palette")`): `bg` #111318 < `surface_1` #1b1e25 (panels) < `surface_2` #272b34 (cards)

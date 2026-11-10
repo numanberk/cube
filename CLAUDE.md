@@ -37,7 +37,8 @@ scenes/main.tscn           The one screen (UI layout)
 ui/theme.tres              Project theme: Inter (body) + Fredoka (display: counters, titles, buttons) fonts, colours, button/tab/bar styles, type variations (see rule 8),
                            and the **palette tokens** `Palette/colors/*` (V.2; read with get_theme_color(&"cat_lab", &"Palette"))
 assets/                    fonts/ (Inter, Fredoka; OFL) and later audio/, images/; every file listed in assets/CREDITS.md
-scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable > Bodies/Stickers MultiMeshes)
+scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable > Bodies/Stickers MultiMeshes; Floor >
+                           Mat + Shadow: the cubing mat, V.3; Key/Fill/Rim lights)
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
 scripts/autoload/audio.gd  class AudioManager ("Audio"): play_click/solve/buy/unlock (rate-limited), bus volumes,
                            music (Content.TRACKS; 2 players crossfading 2 s; follow/shuffle/loop; ducks when unfocused)
@@ -86,7 +87,8 @@ scripts/cube/staged_solver.gd  class StagedSolver: solves a 2×2/3×3 like a per
 scripts/cube/showcase_solve.gd class ShowcaseSolve: the main cube's showcase solve (R.2): scramble, inspection, then a
                            StagedSolver solve one move at a time (advance(delta, tps) / tap()); main.gd feeds the moves to
                            PuzzleView3D's manual mode and draws the stage chips (%StageChips) + ticker (%MoveTicker)
-scripts/ui/shaders/        stage_backdrop (radial glow) + contact_shadow .gdshader, used by PuzzleView3D
+scripts/ui/shaders/        stage_backdrop (radial glow) + contact_shadow .gdshader, used by PuzzleView3D; ui_background
+                           (V.3: the desk background on main.tscn's %Background, High only)
 scripts/util/num.gd        class Num: number/time formatting (1.50K, 2h 1m)
 tests/test_runner.gd       Headless tests (any func test_* runs automatically)
 tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
