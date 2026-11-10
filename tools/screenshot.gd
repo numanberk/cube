@@ -48,6 +48,9 @@ func _ready() -> void:
 	add_child(main)
 	var puzzle: String = args.get("puzzle", "")
 	var view: PuzzleView3D = main.get_node("%PuzzleView")
+	# The background's film grain (V.3) is invisible at a glance but makes PNGs ~2× bigger (noise doesn't compress):
+	# shots go without it, so committed screenshots stay under 300 KB.
+	(main.get_node("%Background").material as ShaderMaterial).set_shader_parameter("grain", 0.0)
 	if puzzle != "":
 		view.set_puzzle(puzzle)
 		main._start_showcase(puzzle)

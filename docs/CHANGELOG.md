@@ -39,8 +39,9 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   lamp is re-placed on every refresh (an ancestor moving the view didn't move it). The gradient's colours come from
   the palette's `bg`. **Not changed:** a side-layer turn's corner dips a little into the mat mid-turn (a real cube
   would lift); it's brief and the rim hides most of it. The solve bounce (scale ×1.05) touches it for a frame or two.
-- Screenshot PNGs: the shader's per-pixel grain makes them ~600 KB, so the committed copies in `docs/` are quantised
-  to 256 colours (Pillow); the game keeps the grain.
+- Screenshot PNGs: the shader's per-pixel grain made them ~600 KB (noise doesn't compress), so `tools/screenshot.gd`
+  sets the background's `grain` to 0 for shots (all of them ~150–265 KB now); the game keeps it. Tried first and
+  dropped: a 128-colour palette shifted colours, a median filter ate small text.
 - Screenshots: `docs/screenshots/V.3-stage/` (before: `docs/screenshots/V.2-materials/`).
 - **Next: V.4** (declutter; now also the puzzle's size).
 
