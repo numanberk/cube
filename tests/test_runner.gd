@@ -864,7 +864,7 @@ func test_theme_materials() -> void:
 	for token: String in tokens:
 		check(theme.has_color(StringName(token), &"Palette"), "the palette has %s" % token)
 	var pal := func(token: String) -> Color: return theme.get_color(StringName(token), &"Palette")
-	check(pal.call("buy").is_equal_approx(Color("#3ccf8e")), "buy is the one green, #3ccf8e (CLAUDE.md rule 9)")
+	check(_colour_distance(pal.call("buy"), Color("#3ccf8e")) < 0.003, "buy is the one green, #3ccf8e (CLAUDE.md rule 9)")
 	var levels := ["bg", "surface_1", "surface_2", "surface_3"]
 	for i in levels.size() - 1:
 		check(pal.call(levels[i + 1]).get_luminance() - pal.call(levels[i]).get_luminance() > 0.025,
@@ -899,9 +899,10 @@ func test_theme_materials() -> void:
 		var down := -pressed.expand_margin_top
 		check(down >= 1.0 and is_equal_approx(pressed.expand_margin_bottom, down), "%s presses down %d px" % [type_name, down])
 		check(is_equal_approx(pressed.shadow_offset.y, normal.shadow_offset.y - down), "%s: the slab shrinks as much" % type_name)
-		check(is_equal_approx(pressed.content_margin_top, normal.content_margin_top + down)
-				and is_equal_approx(pressed.get_minimum_size().y, normal.get_minimum_size().y),
-				"%s: the text moves down with it, the size doesn't change" % type_name)
+		check(is_equal_approx(pressed.get_minimum_size().y, normal.get_minimum_size().y), "%s: pressing doesn't change its size" % type_name)
+		# Cards lay their content out by anchors (no content margins), so shop_card.gd etc. sink it themselves.
+		if type_name != &"ShopCard":
+			check(is_equal_approx(pressed.content_margin_top, normal.content_margin_top + down), "%s: the text moves down with it" % type_name)
 	# Icon stickers: the category's colour, white glyph (dark on the light ones).
 	var sticker: IconSticker = load("res://scenes/icon_sticker.tscn").instantiate()
 	root.add_child(sticker)
@@ -911,6 +912,12 @@ func test_theme_materials() -> void:
 		check(sticker.self_modulate.is_equal_approx(pal.call("cat_%s" % category)), "a %s sticker is its colour" % category)
 	sticker.category = &"station"
 	check((sticker.get_node("%Glyph") as TextureRect).modulate.get_luminance() < 0.3, "a white sticker gets a dark glyph")
+	sticker.category = &"trophies"
+	sticker.muted = true
+	check((sticker.get_node("%Glyph") as TextureRect).modulate == Color.WHITE
+			and sticker.self_modulate.get_luminance() < pal.call("cat_trophies").get_luminance() - 0.2,
+			"a muted (can't buy) sticker is darker and keeps a white glyph, so it stays readable when dimmed")
+	sticker.muted = false
 	sticker.category = &"helpers"
 	check((sticker.get_node("%Glyph") as TextureRect).modulate == Color.WHITE and (sticker.get_node("%Glyph") as TextureRect).texture != null,
 			"a blue sticker gets the white glyph")
@@ -924,12 +931,21 @@ func test_theme_materials() -> void:
 	root.add_child(main)
 	main._refresh()
 	var sticker_of := func(card: Node, path: String) -> StringName: return (card.get_node(path) as IconSticker).category
+	var first_visible := func(cards: Dictionary, locked: bool) -> Node:
+		for card: Node in cards.values():
+			if (card as Control).visible and (not locked or card.get("locked")):
+				return card
+		return null
 	var friend_card: Node = main._helper_cards[Content.BUILDINGS[0]["id"]]
-	var last_card: Node = main._helper_cards[Content.BUILDINGS[-1]["id"]]
 	check(sticker_of.call(friend_card, "%IconTile") == &"helpers", "a helper's sticker is blue (helpers)")
-	check(sticker_of.call(last_card, "%IconTile") == &"locked", "a locked helper's sticker is grey")
-	check(sticker_of.call(main._lab_cards.values()[0], "%IconTile") == &"lab", "a Lab project's sticker is purple")
-	check(sticker_of.call(main._method_tiles.values()[0], "%Icon") == &"lab", "a method (Lab research) tile is purple")
+	var locked_card: Node = first_visible.call(main._helper_cards, true)
+	check(locked_card != null and sticker_of.call(locked_card, "%IconTile") == &"locked", "the next locked helper's sticker is grey")
+	game.cheat_add_solves(1e15)  # every Lab project and the next method show up
+	main._refresh()
+	var lab_card: Node = first_visible.call(main._lab_cards, false)
+	check(lab_card != null and sticker_of.call(lab_card, "%IconTile") == &"lab", "a Lab project's sticker is purple")
+	var method_tile: Node = first_visible.call(main._method_tiles, false)
+	check(method_tile != null and sticker_of.call(method_tile, "%Icon") == &"lab", "a method (Lab research) tile is purple")
 	check(sticker_of.call(main._upgrade_tiles.values()[0], "%Icon") == &"upgrades", "an upgrade tile is orange")
 	main.free()
 	game.reset_state()

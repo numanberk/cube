@@ -46,6 +46,7 @@ func set_view(view: Dictionary) -> void:
 	_badge.text = "PICKED" if owned else ("NOT PICKED" if locked_out else "PICK 1")
 	_cost.text = "Owned" if owned else ("—" if locked_out else _cost_text)
 	_cost.theme_type_variation = &"CostAffordable" if affordable or owned else &"CostUnaffordable"
+	_icon.muted = not affordable
 	_content.modulate.a = 1.0 if affordable else (DIM_OWNED if owned else (DIM_LOCKED_OUT if locked_out else DIM_UNAFFORDABLE))
 	tooltip_text = _title  # must be non-empty for the custom tooltip below to appear
 

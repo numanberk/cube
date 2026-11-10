@@ -56,6 +56,7 @@ func set_view(view: Dictionary) -> void:
 	theme_type_variation = &"PerkOwned" if status == "owned" else &"ShopCard"
 	disabled = not affordable
 	_cost.theme_type_variation = &"CostAffordable" if affordable or status == "owned" else &"CostUnaffordable"
+	_icon.muted = not affordable and status != "owned"
 	_content.modulate.a = 1.0 if affordable or status == "owned" \
 			else (DIM_UNAFFORDABLE if status == "available" else DIM_LOCKED)
 	tooltip_text = _title  # must be non-empty for the custom tooltip below to appear

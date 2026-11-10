@@ -51,6 +51,7 @@ func set_view(view: Dictionary) -> void:
 	disabled = not affordable
 	_cost.theme_type_variation = &"CostAffordable" if affordable else &"CostUnaffordable"
 	_content.modulate.a = 1.0 if affordable or view.get("active", false) else (DIM_LOCKED if locked else DIM_UNAFFORDABLE)
+	_sticker.muted = not affordable and not locked and not view.get("active", false)
 	_update_lift()
 
 
