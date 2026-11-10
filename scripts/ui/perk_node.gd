@@ -3,11 +3,12 @@ extends Button
 ## One node of the trophy perk tree (task 6.3): icon, name and cost in trophies; hovering shows the description.
 ## Display only: PerkPanel fills it with set_view() and connects `pressed`.
 
+const PRESS_DEPTH := 2.0
 const DIM_UNAFFORDABLE := 0.7
 const DIM_LOCKED := 0.4
 
 @onready var _content: Control = %Content
-@onready var _icon: TextureRect = %Icon
+@onready var _icon: IconSticker = %Icon
 @onready var _name: Label = %Name
 @onready var _cost: Label = %Cost
 
@@ -18,10 +19,17 @@ var _description := ""
 var _note := ""
 
 
+func _ready() -> void:
+	# The pressed style sinks 2 px (V.2); the content, laid out by anchors, sinks with it.
+	button_down.connect(func() -> void: _content.position.y = PRESS_DEPTH)
+	button_up.connect(func() -> void: _content.position.y = 0.0)
+
+
 ## view: {icon: Texture2D, title, description, cost: int, status: String, affordable: bool, soon: String (a note),
 ##   needs: String (the missing parent's name, for "locked")}
 func set_view(view: Dictionary) -> void:
 	_icon.texture = view.get("icon")
+	_icon.category = StringName(view.get("category", &"trophies"))
 	_title = view.get("title", "")
 	_description = view.get("description", "")
 	status = view.get("status", "locked")

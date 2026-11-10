@@ -376,7 +376,7 @@ func _refresh_upgrade_tiles() -> void:
 			lab_note = "\nThe Lab is busy with %s: this can start when it's done." \
 					% Content.get_lab_project(String(Game.research["id"])).get("topic", "")
 		tile.set_view({
-			"icon": Content.icon(def["icon"]), "title": def["name"],
+			"icon": Content.icon(def["icon"]), "category": &"lab", "title": def["name"],  # methods are Lab research
 			"description": "%s\n%s\nLearning it takes %s of research in the Lab.%s" % [def["description"], _method_effect_text(def, learned),
 					Num.format_duration(float(def.get("research_seconds", 0.0))), lab_note],
 			"cost": cost_text, "affordable": can_buy, "owned": learned,
@@ -1001,8 +1001,8 @@ func _refresh_lab() -> void:
 		elif String(def.get("drill_set", "")) != "":
 			line2 += "  ·  or learn %s in the Solve Station drills" % Content.get_drill_set(def["drill_set"]).get("name", "")
 		card.set_view({
-			"icon": Content.icon(def["icon"]), "title": def["name"], "line1": def["description"], "line2": line2,
-			"owned": "✓" if done else "", "affordable": can_start, "active": is_running,
+			"icon": Content.icon(def["icon"]), "category": &"lab", "title": def["name"], "line1": def["description"],
+			"line2": line2, "owned": "✓" if done else "", "affordable": can_start, "active": is_running,
 			"cost": "" if done or is_running else "%s Solves" % Num.format(float(def["cost"])),
 		})
 		(done_order if done else order).append(card)

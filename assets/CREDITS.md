@@ -10,6 +10,11 @@ The in-game Credits screen (task 9.3) must match this file.
 | `assets/fonts/InterVariable.ttf` | Inter 4.1 (variable) | The Inter Project Authors (Rasmus Andersson) | SIL Open Font License 1.1 — full text in `assets/fonts/Inter-OFL.txt` | https://github.com/rsms/inter/releases/tag/v4.1 |
 | `assets/fonts/FredokaVariable.ttf` | Fredoka (variable: wght 300–700, wdth 75–125), the display font (V.1) | The Fredoka Project Authors (Milena Brandão, Hafontia) | SIL Open Font License 1.1 — full text in `assets/fonts/Fredoka-OFL.txt` | https://github.com/google/fonts/tree/main/ofl/fredoka |
 
+## Images
+| File | Asset | Author | License |
+|---|---|---|---|
+| `assets/images/ui/sticker.svg` | Icon sticker tile (greyscale, tinted per category in game; V.2) | Made for Cube Idle | CC0 |
+
 ## Audio
 ### Sound effects
 Made for Cube Idle by `tools/make_sfx.py` (synthesised from scratch: FM electric piano, Karplus-Strong pluck,

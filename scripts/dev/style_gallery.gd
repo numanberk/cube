@@ -48,6 +48,14 @@ const TEXT_SAMPLES := [
 const TIMER_SAMPLES := [[&"TimerLabel", "12.34"], [&"TimerWaiting", "0.00"], [&"TimerDone", "28.71"],
 		[&"TimerGolden", "9.87"]]
 
+## Palette tokens (V.2) shown as swatches, and one IconSticker per category.
+const PALETTE_SURFACES: Array[StringName] = [&"bg", &"inset", &"surface_1", &"surface_2", &"surface_3", &"text",
+		&"text_dim", &"text_faint", &"buy", &"buy_dim", &"gold"]
+const PALETTE_CATEGORIES: Array[StringName] = [&"cat_helpers", &"cat_upgrades", &"cat_puzzles", &"cat_lab",
+		&"cat_trophies", &"cat_station", &"cat_locked"]
+const STICKER_SAMPLES := [[&"helpers", "friend"], [&"upgrades", "lube"], [&"puzzles", "small_cubes"],
+		[&"lab", "lab"], [&"trophies", "competition"], [&"station", "stackmat"], [&"locked", "locked"]]
+
 var page := "kit"
 
 
@@ -73,7 +81,7 @@ func build(which: String) -> void:
 		child.queue_free()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	var background := ColorRect.new()
-	background.color = Color(0.086, 0.094, 0.114)  # the main scene's background
+	background.color = get_theme_color(&"bg", &"Palette")  # the main scene's background
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(background)
 	var margin := MarginContainer.new()
@@ -112,6 +120,9 @@ func _build_kit(columns: HBoxContainer) -> void:
 	ticker.scroll_active = false
 	ticker.text = "R U [b]R'[/b] U'  (TickerText)"
 	text.add_child(ticker)
+	column.add_child(_heading("Palette"))
+	column.add_child(_palette_row(PALETTE_SURFACES))
+	column.add_child(_palette_row(PALETTE_CATEGORIES))
 
 	var controls := _column(columns, "Buttons: normal, hover, pressed, hover+pressed, disabled")
 	for type_name in SWATCH_TYPES:
@@ -122,7 +133,7 @@ func _build_kit(columns: HBoxContainer) -> void:
 		for state: String in SWATCH_STATES:
 			row.add_child(_swatch(type_name, state, "×10" if type_name == &"ToggleChip" else "Buy"))
 		controls.add_child(row)
-	controls.add_child(_heading("Tabs, bars, chips"))
+	controls.add_child(_heading("Tabs, bars, chips, icon stickers"))
 	var tabs := TabContainer.new()
 	tabs.custom_minimum_size = Vector2(0, 44)
 	for tab_name: String in ["Helpers", "Upgrades (4)", "Puzzles", "Lab"]:
@@ -147,6 +158,15 @@ func _build_kit(columns: HBoxContainer) -> void:
 	badges.add_child(_label("U'", &"KeyHint"))
 	badges.add_child(_label("PICK 1", &"ChoiceBadge"))
 	controls.add_child(badges)
+	# Icon stickers, one per category: helpers, upgrades, puzzles, Lab, trophies, Solve Station, locked.
+	var stickers := badges
+	var sticker_scene: PackedScene = load("res://scenes/icon_sticker.tscn")
+	for sample: Array in STICKER_SAMPLES:
+		var sticker: IconSticker = sticker_scene.instantiate()
+		sticker.custom_minimum_size = Vector2(40, 40)
+		sticker.texture = _icon(sample[1])
+		sticker.category = sample[0]
+		stickers.add_child(sticker)
 
 	var panels := _column(columns, "Panels")
 	for panel: Array in [[&"TopBar", "TopBar: the Solves counter"], [&"GoalStrip", "GoalStrip: next goals"],
@@ -160,18 +180,6 @@ func _build_kit(columns: HBoxContainer) -> void:
 	news_lines.add_child(_label("2×2 mastery reached Lv 5", &"NewsOld"))
 	news.add_child(news_lines)
 	panels.add_child(news)
-	var tiles := HBoxContainer.new()
-	for icon: String in ["friend", "club", "robot", "lab"]:
-		var tile := PanelContainer.new()
-		tile.theme_type_variation = &"IconTile"
-		tile.custom_minimum_size = Vector2(56, 56)
-		var image := TextureRect.new()
-		image.texture = _icon(icon)
-		image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tile.add_child(image)
-		tiles.add_child(tile)
-	panels.add_child(tiles)
 	panels.add_child(_heading("Top bar: counter, stat chips"))
 	var counter := HBoxContainer.new()
 	var cube := TextureRect.new()
@@ -213,7 +221,7 @@ func _build_parts(columns: HBoxContainer) -> void:
 		{"icon": _icon("robot"), "title": "Solving Robot", "line1": "Never gets tired.",
 			"line2": "0.21 s a 3×3  ·  +66 moves/s each", "owned": "2", "cost": "15.87K Solves", "affordable": false},
 		{"icon": _icon("lab"), "title": "Algorithm Lab", "line1": "Researching: Look-ahead",
-			"line2": "12m left", "owned": "", "cost": "running", "affordable": false, "active": true},
+			"line2": "12m left", "owned": "", "cost": "running", "affordable": false, "active": true, "category": &"lab"},
 		{"icon": _icon("locked"), "title": "???", "line1": "A new helper appears at 50.00K Solves",
 			"line2": "6.00K / 50.00K", "owned": "", "cost": "", "locked": true},
 	]
@@ -236,7 +244,7 @@ func _build_parts(columns: HBoxContainer) -> void:
 	var middle := _column(columns, "Upgrade tiles: buyable, owned, too dear, pick 1, not picked")
 	var grid := GridContainer.new()
 	grid.theme_type_variation = &"UpgradeGrid"
-	grid.columns = 5
+	grid.columns = 6
 	middle.add_child(grid)
 	var tile_scene: PackedScene = load("res://scenes/upgrade_tile.tscn")
 	var tile_views := [
@@ -247,6 +255,7 @@ func _build_parts(columns: HBoxContainer) -> void:
 			"choice": "Pick one: Speed or Theory"},
 		{"icon": _icon("efficient_solving"), "title": "Theory", "cost": "800", "choice": "Pick one",
 			"locked_out": true},
+		{"icon": _icon("cfop"), "title": "CFOP", "cost": "200", "affordable": true, "category": &"lab"},
 	]
 	for view: Dictionary in tile_views:
 		var tile: Control = tile_scene.instantiate()
@@ -322,6 +331,18 @@ func _panel(variation: StringName, text: String) -> PanelContainer:
 	margin.add_child(_label(text, &"DimLabel"))
 	panel.add_child(margin)
 	return panel
+
+
+func _palette_row(tokens: Array[StringName]) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.theme_type_variation = &"StatRow"
+	for token in tokens:
+		var swatch := ColorRect.new()
+		swatch.color = get_theme_color(token, &"Palette")
+		swatch.custom_minimum_size = Vector2(18, 18)
+		swatch.tooltip_text = String(token)
+		row.add_child(swatch)
+	return row
 
 
 func _bar(variation: StringName, value: float) -> ProgressBar:

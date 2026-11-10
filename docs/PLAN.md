@@ -409,6 +409,8 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
   only on the Compete screen and in the Solve Station (spotlight, timer digits). See §4.7.
   - **D15b Colours:** **yes**, the six sticker colours are category colours; green stays the only "buy / affordable"
     colour (CLAUDE.md rule 9 updated).
+    Mapping chosen in V.2 (easy to change: `Palette/cat_*` in `ui/theme.tres`): helpers blue, upgrades orange, puzzles
+    red, Lab purple (the Megaminx's sixth colour, since green means "buy"), trophies yellow/gold, Solve Station white.
   - **D15c Order:** **Phase V comes before Phase 7's screens; Phase 7's rules may start now** (owner, 2026-11-07,
     changed from "Phase V before Phase 7"). A Phase 7 task can run in parallel with Phase V (PLAN §3 "Parallel
     sessions") as its **rules part**: data in `content.gd`, logic and save in `game.gd`, tests, the balance bot. Split

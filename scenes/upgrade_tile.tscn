@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/upgrade_tile.gd" id="1_tile"]
+[ext_resource type="PackedScene" path="res://scenes/icon_sticker.tscn" id="2_sticker"]
 
 [node name="UpgradeTile" type="Button"]
 custom_minimum_size = Vector2(86, 96)
@@ -27,14 +28,12 @@ theme_type_variation = &"ChoiceBadge"
 text = "PICK 1"
 horizontal_alignment = 1
 
-[node name="Icon" type="TextureRect" parent="Content"]
+[node name="Icon" parent="Content" instance=ExtResource("2_sticker")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(44, 44)
+custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 size_flags_horizontal = 4
-mouse_filter = 2
-expand_mode = 1
-stretch_mode = 5
+category = &"upgrades"
 
 [node name="Cost" type="Label" parent="Content"]
 unique_name_in_owner = true

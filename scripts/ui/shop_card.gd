@@ -3,15 +3,17 @@ extends Button
 ## One helper in the shop: icon, name, description, rate line, owned count and cost.
 ## Display only: main.gd fills it from Game with set_view() and connects `pressed` to the purchase.
 ## Affordable cards are bright with a green cost and lift on hover; others are dimmed with a grey cost.
-## A locked card shows "???", a padlock and what unlocks it.
+## A locked card shows "???", a padlock and what unlocks it. The icon is a sticker in the card's category colour
+## (V.2): helpers by default, `category` in the view for others (Lab); a locked card's sticker is grey.
 
 const LIFT := 3.0          ## pixels an affordable card rises on hover
 const LIFT_TIME := 0.12
+const PRESS_DEPTH := 2.0   ## pixels the content sinks while held, with the card's pressed style (V.2)
 const DIM_UNAFFORDABLE := 0.62
 const DIM_LOCKED := 0.45
 
 @onready var _content: Control = %Content
-@onready var _icon: TextureRect = %Icon
+@onready var _sticker: IconSticker = %IconTile
 @onready var _title: Label = %Title
 @onready var _line1: Label = %Line1
 @onready var _line2: Label = %Line2
@@ -21,18 +23,22 @@ const DIM_LOCKED := 0.45
 var affordable := false
 var locked := false
 var _hovered := false
+var _held := false
 var _tween: Tween
 
 
 func _ready() -> void:
 	mouse_entered.connect(_set_hovered.bind(true))
 	mouse_exited.connect(_set_hovered.bind(false))
+	button_down.connect(_set_held.bind(true))
+	button_up.connect(_set_held.bind(false))
 
 
-## view: {icon: Texture2D, title, line1, line2, owned, cost (strings), affordable: bool, locked: bool, active: bool}
+## view: {icon: Texture2D, title, line1, line2, owned, cost (strings), affordable: bool, locked: bool, active: bool,
+##   category: StringName (IconSticker.CATEGORIES; default helpers)}
 ## `active`: shown bright but not pressable (the Lab project being researched).
 func set_view(view: Dictionary) -> void:
-	_icon.texture = view.get("icon")
+	_sticker.texture = view.get("icon")
 	_title.text = view.get("title", "")
 	_line1.text = view.get("line1", "")
 	_line2.text = view.get("line2", "")
@@ -40,6 +46,7 @@ func set_view(view: Dictionary) -> void:
 	_owned.text = view.get("owned", "")
 	_cost.text = view.get("cost", "")
 	locked = view.get("locked", false)
+	_sticker.category = &"locked" if locked else StringName(view.get("category", &"helpers"))
 	affordable = view.get("affordable", false) and not locked
 	disabled = not affordable
 	_cost.theme_type_variation = &"CostAffordable" if affordable else &"CostUnaffordable"
@@ -52,8 +59,15 @@ func _set_hovered(hovered: bool) -> void:
 	_update_lift()
 
 
+func _set_held(held: bool) -> void:
+	_held = held
+	_update_lift()
+
+
 func _update_lift() -> void:
 	var target := -LIFT if _hovered and affordable else 0.0
+	if _held and affordable:
+		target = PRESS_DEPTH
 	if is_equal_approx(_content.position.y, target):
 		return
 	if _tween != null:

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Cube Idle icon sticker (V.2), drawn for the game, CC0. Greyscale on purpose: IconSticker tints it with a
+       category colour (self_modulate), so white = the colour itself and grey = a darker shade of it.
+       Used as a 9-slice (16 px margins): only the middle stretches, the corners and the bottom edge keep their size. -->
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#a9a9a9"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="#5c5c5c"/>
+  <rect x="0" y="0" width="64" height="60" rx="14" fill="url(#face)"/>
+  <rect x="1" y="1" width="62" height="58" rx="13" fill="none" stroke="url(#rim)" stroke-width="2"/>
+</svg>

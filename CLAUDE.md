@@ -34,7 +34,8 @@ Full design: `docs/DESIGN.md`.
 project.godot              Engine config; autoloads "Game", "Audio", "Settings" (in that order); input action "tap"
 default_bus_layout.tres    Audio buses: Master > Music, SFX
 scenes/main.tscn           The one screen (UI layout)
-ui/theme.tres              Project theme: Inter (body) + Fredoka (display: counters, titles, buttons) fonts, colours, button/tab/bar styles, type variations (see rule 8)
+ui/theme.tres              Project theme: Inter (body) + Fredoka (display: counters, titles, buttons) fonts, colours, button/tab/bar styles, type variations (see rule 8),
+                           and the **palette tokens** `Palette/colors/*` (V.2; read with get_theme_color(&"cat_lab", &"Palette"))
 assets/                    fonts/ (Inter, Fredoka; OFL) and later audio/, images/; every file listed in assets/CREDITS.md
 scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable > Bodies/Stickers MultiMeshes)
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
@@ -61,6 +62,9 @@ scenes/stat_chip.tscn      class StatChip (scripts/ui/stat_chip.gd): a top-bar s
                            set_stat("+73", "/s"), tone normal|accent|gold; icons assets/icons/stat_*.svg
 scripts/ui/fit_row.gd      class FitRow: a row with no minimum width that hides a child that doesn't fit whole (top bar chips)
 scenes/upgrade_tile.tscn   class UpgradeTile (scripts/ui/upgrade_tile.gd): one upgrade icon tile + tooltip panel
+scenes/icon_sticker.tscn   class IconSticker (scripts/ui/icon_sticker.gd): an item icon on a tile in its category colour
+                           (V.2): `texture`, `category` (helpers|upgrades|puzzles|lab|trophies|station|locked); used by
+                           ShopCard, UpgradeTile, PerkNode. The tile is assets/images/ui/sticker.svg tinted by self_modulate
 scenes/puzzle_chip.tscn    class PuzzleChip: one card in the puzzle row (small Low-quality PuzzleView3D, name, Solves/s,
                            share) or the next locked puzzle (padlock, cost, Unlock button)
 scripts/ui/news_feed.gd    class NewsFeed (main.news): the news feed under the shop (R.4): GameState events -> lines,
@@ -123,7 +127,11 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    cube with the Solve Station keys (S.7, `main.handle_turn_key`; rotations aren't taps). Shop and other
    buttons use `focus_mode = none`, so Space never presses a focused button by accident.
    Green `#3ccf8e` (dim `#2a9d6c`) is the one "buy / affordable" colour. The six sticker colours may mark categories
-   (helpers, upgrades, puzzles, Lab, trophies, Solve Station; D15b), on frames and icons, not big fills. Every new asset gets a line in `assets/CREDITS.md`.
+   (D15b), on frames and icons, not big fills: helpers **blue**, upgrades **orange**, puzzles **red**, Lab **purple**
+   (the Megaminx sticker, as green is taken), trophies **yellow** (= gold), Solve Station **white** (`Palette/cat_*`).
+   **Materials (V.2):** background (`bg`) < panels (`surface_1`, soft drop shadow) < cards (`surface_2`, a lit top edge
+   and a solid "slab" under them, drawn with the shadow); pressed things sink 2 px into their slab
+   (`expand_margin_top = -2`). Change a colour in the palette *and* the styles that use it (`test_theme_materials`). Every new asset gets a line in `assets/CREDITS.md`.
 
 ## Subagents
 `.claude/agents/` holds helpers for side jobs. The main session writes the code; don't split a task's code between

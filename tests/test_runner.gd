@@ -854,6 +854,92 @@ func test_theme_is_used_everywhere() -> void:
 			check(theme.get_type_variation_base(variation) != &"", "%s uses theme variation %s, which the theme defines" % [scene_name, variation])
 
 
+func test_theme_materials() -> void:
+	# Task V.2: one palette of tokens (Palette/colors/*), three depth levels, buttons that press down, category stickers.
+	var theme: Theme = load("res://ui/theme.tres")
+	var tokens := ["bg", "inset", "surface_1", "surface_2", "surface_3", "text", "text_dim", "text_faint", "buy",
+			"buy_dim", "gold"]
+	for category: StringName in IconSticker.CATEGORIES:
+		tokens.append("cat_%s" % category)
+	for token: String in tokens:
+		check(theme.has_color(StringName(token), &"Palette"), "the palette has %s" % token)
+	var pal := func(token: String) -> Color: return theme.get_color(StringName(token), &"Palette")
+	check(pal.call("buy").is_equal_approx(Color("#3ccf8e")), "buy is the one green, #3ccf8e (CLAUDE.md rule 9)")
+	var levels := ["bg", "surface_1", "surface_2", "surface_3"]
+	for i in levels.size() - 1:
+		check(pal.call(levels[i + 1]).get_luminance() - pal.call(levels[i]).get_luminance() > 0.025,
+				"%s is clearly lighter than %s" % [levels[i + 1], levels[i]])
+	# Category colours: told apart from each other and from the buy green at a glance (D15b).
+	var cats: Array[Color] = []
+	for category: StringName in IconSticker.CATEGORIES:
+		if category != &"locked":
+			cats.append(pal.call("cat_%s" % category))
+	for i in cats.size():
+		check(_colour_distance(cats[i], pal.call("buy")) > 0.35, "category colour %d is far from the buy green" % i)
+		for j in range(i + 1, cats.size()):
+			check(_colour_distance(cats[i], cats[j]) > 0.3, "category colours %d and %d differ" % [i, j])
+	# The styles use the tokens: background < panels < cards.
+	var main_scene := FileAccess.get_file_as_string("res://scenes/main.tscn")
+	var bg: Color = pal.call("bg")
+	check(main_scene.contains("color = Color(%s, %s, %s, 1)" % [snappedf(bg.r, 0.0001), snappedf(bg.g, 0.0001), snappedf(bg.b, 0.0001)]),
+			"the main screen's background is the bg token")
+	for panel: Array in [[&"TopBar", &"panel"], [&"SidePanel", &"panel"], [&"PanelContainer", &"panel"],
+			[&"TabContainer", &"panel"], [&"NewsPanel", &"panel"]]:
+		var box := theme.get_stylebox(panel[1], panel[0]) as StyleBoxFlat
+		check(box.bg_color.is_equal_approx(pal.call("surface_1")), "%s is a level-1 panel (surface_1)" % panel[0])
+		check(box.shadow_size >= 6 and box.shadow_color.a > 0.2, "%s floats on a soft shadow" % panel[0])
+	for card: StringName in [&"ShopCard", &"PuzzleChipPanel"]:
+		var box := theme.get_stylebox(&"panel" if card == &"PuzzleChipPanel" else &"normal", card) as StyleBoxFlat
+		check(box.bg_color.is_equal_approx(pal.call("surface_2")), "%s is a level-2 card (surface_2)" % card)
+		check(box.shadow_offset.y >= 2.0 and box.border_width_top >= 1, "%s has a slab under it and a lit top edge" % card)
+	# Pressing sinks the face (and its text) into the slab without changing the button's size.
+	for type_name: StringName in [&"Button", &"PrimaryButton", &"GoldenButton", &"IconButton", &"ShopCard", &"ToggleChip"]:
+		var normal := theme.get_stylebox(&"normal", type_name) as StyleBoxFlat
+		var pressed := theme.get_stylebox(&"pressed", type_name) as StyleBoxFlat
+		var down := -pressed.expand_margin_top
+		check(down >= 1.0 and is_equal_approx(pressed.expand_margin_bottom, down), "%s presses down %d px" % [type_name, down])
+		check(is_equal_approx(pressed.shadow_offset.y, normal.shadow_offset.y - down), "%s: the slab shrinks as much" % type_name)
+		check(is_equal_approx(pressed.content_margin_top, normal.content_margin_top + down)
+				and is_equal_approx(pressed.get_minimum_size().y, normal.get_minimum_size().y),
+				"%s: the text moves down with it, the size doesn't change" % type_name)
+	# Icon stickers: the category's colour, white glyph (dark on the light ones).
+	var sticker: IconSticker = load("res://scenes/icon_sticker.tscn").instantiate()
+	root.add_child(sticker)
+	sticker.texture = Content.icon("friend")
+	for category: StringName in IconSticker.CATEGORIES:
+		sticker.category = category
+		check(sticker.self_modulate.is_equal_approx(pal.call("cat_%s" % category)), "a %s sticker is its colour" % category)
+	sticker.category = &"station"
+	check((sticker.get_node("%Glyph") as TextureRect).modulate.get_luminance() < 0.3, "a white sticker gets a dark glyph")
+	sticker.category = &"helpers"
+	check((sticker.get_node("%Glyph") as TextureRect).modulate == Color.WHITE and (sticker.get_node("%Glyph") as TextureRect).texture != null,
+			"a blue sticker gets the white glyph")
+	sticker.free()
+	check(FileAccess.get_file_as_string("res://assets/CREDITS.md").contains("assets/images/ui/sticker.svg"), "the sticker texture is credited")
+	# On the main screen: helpers blue, Lab projects and methods purple, upgrades orange, a locked helper grey.
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	main._refresh()
+	var sticker_of := func(card: Node, path: String) -> StringName: return (card.get_node(path) as IconSticker).category
+	var friend_card: Node = main._helper_cards[Content.BUILDINGS[0]["id"]]
+	var last_card: Node = main._helper_cards[Content.BUILDINGS[-1]["id"]]
+	check(sticker_of.call(friend_card, "%IconTile") == &"helpers", "a helper's sticker is blue (helpers)")
+	check(sticker_of.call(last_card, "%IconTile") == &"locked", "a locked helper's sticker is grey")
+	check(sticker_of.call(main._lab_cards.values()[0], "%IconTile") == &"lab", "a Lab project's sticker is purple")
+	check(sticker_of.call(main._method_tiles.values()[0], "%Icon") == &"lab", "a method (Lab research) tile is purple")
+	check(sticker_of.call(main._upgrade_tiles.values()[0], "%Icon") == &"upgrades", "an upgrade tile is orange")
+	main.free()
+	game.reset_state()
+
+
+## How far apart two colours look, roughly (RGB distance, 0..√3).
+func _colour_distance(a: Color, b: Color) -> float:
+	return Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length()
+
+
 func test_top_bar_stats() -> void:
 	# Task V.1: the top bar shows numbers as an icon + value (+ unit) chips, never "·"-joined sentences.
 	var game: GameState = root.get_node("Game")
