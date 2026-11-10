@@ -8,23 +8,39 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   PuzzleView's rect), faint out-of-focus bokeh discs (mostly warm, a few cool) drifting up very slowly, a vignette and
   a light grain. One full-screen pass, no textures. **Graphics Low:** no shader, the ColorRect's flat `bg` colour.
   **Reduce motion:** the bokeh stops (`drift = 0`).
-- **Stage (3D view):** the puzzle sits on a **cubing mat**, a dark rounded slab made in code
-  (`PuzzleMeshes.rounded_slab(half: Vector3, radius, steps)`, new) under a new `%Floor` node that has the puzzle's
-  resting tilt but not its sway, drag, squash or drop-in, so the puzzle moves on a still mat. The contact shadow lies on
-  the mat (a PlaneMesh now). The mat sits just under the lowest point at rest (the Megaminx from its body polygons);
-  its mesh is cached per puzzle size. **Warm key light** (and a warmer stage glow), a **cool blue rim light** from behind
+- **Stage (3D view):** the puzzle sits on a **cubing mat**: a lighter rim slab with a darker playing surface set into
+  it, like a speed-cubing mat (`PuzzleMeshes.rounded_slab(half: Vector3, radius, steps)`, new; sized from the
+  puzzle's bounding radius so the Megaminx gets one too). It hangs under a new `%Floor` node that tilts with the
+  puzzle (resting tilt, look-around drag, sway, wobble) but doesn't take its squash, bounce or drop-in. The contact
+  shadow lies on the mat (a PlaneMesh now). The mat sits just under the lowest point at rest (the Megaminx from its
+  body polygons); its meshes are cached per puzzle size. **The camera frames puzzle and mat together**
+  (`_frame_camera`: the bounding sphere off-axis plus the mat's corners, so nothing is cut at the view's bottom). **Warm key light** (and a warmer stage glow), a **cool blue rim light** from behind
   so the silhouette pops (High only). `floor_enabled = false` hides the mat: the small puzzle chips use it. The Solve
   Station's view has the mat too (it reads as a timer mat).
 - **Puzzle size → V.4.** The roadmap asked V.3 to grow the puzzle to ~50–60 % of the screen height, but the view only
   gets the height the ~8 rows under it leave (~220 px at 1280×720), and those rows are V.4's job. The goal moved into
-  V.4's text and its *Done when*; `_frame_camera` already frames puzzle + mat to whatever height the view gets.
+  V.4's text and its *Done when* (noted in V.3's entry). Framing the mat too makes the 3×3 about 20 % smaller in the
+  same view for now; V.4's height brings it back and more.
 - **Bench** (software Mesa in the container, so relative only; before → after, ms/frame): `bench` High 86.3 → 97.8
   (+13 %), Low 39.2 → 37.2; `bench_row` High 105.8 → 110.2 (+4 %), Low 52.1 → 52.0. Within the +15 % budget; most of
   it is the full-screen shader on a software rasteriser. `tools/screenshot.gd` now sets the quality through
   `Settings` (`GRAPHICS=` and the bench), like the game, so Low/High also switch the background.
-- Tests: `test_stage_and_background` (the slab's size; 2×2, 3×3, 7×7 and the Megaminx sit just above their mat, which
-  has the resting tilt and is bigger than the puzzle; a squash doesn't move the mat; rim light High only; chips have
-  no mat; the background shader on High, flat `bg` on Low, Reduce motion stops the drift, the lamp follows the puzzle).
+- Tests: `test_stage_and_background` (the slab's size and evenly lit flat top; 2×2, 3×3, 7×7 and the Megaminx sit
+  just above their mat, which is bigger than the puzzle and wholly inside the camera's view; a squash doesn't touch
+  the mat, a drag tilts it with the puzzle; rim light High only; chips have no mat; the background shader on High,
+  flat `bg` on Low, Reduce motion stops the drift, the lamp follows the puzzle).
+- **diff-reviewer fixes:** a look-around drag (up to 0.7 rad) buried the cube's front edge in the still mat → the mat
+  tilts with the puzzle now; the camera didn't frame the mat (the Megaminx's mat ran off the view's bottom) → framed;
+  `rounded_slab` skipped the vertex row at +inner, which smeared the top's normals (a diagonal light gradient) →
+  fixed and tested. **`PuzzleMeshes.rounded_box` (every cubie) has the same skipped row** (since Phase 1: the +
+  side's rounding is one segment coarser); left alone here because fixing it adds ~36 % body triangles and moves the
+  bench; worth a small task. The bokeh jumped once an hour (Godot's `TIME` wraps at 3600 s) → the drift and the
+  pattern's period now line up, so the wrap is invisible; hash inputs are kept small for old GPUs' `sin()`. The
+  lamp is re-placed on every refresh (an ancestor moving the view didn't move it). The gradient's colours come from
+  the palette's `bg`. **Not changed:** a side-layer turn's corner dips a little into the mat mid-turn (a real cube
+  would lift); it's brief and the rim hides most of it. The solve bounce (scale ×1.05) touches it for a frame or two.
+- Screenshot PNGs: the shader's per-pixel grain makes them ~600 KB, so the committed copies in `docs/` are quantised
+  to 256 colours (Pillow); the game keeps the grain.
 - Screenshots: `docs/screenshots/V.3-stage/` (before: `docs/screenshots/V.2-materials/`).
 - **Next: V.4** (declutter; now also the puzzle's size).
 

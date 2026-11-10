@@ -45,7 +45,7 @@ static func rounded_slab(half: Vector3, radius: float, steps: int = 3) -> ArrayM
 		var line := PackedFloat32Array()
 		for i in steps + 1:
 			line.append(lerpf(-half[axis], -inner[axis], float(i) / steps))
-		for i in range(1, steps + 1):
+		for i in steps + 1:  # from +inner itself, so the flat middle is one segment and both curves are alike
 			line.append(lerpf(inner[axis], half[axis], float(i) / steps))
 		coords.append(line)
 	var st := SurfaceTool.new()

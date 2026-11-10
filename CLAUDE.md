@@ -38,7 +38,7 @@ ui/theme.tres              Project theme: Inter (body) + Fredoka (display: count
                            and the **palette tokens** `Palette/colors/*` (V.2; read with get_theme_color(&"cat_lab", &"Palette"))
 assets/                    fonts/ (Inter, Fredoka; OFL) and later audio/, images/; every file listed in assets/CREDITS.md
 scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable > Bodies/Stickers MultiMeshes; Floor >
-                           Mat + Shadow: the cubing mat, V.3; Key/Fill/Rim lights)
+                           Mat + MatInset + Shadow: the cubing mat, V.3; Key/Fill/Rim lights)
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
 scripts/autoload/audio.gd  class AudioManager ("Audio"): play_click/solve/buy/unlock (rate-limited), bus volumes,
                            music (Content.TRACKS; 2 players crossfading 2 s; follow/shuffle/loop; ducks when unfocused)

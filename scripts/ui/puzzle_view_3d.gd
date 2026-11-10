@@ -20,9 +20,9 @@ extends SubViewportContainer
 ## Graphics (task 1.5): "high" = MSAA 4×, rounded pieces, glow and shadow; "low" = no MSAA, bevelled pieces
 ## (about 5× fewer triangles), no glow or shadow. main.gd applies the player's choice from Settings.
 ## Reduce motion (set_reduce_motion) turns off sway, squash, bounce and the speed-mode wobble.
-## Stage v2 (task V.3): the puzzle sits on a cubing mat (Floor > Mat, a rounded slab made in code; the contact shadow
-## lies on it). Floor has the puzzle's resting tilt but not its sway, drag, squash or drop, so the puzzle moves on a
-## still mat. A warm key light, a cool rim light from behind (High only) so the silhouette pops, and a warm glow.
+## Stage v2 (task V.3): the puzzle sits on a cubing mat (Floor > Mat + MatInset, rounded slabs made in code; the
+## contact shadow lies on it). Floor tilts with the puzzle (resting tilt, drag, sway, wobble) but doesn't take its
+## squash, bounce or drop-in, and Turntable's spin happens above it. The camera frames puzzle and mat together. A warm key light, a cool rim light from behind (High only) so the silhouette pops, and a warm glow.
 ## `floor_enabled = false` hides the mat (the small puzzle chips).
 ## Manual mode (Solve Station, task S.1): show_state(moves) shows an exact state (solved + those moves), turn(move)
 ## animates one given move, turn_time sets how fast (pros turn at 5-10 TPS, so the station uses a short time) and
@@ -706,6 +706,7 @@ func _animate_effects(delta: float) -> void:
 	# Turntable spins around the puzzle's own up axis; Puzzle tilts around the screen's horizontal axis.
 	_turntable.basis = _base_turntable.rotated(Vector3.UP, yaw)
 	_puzzle.basis = _base_puzzle.rotated(Vector3.RIGHT, pitch)
+	_floor.basis = _puzzle.basis  # a look-around drag (and the wobble) tilts the mat too, or the puzzle would dip into it
 
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta * FLASH_DECAY)
@@ -893,20 +894,47 @@ func _frame_camera() -> void:
 		return
 	var radius := model.radius  # bounding sphere of the pieces
 	var extent := _extent()
-	var half_fov := deg_to_rad(_camera.fov) / 2.0
-	if size.x > 0.0 and size.y > 0.0 and size.x < size.y:
-		half_fov = atan(tan(half_fov) * size.x / size.y)  # narrow views are limited by their width
-	_camera.position = Vector3(0.0, -extent * CAMERA_DROP, radius * FRAME_DISTANCE / sin(half_fov))
+	_place_floor(radius, extent)
+	# The camera looks down -Z from (0, y, distance). It must fit the puzzle's bounding sphere (it turns and sways)
+	# and the mat's corners (V.3). Height is the view's fixed axis; a narrow view is limited by its width.
+	var aspect := size.x / size.y if size.x > 0.0 and size.y > 0.0 else 1.0
+	var tan_v := tan(deg_to_rad(_camera.fov) / 2.0)
+	var tan_h := tan_v * aspect
+	var corners := _mat_corners()
+	var bottom := -radius
+	for corner in corners:
+		bottom = minf(bottom, corner.y)
+	var centre_y := (radius + bottom) / 2.0 - extent * CAMERA_DROP
+	var half_fov := atan(minf(tan_v, tan_h))
+	var distance := radius / sin(half_fov) + absf(centre_y) / tan(half_fov)  # the sphere, off the view's axis
+	for corner in corners:
+		distance = maxf(distance, corner.z + absf(corner.y - centre_y) / tan_v)
+		distance = maxf(distance, corner.z + absf(corner.x) / tan_h)
+	_camera.position = Vector3(0.0, centre_y, distance * FRAME_DISTANCE)
 	_camera.near = 0.1
 
 	# Backdrop: a quad behind the puzzle that exactly fills the view.
 	var depth := _camera.position.z + radius * 1.5
-	var height := 2.0 * depth * tan(deg_to_rad(_camera.fov) / 2.0)
-	var aspect := size.x / size.y if size.y > 0.0 else 1.0
+	var height := 2.0 * depth * tan_v
 	(_backdrop.mesh as QuadMesh).size = Vector2(height * aspect, height) * 1.02
-	_backdrop.position = Vector3(0.0, extent * CAMERA_DROP, -depth)  # centred on the puzzle, not the camera
+	_backdrop.position = Vector3(0.0, -centre_y, -depth)  # centred on the puzzle, not the camera
 	_camera.far = depth + 1.0
 
+
+## The mat's eight corners in view space (at rest), for framing and tests.
+func _mat_corners() -> Array[Vector3]:
+	var corners: Array[Vector3] = []
+	if _mat.mesh == null:
+		return corners
+	var box := (_mat.mesh as ArrayMesh).get_aabb()
+	for i in 8:
+		var local := box.position + box.size * Vector3(i & 1, (i >> 1) & 1, (i >> 2) & 1)
+		corners.append(_base_puzzle * (_mat.position + local))
+	return corners
+
+
+## Places the mat and the contact shadow for the current puzzle.
+func _place_floor(radius: float, extent: float) -> void:
 	# The mat (V.3): a slab under the puzzle's lowest point at rest, in the puzzle's tilted frame (Floor), so the
 	# puzzle sits on it. The contact shadow lies on its top. Turntable spins around the puzzle's up axis, so the
 	# lowest point doesn't depend on the turn.

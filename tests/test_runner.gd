@@ -770,7 +770,18 @@ func test_view_graphics_quality() -> void:
 func test_stage_and_background() -> void:
 	# Task V.3: the puzzle sits on a cubing mat, a rim light makes its outline pop, and a desk background (High only).
 	var slab := PuzzleMeshes.rounded_slab(Vector3(2.0, 0.1, 1.5), 0.05)
-	check(slab.get_aabb().size.is_equal_approx(Vector3(4.0, 0.2, 3.0)), "a rounded slab is as big as asked: %s" % slab.get_aabb().size)
+	check(slab.get_aabb().size.is_equal_approx(Vector3(4.0, 0.2, 3.0)) and slab.get_aabb().get_center().is_zero_approx(),
+			"a rounded slab is as big as asked, centred: %s" % slab.get_aabb())
+	var arrays := slab.surface_get_arrays(0)
+	var flat_top := 0
+	var tilted := 0
+	for i in (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size():
+		var v: Vector3 = arrays[Mesh.ARRAY_VERTEX][i]
+		if is_equal_approx(v.y, 0.1) and absf(v.x) <= 1.95 + 0.0001 and absf(v.z) <= 1.45 + 0.0001:
+			flat_top += 1
+			if not (arrays[Mesh.ARRAY_NORMAL][i] as Vector3).is_equal_approx(Vector3.UP):
+				tilted += 1
+	check(flat_top > 0 and tilted == 0, "the slab's flat top is lit evenly: every normal there points up (%d of %d tilted)" % [tilted, flat_top])
 	var view := new_view()
 	for id: String in ["2x2", "3x3", "7x7", "megaminx"]:
 		view.set_puzzle(id)
@@ -790,10 +801,21 @@ func test_stage_and_background() -> void:
 		check(view._floor.basis.is_equal_approx(view._base_puzzle), "%s: the mat has the puzzle's resting tilt" % id)
 		var mat_size: Vector3 = (view._mat.mesh as ArrayMesh).get_aabb().size
 		check(mat_size.x > extent and mat_size.z > extent, "%s: the mat is wider and deeper than the puzzle" % id)
+		var outside := 0
+		for corner: Vector3 in view._mat_corners():
+			if not view._camera.is_position_in_frustum(corner):
+				outside += 1
+		check(view._mat_corners().size() == 8 and outside == 0, "%s: the camera sees the whole mat (%d corners outside)" % [id, outside])
 	view.squash()
 	view._process(0.02)
-	check(view._floor.basis.is_equal_approx(view._base_puzzle) and view._floor.scale.is_equal_approx(Vector3.ONE),
-			"a squash moves the puzzle, not the mat")
+	check(view._floor.scale.is_equal_approx(Vector3.ONE) and not view._puzzle.scale.is_equal_approx(Vector3.ONE),
+			"a squash squashes the puzzle, not the mat")
+	view._drag_pitch = 0.4
+	view._pressing = true
+	view._process(0.02)
+	check(view._floor.basis.is_equal_approx(view._puzzle.basis) and not view._floor.basis.is_equal_approx(view._base_puzzle),
+			"a look-around drag tilts the mat with the puzzle, so the puzzle never dips into it")
+	view._pressing = false
 	check(view._rim_light.visible, "High has the rim light")
 	view.set_graphics("low")
 	check(not view._rim_light.visible and view._floor.visible, "Low drops the rim light, keeps the mat (a few triangles)")
@@ -824,7 +846,7 @@ func test_stage_and_background() -> void:
 			"Low: the flat bg colour, no shader")
 	settings.set_value("quality", "high")
 	check(background.material == main._background_material, "High brings it back")
-	main._place_lamp()
+	main._refresh()  # places the lamp (every refresh, so it follows any layout change)
 	var lamp: Vector2 = main._background_material.get_shader_parameter("lamp_center")
 	var expected: Vector2 = (main.get_node("%PuzzleView") as Control).get_global_rect().get_center() / main.get_viewport_rect().size
 	check(lamp.is_equal_approx(expected), "the lamp glow sits behind the puzzle: %s" % lamp)

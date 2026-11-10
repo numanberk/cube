@@ -22,6 +22,7 @@ const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
 @onready var puzzle_view: PuzzleView3D = %PuzzleView
 @onready var background: ColorRect = %Background
 @onready var _background_material: ShaderMaterial = background.material
+var _lamp_center := Vector2(-1.0, -1.0)  ## last lamp_center sent to the background shader
 @onready var move_ticker: RichTextLabel = %MoveTicker
 @onready var stage_chips: HBoxContainer = %StageChips
 @onready var news_list: VBoxContainer = %NewsList
@@ -99,7 +100,6 @@ func _ready() -> void:
 	buy_ten.pressed.connect(set_buy_amount.bind(10))
 	buy_max.pressed.connect(set_buy_amount.bind(GameState.BUY_MAX))
 	_apply_display_settings()
-	puzzle_view.item_rect_changed.connect(_place_lamp)
 	Game.solved.connect(_on_solved)
 	Game.purchased.connect(_on_purchased)
 	Game.state_reset.connect(_on_state_reset)
@@ -284,6 +284,7 @@ func _refresh() -> void:
 		Num.format(Game.total_moves),
 	]
 
+	_place_lamp()
 	_refresh_helper_cards()
 	_refresh_upgrade_tiles()
 	_refresh_lab()
@@ -1141,6 +1142,9 @@ func _apply_display_settings() -> void:
 	var reduce: bool = Settings.get_value("reduce_motion")
 	# The desk background (V.3): High only; Low keeps the ColorRect's flat bg colour. Reduce motion stops the bokeh.
 	background.material = _background_material if Settings.get_value("quality") == "high" else null
+	var bg := get_theme_color(&"bg", &"Palette")  # the shader's gradient follows the palette (CLAUDE.md rule 9)
+	_background_material.set_shader_parameter("base_top", bg.lightened(0.02))
+	_background_material.set_shader_parameter("base_bottom", bg.darkened(0.2))
 	_background_material.set_shader_parameter("drift", 0.0 if reduce else 1.0)
 	puzzle_view.set_reduce_motion(reduce)
 	fx.particles_enabled = not reduce
@@ -1148,12 +1152,16 @@ func _apply_display_settings() -> void:
 		(_chips[id] as PuzzleChip).set_reduce_motion(reduce)
 
 
-## The background's lamp glow sits behind the puzzle, wherever the layout puts it.
+## The background's lamp glow sits behind the puzzle, wherever the layout puts it. Called from _refresh (10×/s),
+## so it follows any layout change (an ancestor moving the view doesn't change the view's own rect).
 func _place_lamp() -> void:
 	var screen := get_viewport_rect().size
-	if screen.x > 0.0 and screen.y > 0.0:
-		var centre := puzzle_view.get_global_rect().get_center()
-		_background_material.set_shader_parameter("lamp_center", centre / screen)
+	if screen.x <= 0.0 or screen.y <= 0.0:
+		return
+	var lamp := puzzle_view.get_global_rect().get_center() / screen
+	if not lamp.is_equal_approx(_lamp_center):
+		_lamp_center = lamp
+		_background_material.set_shader_parameter("lamp_center", lamp)
 
 
 func _on_setting_changed(key: String) -> void:
