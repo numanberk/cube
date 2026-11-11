@@ -14,6 +14,7 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
 | R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
+| V.4 finish: shelf onto the stage (owner: option b) | `ccr-134df3dd-c0lub2` | 2026-11-11 | `scenes/main.tscn`, `scenes/puzzle_chip.tscn` | `main.gd` (layout), `ui/theme.tres`, `tests/test_runner.gd` | no |
 
 *(Rows added for the sessions that started before this rule; their own files are an estimate. Each
 session corrects its row when it merges.)*
