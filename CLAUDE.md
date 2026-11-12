@@ -78,6 +78,9 @@ scripts/ui/ui_fx.gd        class UiFx: the motion kit (V.6), static tween helper
                            roll_number, sheen, breathe, open_panel/close_panel, fly_text); UiFx.reduce_motion makes every
                            one end at once (returns null). Panels open/close through it; a closing panel is
                            UiFx.is_closing() (still visible): don't read `.visible` alone as "open"
+scenes/banner.tscn         class Banner (scripts/ui/banner.gd, %Banner): big-moment banners (V.7): push({kind, title,
+                           subtitle, icon, category}), advance(delta); one at a time, same kinds merge, short queue,
+                           per-kind cooldown; confetti in the sticker colours + a light sweep over the stage
 scripts/ui/fx_layer.gd     class FxLayer (%FxLayer in main.tscn): pooled floating "+N" texts (max 20) + solve particle burst
 scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle/set_speed,
                            `tapped`; animated turn queue, solve replay, speed mode (see its header comment)
@@ -128,7 +131,8 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    PopSolve, TimerLabel, TimerWaiting, TimerDone, ScrambleLabel, SidePanel, StageChip, StageChipActive, StageChipDone,
    StageChipRow, TickerText, KeyHint, GoalBar, GoalLabel, GoalLabelDim, NewsPanel, NewsNew, NewsOld, GoldenButton,
    TimerGolden, ChoiceBadge, PerkOwned, PerkName, CounterLabel, CounterCaption, StatChip, StatRow, StatValue,
-   StatValueAccent, StatValueGold, StatUnit, IconButton, CostBar, CostBarDim, Pip, PipReady, PipOn, TileFrame, CountBubble;
+   StatValueAccent, StatValueGold, StatUnit, IconButton, CostBar, CostBarDim, Pip, PipReady, PipOn, TileFrame, CountBubble,
+   Banner, BannerTitle, BannerSub;
    PerkTree holds the tree's line colours), or add
    a new variation (and show it in the style gallery, `scenes/dev/style_gallery.tscn`; a test checks).
 9. **Taps:** clicking the puzzle, the `tap` input action (Space / Enter, no repeat when held), or a turn of the main
@@ -204,6 +208,7 @@ POSE=turn bash tools/screenshot.sh /tmp/shots mid                 # frozen momen
 GRAPHICS=low bash tools/screenshot.sh /tmp/shots mid              # Graphics: Low -> mid_low.png
 TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 Upgrades / 2 Puzzles / 3 Lab -> mid_tab1.png
 JUICE=1 bash tools/screenshot.sh /tmp/shots mid                   # taps, solve pop, a buy, Settings half-open (V.6) -> mid_juice.png
+BANNER=puzzle bash tools/screenshot.sh /tmp/shots mid             # a big-moment banner: puzzle|helper|method|champion (V.7) -> mid_bannerpuzzle.png
 BUY=10 bash tools/screenshot.sh /tmp/shots mid                    # shop on ×10 (BUY=-1: Max) -> mid_buy10.png
 SETTINGS=1 bash tools/screenshot.sh /tmp/shots mid                # Settings panel open -> mid_settings.png
 SOLVE=done bash tools/screenshot.sh /tmp/shots mid                # Solve Station: inspecting|solving|done -> mid_solvedone.png

@@ -86,6 +86,10 @@ const MAT_INSET_COLOR := Color("#0c0d11")  ## ...and the darker playing surface 
 const MAT_RIM := 0.07           ## the rim's width, × the puzzle's bounding radius
 const MAT_STEPS := 3
 const RIM_DIRECTION := Vector3(-0.45, -0.5, 0.75)  ## the rim light shines from behind the puzzle, towards the camera
+const RIM_ENERGY := 0.9         ## the rim light's resting energy (the scene's RimLight)...
+const RIM_FLASH := 2.6          ## ...the extra a solve burst adds (V.7: the stage light flashes, not only 2D sparks)...
+const RIM_FLASH_DECAY := 6.0    ## ...how fast that extra fades, per second...
+const RIM_FLASH_INTERVAL := 3.0 ## ...and at most one flash this often (solve bursts come every 0.5 s at speed)
 const CAMERA_DROP := 0.1        ## camera sits this × size below centre, so the puzzle rides higher (room for the shadow)
 const BackdropShader := preload("res://scripts/ui/shaders/stage_backdrop.gdshader")
 const ShadowShader := preload("res://scripts/ui/shaders/contact_shadow.gdshader")
@@ -111,6 +115,8 @@ var record_moves := false
 var sway_enabled := true        ## idle sway; "Reduce motion" (3.4) turns it off
 var graphics_quality := "high"  ## see set_graphics()
 var reduce_motion := false      ## see set_reduce_motion()
+var _rim_boost := 0.0           ## rim_flash()'s extra light, fading
+var _last_rim_flash := -INF     ## _clock at the last rim flash
 ## Multiplies FRAME_DISTANCE for this view (< 1 zooms in). The main stage uses a little zoom (V.4): the bounding sphere
 ## is a safe but loose frame, and what it would crop first is the mat's front edge, which the stage overlay covers anyway.
 var frame_zoom := 1.0:
@@ -312,6 +318,21 @@ func squash() -> void:
 func drop_in() -> void:
 	if not reduce_motion:
 		_drop = DROP_TIME
+
+
+## A brief flare of the rim light (V.7, with the solve burst), at most every RIM_FLASH_INTERVAL. High only (Low has
+## no rim light); not with Reduce motion. Returns true if it flared.
+func rim_flash() -> bool:
+	if not _rim_light.visible or reduce_motion or _clock - _last_rim_flash < RIM_FLASH_INTERVAL:
+		return false
+	_last_rim_flash = _clock
+	_rim_boost = RIM_FLASH
+	return true
+
+
+## The rim light's energy now (tests).
+func get_rim_energy() -> float:
+	return _rim_light.light_energy
 
 
 ## Reduce motion: no idle sway, tap squash, solve bounce or speed-mode wobble. Turns still animate (they're the game).
@@ -736,6 +757,9 @@ func _animate_effects(delta: float) -> void:
 	_puzzle.basis = _base_puzzle.rotated(Vector3.RIGHT, pitch)
 	_floor.basis = _base_puzzle.rotated(Vector3.RIGHT, pitch)  # the drag/wobble tilt (not the squash), or the puzzle would dip into the mat
 
+	if _rim_boost > 0.0 or not is_equal_approx(_rim_light.light_energy, RIM_ENERGY):
+		_rim_boost = maxf(0.0, _rim_boost - delta * RIM_FLASH_DECAY)
+		_rim_light.light_energy = RIM_ENERGY + _rim_boost
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta * FLASH_DECAY)
 		_sticker_material.emission_energy_multiplier = _flash

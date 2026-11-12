@@ -1016,6 +1016,16 @@ corner_radius_top_right = 9
 corner_radius_bottom_right = 9
 corner_radius_bottom_left = 9
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_banner"]
+content_margin_left = 24.0
+content_margin_top = 12.0
+content_margin_right = 24.0
+content_margin_bottom = 12.0
+bg_color = Color(0.1059, 0.1176, 0.1451, 0.985)
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 16
+shadow_offset = Vector2(0, 6)
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -1060,6 +1070,17 @@ ProgressBar/styles/background = SubResource("StyleBoxFlat_qxik8")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_iag4h")
 StackBox/base_type = &"VBoxContainer"
 StackBox/constants/separation = 14
+Banner/base_type = &"PanelContainer"
+Banner/styles/panel = SubResource("StyleBoxFlat_banner")
+BannerTitle/base_type = &"Label"
+BannerTitle/colors/font_color = Color(0.9255, 0.9333, 0.9490, 1)
+BannerTitle/colors/font_shadow_color = Color(0, 0, 0, 0.5)
+BannerTitle/constants/shadow_offset_y = 2
+BannerTitle/font_sizes/font_size = 32
+BannerTitle/fonts/font = SubResource("FontVariation_display_bold")
+BannerSub/base_type = &"Label"
+BannerSub/colors/font_color = Color(0.6667, 0.6902, 0.7412, 1)
+BannerSub/font_sizes/font_size = 16
 SubtitleLabel/base_type = &"Label"
 SubtitleLabel/colors/font_color = Color(0.6666667, 0.6901961, 0.7411765, 1)
 SubtitleLabel/font_sizes/font_size = 18

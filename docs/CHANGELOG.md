@@ -2,6 +2,38 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-12 — Task V.7: big moments
+- **Banners** (`scenes/banner.tscn`, `scripts/ui/banner.gd`, class `Banner`, `%Banner` in main.tscn between the FX
+  layer and the panels, so an open panel covers it): full width, the item's icon sticker, a title in the display font
+  (`BannerTitle`), a line under it (`BannerSub`), accent lines in the category colour, a burst of **confetti in the six
+  sticker colours** (a real cube's: `PuzzleShapes.CUBE_COLORS`, green included) drawn behind the strip, and a soft
+  additive **light sweep** across the stage. main.gd pushes **only firsts** (no save change: the permanent records
+  say what the player had before):
+  - "New puzzle unlocked: 4×4" (`_on_puzzle_unlocked`, `main.puzzle_banner(id)`: moves a solve, Solves each),
+  - "New helper: Solving Robot" (when a helper is revealed and its "own 1" achievement isn't earned yet),
+  - "Method learned: CFOP" (`purchased("method")`, also from the Lab, unless its method achievement is earned),
+  - new puzzles only if not in `Game.puzzles_reached` when the run started (kept through championships: the 7×7's first
+    unlock in run 2 is news, the 3×3's again is not),
+  - "World Champion!" (+N trophies; bigger confetti).
+- **Never spam:** one banner at a time (2.6 s, 0.35 s gap), driven by `advance(delta)` from `main._process` (tests use
+  fake time); a moment of a kind already waiting **merges** into it ("and 2 more, latest …"); at most 3 wait (the
+  oldest ordinary one makes room); each kind then **cools down 8 s**; a championship always gets through.
+- **Reduce motion:** the banner still shows (it carries information) but appears at once, with no confetti or sweep.
+- A championship or a save reset `clear()`s the queue first (old news), and banners wait while a panel covers them.
+- **The solve burst flashes the stage light:** `PuzzleView3D.rim_flash()` lifts the rim light (High only; not with
+  Reduce motion), at most every 3 s (bursts come every 0.5 s at speed, which made it strobe).
+- `BANNER=puzzle|helper|method|champion` screenshot option (tools/screenshot.sh + .gd).
+- Tests: `test_banner_queue` (shows, merges, short queue, championships get through, cooldown, Reduce motion, clear),
+  `test_banner_no_spam` (three 10-minute runs of very fast progress through the real main screen with a championship
+  between them: same kind never within its cooldown, later runs announce no helpers/methods the player had, few
+  pushes after run 1), `test_rim_flash`.
+- **Review fixes (screenshot-checker, diff-reviewer):** confetti lacked green (category colours, not sticker ones);
+  the sweep read as a grey bar (now soft and additive, kept on the stage); confetti over the text; the shop showing
+  through the banner; the rim light strobing; "new" banners repeating every run; old banners and "World Champion!"
+  queued behind them after a reset; tests that couldn't fail.
+- Theme: `Banner`, `BannerTitle`, `BannerSub` (in the style gallery's parts page; also listed in CLAUDE.md rule 8).
+- Screenshots: `docs/screenshots/V.7-moments/`.
+
 ## 2026-11-12 — Task V.6: motion kit
 - **`scripts/ui/ui_fx.gd` (class `UiFx`):** static tween helpers, no rules: `pop_in`, `pop`, `squash`, `slide_in`,
   `shake`, `roll_number`, `sheen`, `breathe`, `open_panel` / `close_panel`, `fly_text`, `is_closing`. **Every one honours

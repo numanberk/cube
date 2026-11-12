@@ -59,6 +59,7 @@ var _lamp_center := Vector2(-1.0, -1.0)  ## last lamp_center sent to the backgro
 @onready var upgrade_list: GridContainer = %UpgradeList
 @onready var tabs: TabContainer = %Tabs
 @onready var fx: FxLayer = %FxLayer
+@onready var banner: Banner = %Banner
 @onready var puzzle_row: GridContainer = %PuzzleRow
 @onready var shelf: Control = %Shelf
 @onready var split_panel: SplitPanel = %SplitPanel
@@ -86,6 +87,7 @@ var _solve_pop_timer := 0.0
 var _burst_timer := 0.0
 var _buy_amount := 1               ## 1, 10 or GameState.BUY_MAX (the ×1 / ×10 / Max toggle)
 var _revealed: Dictionary = {}
+var _known_puzzles: Dictionary = {}  ## puzzles the player had before (V.7: no "New puzzle" banner for them)
 var _chips: Dictionary = {}          ## unlocked puzzle id -> PuzzleChip (the focused one is hidden)
 var _locked_chip: PuzzleChip         ## the next puzzle to unlock
 var _hold_counter := false        ## keeps the counter still while the Welcome back panel is open
@@ -149,11 +151,15 @@ func _ready() -> void:
 	for def: Dictionary in Content.BUILDINGS:
 		if Game.is_building_unlocked(def["id"]):
 			_revealed[def["id"]] = true  # already known at start: no sound
+	_known_puzzles = Game.puzzles_reached.duplicate()  # kept through championships (V.7)
 	_refresh()
 	_show_offline_report()
 
 
 func _process(delta: float) -> void:
+	banner.stage_rect = puzzle_view.get_global_rect()
+	if not _overlay_open():  # V.7: big moments, one at a time; they wait while a panel covers them
+		banner.advance(delta)
 	Game.automation_paused = welcome_panel.visible  # auto-buyers (6.3b) wait until "Welcome back" is collected
 	Game.auto_compete_held = solve_station.visible or compete_panel.visible  # never reset the run under the player
 	if _goal_bar_mode():
@@ -343,6 +349,9 @@ func _refresh_helper_cards() -> void:
 			if not _revealed.has(id):
 				_revealed[id] = true
 				Audio.play_unlock()
+				if not Game.is_achievement_earned("team_%s_1" % id):  # V.7: only a helper never owned before is news
+					banner.push({"kind": "helper", "title": "New helper: %s" % def["name"], "name": def["name"],
+							"subtitle": def["description"], "icon": Content.icon(def["icon"]), "category": &"helpers"})
 			var owned: int = Game.buildings[id]
 			var each := Game.get_building_mps(id)
 			var count := _buy_count(id)
@@ -569,6 +578,7 @@ func _pop_solves(delta: float) -> void:
 	_solve_pop_timer = SOLVE_POP_INTERVAL
 	if _burst_timer <= 0.0:
 		fx.burst(center)
+		puzzle_view.rim_flash()  # V.7: the stage light flares with the sparks
 		_burst_timer = BURST_INTERVAL
 
 
@@ -703,10 +713,23 @@ func _on_mastery_level_up(puzzle_id: String, level: int) -> void:
 			Audio.play_unlock()
 
 
-func _on_puzzle_unlocked(_puzzle_id: String) -> void:
+func _on_puzzle_unlocked(puzzle_id: String) -> void:
 	_build_puzzle_row()
 	puzzle_view.drop_in()
 	Audio.play_unlock()
+	if not _known_puzzles.has(puzzle_id):  # V.7: only a puzzle never had before (later runs unlock them again)
+		_known_puzzles[puzzle_id] = true
+		banner.push(puzzle_banner(puzzle_id))
+
+
+## V.7: "New puzzle unlocked: 4×4".
+func puzzle_banner(puzzle_id: String) -> Dictionary:
+	var def := Content.get_puzzle(puzzle_id)
+	return {"kind": "puzzle", "title": "New puzzle unlocked: %s" % def.get("name", puzzle_id), "name": def.get("name", puzzle_id),
+			"subtitle": "%s moves a solve, %s Solves each. Share your helpers in the Puzzles tab."
+					% [Num.format(Game.get_moves_per_solve(puzzle_id)), Num.format(Game.get_solve_value(puzzle_id))],
+			"icon": Content.icon("big_cubes" if float(def.get("moves_per_solve", 0.0)) >= 60.0 else "small_cubes"),
+			"category": &"puzzles"}
 
 
 # --- Showcase solve (task R.2) -------------------------------------------------------
@@ -1144,6 +1167,7 @@ func _on_lab_card_pressed(id: String) -> void:
 
 
 func _on_state_reset() -> void:
+	banner.clear()
 	news = NewsFeed.new()
 	_show_news()
 	_rebuild_after_reset()
@@ -1157,6 +1181,10 @@ func _on_championship_won(trophies_won: int) -> void:
 		Num.format(float(trophies_won)), "trophy" if trophies_won == 1 else "trophies",
 		Num.format(roundf((Game.get_trophy_mult() - 1.0) * 100.0))])
 	Audio.play_unlock()
+	banner.clear()  # the old run's moments are old news
+	banner.push({"kind": "championship", "title": "World Champion!",  # V.7
+			"subtitle": "+%s %s. A new run starts." % [Num.format(float(trophies_won)), "trophy" if trophies_won == 1 else "trophies"],
+			"icon": Content.icon("stat_trophy"), "category": &"trophies"})
 	_rebuild_after_reset()
 
 
@@ -1166,6 +1194,7 @@ func _rebuild_after_reset() -> void:
 	_start_showcase()
 	_build_puzzle_row()
 	_shown_solves = Game.solves
+	_known_puzzles = Game.puzzles_reached.duplicate()
 	_revealed.clear()
 	for def: Dictionary in Content.BUILDINGS:
 		if Game.is_building_unlocked(def["id"]):
@@ -1179,6 +1208,11 @@ func _on_purchased(kind: String, _id: String) -> void:
 			StagedSolver.warm_up(id, [Game.method])
 	if kind == "method" and _showcase != null:
 		_showcase.method = Game.method  # the next showcase solve uses it
+	if kind == "method" and not Game.is_achievement_earned("method_" + Game.method):  # V.7: the first time only
+		var learned := Content.get_method(Game.method)
+		banner.push({"kind": "method", "title": "Method learned: %s" % String(learned.get("name", "")).trim_prefix("Learn "),
+				"subtitle": String(learned.get("description", "")), "icon": Content.icon(String(learned.get("icon", "cfop"))),
+				"category": &"lab"})
 	if Game.automation_running:  # auto-buyers (6.3b) buy quietly (no click every second); the 0.1 s refresh shows it
 		return
 	Audio.play_buy()

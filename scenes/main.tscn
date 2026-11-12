@@ -22,6 +22,7 @@
 [ext_resource type="Texture2D" path="res://assets/icons/ui_settings.svg" id="20_settings"]
 [ext_resource type="Script" path="res://scripts/ui/fit_row.gd" id="21_fitrow"]
 [ext_resource type="Shader" path="res://scripts/ui/shaders/ui_background.gdshader" id="22_bg"]
+[ext_resource type="PackedScene" path="res://scenes/banner.tscn" id="23_banner"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_background"]
 shader = ExtResource("22_bg")
@@ -593,6 +594,10 @@ scale_amount_min = 5.0
 scale_amount_max = 9.0
 color_ramp = SubResource("Gradient_fade")
 color_initial_ramp = SubResource("Gradient_cube_colors")
+
+[node name="Banner" parent="." instance=ExtResource("23_banner")]
+unique_name_in_owner = true
+layout_mode = 1
 
 [node name="GoldenButton" type="Button" parent="."]
 unique_name_in_owner = true

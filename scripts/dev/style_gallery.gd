@@ -315,6 +315,15 @@ func _build_parts(columns: HBoxContainer) -> void:
 	row.add_child(locked)
 	var buyable: Control = chip_scene.instantiate()
 	row.add_child(buyable)
+	var banner := PanelContainer.new()  # V.7's big-moment banner, small
+	banner.theme_type_variation = &"Banner"
+	banner.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var banner_text := VBoxContainer.new()
+	banner_text.theme_type_variation = &"TightBox"
+	banner_text.add_child(_label("New helper: Solving Robot", &"BannerTitle"))
+	banner_text.add_child(_label("Banner (V.7): big moments, full width in the game", &"BannerSub"))
+	banner.add_child(banner_text)
+	middle.add_child(banner)
 	for chip: Control in [running, locked, buyable]:
 		chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	running.show_running("2x2", "2×2")

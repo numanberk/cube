@@ -13,7 +13,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| V.7 Big moments | `ccr-a9bfca64-fydj3l` | 2026-11-12 | new `scenes/banner.tscn` + `scripts/ui/banner.gd` (banner queue + confetti) | `main.gd`, `main.tscn`, `ui/theme.tres`, `puzzle_view_3d.gd` (rim flash, light sweep), `tools/screenshot.gd` (BANNER), `tests/test_runner.gd` | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -442,11 +441,13 @@ every new component or variation to the gallery (a test enforces variations).
       a `JUICE=1` screenshot shows a panel mid-transition, and the 1,000 moves/s smoke run is clean.
       *(Done 2026-11-12: `UiFx`; panels scale + fade over a blurred (High) or dimmed (Low) backdrop; card squash, "+N",
       rolling counts, pops. Shots in `docs/screenshots/V.6-motion/`.)*
-- [ ] **V.7 Big moments:** full-width banners for "New puzzle unlocked", "New helper", "Method learned" and a
+- [x] **V.7 Big moments:** full-width banners for "New puzzle unlocked", "New helper", "Method learned" and a
       championship won (title in the display font, the item's icon, a burst of confetti in the six sticker colours, a
       short light sweep over the stage), queued so two never overlap; the solve burst uses the stage light (a brief
       rim-light flash) instead of only 2D particles. Respects Reduce motion and is rate-limited at high speed.
       *Done when:* a `BANNER=puzzle` screenshot preset exists, and a 10-minute sim-speed smoke run shows no banner spam.
+      *(Done 2026-11-12: `Banner` with merge/queue/cooldown, confetti, light sweep, rim-light flash on solve bursts;
+      `BANNER=` presets; `test_banner_no_spam`. Shots in `docs/screenshots/V.7-moments/`.)*
 - [ ] **V.8 Overlays restyle:** Settings, Welcome back, Compete, Trophy Perks, Automation, Lab and the Solve Station use
       the new kit: a title bar with the display font and an icon close button, panel frames from V.2, StatChips for
       numbers, perk nodes as coloured stickers on a darker board with glowing owned paths. Compete and the Solve Station

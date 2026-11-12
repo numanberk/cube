@@ -4337,6 +4337,149 @@ func test_collection_sources_and_save() -> void:
 	g.free()
 
 
+## V.7: big-moment banners: one at a time, same-kind moments merge, the queue stays short, a kind cools down, a
+## championship always gets through; Reduce motion keeps the banner but drops confetti.
+func test_banner_queue() -> void:
+	var banner: Banner = load("res://scenes/banner.tscn").instantiate()
+	root.add_child(banner)
+	var was := UiFx.reduce_motion
+	UiFx.reduce_motion = false
+	var view := func(kind: String, title: String) -> Dictionary:
+		return {"kind": kind, "title": title, "subtitle": "", "icon": Content.icon("friend"), "category": &"helpers"}
+	check(banner.push(view.call("puzzle", "New puzzle unlocked: 3×3")), "a moment queues")
+	banner.advance(0.0)
+	check(banner.is_showing() and banner.get_showing()["title"] == "New puzzle unlocked: 3×3" and banner._title.text.contains("3×3"),
+			"...and shows at once")
+	check(banner._confetti.emitting, "...with confetti")
+	for name: String in ["Friend", "Club", "Robot", "Competition"]:
+		banner.push(view.call("helper", "New helper: " + name))
+	check(banner.get_waiting() == 1, "four helpers while one shows: they merge into one waiting banner")
+	banner.push(view.call("method", "Method learned: CFOP"))
+	banner.push(view.call("puzzle", "New puzzle unlocked: 4×4"))
+	banner.push(view.call("championship", "World Champion!"))
+	check(banner.get_waiting() <= Banner.MAX_QUEUE, "the queue stays short (%d)" % banner.get_waiting())
+	var seen: Array[String] = []
+	for step in 200:  # 20 s
+		var before := banner.shown_count
+		banner.advance(0.1)
+		if banner.shown_count > before:
+			seen.append(String(banner.get_showing()["kind"]))
+	check(seen.has("championship"), "a championship always gets through (%s)" % [seen])
+	check(seen.size() <= Banner.MAX_QUEUE, "the oldest ordinary moment made room: no more than the queue holds (%s)" % [seen])
+	# The helper banner names the merged ones.
+	var merged: Banner = load("res://scenes/banner.tscn").instantiate()
+	root.add_child(merged)
+	merged.push(view.call("puzzle", "first"))
+	merged.advance(0.0)
+	merged.push(view.call("helper", "New helper: Friend"))
+	merged.push(view.call("helper", "New helper: Club"))
+	merged.advance(Banner.HOLD + 0.01)
+	merged.advance(Banner.GAP + 0.01)
+	check(merged.get_showing().get("kind", "") == "helper" and merged._subtitle.text.contains("1 more")
+			and merged._subtitle.text.contains("Club"), "a merged banner says how many more came (%s)" % merged._subtitle.text)
+	# A kind cools down: a second helper banner waits.
+	merged.advance(Banner.HOLD + 0.01)
+	merged.push(view.call("helper", "New helper: Robot"))
+	merged.advance(Banner.GAP + 0.01)
+	check(not merged.is_showing() and merged.get_waiting() == 1, "the same kind again waits for its cooldown")
+	merged.advance(Banner.COOLDOWN)
+	check(merged.is_showing(), "...then shows")
+	merged.free()
+	# Reduce motion: shown, no confetti.
+	UiFx.reduce_motion = true
+	var calm: Banner = load("res://scenes/banner.tscn").instantiate()
+	root.add_child(calm)
+	calm.stage_rect = Rect2(0, 100, 600, 400)  # (with a stage the sweep would run, with motion)
+	calm.push(view.call("puzzle", "New puzzle unlocked: 5×5"))
+	calm.advance(0.0)
+	check(calm.is_showing() and calm._band.visible and not calm._confetti.emitting and not calm._sweep.visible,
+			"Reduce motion: the banner shows, without confetti or the sweep")
+	calm.push(view.call("helper", "New helper: Club"))
+	calm.clear()
+	check(not calm.is_showing() and calm.get_waiting() == 0 and not calm._band.visible, "clear() drops the banner up and the waiting ones")
+	calm.free()
+	UiFx.reduce_motion = was
+	banner.free()
+
+
+## V.7: three fast runs through the real main screen (every helper, puzzle and method as soon as possible, 10 minutes
+## each, a championship between them) never spam banners: the same kind is at least a cooldown apart, the queue stays short, and later runs don't repeat "new" things the player had.
+func test_banner_no_spam() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	game.set_process(false)
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var banner: Banner = main.banner
+	var step := 0.5
+	var clock := 0.0
+	var last_shown := {}  # kind -> clock it last showed
+	var too_close: Array[String] = []
+	var later_news: Array[String] = []
+	var pushes_in_run_one := 0
+	for run in 3:
+		for i in 1200:  # 10 minutes in 0.5 s steps
+			game.cheat_add_solves(1e3 * pow(1.03, i))  # a fast, steadily growing income: every puzzle within the run
+			for def: Dictionary in Content.BUILDINGS:
+				if game.is_building_unlocked(def["id"]):
+					game.buy_building(def["id"])
+			var next := game.get_next_locked_puzzle()
+			if next != "" and game.can_unlock_puzzle(next):
+				game.unlock_puzzle(next)
+			var method := game.get_next_method()
+			if not method.is_empty() and game.is_method_available(method["id"]):
+				game.buy_method(method["id"])
+			game.update_research(step)
+			game.check_achievements()
+			main._refresh()
+			var shown_before := banner.shown_count
+			banner.advance(step)
+			clock += step
+			if banner.shown_count > shown_before:
+				var kind := String(banner.get_showing()["kind"])
+				if last_shown.has(kind) and kind != "championship" and clock - float(last_shown[kind]) < Banner.COOLDOWN:
+					too_close.append(kind)
+				last_shown[kind] = clock
+				if run > 0 and kind in ["helper", "method"]:
+					later_news.append(String(banner.get_showing()["title"]))
+		if run == 0:
+			pushes_in_run_one = banner.pushed_count
+			check(game.is_puzzle_unlocked("5x5") and int(game.buildings["quantum"]) > 0, "test setup: run 1 got through the game")
+			check(banner.shown_count <= banner.pushed_count and banner.shown_count >= 4,
+					"a handful of moments, each shown at most once (%d of %d)" % [banner.shown_count, banner.pushed_count])
+		if game.can_compete():
+			game.compete()
+	check(too_close.is_empty(), "the same kind never shows twice within its cooldown (%s)" % [too_close])
+	check(later_news.is_empty(), "later runs don't announce helpers or methods the player already had (%s)" % [later_news])
+	check(banner.pushed_count - pushes_in_run_one <= 12, "later runs push few moments (championships, new puzzles) (%d)" % (banner.pushed_count - pushes_in_run_one))
+	main.free()
+	game.set_process(true)
+	game.reset_state()
+
+
+## V.7: the solve burst's rim-light flash: High only, not with Reduce motion, at most every RIM_FLASH_INTERVAL, and it
+## fades back to the resting light.
+func test_rim_flash() -> void:
+	var view: PuzzleView3D = load("res://scenes/puzzle_view_3d.tscn").instantiate()
+	root.add_child(view)
+	view.set_graphics("high")
+	view.set_reduce_motion(false)
+	check(view.rim_flash() and view.get_rim_energy() >= PuzzleView3D.RIM_ENERGY - 0.01, "a flash on High")
+	view._process(0.016)
+	check(view.get_rim_energy() > PuzzleView3D.RIM_ENERGY + 1.0, "...the rim light flares")
+	check(not view.rim_flash(), "...and not again right away (bursts come every 0.5 s at speed)")
+	view._process(1.0)
+	check(is_equal_approx(view.get_rim_energy(), PuzzleView3D.RIM_ENERGY), "...then it's back to rest")
+	view._process(PuzzleView3D.RIM_FLASH_INTERVAL)
+	view.set_reduce_motion(true)
+	check(not view.rim_flash(), "Reduce motion: no flash")
+	view.set_reduce_motion(false)
+	view.set_graphics("low")
+	check(not view.rim_flash(), "Low (no rim light): no flash")
+	view.free()
+
+
 func test_news_on_main_screen() -> void:
 	var game: GameState = root.get_node("Game")
 	game.persistence_enabled = false

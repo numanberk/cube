@@ -1,0 +1,101 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/banner.gd" id="1_banner"]
+[ext_resource type="PackedScene" path="res://scenes/icon_sticker.tscn" id="2_sticker"]
+
+[node name="Banner" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_banner")
+
+[node name="Sweep" type="TextureRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 400.0
+mouse_filter = 2
+expand_mode = 1
+
+[node name="Confetti" type="CPUParticles2D" parent="."]
+unique_name_in_owner = true
+emitting = false
+amount = 90
+lifetime = 1.8
+one_shot = true
+explosiveness = 0.85
+emission_shape = 3
+emission_rect_extents = Vector2(640, 6)
+direction = Vector2(0, 1)
+spread = 70.0
+gravity = Vector2(0, 520)
+initial_velocity_min = 120.0
+initial_velocity_max = 420.0
+angular_velocity_min = -360.0
+angular_velocity_max = 360.0
+scale_amount_min = 4.0
+scale_amount_max = 8.0
+
+[node name="Band" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 196.0
+offset_bottom = 300.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_type_variation = &"TightBox"
+
+[node name="AccentTop" type="ColorRect" parent="Band"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 3)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Strip" type="PanelContainer" parent="Band"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"Banner"
+
+[node name="Row" type="HBoxContainer" parent="Band/Strip"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ColumnsBox"
+alignment = 1
+
+[node name="Icon" parent="Band/Strip/Row" instance=ExtResource("2_sticker")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="Text" type="VBoxContainer" parent="Band/Strip/Row"]
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Title" type="Label" parent="Band/Strip/Row/Text"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BannerTitle"
+text = "New puzzle unlocked: 4×4"
+
+[node name="Subtitle" type="Label" parent="Band/Strip/Row/Text"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BannerSub"
+text = "It joins the team's puzzles."
+
+[node name="AccentBottom" type="ColorRect" parent="Band"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 3)
+layout_mode = 2
+mouse_filter = 2

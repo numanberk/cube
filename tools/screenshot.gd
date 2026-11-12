@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--turns 1] [--drill solving|done] [--daily fmc|timed]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--turns 1] [--drill solving|done] [--daily fmc|timed] [--banner puzzle|helper|method|champion]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -189,6 +189,21 @@ func _ready() -> void:
 		var scroll := main.helper_list.get_parent() as ScrollContainer
 		scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
 		for i in 3:
+			await get_tree().process_frame
+	if args.has("banner"):  # V.7: a big moment's banner, its confetti in the air
+		var moment := String(args["banner"])
+		var views := {
+			"puzzle": main.puzzle_banner("4x4"),
+			"helper": {"kind": "helper", "title": "New helper: Solving Robot", "subtitle": Content.get_building("robot")["description"],
+					"icon": Content.icon("robot"), "category": &"helpers"},
+			"method": {"kind": "method", "title": "Method learned: CFOP", "subtitle": Content.get_method("cfop")["description"],
+					"icon": Content.icon("cfop"), "category": &"lab"},
+			"champion": {"kind": "championship", "title": "World Champion!", "subtitle": "+62 trophies. A new run starts.",
+					"icon": Content.icon("stat_trophy"), "category": &"trophies"},
+		}
+		main.banner.push(views.get(moment, views["puzzle"]))
+		main.banner.advance(0.0)
+		for i in 5:  # the slide done, confetti in the air, the sweep on its way
 			await get_tree().process_frame
 	if args.has("juice"):  # a few taps and a solve, caught mid-animation
 		var center := view.get_global_rect().get_center()
