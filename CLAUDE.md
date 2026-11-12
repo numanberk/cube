@@ -58,7 +58,8 @@ scripts/data/content.gd    class Content: helpers + upgrades as plain data (bala
 scenes/dev/style_gallery.tscn  class StyleGallery (scripts/dev/style_gallery.gd): dev-only style gallery (V.0): every theme
                            variation and card scene in every state, pages kit|parts; never used by the game
 scripts/ui/main.gd         Main screen: reads Game, calls Game; no rules here
-scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only
+scenes/shop_card.tscn      class ShopCard (scripts/ui/shop_card.gd): one helper row; set_view({...}), display only; V.5: a bar
+                           towards the cost (breathes when affordable), milestone pips, a silhouette for the next helper
 scenes/stat_chip.tscn      class StatChip (scripts/ui/stat_chip.gd): a top-bar stat pill: icon + value + unit (V.1);
                            set_stat("+73", "/s"), tone normal|accent|gold; icons assets/icons/stat_*.svg
 scripts/ui/fit_row.gd      class FitRow: a row with no minimum width that hides a child that doesn't fit whole (top bar chips)
@@ -123,7 +124,8 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    PopSolve, TimerLabel, TimerWaiting, TimerDone, ScrambleLabel, SidePanel, StageChip, StageChipActive, StageChipDone,
    StageChipRow, TickerText, KeyHint, GoalBar, GoalLabel, GoalLabelDim, NewsPanel, NewsNew, NewsOld, GoldenButton,
    TimerGolden, ChoiceBadge, PerkOwned, PerkName, CounterLabel, CounterCaption, StatChip, StatRow, StatValue,
-   StatValueAccent, StatValueGold, StatUnit, IconButton; PerkTree holds the tree's line colours), or add
+   StatValueAccent, StatValueGold, StatUnit, IconButton, CostBar, CostBarDim, Pip, PipReady, PipOn, TileFrame, CountBubble;
+   PerkTree holds the tree's line colours), or add
    a new variation (and show it in the style gallery, `scenes/dev/style_gallery.tscn`; a test checks).
 9. **Taps:** clicking the puzzle, the `tap` input action (Space / Enter, no repeat when held), or a turn of the main
    cube with the Solve Station keys (S.7, `main.handle_turn_key`; rotations aren't taps). Shop and other

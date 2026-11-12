@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/icon_sticker.tscn" id="2_sticker"]
 
 [node name="UpgradeTile" type="Button"]
-custom_minimum_size = Vector2(86, 96)
+custom_minimum_size = Vector2(86, 106)
 focus_mode = 0
 theme_type_variation = &"ShopCard"
 script = ExtResource("1_tile")
@@ -15,18 +15,11 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_top = 10.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 alignment = 1
-
-[node name="Badge" type="Label" parent="Content"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_type_variation = &"ChoiceBadge"
-text = "PICK 1"
-horizontal_alignment = 1
 
 [node name="Icon" parent="Content" instance=ExtResource("2_sticker")]
 unique_name_in_owner = true
@@ -42,3 +35,30 @@ theme_type_variation = &"CostAffordable"
 text = "15"
 horizontal_alignment = 1
 text_overrun_behavior = 3
+
+[node name="Frame" type="Panel" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"TileFrame"
+
+[node name="Badge" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -44.0
+offset_top = 3.0
+offset_right = -3.0
+offset_bottom = 19.0
+grow_horizontal = 0
+theme_type_variation = &"ChoiceBadge"
+text = "PICK 1"
+horizontal_alignment = 1

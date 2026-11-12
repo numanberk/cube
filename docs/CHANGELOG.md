@@ -2,6 +2,41 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-12 — Task V.5: Shop v2
+- **Helper cards:** the sticker, the name and **one short line** (the rate; the flavour description moved to the
+  card's tooltip, with the "each" rate and the next milestone's owned count; the line shows the team's total, so it
+  isn't cut at late game), the **big owned count with milestone pips** under it (one per `Content.HELPER_MILESTONES`
+  row: gold once its upgrade is bought, gold-outlined "ready" once reached but not bought yet), and **a bar along the bottom that fills towards the
+  cost** (Solves / cost): green and gently breathing once affordable (`ShopCard.reduce_motion` stops the breathing;
+  main.gd sets it from Settings), grey otherwise. The next locked helper shows **its own icon as a dark silhouette**
+  (`IconSticker.silhouette`), "???", a "?" for its count and a bar towards its unlock (run Solves / unlock Solves).
+  So: full green bars = buyable, long grey bars = close, the locked card's bar = how far the next helper is.
+- **Upgrade tiles:** a **frame in the category colour** (`TileFrame`, tinted with `IconSticker.colour_of`: orange for
+  upgrades, purple for Lab methods; full when affordable, faint otherwise) and a **corner badge** inside the top-right
+  ("PICK 1" / "PICKED" / "NOT PICKED" on choices, ✓ once owned; `ChoiceBadge` is now a neutral pill: green stays
+  for buy/affordable only, rule 9). Tiles are 10 px taller so the badge clears the icon; frame and badge sink with
+  the face when pressed.
+- **Tabs are pills** (rounded tab styles with transparent side/bottom borders as gaps; the panel's top-left corner is
+  rounded now) **with an icon** (`main.TAB_ICONS`: friend, magnets, small_cubes, lab, firmware) **and a round count
+  bubble** (`CountBubble` Labels on the TabBar at each tab's corner, `main.set_tab_count()` / `get_tab_count()`):
+  affordable helpers (single buys, whatever ×1/×10/Max says), affordable upgrades, startable Lab projects (none while
+  one runs). The titles lost their "(n)"; the Lab tab still reads "Lab · 4:00" while something runs. Bubbles are
+  re-placed on every refresh (the countdown changes the tabs' widths) and hidden for hidden or out-of-view tabs.
+  Pills are compact (font 14, icon 18 px) so all five tabs fit with the Auto tab and a Lab countdown at 1280×720.
+- Theme: new `CostBar`, `CostBarDim`, `Pip`, `PipReady`, `PipOn`, `TileFrame`, `CountBubble` (in the style gallery
+  and CLAUDE.md). Lab cards (also ShopCards) keep their two lines and have no bar. Affordable bars breathe on one shared
+  clock.
+- **Style gallery:** the kit page overflowed the 720 px page already on `main` (V.4's new panels: 17 off-screen
+  errors); the stage's small panels now sit two to a row, and the tab sample shows the pills, icons and a bubble.
+- **Review fixes (screenshot-checker, diff-reviewer):** tabs overflowing with Auto (bubbles landing on the wrong tab),
+  rate line cut with "…", the grey bar too faint, pips lit for unbought milestones, green on owned/unaffordable badges,
+  the Helpers bubble following ×10, bubbles not re-placed when the Lab countdown changes widths.
+- Tests: tab counts read the bubbles (Helpers on ×1 and ×10, Upgrades, Lab while idle and running), bars (full and
+  breathing when affordable, grey part-way otherwise, the next helper's bar to its unlock with a silhouette), pips
+  (ready vs bought), Reduce motion stops the breathing.
+- Screenshots: `docs/screenshots/V.5-shop/` (fresh, mid, endgame, endgame_auto, mid_buy10, mid_tab1, mid_lab,
+  gallery_kit, gallery_parts; compare `V.4-finish/`).
+
 ## 2026-11-12 — Task V.4 finished: the shelf on the stage (owner's option b)
 - **Stale claims (owner):** the earlier V.4 row (2026-11-11; its session isn't reachable from this account and had
   pushed nothing but the claim) and the R.6a row (2026-11-07, nothing pushed) were removed. R.6a is free again.

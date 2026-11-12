@@ -13,7 +13,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| V.5 Shop v2 | `ccr-a9bfca64-fydj3l` | 2026-11-12 | `scenes/shop_card.tscn`, `scripts/ui/shop_card.gd`, `scenes/upgrade_tile.tscn`, `scripts/ui/upgrade_tile.gd` | `main.gd` (tabs), `main.tscn`, `ui/theme.tres`, style gallery, `tests/test_runner.gd` | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -425,12 +424,15 @@ every new component or variation to the gallery (a test enforces variations).
       *(Done 2026-11-12: owner picked (b): the shelf is a column on the stage's left (two from 4 puzzles), the view takes
       the whole stage height, the mat is a bit narrower: the 3×3 is ~51 % of the screen height. Shots in
       `docs/screenshots/V.4-finish/`.)*
-- [ ] **V.5 Shop v2:** helper cards: the coloured icon sticker, name + one short line, a big owned count with milestone
+- [x] **V.5 Shop v2:** helper cards: the coloured icon sticker, name + one short line, a big owned count with milestone
       pips (next ×2 at 10/25/50… owned), and a **bar along the bottom that fills towards the cost** (green and gently
       breathing when affordable). Locked cards are silhouettes with a "?" and the bar to their unlock. Upgrade tiles get a
       category-colour frame and a corner badge (Pick 1, Owned ✓). Tabs become pills with an icon and a round count bubble.
       *Done when:* in `mid` and `BUY=10` screenshots you can tell at a glance which cards are buyable, which are close, and
       how far the next locked one is, without reading the numbers.
+      *(Done 2026-11-12: bars towards the cost (green, breathing when affordable), milestone pips, a silhouette for the
+      next helper, category frames and corner badges on tiles, pill tabs with icons and count bubbles. Shots in
+      `docs/screenshots/V.5-shop/`.)*
 - [ ] **V.6 Motion kit:** `scripts/ui/ui_fx.gd` (static helpers, no rules): pop-in, slide-in, press, shake, number roll,
       bar sheen, breathe. Panels (Settings, Compete, Perks, Welcome, Solve Station) open with a scale + fade over a
       darkened, slightly blurred backdrop (`BackBufferCopy` + a cheap blur shader on High, plain dim on Low), and close the

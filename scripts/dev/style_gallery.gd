@@ -138,11 +138,21 @@ func _build_kit(columns: HBoxContainer) -> void:
 	controls.add_child(_heading("Tabs, bars, chips, icon stickers"))
 	var tabs := TabContainer.new()
 	tabs.custom_minimum_size = Vector2(0, 44)
-	for tab_name: String in ["Helpers", "Upgrades (4)", "Puzzles", "Lab"]:
+	var tab_icons := ["friend", "magnets", "small_cubes", "lab"]
+	for tab_name: String in ["Helpers", "Upgrades", "Puzzles", "Lab"]:
 		var empty := Control.new()
 		empty.name = tab_name
 		tabs.add_child(empty)
 	controls.add_child(tabs)
+	for i in tab_icons.size():  # V.5: pill tabs with an icon, and a count bubble on Upgrades (as main.set_tab_count does)
+		tabs.set_tab_icon(i, _icon(tab_icons[i]))
+	var bubble := _label("4", &"CountBubble")
+	bubble.name = "TabBubble"
+	tabs.get_tab_bar().add_child(bubble)
+	(func() -> void:
+		var rect := tabs.get_tab_bar().get_tab_rect(1)
+		bubble.size = bubble.get_combined_minimum_size()
+		bubble.position = Vector2(rect.end.x - bubble.size.x * 0.5 - 3.0, rect.position.y - 5.0)).call_deferred()
 	controls.add_child(_bar(&"", 0.62))
 	controls.add_child(_bar(&"GoalBar", 0.35))
 	var slider := HSlider.new()
@@ -159,6 +169,7 @@ func _build_kit(columns: HBoxContainer) -> void:
 	badges.add_child(_label("R", &"KeyHint"))
 	badges.add_child(_label("U'", &"KeyHint"))
 	badges.add_child(_label("PICK 1", &"ChoiceBadge"))
+	badges.add_child(_label("4", &"CountBubble"))
 	controls.add_child(badges)
 	# Icon stickers, one per category: helpers, upgrades, puzzles, Lab, trophies, Solve Station, locked.
 	var stickers := badges
@@ -172,10 +183,17 @@ func _build_kit(columns: HBoxContainer) -> void:
 
 	var panels := _column(columns, "Panels")
 	for panel: Array in [[&"TopBar", "TopBar: the Solves counter"], [&"GoalStrip", "GoalStrip: next goals"],
-			[&"SidePanel", "SidePanel: shop / Solve Station"], [&"PuzzleChipPanel", "PuzzleChipPanel (shelf item)"],
-			[&"PuzzleStand", "PuzzleStand: under a shelf puzzle"], [&"Shelf", "Shelf: the puzzle row"],
-			[&"StageOverlay", "StageOverlay: chips + ticker on the stage"]]:
+			[&"SidePanel", "SidePanel: shop / Solve Station"]]:
 		panels.add_child(_panel(panel[0], panel[1]))
+	# The stage's smaller panels two to a row, so the column fits the 720 px page (V.5).
+	for pair: Array in [[[&"PuzzleChipPanel", "PuzzleChipPanel"], [&"PuzzleStand", "PuzzleStand"]],
+			[[&"Shelf", "Shelf: the puzzles"], [&"StageOverlay", "StageOverlay"]]]:
+		var row := HBoxContainer.new()
+		for panel: Array in pair:
+			var sample := _panel(panel[0], panel[1])
+			sample.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(sample)
+		panels.add_child(row)
 	var news := PanelContainer.new()
 	news.theme_type_variation = &"NewsPanel"
 	var news_lines := VBoxContainer.new()
@@ -220,14 +238,14 @@ func _build_parts(columns: HBoxContainer) -> void:
 	cards.custom_minimum_size = Vector2(420, 0)
 	var card_scene: PackedScene = load("res://scenes/shop_card.tscn")
 	var card_views := [
-		{"icon": _icon("friend"), "title": "Cubing Friend", "line1": "Practices with you after school.",
-			"line2": "7.00 s a 3×3  ·  +2 moves/s each", "owned": "15", "cost": "41 Solves", "affordable": true},
-		{"icon": _icon("robot"), "title": "Solving Robot", "line1": "Never gets tired.",
-			"line2": "0.21 s a 3×3  ·  +66 moves/s each", "owned": "2", "cost": "15.87K Solves", "affordable": false},
+		{"icon": _icon("friend"), "title": "Cubing Friend", "line1": "7.00 s a 3×3  ·  +2 moves/s each (+30/s)",
+			"line2": "", "owned": "15", "cost": "41 Solves", "affordable": true, "progress": 1.0, "pips": [2, 8, 1]},
+		{"icon": _icon("robot"), "title": "Solving Robot", "line1": "0.21 s a 3×3  ·  +66 moves/s each",
+			"line2": "", "owned": "2", "cost": "15.87K Solves", "affordable": false, "progress": 0.4, "pips": [1, 8]},
 		{"icon": _icon("lab"), "title": "Algorithm Lab", "line1": "Researching: Look-ahead",
 			"line2": "12m left", "owned": "", "cost": "running", "affordable": false, "active": true, "category": &"lab"},
-		{"icon": _icon("locked"), "title": "???", "line1": "A new helper appears at 50.00K Solves",
-			"line2": "6.00K / 50.00K", "owned": "", "cost": "", "locked": true},
+		{"icon": _icon("competition"), "title": "???", "line1": "Appears at 50.00K Solves this run",
+			"line2": "", "owned": "?", "cost": "", "locked": true, "silhouette": true, "progress": 0.12},
 	]
 	for view: Dictionary in card_views:
 		var card: Control = card_scene.instantiate()

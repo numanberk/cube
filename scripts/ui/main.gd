@@ -5,9 +5,11 @@ extends Control
 const UI_REFRESH_INTERVAL := 0.1
 const MAX_VISUAL_MOVES_PER_SECOND := 12.0
 const TAP_ACTION := &"tap"  ## Space / Enter (project.godot input map); held keys don't repeat
+const HELPERS_TAB := 0
 const UPGRADES_TAB := 1
 const LAB_TAB := 3
 const AUTO_TAB := 4
+const TAB_ICONS: Array[String] = ["friend", "magnets", "small_cubes", "lab", "firmware"]  ## per tab (V.5 pills): Helpers ... Auto
 const PLAYER_TURN_TIME := 0.08      ## seconds per quarter turn for your own key turns on the main cube (S.7)
 const SOLVE_POP_INTERVAL := 0.25   ## at most ~4 "+X Solves" pops a second, however many solves happen
 const BURST_INTERVAL := 0.5
@@ -72,6 +74,7 @@ var _lamp_center := Vector2(-1.0, -1.0)  ## last lamp_center sent to the backgro
 @onready var automation_panel: AutomationPanel = %AutomationPanel
 
 var _helper_cards: Dictionary = {}    ## building id -> ShopCard
+var _tab_bubbles: Dictionary = {}     ## tab index -> its count bubble (V.5), a Label on the tab bar
 var _upgrade_tiles: Dictionary = {}   ## upgrade id -> UpgradeTile
 var _method_tiles: Dictionary = {}    ## method id -> UpgradeTile (every method after the Beginner Method)
 var _lab_cards: Dictionary = {}       ## Lab project id -> ShopCard (task 5.6)
@@ -132,6 +135,9 @@ func _ready() -> void:
 	puzzle_view.golden_clicked.connect(open_golden)
 	golden_button.pressed.connect(open_golden)
 	_build_puzzle_row()
+	for i in TAB_ICONS.size():
+		tabs.set_tab_icon(i, Content.icon(TAB_ICONS[i]))
+	tabs.get_tab_bar().resized.connect(_place_tab_bubbles)
 	puzzle_view.set_puzzle(Game.get_focused_puzzle_id())
 	_reset_key_session()
 	for id: String in StagedSolver.PUZZLES:  # builds the learned methods' tables now (cached), not mid-game
@@ -312,6 +318,7 @@ func _refresh() -> void:
 	_refresh_helper_cards()
 	_refresh_upgrade_tiles()
 	_refresh_lab()
+	_place_tab_bubbles()  # after the counts, and the Lab title's countdown changes the tabs' widths
 	_refresh_puzzle_row()
 	split_panel.refresh()
 
@@ -320,6 +327,7 @@ func _refresh() -> void:
 ## (so there's always a visible next target); the rest stay hidden.
 func _refresh_helper_cards() -> void:
 	var shown_locked := false
+	var affordable_count := 0
 	for def: Dictionary in Content.BUILDINGS:
 		var id: String = def["id"]
 		var card: ShopCard = _helper_cards[id]
@@ -332,27 +340,45 @@ func _refresh_helper_cards() -> void:
 			var count := _buy_count(id)
 			var cost := Game.get_building_cost_for(id, count)
 			var focus_name: String = Content.get_puzzle(Game.get_focused_puzzle_id())["name"]
-			var rate := "%s a %s  ·  +%s moves/s each" % [Num.cube_time(Game.get_helper_solve_time(id)), focus_name, Num.format(each)]
-			if owned > 0:
-				rate += " (+%s/s)" % Num.format(each * owned)
+			# One short line (V.5): the team's total once there is one ("each" moves to the tooltip), so it never gets cut.
+			var rate := "%s a %s  ·  +%s moves/s" % [Num.cube_time(Game.get_helper_solve_time(id)), focus_name,
+					Num.format(each * owned) if owned > 0 else Num.format(each) + " each"]
+			# V.5: one short line (the rate; the description is the tooltip), milestone pips, a bar towards the cost.
+			var bought := 0
+			var ready := 0
+			var next_at := 0
+			for row: Dictionary in Content.HELPER_MILESTONES:
+				if Game.upgrades.has("ms_%s_%d" % [id, row["owned"]]):
+					bought += 1
+				elif owned >= int(row["owned"]):
+					ready += 1
+				elif next_at == 0:
+					next_at = int(row["owned"])
+			card.tooltip_text = "%s\n+%s moves/s each." % [def["description"], Num.format(each)] \
+					+ ("\nNext milestone upgrade at %d owned." % next_at if next_at > 0 else "")
 			card.visible = true
 			card.set_view({
-				"icon": Content.icon(def["icon"]), "title": def["name"], "line1": def["description"], "line2": rate,
-				"owned": str(owned), "affordable": Game.solves >= cost,
+				"icon": Content.icon(def["icon"]), "title": def["name"], "line1": rate, "line2": "",
+				"owned": str(owned), "affordable": Game.solves >= cost, "progress": Game.solves / cost if cost > 0.0 else 1.0,
+				"pips": [bought, Content.HELPER_MILESTONES.size(), ready],
 				"cost": "%s Solves" % Num.format(cost) if _buy_amount == 1 else "×%d  ·  %s Solves" % [count, Num.format(cost)],
 			})
+			if Game.solves >= Game.get_building_cost(id):  # the bubble counts single buys, whatever ×1/×10/Max says
+				affordable_count += 1
 		elif not shown_locked:
 			shown_locked = true
 			var unlock_at := Game.get_building_unlock_at(id)
 			card.visible = true
-			card.set_view({
-				"icon": Content.icon(Content.LOCKED_ICON), "title": "???",
-				"line1": "A new helper appears at %s Solves this run" % Num.format(unlock_at),
-				"line2": "%s / %s" % [Num.format(Game.get_run_solves()), Num.format(unlock_at)],
-				"owned": "", "cost": "", "locked": true,
+			card.tooltip_text = "A new helper joins the team at %s Solves this run." % Num.format(unlock_at)
+			card.set_view({  # V.5: its silhouette, and a bar to the unlock
+				"icon": Content.icon(def["icon"]), "title": "???", "silhouette": true,
+				"line1": "Appears at %s Solves this run" % Num.format(unlock_at), "line2": "",
+				"owned": "?", "cost": "", "locked": true,
+				"progress": Game.get_run_solves() / unlock_at if unlock_at > 0.0 else 1.0,
 			})
 		else:
 			card.visible = false
+	set_tab_count(HELPERS_TAB, affordable_count)
 
 
 ## How many copies of a helper the current toggle means (Max with nothing affordable shows 1, unaffordable).
@@ -438,7 +464,44 @@ func _refresh_upgrade_tiles() -> void:
 	for index in order.size():
 		upgrade_list.move_child(order[index], index)
 	upgrade_empty.visible = not any_visible
-	tabs.set_tab_title(UPGRADES_TAB, "Upgrades (%d)" % affordable_count if affordable_count > 0 else "Upgrades")
+	set_tab_count(UPGRADES_TAB, affordable_count)
+
+
+## A tab's round count bubble (V.5): how many things there can be bought or started now; hidden at 0.
+func set_tab_count(tab: int, count: int) -> void:
+	var bubble: Label = _tab_bubbles.get(tab)
+	if bubble == null:
+		if count <= 0:
+			return
+		bubble = Label.new()
+		bubble.theme_type_variation = &"CountBubble"
+		bubble.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tabs.get_tab_bar().add_child(bubble)
+		_tab_bubbles[tab] = bubble
+	bubble.text = str(count) if count < 100 else "99+"
+	bubble.set_meta(&"count", count)
+
+
+func get_tab_count(tab: int) -> int:
+	var bubble: Label = _tab_bubbles.get(tab)
+	return 0 if bubble == null else int(bubble.get_meta(&"count", 0))
+
+
+
+## Each bubble sits on its tab's top-right corner: shown when its count is above 0 and its tab is shown and in view.
+## Run on every refresh (titles like "Lab · 4:00" change the tabs' widths) and when the tab bar resizes.
+func _place_tab_bubbles() -> void:
+	var bar := tabs.get_tab_bar()
+	for tab: int in _tab_bubbles:
+		var bubble: Label = _tab_bubbles[tab]
+		var rect := bar.get_tab_rect(tab) if tab < bar.tab_count and not bar.is_tab_hidden(tab) else Rect2()
+		bubble.visible = int(bubble.get_meta(&"count", 0)) > 0 and rect.size.x > 0.0 and rect.position.x >= 0.0 \
+				and rect.end.x <= bar.size.x + 1.0
+		if not bubble.visible:
+			continue
+		bubble.size = bubble.get_combined_minimum_size()
+		bubble.position = Vector2(rect.end.x - bubble.size.x * 0.5 - 3.0, rect.position.y - 5.0)  # centred on the pill's edge
 
 
 ## The "Pick one" line in a choice upgrade's tooltip (5.7b), "" for an ordinary upgrade.
@@ -1055,12 +1118,8 @@ func _refresh_lab() -> void:
 	order.append_array(done_order)
 	for index in order.size():
 		lab_list.move_child(order[index], index)
-	var title := "Lab"
-	if not running.is_empty():
-		title = "Lab · %s" % Num.clock(float(running["left"]))
-	elif startable > 0:
-		title = "Lab (%d)" % startable
-	tabs.set_tab_title(LAB_TAB, title)
+	tabs.set_tab_title(LAB_TAB, "Lab · %s" % Num.clock(float(running["left"])) if not running.is_empty() else "Lab")
+	set_tab_count(LAB_TAB, 0 if not running.is_empty() else startable)
 
 
 func _on_lab_card_pressed(id: String) -> void:
@@ -1193,6 +1252,7 @@ func _apply_display_settings() -> void:
 	fx.particles_enabled = not reduce
 	for id: String in _chips:
 		(_chips[id] as PuzzleChip).set_reduce_motion(reduce)
+	ShopCard.reduce_motion = reduce  # no breathing cost bars (V.5)
 
 
 ## The background's lamp glow sits behind the puzzle, wherever the layout puts it. Called from _refresh (10×/s),

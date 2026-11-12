@@ -4,7 +4,8 @@ extends PanelContainer
 ## gradient and a bevel (the IconTile style, a greyscale texture tinted by self_modulate), the glyph on top with a
 ## soft shadow. Category colours are the theme's Palette tokens `cat_<category>`; light ones (yellow, white) get a
 ## dark glyph. `muted` (a card that can't be bought) darkens and greys the tile and keeps the glyph white, so the
-## icon stays readable when the card also dims its content. Display only.
+## icon stays readable when the card also dims its content. `silhouette` (a helper not unlocked yet, V.5) draws the
+## glyph as a dark shape with no shadow: you see what's coming, not what it is. Display only.
 
 const CATEGORIES: Array[StringName] = [&"helpers", &"upgrades", &"puzzles", &"lab", &"trophies", &"station", &"locked"]
 const LIGHT_LUMINANCE := 0.6  ## above this the glyph is dark instead of white
@@ -23,6 +24,10 @@ const MUTE_DARKEN := 0.35
 @export var muted := false:
 	set(value):
 		muted = value
+		_apply()
+@export var silhouette := false:
+	set(value):
+		silhouette = value
 		_apply()
 
 
@@ -52,5 +57,5 @@ func _apply() -> void:
 		colour = colour.lerp(Color(grey, grey, grey), MUTE_GREY).darkened(MUTE_DARKEN)
 	self_modulate = colour
 	var light := colour.get_luminance() > LIGHT_LUMINANCE
-	icon.modulate = INK_DARK if light else Color.WHITE
-	shadow.visible = not light
+	icon.modulate = INK_DARK if light or silhouette else Color.WHITE
+	shadow.visible = not light and not silhouette

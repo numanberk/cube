@@ -1281,7 +1281,32 @@ func test_shop_cards() -> void:
 	check(not club.locked and club.visible, "40 lifetime Solves reveals the Club (unlocks at 30)")
 	check(cards["robot"].locked and cards["robot"].visible, "...and the Robot becomes the locked next card")
 	var tabs: TabContainer = main.get_node("%Tabs")
-	check(tabs.get_tab_title(main.UPGRADES_TAB) == "Upgrades (2)", "the Upgrades tab shows a badge for the affordable Lube and Practice Partners I")
+	check(tabs.get_tab_title(main.UPGRADES_TAB) == "Upgrades" and main.get_tab_count(main.UPGRADES_TAB) == 2,
+			"the Upgrades tab's bubble counts the affordable Lube and Practice Partners I (V.5)")
+	# V.5: bars towards the cost, milestone pips, the next helper's silhouette, the count bubbles.
+	check(friend._bar.visible and is_equal_approx(friend._bar.value, 1.0) and friend._bar.theme_type_variation == &"CostBar"
+			and friend.is_processing(), "an affordable card's bar is full, green and breathing")
+	check(club._bar.visible and club._bar.value < 1.0 and club._bar.theme_type_variation == &"CostBarDim"
+			and not club.is_processing(), "a card you can't afford yet: a grey bar part-way (%s)" % club._bar.value)
+	var robot: ShopCard = cards["robot"]
+	check(robot._sticker.silhouette and robot._bar.visible
+			and is_equal_approx(robot._bar.value, game.get_run_solves() / game.get_building_unlock_at("robot")),
+			"the next helper: a silhouette and a bar towards its unlock")
+	check(friend._pips.visible and friend._pips.get_child_count() == Content.HELPER_MILESTONES.size()
+			and (friend._pips.get_child(0) as Control).theme_type_variation == &"PipReady",
+			"one Friend owned: its first milestone is ready to buy, not yet gold")
+	game.upgrades["ms_friend_1"] = true
+	main._refresh()
+	check((friend._pips.get_child(0) as Control).theme_type_variation == &"PipOn", "...gold once its upgrade is bought")
+	game.upgrades.erase("ms_friend_1")
+	check(main.get_tab_count(main.HELPERS_TAB) == 1, "the Helpers bubble counts the affordable Friend")
+	main.set_buy_amount(10)
+	check(main.get_tab_count(main.HELPERS_TAB) == 1, "...also on ×10 (it counts single buys)")
+	main.set_buy_amount(1)
+	ShopCard.reduce_motion = true
+	friend._process(0.3)
+	check(is_equal_approx(friend._bar.modulate.a, 1.0), "Reduce motion: the bar doesn't breathe")
+	ShopCard.reduce_motion = false
 	friend.pressed.emit()
 	check(game.buildings["friend"] == 2, "clicking an affordable card buys the helper (a second Friend)")
 	main.free()
@@ -4975,7 +5000,7 @@ func test_choice_tiles() -> void:
 	var tabs: TabContainer = main.get_node("%Tabs")
 	game.solves = 0.0
 	main._refresh()
-	check(tabs.get_tab_title(main.UPGRADES_TAB) == "Upgrades", "a locked-out side never counts as affordable")
+	check(main.get_tab_count(main.UPGRADES_TAB) == 0, "a locked-out side never counts as affordable")
 	main.free()
 	game.reset_state()
 
@@ -5083,10 +5108,12 @@ func test_lab_tab() -> void:
 	check(tabs.get_tab_title(main.LAB_TAB).begins_with("Lab"), "there's a Lab tab")
 	var card: ShopCard = main._lab_cards["finger_tricks"]
 	check(card.visible and card.affordable, "Finger Tricks can be started")
+	check(main.get_tab_count(main.LAB_TAB) >= 1, "the Lab tab's bubble counts what can be started (V.5)")
 	card.pressed.emit()
 	check(game.research.get("id", "") == "finger_tricks", "pressing the card starts it")
 	main._refresh()
 	check((main.get_node("%LabStatus") as Label).text.begins_with("Researching Finger Tricks") and tabs.get_tab_title(main.LAB_TAB) == "Lab · 2:00", "the tab shows what's running and the time left")
+	check(main.get_tab_count(main.LAB_TAB) == 0, "...and no count bubble while research runs (V.5)")
 	check(card._content.modulate.a == 1.0 and card.disabled, "the running project is bright but can't be pressed again")
 	check(main._goal_text({"kind": "research", "name": "Research Finger Tricks", "more": false, "unit": "time", "missing": 120.0,
 			"seconds": 120.0, "progress": 0.0}) == "Research Finger Tricks  ·  2:00", "a research goal reads as its time left")
