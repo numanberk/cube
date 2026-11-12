@@ -13,11 +13,10 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
-| V.4 finish: shelf onto the stage (owner: option b) | `ccr-134df3dd-c0lub2` | 2026-11-11 | `scenes/main.tscn`, `scenes/puzzle_chip.tscn` | `main.gd` (layout), `ui/theme.tres`, `tests/test_runner.gd` | no |
+| V.4 finish: shelf onto the stage (owner: option b) | `ccr-a9bfca64-fydj3l` | 2026-11-12 | `scenes/main.tscn`, `scenes/puzzle_chip.tscn` | `main.gd` (layout), `ui/theme.tres`, `tests/test_runner.gd`, `tools/screenshot.sh`? | no |
 
-*(Rows added for the sessions that started before this rule; their own files are an estimate. Each
-session corrects its row when it merges.)*
+*(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
+were removed as stale: neither had pushed any work. R.6a is free again; V.4 is taken over by the row above.)*
 
 ## Milestone 1 — Playable core ✅
 - [x] Tap to make moves, moves complete solves
