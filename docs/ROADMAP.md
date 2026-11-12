@@ -13,6 +13,7 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
+| V.8 Overlays restyle | `ccr-a9bfca64-fydj3l` | 2026-11-12 | `scenes/{settings,welcome,compete,perk}_panel.tscn`, `scenes/solve_station.tscn`, `scenes/perk_node.tscn`, their scripts | `ui/theme.tres`, `main.tscn` (Auto/Lab tabs), style gallery, `tests/test_runner.gd` | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
