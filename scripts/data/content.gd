@@ -1143,6 +1143,40 @@ static func get_item_per_star(def: Dictionary) -> float:
 	return float(def.get("per_star", get_rarity(String(def.get("rarity", ""))).get("per_star", 0.0)))
 
 
+## Comp Kit (task 7.4a, PLAN §4.6: Idle Pins formations / Perfect Tower modules): five typed slots filled from the Cube
+## Collection. An item in the kit gives its full passive; every other item owned gives `owned_share` of it. A slot fills
+## itself with the best item of its kind (the highest per_star × stars) until the player picks one for it. Brand sets:
+## `pieces` items of one brand in the kit add `effect` (an upgrade effect, multiplying; the bigger tier replaces the smaller).
+##   slots: id, name, kind (COLLECTION_KINDS)
+##   sets: brand, name, pieces, effect {type, value}
+const COMP_KIT := {
+	"owned_share": 0.25,
+	"slots": [
+		{"id": "main", "name": "Main cube", "kind": "cube"},
+		{"id": "backup", "name": "Backup cube", "kind": "cube"},
+		{"id": "timer", "name": "Timer", "kind": "timer"},
+		{"id": "mat", "name": "Mat", "kind": "mat"},
+		{"id": "lube", "name": "Lube", "kind": "lube"},
+	],
+	"sets": [
+		{"brand": "pocket", "name": "Budget Kit", "pieces": 3, "effect": {"type": "tap_mult", "value": 1.15}},
+		{"brand": "pocket", "name": "Budget Kit", "pieces": 5, "effect": {"type": "tap_mult", "value": 1.4}},
+		{"brand": "lumen", "name": "Glow Kit", "pieces": 3, "effect": {"type": "mastery_xp_mult", "value": 1.25}},
+		{"brand": "torque", "name": "Magnetic Kit", "pieces": 3, "effect": {"type": "helper_mult", "value": 1.08}},
+		{"brand": "swift", "name": "Speed Kit", "pieces": 3, "effect": {"type": "global_mult", "value": 1.08}},
+		{"brand": "kestrel", "name": "Record Kit", "pieces": 3, "effect": {"type": "solve_value_mult", "value": 1.08}},
+		{"brand": "kestrel", "name": "Record Kit", "pieces": 5, "effect": {"type": "solve_value_mult", "value": 1.2}},
+	],
+}
+
+
+static func get_kit_slot(id: String) -> Dictionary:
+	for def: Dictionary in COMP_KIT["slots"]:
+		if def["id"] == id:
+			return def
+	return {}
+
+
 ## Hand-solve rewards (task S.3, D13: an active player earns ~2–3× an idle one). Per-puzzle time targets for the Solve
 ## Station, slowest first (seconds, keyboard solving). Tuned for our player (owner, 2026-11-03: best ~30 s on a real 3×3,
 ## consistently under 1:00); keyboard solving is slower than a real cube, so Gold 1:30 should be within reach and Master a

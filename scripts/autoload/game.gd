@@ -27,6 +27,7 @@ signal research_finished(project_id: String)  ## a project's effect counts from 
 signal career_moment(moment_id: String)  ## a Content.CAREER story beat happened, once per player (7.0a)
 signal achievement_earned(achievement_id: String)  ## a Content achievement was earned, once per player (7.1a)
 signal collection_drop(item_id: String, stars: int, source: String)  ## a Cube Collection item dropped (7.3a); stars after it
+signal kit_changed  ## the Comp Kit changed (7.4a): an equip, a slot back on auto, or an auto slot that found a better item
 signal championship_won(trophies_won: int)  ## a World Championship reset the run (6.2); the UI rebuilds after it
 ## Buying a trophy perk (6.3) emits purchased("perk", id).
 signal golden_spawned
@@ -34,12 +35,13 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 16  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 17  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
                           ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
                           ## v12 (6.3b): auto-buyer toggles; v13 (7.0a): career moments seen; v14 (7.1a): achievements;
-                          ## v15 (7.2a): stats; v16 (7.3a): Cube Collection
+                          ## v15 (7.2a): stats; v16 (7.3a): Cube Collection;
+                          ## v17 (7.4a): Comp Kit
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -92,6 +94,8 @@ var collection: Dictionary = {}       ## Cube Collection (7.3a, saved; kept thro
 var _collection_stars := 0           ## the stars in `collection`, kept up to date (the upgrade cache checks it constantly)
 var collection_pity: Dictionary = {}  ## misses in a row per drop source, and "rarity": drops in a row below the pity rarity
 var collection_rng := RandomNumberGenerator.new()  ## drops (seeded by tests and the balance bot)
+var kit: Dictionary = {}         ## Comp Kit (7.4a, saved; kept through championships): slot id -> item id (empty slots absent)
+var kit_manual: Dictionary = {}  ## slots the player filled (or emptied) by hand: auto-fill leaves them alone
 var stats: Dictionary = {}  ## the Stats screen's counters (7.2a, saved; see _new_stats() for each one and what a championship keeps)
 var _applying_save := false  ## true inside apply_save_data: no career moment is signalled (no UI listens yet)
 var championships := 0          ## World Championships won (6.2); the first one opens the 7×7, the Megaminx and "Finals"
@@ -1152,6 +1156,7 @@ func roll_collection_drop(source: String) -> String:
 	collection[id] = get_collection_stars(id) + 1
 	_collection_stars += 1
 	invalidate_upgrade_cache()
+	auto_fill_kit()  # a better (or first) item of its kind goes into an auto slot
 	collection_drop.emit(id, collection[id], source)
 	return id
 
@@ -1198,9 +1203,147 @@ func get_collection_stars_total() -> int:
 	return _collection_stars
 
 
-## An item's passive multiplier now: 1 + per_star × stars (1 if not owned).
+## An item's passive multiplier now: 1 + per_star × stars in the Comp Kit, 1 + owned_share of that out of it (7.4a),
+## 1 if not owned.
 func get_item_mult(id: String) -> float:
-	return 1.0 + Content.get_item_per_star(Content.get_collection_item(id)) * get_collection_stars(id)
+	var share := 1.0 if is_equipped(id) else float(Content.COMP_KIT["owned_share"])
+	return 1.0 + Content.get_item_per_star(Content.get_collection_item(id)) * get_collection_stars(id) * share
+
+
+# --- Comp Kit (task 7.4a) --------------------------------------------------------------
+
+func is_equipped(id: String) -> bool:
+	return kit.values().has(id)
+
+
+## slot id -> item id (a copy; empty slots are absent).
+func get_kit() -> Dictionary:
+	return kit.duplicate()
+
+
+func is_slot_manual(slot: String) -> bool:
+	return kit_manual.has(slot)
+
+
+## Puts an owned item of the slot's kind in a slot ("" empties it); the slot stops filling itself. An item already in
+## another slot (a cube in Main and Backup) swaps places with what was here. Returns false (no change) if it can't.
+func equip(slot: String, item_id: String) -> bool:
+	var slot_def := Content.get_kit_slot(slot)
+	if slot_def.is_empty():
+		return false
+	if item_id != "":
+		var item := Content.get_collection_item(item_id)
+		if item.is_empty() or item["kind"] != slot_def["kind"] or get_collection_stars(item_id) <= 0:
+			return false
+		for other: String in kit.keys():
+			if other != slot and kit[other] == item_id:
+				if kit.has(slot):  # a real swap: both slots are the player's choice now
+					kit[other] = kit[slot]
+					kit_manual[other] = true
+				else:  # a move into an empty slot: the old one keeps its mode (an auto slot refills below)
+					kit.erase(other)
+		kit[slot] = item_id
+	else:
+		kit.erase(slot)
+	kit_manual[slot] = true
+	auto_fill_kit(false)
+	invalidate_upgrade_cache()
+	kit_changed.emit()
+	return true
+
+
+## Lets a slot fill itself again (with the best item of its kind).
+func set_slot_auto(slot: String) -> void:
+	if Content.get_kit_slot(slot).is_empty():
+		return
+	kit_manual.erase(slot)
+	auto_fill_kit(false)
+	kit_changed.emit()
+
+
+## Fills every slot the player hasn't chosen with the best owned item of its kind not in another slot: the highest
+## per_star × stars, then the rarer, then data order. Signals kit_changed (if `emit`) when something moved.
+func auto_fill_kit(emit: bool = true) -> void:
+	var used := {}
+	for slot: String in kit_manual:
+		if kit.has(slot):
+			used[kit[slot]] = true
+	var changed := false
+	for slot_def: Dictionary in Content.COMP_KIT["slots"]:
+		var slot: String = slot_def["id"]
+		if kit_manual.has(slot):
+			continue
+		var best := ""
+		var best_value := 0.0
+		var best_rarity := -1
+		for item: Dictionary in Content.COLLECTION["items"]:
+			var id: String = item["id"]
+			if item["kind"] != slot_def["kind"] or get_collection_stars(id) <= 0 or used.has(id):
+				continue
+			var value := Content.get_item_per_star(item) * get_collection_stars(id)
+			var rarity := Content.get_rarity_index(item["rarity"])
+			if value > best_value + 1e-9 or (absf(value - best_value) <= 1e-9 and rarity > best_rarity):
+				best = id
+				best_value = value
+				best_rarity = rarity
+		if String(kit.get(slot, "")) != best:
+			changed = true
+			if best == "":
+				kit.erase(slot)
+			else:
+				kit[slot] = best
+		if best != "":
+			used[best] = true
+	if changed:
+		invalidate_upgrade_cache()
+		if emit:
+			kit_changed.emit()
+
+
+## brand -> items of that brand in the kit.
+func get_kit_brand_counts() -> Dictionary:
+	var counts := {}
+	for slot: String in kit:
+		var brand := String(Content.get_collection_item(kit[slot]).get("brand", ""))
+		counts[brand] = int(counts.get(brand, 0)) + 1
+	return counts
+
+
+## The Content.COMP_KIT sets active now: for each brand only its biggest tier reached.
+func get_active_kit_sets() -> Array[Dictionary]:
+	var counts := get_kit_brand_counts()
+	var best := {}
+	for def: Dictionary in Content.COMP_KIT["sets"]:
+		var brand: String = def["brand"]
+		if int(counts.get(brand, 0)) >= int(def["pieces"]) and int(def["pieces"]) > int(best.get(brand, {}).get("pieces", 0)):
+			best[brand] = def
+	var out: Array[Dictionary] = []
+	for def: Dictionary in Content.COMP_KIT["sets"]:
+		if best.values().has(def):
+			out.append(def)
+	return out
+
+
+func _load_kit(saved: Variant) -> void:
+	kit.clear()
+	kit_manual.clear()
+	if typeof(saved) == TYPE_DICTIONARY:
+		var slots: Variant = (saved as Dictionary).get("slots", {})
+		var used := {}
+		if typeof(slots) == TYPE_DICTIONARY:
+			for slot_def: Dictionary in Content.COMP_KIT["slots"]:
+				var id := str((slots as Dictionary).get(slot_def["id"], ""))
+				var item := Content.get_collection_item(id)
+				if not item.is_empty() and item["kind"] == slot_def["kind"] and get_collection_stars(id) > 0 and not used.has(id):
+					kit[slot_def["id"]] = id
+					used[id] = true
+		var manual: Variant = (saved as Dictionary).get("manual", [])
+		if typeof(manual) == TYPE_ARRAY:
+			for slot: Variant in manual:
+				if not Content.get_kit_slot(str(slot)).is_empty():
+					kit_manual[str(slot)] = true
+	auto_fill_kit(false)  # slots on auto take the best now (also a v16 save's first kit)
+	invalidate_upgrade_cache()
 
 
 ## {owned, total, stars, max_stars}: the Collection screen's counts.
@@ -1215,6 +1358,7 @@ func _load_collection(saved: Variant) -> void:
 	collection_pity.clear()
 	_collection_stars = 0
 	if typeof(saved) != TYPE_DICTIONARY:
+		_prune_kit()
 		return
 	var items: Variant = (saved as Dictionary).get("items", {})
 	if typeof(items) == TYPE_DICTIONARY:
@@ -1230,6 +1374,15 @@ func _load_collection(saved: Variant) -> void:
 			if (str(key) == "rarity" or (Content.COLLECTION["sources"] as Dictionary).has(str(key))) \
 					and typeof(pity[key]) in [TYPE_INT, TYPE_FLOAT]:
 				collection_pity[str(key)] = maxi(0, int(pity[key]))
+	_prune_kit()
+
+
+## The kit holds only owned items (7.4a): drops the others, then lets auto slots refill.
+func _prune_kit() -> void:
+	for slot: String in kit.keys():
+		if get_collection_stars(kit[slot]) <= 0:
+			kit.erase(slot)
+	auto_fill_kit(false)
 	invalidate_upgrade_cache()
 
 
@@ -2212,11 +2365,15 @@ func _upgrade_mult(effect_type: String, target: String = "") -> float:
 		if perk_effect.get("type", "") != effect_type or not _effect_matches(perk_effect, target):
 			continue
 		mult *= float(perk_effect["value"])
-	for id: String in collection:  # Cube Collection items (7.3a): 1 + per_star × stars each
+	for id: String in collection:  # Cube Collection items (7.3a): get_item_mult (full in the Comp Kit, a share outside it)
 		var item_effect: Dictionary = Content.get_collection_item(id).get("effect", {})
 		if item_effect.get("type", "") != effect_type or not _effect_matches(item_effect, target):
 			continue
 		mult *= get_item_mult(id)
+	for set_def: Dictionary in get_active_kit_sets():  # Comp Kit brand sets (7.4a)
+		var set_effect: Dictionary = set_def["effect"]
+		if set_effect["type"] == effect_type and _effect_matches(set_effect, target):
+			mult *= float(set_effect["value"])
 	_mult_cache[key] = mult
 	return mult
 
@@ -2284,6 +2441,8 @@ func reset_state() -> void:
 	_collection_stars = 0
 	collection_pity.clear()
 	collection_rng.randomize()
+	kit.clear()
+	kit_manual.clear()
 	automation = {"compete_at": int(Content.AUTOMATION["compete_at_default"])}
 	_automation_timer = 0.0
 	championships = 0
@@ -2340,6 +2499,7 @@ func get_save_data() -> Dictionary:
 		"achievements": achievements.keys(),
 		"stats": stats.duplicate(true),
 		"collection": {"items": collection.duplicate(), "pity": collection_pity.duplicate()},
+		"kit": {"slots": kit.duplicate(), "manual": kit_manual.keys()},
 	}
 
 
@@ -2462,6 +2622,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		for i in mini(championships, (Content.COLLECTION["items"] as Array).size() * int(Content.COLLECTION["max_stars"])):
 			roll_collection_drop("championship")  # nobody listens to the signal yet: the screen just shows them
 		collection_rng.randomize()
+	_load_kit(data.get("kit", {}))  # after the collection (and its backfill): only owned items fit
 	var saved_auto: Variant = data.get("automation", {})
 	if typeof(saved_auto) == TYPE_DICTIONARY:
 		for kind: String in Content.AUTOMATION["kinds"]:
@@ -2734,6 +2895,11 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("collection"):
 			data["collection"] = "backfill"
 		data["version"] = 16
+	if int(data["version"]) < 17:
+		# v17 adds the Comp Kit (7.4a): every slot on auto, so loading fills it with the best items owned.
+		if not data.has("kit"):
+			data["kit"] = {"slots": {}, "manual": []}
+		data["version"] = 17
 	return data
 
 

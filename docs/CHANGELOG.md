@@ -2,6 +2,35 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-12 — Task 7.4a: Comp Kit (rules only, save v17)
+- **Data (`Content.COMP_KIT`):** five typed slots (Main cube, Backup cube, Timer, Mat, Lube), `owned_share` 0.25, and
+  brand sets: Pocket "Budget Kit" (3: taps ×1.15, 5: ×1.4), Lumen "Glow Kit" (3: mastery XP ×1.25), Torque
+  "Magnetic Kit" (3: helpers ×1.08), Swift "Speed Kit" (3: all moves ×1.08), Kestrel "Record Kit" (3: Solves per solve
+  ×1.08, 5: ×1.2). Only Pocket and Kestrel have an item of every kind, so only they can complete 5 pieces (a test
+  checks every set can be completed). Only a brand's biggest tier counts.
+- **Rules:** an item in the kit gives its full passive, every other item owned a quarter (`get_item_mult`). Set
+  bonuses count in `_upgrade_mult` like other effects. `equip(slot, id)` (kind must match, item owned; an item already
+  in the other cube slot swaps places; `""` empties a slot), `set_slot_auto(slot)`, `auto_fill_kit()`, `get_kit()`,
+  `is_equipped(id)`, `is_slot_manual(slot)`, `get_active_kit_sets()`, signal `kit_changed`.
+- **Auto slots:** until the player picks for a slot (7.4b's screen), it fills itself with the best owned item of its
+  kind (highest per_star × stars, then rarer, then data order) whenever something drops; a slot the player chose
+  stays as chosen (also when emptied) until `set_slot_auto`. So nothing is lost while there's no kit screen yet.
+- **Save v17:** `"kit": {"slots": {slot: id}, "manual": [slots]}`; wrong kinds, unknown, unowned or doubled items are
+  dropped and auto slots refill on load. v16 → v17: every slot on auto (filled with the best items owned).
+  Kept through championships. The kit never holds an item that isn't owned (`_prune_kit` after a collection load).
+- **Balance:** unchanged (`docs/BALANCE.md` identical; the bot's collection is one item in the second run, which the
+  kit equips).
+- **Next for 7.4b (after Phase V):** the five slots on the Collection tab, click to equip, "Auto" per slot, the active
+  sets with their bonus.
+  Known limits for then: auto-fill ranks by the nominal per_star × stars, not by what helps most (a 1-star 4×4
+  Legendary beats a 5-star 3×3 Common even for a 3×3 player), and `equip`/`set_slot_auto` signal `kit_changed`
+  even when nothing moved. `get_active_kit_sets()` runs on every `_upgrade_mult` cache miss: cheap today (bot time
+  unchanged), worth caching if the kit grows.
+- **Review (diff-reviewer) fix:** moving the only cube from Main to an empty Backup marked Main manual, so it never
+  refilled; now only a real swap makes both slots manual (test added, plus a numeric check of the 3-piece set).
+- Tests: `test_comp_kit_data`, `test_comp_kit_rules` (auto-fill, owned share, slot types, manual picks, swaps, back to
+  auto, emptying, 3- and 5-piece sets), `test_comp_kit_save` (championship, round trip, damaged, v16 → v17).
+
 ## 2026-11-12 — Task 7.3a: Cube Collection (rules only, save v16)
 - **Data (`Content.COLLECTION`):** 40 items with **made-up brands** (Pocket, Lumen, Torque, Swift, Kestrel; no real
   cube makers' names, so a paid release stays safe; a test checks a list of real ones): 28 cubes across every puzzle,

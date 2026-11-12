@@ -3970,6 +3970,8 @@ func test_collection_passives() -> void:
 	var helper := g.get_building_mps("friend")
 	var value := g.get_solve_value("3x3")
 	g._load_collection({"items": {"torque_3m": 2, "pocket_lube": 3, "pocket_mat": 1, "kestrel_pro_timer": 1}})
+	check(g.is_equipped("torque_3m") and g.is_equipped("pocket_lube") and g.is_equipped("pocket_mat")
+			and g.is_equipped("kestrel_pro_timer"), "the kit filled itself (7.4a): full passives below")
 	check_near(g.get_item_mult("torque_3m"), 1.0 + 0.02 * 2, "a rare item at 2 stars: +4 %")
 	check_near(g.get_puzzle_moves_mult("3x3"), moves_3x3 * 1.04, "a 3×3 cube speeds up the 3×3")
 	check_near(g.get_puzzle_moves_mult("2x2"), moves_2x2, "...and nothing else")
@@ -3977,6 +3979,119 @@ func test_collection_passives() -> void:
 	check_near(g.get_building_mps("friend"), helper * 1.01, "a mat: helpers")
 	check_near(g.get_solve_value("3x3"), value * 1.05, "a legendary timer: Solves per solve")
 	check_near(g.get_item_mult("swift_duo"), 1.0, "an item not owned does nothing")
+	g.free()
+
+
+## 7.4a: the Comp Kit's data: five typed slots, sets of real brands that can be completed.
+func test_comp_kit_data() -> void:
+	var kinds := {}
+	for slot: Dictionary in Content.COMP_KIT["slots"]:
+		check(Content.COLLECTION_KINDS.has(slot["kind"]) and Content.get_kit_slot(slot["id"]) == slot, "slot %s has a known kind" % slot["id"])
+		kinds[slot["kind"]] = int(kinds.get(slot["kind"], 0)) + 1
+	check(Content.COMP_KIT["slots"].size() == 5 and kinds.get("cube", 0) == 2, "Main cube, Backup cube, Timer, Mat, Lube")
+	for set_def: Dictionary in Content.COMP_KIT["sets"]:
+		var fits := 0
+		for slot: Dictionary in Content.COMP_KIT["slots"]:
+			var items := 0
+			for item: Dictionary in Content.COLLECTION["items"]:
+				if item["brand"] == set_def["brand"] and item["kind"] == slot["kind"]:
+					items += 1
+			fits += mini(items, kinds[slot["kind"]]) if slot["kind"] != "cube" or slot["id"] == "main" else 0
+		check(fits >= int(set_def["pieces"]), "%s (%d pieces) can be completed (%d fit)" % [set_def["name"], set_def["pieces"], fits])
+		check(Content.COLLECTION_EFFECT_TYPES.has(set_def["effect"]["type"]) and float(set_def["effect"]["value"]) > 1.0,
+				"%s has a multiplying bonus" % set_def["name"])
+	check(float(Content.COMP_KIT["owned_share"]) > 0.0 and float(Content.COMP_KIT["owned_share"]) < 1.0, "items outside the kit give a share")
+
+
+## 7.4a: equipping (slot types, swaps, manual vs auto slots), the owned share and brand sets.
+func test_comp_kit_rules() -> void:
+	var g := new_game()
+	var changes := [0]
+	g.kit_changed.connect(func() -> void: changes[0] += 1)
+	g._load_collection({"items": {"pocket_classic": 1, "pocket_mini": 1, "torque_3m": 1, "pocket_timer": 2, "pocket_lube": 1}})
+	check(g.get_kit() == {"main": "torque_3m", "backup": "pocket_mini", "timer": "pocket_timer", "lube": "pocket_lube"},
+			"auto slots take the best of their kind (ties: data order), cubes in Main then Backup (%s)" % g.get_kit())
+	# The owned share: an item outside the kit gives a quarter.
+	check_near(g.get_item_mult("pocket_classic"), 1.0 + 0.01 * float(Content.COMP_KIT["owned_share"]), "outside the kit: a share of its passive")
+	check_near(g.get_item_mult("pocket_mini"), 1.01, "in the kit: all of it")
+	# Slot types.
+	check(not g.equip("timer", "pocket_lube") and not g.equip("main", "swift_duo") and not g.equip("banana", "pocket_mini"),
+			"wrong kind, not owned or no such slot: refused")
+	# A manual pick sticks; a swap between the cube slots.
+	var before: int = changes[0]
+	check(g.equip("main", "pocket_classic") and g.get_kit()["main"] == "pocket_classic" and g.is_slot_manual("main"), "equip a cube by hand")
+	check(changes[0] > before, "kit_changed is signalled")
+	check(g.get_kit()["backup"] == "torque_3m" and not g.is_slot_manual("backup"), "...and the auto Backup takes the best one left (%s)" % g.get_kit())
+	check(g.equip("main", "torque_3m") and g.get_kit()["main"] == "torque_3m" and g.get_kit()["backup"] == "pocket_classic"
+			and g.is_slot_manual("backup"), "picking the Backup's cube for Main swaps them (%s)" % g.get_kit())
+	g.collection_rng.seed = 2
+	var maxed := {}
+	for item: Dictionary in Content.COLLECTION["items"]:
+		if item["kind"] == "cube" and item["rarity"] != "legendary":
+			maxed[item["id"]] = int(Content.COLLECTION["max_stars"])
+	maxed.merge({"torque_3m": 1, "pocket_mini": 1, "pocket_timer": 2, "pocket_lube": 1}, true)
+	g._load_collection({"items": maxed})
+	check(g.get_kit()["main"] == "torque_3m" and g.get_kit()["backup"] == "pocket_classic", "better cubes don't replace manual picks")
+	g.set_slot_auto("backup")
+	check(g.get_kit()["backup"] != "pocket_classic" and not g.is_slot_manual("backup"), "back on auto, the slot takes the best (%s)" % g.get_kit()["backup"])
+	check(g.equip("lube", "") and not g.get_kit().has("lube") and g.is_slot_manual("lube"), "a slot can be emptied by hand, and stays empty")
+	g.free()
+	# Moving the only cube into the empty Backup leaves Main on auto, so the next cube fills it.
+	var mover := new_game()
+	mover._load_collection({"items": {"pocket_mini": 1}})
+	check(mover.get_kit() == {"main": "pocket_mini"}, "test setup: one cube, in Main")
+	check(mover.equip("backup", "pocket_mini") and mover.get_kit() == {"backup": "pocket_mini"}
+			and not mover.is_slot_manual("main"), "moving it to Backup leaves Main empty but on auto (%s)" % [mover.kit_manual])
+	mover.collection_rng.seed = 4
+	mover._load_collection({"items": {"pocket_mini": 1, "torque_3m": 1}})
+	check(mover.get_kit().get("main", "") == "torque_3m" and mover.get_kit()["backup"] == "pocket_mini", "...so a new cube goes there")
+	check(mover.equip("backup", "pocket_mini") and mover.get_kit()["backup"] == "pocket_mini", "equipping a slot's own item changes nothing")
+	mover.free()
+	# Brand sets: 3 Pocket pieces add the Budget Kit, 5 its bigger tier instead.
+	var s := new_game()
+	var tap := s.get_tap_moves_flat()
+	s._load_collection({"items": {"pocket_classic": 1, "pocket_stickered": 1, "pocket_timer": 1}})
+	var three: Array = s.get_active_kit_sets()
+	check(three.size() == 1 and three[0]["pieces"] == 3 and three[0]["brand"] == "pocket", "three Pocket pieces: the Budget Kit (%s)" % [three])
+	check_near(s.get_tap_moves_flat(), tap * 1.15, "...×1.15 taps")
+	s._load_collection({"items": {"pocket_classic": 1, "pocket_stickered": 1, "pocket_timer": 1, "pocket_mat": 1, "pocket_lube": 1}})
+	var five: Array = s.get_active_kit_sets()
+	check(five.size() == 1 and five[0]["pieces"] == 5, "five: only the bigger tier (%s)" % [five])
+	check_near(s.get_tap_moves_flat(), tap * 1.4 * 1.01, "...×1.4 taps, with the lube's own +1 %")
+	s.equip("main", "")
+	check(s.get_active_kit_sets().size() == 1 and s.get_active_kit_sets()[0]["pieces"] == 3, "one piece out: back to the 3-piece bonus")
+	s.free()
+
+
+## 7.4a: the kit is kept through championships and saved (v17); older saves get a kit that fills itself.
+func test_comp_kit_save() -> void:
+	var g := new_game()
+	g._load_collection({"items": {"pocket_classic": 1, "torque_3m": 1, "pocket_timer": 1}})
+	g.equip("backup", "torque_3m")
+	var kit := g.get_kit()
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	g.compete()
+	check(g.get_kit()["backup"] == "torque_3m" and g.is_slot_manual("backup"), "the kit is kept through a championship")
+	var data := g.get_save_data()
+	check(int(data["version"]) == GameState.SAVE_VERSION and GameState.SAVE_VERSION >= 17, "saves as v17 or later")
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.get_kit() == g.get_kit() and loaded.kit_manual == g.kit_manual, "the kit and its manual slots survive save/load (%s)" % loaded.get_kit())
+	loaded.free()
+	data["kit"] = {"slots": {"main": "banana", "backup": "pocket_timer", "timer": "swift_comp_timer", "mat": 5}, "manual": ["backup", "nope", 3]}
+	var damaged := new_game()
+	damaged.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(not damaged.get_kit().has("backup") and damaged.kit_manual.keys() == ["backup"] and damaged.get_kit()["timer"] != "swift_comp_timer"
+			and damaged.get_collection_stars(damaged.get_kit()["timer"]) > 0,
+			"wrong kinds, unknown or unowned items and slots are dropped; auto slots refill (%s)" % damaged.get_kit())
+	damaged.free()
+	var v16 := g.get_save_data()
+	v16["version"] = 16
+	v16.erase("kit")
+	var old := new_game()
+	old.apply_save_data(JSON.parse_string(JSON.stringify(v16)), float(v16["saved_at"]))
+	check(old.kit_manual.is_empty() and old.get_kit().has("main") and old.get_kit().has("timer"), "v16 → v17: every slot on auto, filled (%s)" % old.get_kit())
+	old.free()
 	g.free()
 
 
