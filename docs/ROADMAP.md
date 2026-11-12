@@ -13,7 +13,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| V.9 Identity and polish | `ccr-a9bfca64-fydj3l` | 2026-11-12 | new `assets/images/brand/` (wordmark, icon, splash), `icon.svg` | `project.godot`, `main.tscn` (top bar wordmark), `main.gd`, `audio.gd`?, `ui/theme.tres`, `tools/make_sfx.py`?, `tests/test_runner.gd` | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -462,6 +461,8 @@ every new component or variation to the gallery (a test enforces variations).
       new buttons, a final pass on spacing at 1280×720, 1920×1080 and 2560×1440 (overlaps 9.1; tick 9.1 too if done).
       *Done when:* screenshots at all three sizes, and the owner says the look is right in `docs/FEEDBACK.md`
       (playtest at the end of the phase, as usual).
+      *(2026-11-12: everything but the sign-off is done: wordmark, icon, boot splash, the Lab's empty state, button
+      sounds, shots at all three sizes in `docs/screenshots/V.9-identity/`. **Waiting for the owner's playtest.**)*
 
 ## Phase 7 — Goals
 **D15c (changed 2026-11-07):** the **rules** of a Phase 7 task (data, `GameState`, save, tests, sim) may be built now,
@@ -571,8 +572,9 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
       *Done when:* the new pacing target and the multi-run targets (7×7/Megaminx timing, second run ≤ 50 %) pass for real.
 
 ## Phase 9 — Polish
-- [ ] **9.1 Resolution pass:** 1280×720, 1920×1080 and 2560×1440; final background and layout tweaks.
+- [x] **9.1 Resolution pass:** 1280×720, 1920×1080 and 2560×1440; final background and layout tweaks.
       *Done when:* there are screenshots at all three sizes.
+      *(Done 2026-11-12 with V.9: `docs/screenshots/V.9-identity/` (1080p/1440p as JPEG); nothing needed moving.)*
 - [ ] **9.2 First-time hints:** short, skippable hints ("Click the cube", "Buy your first Friend", "Upgrades are here").
       *Done when:* a fresh save shows them once, and they never show again after being dismissed or done.
 - [ ] **9.3 Credits screen:** in-game list of every asset and track with its license (required for CC-BY).

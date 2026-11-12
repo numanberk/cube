@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/icon_sticker.tscn" id="v8_sticker"]
 [ext_resource type="Texture2D" path="res://assets/icons/ui_settings.svg" id="v8_icon"]
 [ext_resource type="Texture2D" path="res://assets/icons/ui_close.svg" id="v8_close"]
+[ext_resource type="Texture2D" path="res://assets/images/brand/wordmark.svg" id="v9_wordmark"]
 
 [node name="SettingsPanel" type="Control"]
 visible = false
@@ -263,6 +264,29 @@ layout_mode = 2
 size_flags_horizontal = 0
 focus_mode = 0
 text = "Reset save…"
+
+[node name="FooterRule" type="HSeparator" parent="Center/Panel/Box"]
+layout_mode = 2
+theme_type_variation = &"TitleRule"
+
+[node name="Footer" type="HBoxContainer" parent="Center/Panel/Box"]
+layout_mode = 2
+theme_type_variation = &"ColumnsBox"
+alignment = 1
+
+[node name="Wordmark" type="TextureRect" parent="Center/Panel/Box/Footer"]
+custom_minimum_size = Vector2(132, 38)
+layout_mode = 2
+texture = ExtResource("v9_wordmark")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Version" type="Label" parent="Center/Panel/Box/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"FaintLabel"
+text = "v0.1.0"
 
 [node name="ResetDialog" type="ConfirmationDialog" parent="."]
 unique_name_in_owner = true

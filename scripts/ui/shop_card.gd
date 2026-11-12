@@ -41,6 +41,7 @@ var _pop: Tween            ## the pop when the card becomes affordable (V.6)
 
 
 func _ready() -> void:
+	set_meta(&"no_press_sound", true)  # V.9: buying plays "buy" (Audio.NO_PRESS_SOUND)
 	mouse_entered.connect(_set_hovered.bind(true))
 	mouse_exited.connect(_set_hovered.bind(false))
 	set_process(false)

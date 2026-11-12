@@ -30,7 +30,11 @@ const SOUNDS := {
 	"chime": {"stream": preload("res://assets/audio/sfx/chime.wav"), "min_interval": 0.25, "polyphony": 3},
 	"buy": {"stream": preload("res://assets/audio/sfx/buy.wav"), "min_interval": 0.06, "polyphony": 3},
 	"unlock": {"stream": preload("res://assets/audio/sfx/unlock.wav"), "min_interval": 0.5, "polyphony": 1},
+	"hover": {"stream": preload("res://assets/audio/sfx/hover.wav"), "min_interval": 0.07, "polyphony": 2},
+	"press": {"stream": preload("res://assets/audio/sfx/press.wav"), "min_interval": 0.05, "polyphony": 2},
 }
+## A button that sets this meta to true plays no press sound (V.9): its own sound says more (buying a card: "buy").
+const NO_PRESS_SOUND := &"no_press_sound"
 
 var played: Dictionary = {}      ## sound name -> times it actually played (tests and debugging)
 var _players: Dictionary = {}    ## sound name -> AudioStreamPlayer
@@ -79,6 +83,21 @@ func _ready() -> void:
 		_music_players.append(music)
 	set_bus_volume(SFX_BUS, DEFAULT_SFX_VOLUME)
 	set_bus_volume(MUSIC_BUS, DEFAULT_MUSIC_VOLUME)
+	get_tree().node_added.connect(_on_node_added)  # V.9: every button gets the hover and press sounds
+
+
+## Buttons (V.9): a soft tick under the pointer and a tap when pressed, for every BaseButton in the game (the ones
+## that exist now and every one added later). Disabled buttons stay quiet.
+func _on_node_added(node: Node) -> void:
+	var button := node as BaseButton
+	if button == null:
+		return
+	button.mouse_entered.connect(func() -> void:
+		if not button.disabled:
+			play_hover())
+	button.pressed.connect(func() -> void:
+		if not bool(button.get_meta(NO_PRESS_SOUND, false)):
+			play_press())
 
 
 func _process(delta: float) -> void:
@@ -262,6 +281,16 @@ func play_solve() -> bool:
 
 func play_buy() -> bool:
 	return _play("buy")
+
+
+## The pointer over a button (V.9): barely there.
+func play_hover() -> bool:
+	return _play("hover")
+
+
+## A button pressed (V.9).
+func play_press() -> bool:
+	return _play("press")
 
 
 ## Something new appeared (a helper now; puzzles later).

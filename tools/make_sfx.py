@@ -142,9 +142,28 @@ def unlock():
     return lowpass(mix(*tracks), 5200)
 
 
+def hover():
+    """A button under the pointer (V.9): a tiny, high, very short tick, felt more than heard."""
+    n = int(0.03 * RATE)
+    tick = [math.sin(2 * math.pi * 2400 * i / RATE) * e for i, e in enumerate(envelope(n, 0.0005, 0.006))]
+    return lowpass(tick, 7000)
+
+
+def press():
+    """A button pressed (V.9): a soft rounded tap, the cube clack's quieter, rounder sibling."""
+    n = int(0.06 * RATE)
+    noise = [random.uniform(-1, 1) for _ in range(n)]
+    tap = highpass(lowpass(noise, 2600), 500)
+    tap = [s * e for s, e in zip(tap, envelope(n, 0.0008, 0.008))]
+    body = [math.sin(2 * math.pi * 330 * i / RATE) * e for i, e in enumerate(envelope(n, 0.001, 0.02))]
+    return lowpass(mix((tap, 0.0, 0.8), (body, 0.0, 0.7)), 4000)
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     write("click.wav", click(), 0.55)
     write("chime.wav", chime(), 0.5)
     write("buy.wav", buy(), 0.55)
     write("unlock.wav", unlock(), 0.55)
+    write("hover.wav", hover(), 0.18)
+    write("press.wav", press(), 0.4)

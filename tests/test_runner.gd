@@ -1645,6 +1645,32 @@ func test_tracks_data() -> void:
 	g.free()
 
 
+## V.9: every button gets a soft hover tick and a press tap (disabled ones stay quiet on hover); cards that buy keep
+## their own "buy" sound instead of the tap.
+func test_button_sounds() -> void:
+	var audio: AudioManager = root.get_node("Audio")
+	var button := Button.new()
+	root.add_child(button)
+	audio._last_played.clear()
+	var hovers: int = audio.played["hover"]
+	var presses: int = audio.played["press"]
+	button.mouse_entered.emit()
+	check(audio.played["hover"] == hovers + 1, "hovering a button ticks")
+	button.pressed.emit()
+	check(audio.played["press"] == presses + 1, "pressing it taps")
+	audio._last_played.clear()
+	button.disabled = true
+	button.mouse_entered.emit()
+	check(audio.played["hover"] == hovers + 1, "a disabled button stays quiet")
+	var card: ShopCard = load("res://scenes/shop_card.tscn").instantiate()
+	root.add_child(card)
+	audio._last_played.clear()
+	card.pressed.emit()
+	check(audio.played["press"] == presses + 1, "a shop card doesn't tap (buying plays its own sound)")
+	button.free()
+	card.free()
+
+
 func test_music_crossfade_never_two_at_full_volume() -> void:
 	var audio: AudioManager = root.get_node("Audio")
 	audio.music_clock = 0.0
@@ -5411,6 +5437,8 @@ func test_lab_tab() -> void:
 	game.reset_state()
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
+	main._refresh()
+	check((main.get_node("%LabStatus") as Label).text.begins_with("No projects yet"), "an empty Lab says so (V.9)")
 	game.cheat_add_solves(1e4)
 	main._refresh()
 	var tabs: TabContainer = main.get_node("%Tabs")

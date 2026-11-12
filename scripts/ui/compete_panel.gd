@@ -31,6 +31,7 @@ var preview: Dictionary = {}  ## the last Game.get_championship_preview() shown
 
 
 func _ready() -> void:
+	_compete.set_meta(&"no_press_sound", true)  # V.9: winning plays "unlock" (Audio.NO_PRESS_SOUND)
 	_close.pressed.connect(close)
 	_not_yet.pressed.connect(close)
 	_dim.gui_input.connect(_on_dim_input)

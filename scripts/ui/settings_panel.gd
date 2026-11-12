@@ -22,11 +22,13 @@ const UNLOCK_NAMES := {
 @onready var _jukebox: VBoxContainer = %JukeboxList
 @onready var _reset_button: Button = %ResetButton
 @onready var _reset_dialog: ConfirmationDialog = %ResetDialog
+@onready var _version: Label = %Version
 
 var _syncing := false  ## true while filling controls from Settings, so their signals don't write back
 
 
 func _ready() -> void:
+	_version.text = "v%s" % ProjectSettings.get_setting("application/config/version", "")  # V.9: under the wordmark
 	_fill_option(_options["music_mode"], MUSIC_MODES)
 	_fill_option(_options["focus_audio"], FOCUS_AUDIO)
 	_fill_option(_options["quality"], QUALITIES)

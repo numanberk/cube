@@ -27,6 +27,10 @@ var _choice := ""        ## choices (5.7b): "Pick one: ..." line in the tooltip,
 var locked_out := false  ## the other upgrade of its pair was picked this run
 
 
+func _ready() -> void:
+	set_meta(&"no_press_sound", true)  # V.9: buying plays "buy" (Audio.NO_PRESS_SOUND)
+
+
 ## The pressed style sinks the face 2 px (V.2): the content, laid out by anchors, sinks with it (its offsets, so a
 ## release puts it back exactly). Read from the draw mode, so it also comes back up when the button is disabled
 ## mid-press or the mouse leaves it.

@@ -2,6 +2,39 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-12 — Task V.9: identity and polish (all but the owner's sign-off)
+- **Wordmark:** `assets/images/brand/wordmark.svg`, "Cube Idle" as outlines of Fredoka SemiBold ("Idle" in the buy
+  green), written by `tools/make_wordmark.py` (dev-only fontTools: `pip install --target /tmp/pylib fonttools`, then
+  `PYTHONPATH=/tmp/pylib python3 tools/make_wordmark.py`). The name is one constant there (`NAME`, `ACCENT`): a new
+  name after D2 is one edit and a re-run of it and of `tools/make_splash.gd`. In game: a footer at the bottom of the
+  Settings panel, the wordmark + the version (`application/config/version`). (Not in the top bar: V.1 found it full.)
+- **Window/taskbar icon:** `assets/images/brand/icon.svg` (same tool), an isometric sticker cube (white top, green and
+  red sides) on a dark rounded tile; `config/icon` points at it, the old `icon.svg` at the root is gone. The Windows
+  `.ico` is still 10.1's job (export).
+- **Boot splash:** `assets/images/brand/splash.png` (720×400, the icon over the wordmark, transparent), rendered by
+  `tools/make_splash.gd` (`godot --headless --path . -s res://tools/make_splash.gd`); `application/boot_splash/*` in
+  project.godot: the palette's bg behind it, `stretch_mode=0` (shown at its own size, never scaled).
+- **Empty states:** every list already had one (Upgrades, the Puzzles tab's one-puzzle hint, the Solve Station's
+  records, the news box hides) except the Lab: before its first project shows it now says "No projects yet: they show
+  up here as you earn Solves this run…" instead of "start a project".
+- **Button sounds:** two new quiet sounds from `tools/make_sfx.py` (`hover.wav`, a tiny high tick; `press.wav`, a soft
+  tap; the four old sounds re-generate byte-identical: it's seeded). `Audio` hooks every `BaseButton` as it enters the
+  tree (`get_tree().node_added`): hover ticks (not on disabled buttons), press taps, rate-limited. Shop cards, upgrade
+  tiles and perk nodes set the `no_press_sound` meta: buying plays "buy" instead.
+- **Spacing pass at three sizes:** `mid` and `endgame` at 1280×720, 1920×1080 and 2560×1440 (the canvas_items stretch
+  scales the whole 1280×720 layout; nothing needed moving). The 1080p/1440p shots are JPEGs (PNGs were 460–760 KB).
+  **Task 9.1 ticked** (its Done-when: screenshots at all three sizes).
+- **Not ticked: V.9 waits for the owner** to playtest and say the look is right in `docs/FEEDBACK.md` (its Done-when).
+  Phase V is otherwise done; the Phase 7 screen parts (7.0b–7.4b) can start now.
+- **Review fixes (screenshot-checker, diff-reviewer):** the empty Lab line didn't wrap and showed an empty progress
+  bar (it wraps, the bar hides while nothing runs); a rule above the Settings footer and a bigger wordmark; the
+  puzzle Unlock and Compete buttons also skip the press tap (they play "unlock"); `boot_splash/stretch_mode` (4.7's
+  name; `fullsize` was converted on load); a stray fonttools wheel kept out of the repo. Not changed: the shop tabs,
+  sliders and option lists aren't BaseButtons, so they stay silent; the Solve Station's records column wraps
+  awkwardly at 1080p (older, for the playtest).
+- Tests: `test_button_sounds`, the Lab's empty state (in `test_lab_tab`).
+- Screenshots: `docs/screenshots/V.9-identity/` (+ `splash.png` on the bg colour).
+
 ## 2026-11-12 — Task V.8: overlays restyle
 - **One title bar for every overlay** (Settings, Compete, Trophy Perks, the Solve Station; Welcome back gets the
   sticker): a category-coloured `IconSticker` (Settings white gear, Compete gold podium, Perks gold trophy, Solve

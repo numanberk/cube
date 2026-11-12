@@ -26,6 +26,8 @@ filtered noise). Released as **CC0** by the project; no third-party material.
 | `assets/audio/sfx/chime.wav` | Solve chime (Rhodes-style major third) |
 | `assets/audio/sfx/buy.wav` | Purchase (two soft plucks) |
 | `assets/audio/sfx/unlock.wav` | Unlock sting (rising arpeggio) |
+| `assets/audio/sfx/hover.wav` | Button hover tick (V.9) |
+| `assets/audio/sfx/press.wav` | Button press tap (V.9) |
 
 ### Music
 **Placeholders** until the final soundtrack (open decision D8). Made for Cube Idle by `tools/make_music.py`
@@ -96,6 +98,9 @@ The black background square was removed so the game can tint them; no other chan
 | `assets/icons/stat_trophy.svg` | trophy | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/trophy.html |
 | `assets/icons/ui_settings.svg` | cog | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/cog.html |
 | `assets/icons/ui_close.svg` | close (×) | Cube Idle (ours, V.8) | CC0 | — |
+| `assets/images/brand/wordmark.svg` | "Cube Idle" wordmark (V.9): outlines of Fredoka SemiBold | Cube Idle (ours; tools/make_wordmark.py) | CC0 (ours). Made from Fredoka glyph outlines: logos and artwork made with an OFL font are not bound by the OFL (OFL FAQ); Fredoka itself stays SIL OFL 1.1 | — |
+| `assets/images/brand/icon.svg` | window/taskbar icon: an isometric sticker cube (V.9) | Cube Idle (ours; tools/make_wordmark.py) | CC0 | — |
+| `assets/images/brand/splash.png` | boot splash: the icon above the wordmark (V.9) | Cube Idle (ours; tools/make_splash.gd) | CC0 (ours; the wordmark: see above) | — |
 | `assets/icons/stat_streak.svg` | small-fire | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/small-fire.html |
 | `assets/icons/stat_flow.svg` | wave-crest | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/wave-crest.html |
 | `assets/icons/stat_golden.svg` | sparkles | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/sparkles.html |

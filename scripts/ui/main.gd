@@ -1118,9 +1118,11 @@ func _refresh_lab() -> void:
 	if running.is_empty():
 		lab_status.text = "The Lab is free: start a project. Research keeps going while the game is closed."
 		lab_progress.value = 0.0
+		lab_progress.visible = false  # V.9: no empty bar when nothing runs
 	else:
 		lab_status.text = "Researching %s  ·  %s left" % [running["topic"], Num.clock(float(running["left"]))]
 		lab_progress.value = float(running["fraction"])
+		lab_progress.visible = true
 	var startable := 0
 	var order: Array[ShopCard] = []
 	var done_order: Array[ShopCard] = []
@@ -1153,6 +1155,9 @@ func _refresh_lab() -> void:
 	order.append_array(done_order)
 	for index in order.size():
 		lab_list.move_child(order[index], index)
+	if order.is_empty():  # V.9: an empty state, not "start a project" with nothing to start
+		lab_status.text = "No projects yet: they show up here as you earn Solves this run. Research keeps going while " \
+				+ "the game is closed."
 	tabs.set_tab_title(LAB_TAB, "Lab · %s" % Num.clock(float(running["left"])) if not running.is_empty() else "Lab")
 	set_tab_count(LAB_TAB, 0 if not running.is_empty() else startable)
 

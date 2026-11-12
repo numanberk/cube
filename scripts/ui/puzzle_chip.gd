@@ -28,6 +28,7 @@ var _move_timer := 0.0
 func _ready() -> void:
 	view.tapped.connect(func(_at: Vector2) -> void: chosen.emit(puzzle_id))
 	_unlock.pressed.connect(func() -> void: unlock_pressed.emit(puzzle_id))
+	_unlock.set_meta(&"no_press_sound", true)  # V.9: unlocking plays "unlock" (Audio.NO_PRESS_SOUND)
 	view.set_graphics("low")
 	view.sway_enabled = false
 	view.floor_enabled = false  # no cubing mat at this size (V.4 puts the chips on a shelf)

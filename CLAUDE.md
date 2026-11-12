@@ -40,7 +40,9 @@ assets/                    fonts/ (Inter, Fredoka; OFL) and later audio/, images
 scenes/puzzle_view_3d.tscn The 3D puzzle (SubViewport > Puzzle tilt > Turntable > Bodies/Stickers MultiMeshes; Floor >
                            Mat + MatInset + Shadow: the cubing mat, V.3; Key/Fill/Rim lights)
 scripts/autoload/game.gd   class GameState: ALL rules, numbers, save/load, offline progress
-scripts/autoload/audio.gd  class AudioManager ("Audio"): play_click/solve/buy/unlock (rate-limited), bus volumes,
+scripts/autoload/audio.gd  class AudioManager ("Audio"): play_click/solve/buy/unlock (rate-limited), bus volumes;
+                           every BaseButton gets a hover tick + press tap (V.9, via node_added): a button that plays
+                           its own sound sets meta `no_press_sound` (Audio.NO_PRESS_SOUND);
                            music (Content.TRACKS; 2 players crossfading 2 s; follow/shuffle/loop; ducks when unfocused)
 scripts/autoload/settings.gd  class GameSettings ("Settings"): every setting in user://settings.cfg (SPEC), get/set_value,
                            `changed` signal; applies audio + notation itself, main.gd applies graphics + reduce motion
@@ -103,6 +105,8 @@ tools/run_tests.sh         Runs tests + a 120-frame smoke run of the main scene
 tools/screenshot.sh        PNGs of the main scene in preset states (see "Screenshots" below)
 tools/find_godot.sh        Shared by the tools/*.sh scripts: finds or downloads Godot
 tools/make_sfx.py          Synthesises assets/audio/sfx/*.wav (CC0, ours); edit and re-run to change a sound
+tools/make_wordmark.py     Writes assets/images/brand/wordmark.svg (the name as Fredoka outlines) + icon.svg (V.9; needs
+                           fontTools, dev only); tools/make_splash.gd renders brand/splash.png (the boot splash) from them
 tools/make_music.py        Synthesises the placeholder lo-fi loops in assets/audio/music/ (CC0, until decision D8)
 tools/simulate.sh          Balance bot (tools/simulator.gd) -> docs/BALANCE.md; run after any balance change
 tools/pacing.gd            PLAN §2 pacing targets as data; tests fail if one is missed (or newly met, see below)

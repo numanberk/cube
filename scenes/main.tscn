@@ -509,7 +509,7 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"DimLabel"
 text = "The Lab is free: start a project."
-text_overrun_behavior = 3
+autowrap_mode = 3
 
 [node name="LabProgress" type="ProgressBar" parent="Margin/Rows/Columns/Right/Tabs/Lab/LabBox"]
 unique_name_in_owner = true
