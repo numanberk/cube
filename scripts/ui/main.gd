@@ -14,6 +14,7 @@ const BURST_INTERVAL := 0.5
 const COUNTER_EASE := 12.0         ## how fast the Solves counter catches up (higher = faster)
 const ShopCardScene := preload("res://scenes/shop_card.tscn")
 const PuzzleChipScene := preload("res://scenes/puzzle_chip.tscn")
+const SHELF_COLUMN_MAX := 3  ## up to this many small puzzles stand in one column on the stage; more take two (V.4)
 const STAGE_ZOOM := 0.92  ## the main puzzle frames a little tighter than its bounding sphere (V.4, see PuzzleView3D.frame_zoom)
 const FIRST_HINT_MOVES := 300.0  ## the "Click the cube" hint shows on the stage until this many lifetime moves (V.4)
 const UpgradeTileScene := preload("res://scenes/upgrade_tile.tscn")
@@ -56,7 +57,8 @@ var _lamp_center := Vector2(-1.0, -1.0)  ## last lamp_center sent to the backgro
 @onready var upgrade_list: GridContainer = %UpgradeList
 @onready var tabs: TabContainer = %Tabs
 @onready var fx: FxLayer = %FxLayer
-@onready var puzzle_row: HBoxContainer = %PuzzleRow
+@onready var puzzle_row: GridContainer = %PuzzleRow
+@onready var shelf: Control = %Shelf
 @onready var split_panel: SplitPanel = %SplitPanel
 @onready var buy_one: Button = %BuyOne
 @onready var buy_ten: Button = %BuyTen
@@ -99,6 +101,9 @@ func _ready() -> void:
 	# The card and badges (top) and the chips/ticker strip (bottom) sit on the stage: frame the puzzle between them.
 	stage_top.resized.connect(func() -> void: puzzle_view.frame_inset_top = stage_top.size.y)
 	stage_overlay.resized.connect(func() -> void: puzzle_view.frame_inset_bottom = stage_overlay.size.y)
+	# The shelf of small puzzles sits on the stage's left (V.4, owner's option b): frame the puzzle right of it.
+	shelf.resized.connect(_frame_beside_shelf)
+	shelf.visibility_changed.connect(_frame_beside_shelf)
 	settings_button.pressed.connect(settings_panel.open)
 	compete_button.pressed.connect(open_compete)
 	compete_panel.closed.connect(func() -> void: Audio.set_music_override(""))
@@ -865,6 +870,25 @@ func _refresh_puzzle_row() -> void:
 	if next != "":
 		var cost := Game.get_puzzle_unlock_cost(next)
 		_locked_chip.show_locked(next, Content.get_puzzle(next)["name"], Num.format(cost), Game.solves >= cost)
+	_layout_shelf()
+
+
+## The shelf is one column of puzzles on the stage's left, two from SHELF_COLUMN_MAX puzzles on, so it always fits
+## between the goal card and the bottom strip (V.4). Hidden while it has nothing to show.
+func _layout_shelf() -> void:
+	var shown := 0
+	for chip: Control in puzzle_row.get_children():
+		if chip.visible:
+			shown += 1
+	shelf.visible = shown > 0
+	var columns := 1 if shown <= SHELF_COLUMN_MAX else 2
+	if puzzle_row.columns != columns:
+		puzzle_row.columns = columns
+
+
+func _frame_beside_shelf() -> void:
+	puzzle_view.frame_inset_left = shelf.size.x if shelf.visible else 0.0
+	_place_lamp()
 
 
 func _on_unlock_pressed(puzzle_id: String) -> void:
@@ -1177,7 +1201,8 @@ func _place_lamp() -> void:
 	var screen := get_viewport_rect().size
 	if screen.x <= 0.0 or screen.y <= 0.0:
 		return
-	var lamp := puzzle_view.get_global_rect().get_center() / screen
+	var rect := puzzle_view.get_global_rect()  # the puzzle sits in the part right of the shelf (V.4): the lamp too
+	var lamp := Vector2(rect.position.x + (puzzle_view.frame_inset_left + rect.size.x) / 2.0, rect.get_center().y) / screen
 	if not lamp.is_equal_approx(_lamp_center):
 		_lamp_center = lamp
 		_background_material.set_shader_parameter("lamp_center", lamp)

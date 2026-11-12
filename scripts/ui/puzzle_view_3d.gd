@@ -77,7 +77,7 @@ const TICKER_LENGTH := 8        ## moves shown under the puzzle
 const BODY_STEPS_HIGH := 3      ## segments per rounded edge of a piece body
 const BODY_STEPS_LOW := 1       ## one segment = a simple bevel
 const STAGE_GLOW_COLOR := Color(0.36, 0.29, 0.21)  ## warm, like the desk lamp in the background (V.3)
-const MAT_HALF_WIDTH := 1.3     ## the mat, × the puzzle's bounding radius (fits cubes and the Megaminx): half its width...
+const MAT_HALF_WIDTH := 1.05    ## the mat, × the puzzle's bounding radius (fits cubes and the Megaminx): half its width...
 const MAT_HALF_DEPTH := 1.0     ## ...half its depth (front to back)...
 const MAT_THICKNESS := 0.06     ## ...and its thickness, × the puzzle's width
 const MAT_GAP := 0.015          ## the puzzle floats this × its width above the mat (no z-fighting at the corners)
@@ -131,6 +131,13 @@ var frame_inset_bottom := 0.0:
 		if is_equal_approx(value, frame_inset_bottom):
 			return
 		frame_inset_bottom = value
+		_frame_camera()
+## Pixels at the left covered by UI (V.4: the puzzle shelf sits on the stage's left), like frame_inset_top.
+var frame_inset_left := 0.0:
+	set(value):
+		if is_equal_approx(value, frame_inset_left):
+			return
+		frame_inset_left = value
 		_frame_camera()
 var floor_enabled := true:      ## the cubing mat under the puzzle (V.3); chips turn it off
 	set(value):
@@ -920,10 +927,11 @@ func _frame_camera() -> void:
 	# and the mat's corners (V.3). Height is the view's fixed axis; a narrow view is limited by its width.
 	var aspect := size.x / size.y if size.x > 0.0 and size.y > 0.0 else 1.0
 	var tan_full := tan(deg_to_rad(_camera.fov) / 2.0)
-	var tan_h := tan_full * aspect
-	# Only the band between frame_inset_top and frame_inset_bottom is free: frame into it (V.4).
+	# Only the band between frame_inset_top and frame_inset_bottom, right of frame_inset_left, is free: frame into it (V.4).
 	var inset_top := clampf(frame_inset_top / size.y, 0.0, 0.4) if size.y > 0.0 else 0.0
 	var inset_bottom := clampf(frame_inset_bottom / size.y, 0.0, 0.4) if size.y > 0.0 else 0.0
+	var inset_left := clampf(frame_inset_left / size.x, 0.0, 0.4) if size.x > 0.0 else 0.0
+	var tan_h := tan_full * aspect * (1.0 - inset_left)
 	var tan_v := tan_full * (1.0 - inset_top - inset_bottom)
 	var corners := _mat_corners()
 	var bottom := -radius
@@ -932,22 +940,29 @@ func _frame_camera() -> void:
 	var centre_y := (radius + bottom) / 2.0 - extent * CAMERA_DROP
 	var half_fov := atan(minf(tan_v, tan_h))
 	var distance := radius / sin(half_fov) + absf(centre_y) / tan(half_fov)  # the sphere, off the view's axis
+	var sideways := 0.0
 	for corner in corners:
 		distance = maxf(distance, corner.z + absf(corner.y - centre_y) / tan_v)
-		distance = maxf(distance, corner.z + absf(corner.x) / tan_h)
-	distance *= FRAME_DISTANCE * frame_zoom
+		# The camera moves sideways by -inset_left × its distance, so a corner nearer the camera (z > 0) shows
+		# inset_left × z × tan further from the band's centre: fit that, not just its x.
+		sideways = maxf(sideways, corner.z + absf(corner.x + inset_left * corner.z * tan_full * aspect) / tan_h)
+	# frame_zoom may let the mat's front slip under the bottom strip, never its sides past the view's edges (V.4).
+	distance = maxf(distance * FRAME_DISTANCE * frame_zoom, sideways * FRAME_DISTANCE)
 	# The free band's centre is (top - bottom) / 2 of the view below its middle: moving the camera up by that much (in
 	# world units at the puzzle) shows the puzzle there.
 	var lift := (inset_top - inset_bottom) * distance * tan_full
-	_camera.position = Vector3(0.0, centre_y + lift, distance)
+	# Likewise sideways: the band's centre is inset_left half-widths right of the middle, so the camera moves left.
+	var side := -inset_left * distance * tan_full * aspect
+	_camera.position = Vector3(side, centre_y + lift, distance)
 	_camera.near = 0.1
 
 	# Backdrop: a quad behind the puzzle that exactly fills the view.
 	var depth := _camera.position.z + radius * 1.5
 	var height := 2.0 * depth * tan_full
 	var shift := absf(centre_y + lift) / (depth * tan_full)  # how far off the camera axis the puzzle sits (in half-views)
-	(_backdrop.mesh as QuadMesh).size = Vector2(height * aspect, height) * (1.02 + shift)  # still fills the view
-	_backdrop.position = Vector3(0.0, -centre_y - lift, -depth)  # a camera child: centred on the puzzle, not the camera
+	var shift_x := absf(side) / (depth * tan_full * aspect)
+	(_backdrop.mesh as QuadMesh).size = Vector2(height * aspect, height) * (1.02 + shift + shift_x)  # still fills the view
+	_backdrop.position = Vector3(-side, -centre_y - lift, -depth)  # a camera child: centred on the puzzle, not the camera
 	_camera.far = depth + 1.0
 
 

@@ -355,16 +355,17 @@ scroll_active = false
 autowrap_mode = 0
 horizontal_alignment = 1
 
-[node name="Shelf" type="PanelContainer" parent="Margin/Rows/Columns/Stage"]
+
+[node name="Shelf" type="PanelContainer" parent="Margin/Rows/Columns/Stage/StageArea"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 0
+size_flags_vertical = 4
 theme_type_variation = &"Shelf"
 
-[node name="PuzzleRow" type="HBoxContainer" parent="Margin/Rows/Columns/Stage/Shelf"]
+[node name="PuzzleRow" type="GridContainer" parent="Margin/Rows/Columns/Stage/StageArea/Shelf"]
 unique_name_in_owner = true
 layout_mode = 2
-alignment = 1
 
 [node name="Right" type="VBoxContainer" parent="Margin/Rows/Columns"]
 custom_minimum_size = Vector2(460, 0)

@@ -609,9 +609,9 @@ shadow_offset = Vector2(0, 3)
 anti_aliasing_size = 0.75
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shelf"]
-content_margin_left = 12.0
+content_margin_left = 4.0
 content_margin_top = 2.0
-content_margin_right = 12.0
+content_margin_right = 4.0
 content_margin_bottom = 0.0
 bg_color = Color(0, 0, 0, 0)
 border_width_bottom = 3

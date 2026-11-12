@@ -13,10 +13,9 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| V.4 finish: shelf onto the stage (owner: option b) | `ccr-a9bfca64-fydj3l` | 2026-11-12 | `scenes/main.tscn`, `scenes/puzzle_chip.tscn` | `main.gd` (layout), `ui/theme.tres`, `tests/test_runner.gd`, `tools/screenshot.sh`? | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
-were removed as stale: neither had pushed any work. R.6a is free again; V.4 is taken over by the row above.)*
+were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
 
 ## Milestone 1 — Playable core ✅
 - [x] Tap to make moves, moves complete solves
@@ -409,7 +408,7 @@ every new component or variation to the gallery (a test enforces variations).
       *(Done 2026-11-10: desk background shader (lamp glow behind the puzzle, slow bokeh, vignette, grain; flat on Low),
       a framed cubing mat that tilts with the puzzle and is framed with it, warm key light, cool rim light (High only).
       Bench High +10 % / +5 %. The puzzle's size moved to V.4. Shots: `docs/screenshots/V.3-stage/`.)*
-- [ ] **V.4 Declutter the main screen:** stage chips and the move ticker sit *on* the stage (overlaid at the bottom of the
+- [x] **V.4 Declutter the main screen:** stage chips and the move ticker sit *on* the stage (overlaid at the bottom of the
       3D view, translucent); the moves bar, "Next goal" line and the goal strip merge into one **goal card**; the hint line
       ("Click the cube or press Space…") becomes a 9.2-style first-time hint; "Lifetime" moves to a tooltip on the Solves
       counter; the puzzle row becomes a **shelf** of small puzzles on little stands instead of grey cards. The news box
@@ -422,6 +421,9 @@ every new component or variation to the gallery (a test enforces variations).
       *(2026-11-10: all but the size are done (one row under the puzzle, nothing lost, 1080p fits); the puzzle is ~40 %
       (~44 % with its mat). Waiting for the owner to pick how to get to 50 %: a smaller mat, the shelf onto the stage,
       or a per-puzzle zoom. See the CHANGELOG.)*
+      *(Done 2026-11-12: owner picked (b): the shelf is a column on the stage's left (two from 4 puzzles), the view takes
+      the whole stage height, the mat is a bit narrower: the 3×3 is ~51 % of the screen height. Shots in
+      `docs/screenshots/V.4-finish/`.)*
 - [ ] **V.5 Shop v2:** helper cards: the coloured icon sticker, name + one short line, a big owned count with milestone
       pips (next ×2 at 10/25/50… owned), and a **bar along the bottom that fills towards the cost** (green and gently
       breathing when affordable). Locked cards are silhouettes with a "?" and the bar to their unlock. Upgrade tiles get a

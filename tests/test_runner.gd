@@ -5857,8 +5857,8 @@ func test_main_screen_declutter() -> void:
 	var names: Array[String] = []
 	for child in stage.get_children():
 		names.append(child.name)
-	check(names == (["StageArea", "Shelf"] as Array[String]), "under the stage there's only the shelf (got %s)" % [names])
-	for path: String in ["%StageChips", "%MoveTicker", "%GoalCard", "%TeamBest", "%HintLabel"]:
+	check(names == (["StageArea"] as Array[String]), "nothing under the stage: the shelf is on it too (got %s)" % [names])
+	for path: String in ["%StageChips", "%MoveTicker", "%GoalCard", "%TeamBest", "%HintLabel", "%Shelf"]:
 		check(main.get_node("%StageArea").is_ancestor_of(main.get_node(path)), "%s sits on the stage" % path)
 	check(main.get_node_or_null("%StatsLabel") == null, "no Lifetime line under the cube")
 	check((main.get_node("%SolvesBox") as Control).tooltip_text.contains("Lifetime: "), "Lifetime is in the Solves tooltip")
@@ -5912,6 +5912,32 @@ func test_main_screen_declutter() -> void:
 	var band_bottom := view.size.y - view.frame_inset_bottom
 	check(highest >= band_top - 1.0 and lowest <= band_bottom + 1.0,
 			"the cube at rest sits between the card and the strip (%d..%d in %d..%d)" % [highest, lowest, band_top, band_bottom])
+	# The shelf on the stage's left: the puzzle is framed right of it, and is at least half the screen's height (V.4).
+	var shelf: Control = main.get_node("%Shelf")
+	check(shelf.visible and is_equal_approx(view.frame_inset_left, shelf.size.x), "the view knows what the shelf covers")
+	var left := INF
+	for i in 8:
+		var corner := view._base_puzzle * Vector3(e if i & 1 else -e, e if i & 2 else -e, e if i & 4 else -e)
+		left = minf(left, cam.unproject_position(corner).x)
+	check(left >= shelf.size.x - 1.0, "...and the cube at rest stays right of it (%d ≥ %d)" % [left, shelf.size.x])
+	var screen := float(ProjectSettings.get_setting("display/window/size/viewport_height"))  # the logical screen (720)
+	check((lowest - highest) / screen >= 0.5, "the puzzle is at least half the screen's height (%d %%)" % roundi((lowest - highest) / screen * 100.0))
+	check(main.puzzle_row.columns == 1, "a short shelf is one column")
+	for id: String in ["3x3", "4x4", "5x5", "7x7"]:  # four besides the focused 2×2
+		game._add_puzzle(id)
+	main._build_puzzle_row()
+	check(main.puzzle_row.columns == 2, "four puzzles or more take two columns")
+	await process_frame
+	await process_frame
+	check(shelf.size.x > 150.0 and is_equal_approx(view.frame_inset_left, shelf.size.x), "the view follows the wider shelf")
+	var mat_left := INF
+	var mat_right := -INF
+	for corner: Vector3 in view._mat_corners():
+		var at := cam.unproject_position(corner)  # _mat_corners() are already where the view sees them at rest
+		mat_left = minf(mat_left, at.x)
+		mat_right = maxf(mat_right, at.x)
+	check(mat_left >= view.frame_inset_left - 1.0 and mat_right <= view.size.x + 1.0,
+			"...and the mat stays between the shelf and the view's edge (%d..%d in %d..%d)" % [mat_left, mat_right, view.frame_inset_left, view.size.x])
 	main.free()
 	game.set_process(true)
 	game.reset_state()

@@ -2,6 +2,36 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-12 — Task V.4 finished: the shelf on the stage (owner's option b)
+- **Stale claims (owner):** the earlier V.4 row (2026-11-11; its session isn't reachable from this account and had
+  pushed nothing but the claim) and the R.6a row (2026-11-07, nothing pushed) were removed. R.6a is free again.
+- **The shelf of small puzzles sits on the stage's left** (`%Shelf` moved into `%StageArea`, vertically centred):
+  one column for up to `SHELF_COLUMN_MAX` (3) puzzles, two columns from 4 (`%PuzzleRow` is a GridContainer now;
+  `main._layout_shelf()`); hidden while it has nothing to show. Nothing is under the stage any more.
+- **The puzzle view takes the whole stage height** and frames the puzzle right of the shelf:
+  `PuzzleView3D.frame_inset_left` (like the top/bottom insets: the free band narrows and the camera moves sideways;
+  the backdrop follows). `frame_zoom` no longer applies to the mat's sideways fit, so the mat's sides never leave the
+  view (its front may still slide under the bottom strip). The mat is a little narrower (`MAT_HALF_WIDTH` 1.3 → 1.05;
+  the stage's width limited the puzzle otherwise).
+- **Result:** the 3×3 is ~51 % of the screen height in `mid` (~370 px; was ~40 %, ~280 px before V.4's first part
+  ~28 %), ~59 % with its mat; 1080p the same (~51 %). Done-when met: no text rows under the puzzle, nothing lost
+  (the shelf moved, its contents didn't change), ≥ 50 % in `mid`, 1080p fits.
+- Theme: `Shelf` side margins 12 → 4. Its bottom edge stays as the shelf's base under the column.
+- Tests: `test_main_screen_declutter` updated: the shelf is on the stage, the view knows the shelf's width, the cube
+  at rest stays right of it and is ≥ 50 % of the logical 720 px, 1 vs 2 columns.
+- Screenshots: `docs/screenshots/V.4-finish/` (fresh, mid, endgame, row6, mid_low; compare `V.4-declutter/`).
+  `screenshot-checker`: no overlaps or cut mat in those plus POSE=solved, PUZZLE=7x7, SHOWCASE=20, GOLDEN=glow,
+  SOLVE=solving and 1080p; tight but clear: the Megaminx top ~10 px under the "Team best" pill, the 7×7 mat ~14 px
+  from the shelf.
+- **Review (diff-reviewer) fixes:** the sideways fit ignored depth, so with the two-column shelf the mat's front-right
+  corner was cut at the view's edge (`row6`); the fit now accounts for the camera's sideways shift at each corner's
+  depth (a test checks the mat stays between the shelf and the edge with two columns). The desk lamp's glow follows
+  the puzzle into the part right of the shelf. (The older vertical fit has the same approximation with the smaller
+  top/bottom insets; not changed.)
+- **For the owner:** the narrower mat (1.3 → 1.05 × the radius) goes a little toward option (a); it was needed so the
+  stage's width didn't cap the puzzle below 50 %. Easy to undo (`MAT_HALF_WIDTH`) if the old mat looked better.
+- **Next:** V.5 (Shop v2).
+
 ## 2026-11-12 — Task 7.4a: Comp Kit (rules only, save v17)
 - **Data (`Content.COMP_KIT`):** five typed slots (Main cube, Backup cube, Timer, Mat, Lube), `owned_share` 0.25, and
   brand sets: Pocket "Budget Kit" (3: taps ×1.15, 5: ×1.4), Lumen "Glow Kit" (3: mastery XP ×1.25), Torque
