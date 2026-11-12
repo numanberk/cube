@@ -26,6 +26,7 @@ signal research_started(project_id: String)   ## Algorithm Lab (5.6)
 signal research_finished(project_id: String)  ## a project's effect counts from now (methods also emit purchased("method"))
 signal career_moment(moment_id: String)  ## a Content.CAREER story beat happened, once per player (7.0a)
 signal achievement_earned(achievement_id: String)  ## a Content achievement was earned, once per player (7.1a)
+signal collection_drop(item_id: String, stars: int, source: String)  ## a Cube Collection item dropped (7.3a); stars after it
 signal championship_won(trophies_won: int)  ## a World Championship reset the run (6.2); the UI rebuilds after it
 ## Buying a trophy perk (6.3) emits purchased("perk", id).
 signal golden_spawned
@@ -33,12 +34,12 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 15  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 16  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
                           ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
                           ## v12 (6.3b): auto-buyer toggles; v13 (7.0a): career moments seen; v14 (7.1a): achievements;
-                          ## v15 (7.2a): stats
+                          ## v15 (7.2a): stats; v16 (7.3a): Cube Collection
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -87,6 +88,10 @@ var _automation_timer := 0.0
 var career_seen: Dictionary = {}  ## Content.CAREER ids that already fired (7.0a, saved; kept through championships)
 var _career_timer := 0.0  ## also times the once-a-second achievement check
 var achievements: Dictionary = {}  ## achievement ids earned (7.1a, saved; kept through championships): id -> true
+var collection: Dictionary = {}       ## Cube Collection (7.3a, saved; kept through championships): item id -> stars (1..max)
+var _collection_stars := 0           ## the stars in `collection`, kept up to date (the upgrade cache checks it constantly)
+var collection_pity: Dictionary = {}  ## misses in a row per drop source, and "rarity": drops in a row below the pity rarity
+var collection_rng := RandomNumberGenerator.new()  ## drops (seeded by tests and the balance bot)
 var stats: Dictionary = {}  ## the Stats screen's counters (7.2a, saved; see _new_stats() for each one and what a championship keeps)
 var _applying_save := false  ## true inside apply_save_data: no career moment is signalled (no UI listens yet)
 var championships := 0          ## World Championships won (6.2); the first one opens the 7×7, the Megaminx and "Finals"
@@ -744,6 +749,7 @@ func compete() -> int:
 	check_time_tiers(false)  # the new run's slow team doesn't pop "Sub-30" again... until it's really faster
 	_helper_best.clear()
 	check_helper_times(false)
+	roll_collection_drop("championship")  # before the signal, so the screen rebuilt after it shows the new item
 	championship_won.emit(gain)
 	if persistence_enabled:
 		save_game()
@@ -996,6 +1002,7 @@ func check_achievements(emit: bool = true) -> Array[String]:
 	if emit:
 		for id in earned:
 			achievement_earned.emit(id)
+			roll_collection_drop("achievement")  # an old save's backfill (emit false) drops nothing
 	return earned
 
 
@@ -1120,6 +1127,110 @@ func _load_stats(saved: Variant) -> void:
 						stats["puzzle_solves"][str(id)] = maxf(0.0, float(value[id]))
 		elif typeof(value) in [TYPE_INT, TYPE_FLOAT]:
 			stats[key] = maxf(0.0, float(value))
+
+
+# --- Cube Collection (task 7.3a) -------------------------------------------------------
+
+## One try at a drop from `source` (Content.COLLECTION["sources"]): it drops with the source's chance, or surely once
+## its pity is reached (the Nth try in a row). The item: a rarity by weight (or the pity rarity or better after a dry
+## streak), then any item of it that can still grow; it gains a star (new: 1). Returns the item id, "" if nothing dropped.
+func roll_collection_drop(source: String) -> String:
+	var def: Dictionary = (Content.COLLECTION["sources"] as Dictionary).get(source, {})
+	if def.is_empty() or (def.get("after_first_championship", false) and not has_won_championship()):
+		return ""  # no try: the pity doesn't move either
+	var misses := int(collection_pity.get(source, 0))
+	if misses + 1 < int(def["pity"]) and collection_rng.randf() >= float(def["chance"]):
+		collection_pity[source] = misses + 1
+		return ""
+	var id := _pick_collection_item()
+	if id == "":
+		return ""  # everything is maxed: nothing to give
+	collection_pity[source] = 0
+	var pity_rarity := Content.get_rarity_index(String(Content.COLLECTION["rarity_pity"]["rarity"]))
+	var dry := int(collection_pity.get("rarity", 0))
+	collection_pity["rarity"] = 0 if Content.get_rarity_index(Content.get_collection_item(id)["rarity"]) >= pity_rarity else dry + 1
+	collection[id] = get_collection_stars(id) + 1
+	_collection_stars += 1
+	invalidate_upgrade_cache()
+	collection_drop.emit(id, collection[id], source)
+	return id
+
+
+## The item a drop gives: a rarity by weight (after a dry streak only the pity rarity or better can come), then a random
+## item of it below max stars; if none of that rarity can grow, the nearest rarity that can (rarer first). "" if none.
+func _pick_collection_item() -> String:
+	var rarities: Array = Content.COLLECTION["rarities"]
+	var floor_index := 0
+	if int(collection_pity.get("rarity", 0)) >= int(Content.COLLECTION["rarity_pity"]["after"]):
+		floor_index = Content.get_rarity_index(String(Content.COLLECTION["rarity_pity"]["rarity"]))
+	var total := 0.0
+	for i in range(floor_index, rarities.size()):
+		total += float(rarities[i]["weight"])
+	var roll := collection_rng.randf() * total
+	var chosen := rarities.size() - 1
+	for i in range(floor_index, rarities.size()):
+		roll -= float(rarities[i]["weight"])
+		if roll < 0.0:
+			chosen = i
+			break
+	var order: Array[int] = [chosen]
+	for step in range(1, rarities.size()):
+		for i: int in [chosen + step, chosen - step]:
+			if i >= floor_index and i < rarities.size():
+				order.append(i)
+	for i in range(floor_index - 1, -1, -1):
+		order.append(i)  # every rarer item is maxed: a lower one is still better than nothing
+	for i in order:
+		var candidates: Array[String] = []
+		for item: Dictionary in Content.COLLECTION["items"]:
+			if item["rarity"] == rarities[i]["id"] and get_collection_stars(item["id"]) < int(Content.COLLECTION["max_stars"]):
+				candidates.append(item["id"])
+		if not candidates.is_empty():
+			return candidates[collection_rng.randi_range(0, candidates.size() - 1)]
+	return ""
+
+
+func get_collection_stars(id: String) -> int:
+	return int(collection.get(id, 0))
+
+
+func get_collection_stars_total() -> int:
+	return _collection_stars
+
+
+## An item's passive multiplier now: 1 + per_star × stars (1 if not owned).
+func get_item_mult(id: String) -> float:
+	return 1.0 + Content.get_item_per_star(Content.get_collection_item(id)) * get_collection_stars(id)
+
+
+## {owned, total, stars, max_stars}: the Collection screen's counts.
+func get_collection_progress() -> Dictionary:
+	var items: Array = Content.COLLECTION["items"]
+	return {"owned": collection.size(), "total": items.size(), "stars": get_collection_stars_total(),
+			"max_stars": items.size() * int(Content.COLLECTION["max_stars"])}
+
+
+func _load_collection(saved: Variant) -> void:
+	collection.clear()
+	collection_pity.clear()
+	_collection_stars = 0
+	if typeof(saved) != TYPE_DICTIONARY:
+		return
+	var items: Variant = (saved as Dictionary).get("items", {})
+	if typeof(items) == TYPE_DICTIONARY:
+		for id: Variant in items:
+			if not Content.get_collection_item(str(id)).is_empty() and typeof(items[id]) in [TYPE_INT, TYPE_FLOAT]:
+				var stars := clampi(int(items[id]), 0, int(Content.COLLECTION["max_stars"]))
+				if stars > 0:
+					collection[str(id)] = stars
+					_collection_stars += stars
+	var pity: Variant = (saved as Dictionary).get("pity", {})
+	if typeof(pity) == TYPE_DICTIONARY:
+		for key: Variant in pity:
+			if (str(key) == "rarity" or (Content.COLLECTION["sources"] as Dictionary).has(str(key))) \
+					and typeof(pity[key]) in [TYPE_INT, TYPE_FLOAT]:
+				collection_pity[str(key)] = maxi(0, int(pity[key]))
+	invalidate_upgrade_cache()
 
 
 ## How long offline progress (and the Lab's time away) can run: 8 h plus "offline_hours" perks.
@@ -1779,6 +1890,7 @@ func finish_golden(success: bool) -> Dictionary:
 	var result := _apply_golden_buff(_roll_golden_buff())
 	stats["golden_solved"] = float(stats["golden_solved"]) + 1.0
 	golden_finished.emit(true, result)
+	roll_collection_drop("golden")
 	return result
 
 
@@ -2100,6 +2212,11 @@ func _upgrade_mult(effect_type: String, target: String = "") -> float:
 		if perk_effect.get("type", "") != effect_type or not _effect_matches(perk_effect, target):
 			continue
 		mult *= float(perk_effect["value"])
+	for id: String in collection:  # Cube Collection items (7.3a): 1 + per_star × stars each
+		var item_effect: Dictionary = Content.get_collection_item(id).get("effect", {})
+		if item_effect.get("type", "") != effect_type or not _effect_matches(item_effect, target):
+			continue
+		mult *= get_item_mult(id)
 	_mult_cache[key] = mult
 	return mult
 
@@ -2127,9 +2244,10 @@ func _upgrade_sum(effect_type: String) -> float:
 	return total
 
 
-## What the upgrade cache's safety net compares: the counts of owned upgrades, finished projects and perks.
+## What the upgrade cache's safety net compares: the counts of owned upgrades, finished projects, perks and collection
+## stars (a drop also drops the cache itself).
 func _mult_cache_key() -> int:
-	return upgrades.size() + 1000 * research_done.size() + 1000000 * perks.size()
+	return upgrades.size() + 1000 * research_done.size() + 1000000 * perks.size() + 1000000000 * get_collection_stars_total()
 
 
 ## Does an effect apply to this target ("" = any): its `target` (a helper) or one of its `puzzles` (5.7b specialists).
@@ -2162,6 +2280,10 @@ func reset_state() -> void:
 	_career_timer = 0.0
 	achievements.clear()
 	stats = _new_stats()
+	collection.clear()
+	_collection_stars = 0
+	collection_pity.clear()
+	collection_rng.randomize()
 	automation = {"compete_at": int(Content.AUTOMATION["compete_at_default"])}
 	_automation_timer = 0.0
 	championships = 0
@@ -2217,6 +2339,7 @@ func get_save_data() -> Dictionary:
 		"career": career_seen.keys(),
 		"achievements": achievements.keys(),
 		"stats": stats.duplicate(true),
+		"collection": {"items": collection.duplicate(), "pity": collection_pity.duplicate()},
 	}
 
 
@@ -2333,6 +2456,12 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 			if not Content.get_achievement(str(id)).is_empty():
 				achievements[str(id)] = true
 	_load_stats(data.get("stats", {}))
+	_load_collection(data.get("collection", {}))
+	if typeof(data.get("collection")) == TYPE_STRING and String(data["collection"]) == "backfill":
+		collection_rng.seed = 7700 + championships  # the same items every time this save loads (and screenshot presets)
+		for i in mini(championships, (Content.COLLECTION["items"] as Array).size() * int(Content.COLLECTION["max_stars"])):
+			roll_collection_drop("championship")  # nobody listens to the signal yet: the screen just shows them
+		collection_rng.randomize()
 	var saved_auto: Variant = data.get("automation", {})
 	if typeof(saved_auto) == TYPE_DICTIONARY:
 		for kind: String in Content.AUTOMATION["kinds"]:
@@ -2599,6 +2728,12 @@ func _migrate(data: Dictionary) -> Dictionary:
 							won += float(Content.get_perk(str(id)).get("cost", 0))
 			data["stats"] = {"trophies_won": won, "run_untimed": 1.0}
 		data["version"] = 15
+	if int(data["version"]) < 16:
+		# v16 adds the Cube Collection (7.3a). A championship now always drops an item: "backfill" gives an older save
+		# one per championship it already won, when it's applied (nothing else: achievement drops are luck).
+		if not data.has("collection"):
+			data["collection"] = "backfill"
+		data["version"] = 16
 	return data
 
 

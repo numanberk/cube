@@ -27,7 +27,7 @@ Checked by `test_pacing_targets` in `tests/test_runner.gd`. "Tapping" = 3.0 taps
 | First World Championship at ~90 min (80–100 min, D6) | 1:23:49 | pass |
 | 7×7 in the 2nd–3rd run (measured: in the 2nd run) | 26:38 into the 2nd run | pass |
 | Megaminx in the 4th–5th run | not measured: the simulator plays two runs | expected failure |
-| Second run reaches the same point in ≤ 50 % of the time and ≤ 45 min | 38:55 (46 % of the first run's 1:23:49) | pass |
+| Second run reaches the same point in ≤ 50 % of the time and ≤ 45 min | 38:54 (46 % of the first run's 1:23:49) | pass |
 | The bot's best split at 30 min is a real mix (no puzzle above 70 %) | 2×2 19 % · 3×3 48 % · 4×4 33 % | pass |
 | An active player (Gold-pace hand solves) gets there 2–3× sooner than the tapping bot (D13) | ×2.38 (the tapping bot's 6.16B Solves at 30:00, the active one at 12:35) | pass |
 | Never tapping still buys something within 5 min | Cubing Friend at 0:00 | pass |
@@ -45,8 +45,8 @@ Remove a target's `expected_failure` in `tools/pacing.gd` once it passes.
 - Every helper, upgrade, method and puzzle owned at: never
 - Longest wait for something new: 8:13 (after Research Grants V, before World Championship (+50 trophies))
 - **First World Championship at 1:23:49: +50 trophies.** Perks bought: Team Captain, Warm-up Routine, Comp Prep
-- **Second run** (761 items bought) earned the first run's Solves at: 38:55 (46 % of the first run)
-- Second run puzzles and methods: Learn CFOP 0:52, 4×4 5:54, Learn Roux 15:54, 5×5 16:21, 7×7 26:38, Learn ZZ 29:15
+- **Second run** (761 items bought) earned the first run's Solves at: 38:54 (46 % of the first run)
+- Second run puzzles and methods: Learn CFOP 0:52, 4×4 5:54, Learn Roux 15:54, 5×5 16:21, 7×7 26:38, Learn ZZ 29:14
 
 ### First purchase of each item
 

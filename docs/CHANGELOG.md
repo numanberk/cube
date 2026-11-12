@@ -2,6 +2,43 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-12 — Task 7.3a: Cube Collection (rules only, save v16)
+- **Data (`Content.COLLECTION`):** 40 items with **made-up brands** (Pocket, Lumen, Torque, Swift, Kestrel; no real
+  cube makers' names, so a paid release stays safe; a test checks a list of real ones): 28 cubes across every puzzle,
+  4 timers, 4 mats, 4 lubes (`kind`, for 7.4's slots; `brand` for its sets). Four rarities (Common 60 / Rare 28 /
+  Epic 10 / Legendary 2 weight) with a passive per star of 1 / 2 / 3 / 5 %. Passives are ordinary multiplying
+  upgrade effects (`COLLECTION_EFFECT_TYPES`): cubes `puzzle_mult` on their puzzle, timers `solve_value_mult`, mats
+  `helper_mult`, lubes `tap_mult`. Icons are existing ones for now (7.3b can draw real ones).
+- **Drops (D10, random with pity):** `Game.roll_collection_drop(source)`: Golden Scramble solved in time (50 %, sure
+  on the 3rd try), achievement earned (15 %, sure on the 10th), World Championship won (always; stands in for 8.3's
+  Competitions). The item: a rarity by weight, then a random item of it that can still grow; after 10 drops in a row
+  below Epic the next is Epic or better. A duplicate merges into the next star (max 5); drops never land on a maxed
+  item while another can grow; a full collection gets nothing. Signal `collection_drop(id, stars, source)`.
+- **Owner decision (D17, asked this session):** achievements drop items **only from the first championship on**
+  (`after_first_championship` on the source; until then they don't even move its pity). With drops from minute one
+  the bot's first run was ~3 min faster (5×5 at 48:46–49:00, below its 50–70 window; a 3:55 gap in the first hour);
+  even 8 % / pity 15 missed. Now the first run is unchanged, the second ~1 s faster.
+- **Rules:** passives count inside `_upgrade_mult` like upgrades/Lab/perks (1 + per_star × stars each); the cache is
+  dropped on every drop and its safety key includes the star total (`_collection_stars`, kept up to date: summing it
+  on every lookup made the balance bot much slower). `get_item_mult(id)`, `get_collection_stars(id)`,
+  `get_collection_progress()` ({owned, total, stars, max_stars}) for 7.3b. Kept through championships
+  (`CHAMPIONSHIP["keeps"]` lists it). Nothing drops while a save loads or during an old save's achievement backfill.
+- **Save v16:** `"collection": {"items": {id: stars}, "pity": {source: misses, "rarity": n}}`; unknown ids/sources
+  dropped, stars clamped to 1..5. v15 → v16 ("backfill"): one championship drop per championship the save already won
+  (seeded from that count, so a save, and every screenshot preset, gets the same items each time it loads).
+- **Not measured:** the balance bot never plays Golden Scrambles, so their drops in the first run (50 %, pity 3, one
+  every 2–5 min for a player who clicks them: ~15–20 by the first championship) don't show in `docs/BALANCE.md`. The
+  owner's D17 choice keeps them on purpose (an active player's reward); watch it in the next playtest.
+- **Reproducible:** tests' `new_game()` seeds `collection_rng` (an exact-number achievement test failed ~50 % of runs
+  when its championship dropped a 2×2 cube; it clears the collection now), and `tools/screenshot.gd` seeds it before
+  `COMPETE=won`.
+- **Balance bot:** `collection_rng` seeded (7), so `docs/BALANCE.md` stays reproducible. Tests that measure exact
+  perk numbers clear the collection after their setup championship (`perk_game`).
+- **Next for 7.3b (after Phase V):** the Collection tab (owned and "???" cards, stars, rarity colours) and a drop pop
+  on `collection_drop`.
+- Tests: `test_collection_data`, `test_collection_drops_and_pity` (each source's pity over 300 tries, the rarity
+  pity over 400 drops, merging, maxed items), `test_collection_passives`, `test_collection_sources_and_save`.
+
 ## 2026-11-12 — Task 7.2a: stats (rules only, save v15)
 - **Counters (`GameState.stats`, saved):** `time_played` (seconds with the game open, from `_process`), `run_time`
   (this run: open time + time away; a championship resets it), `fastest_championship` (the shortest `run_time` a

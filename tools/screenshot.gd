@@ -127,6 +127,7 @@ func _ready() -> void:
 		main._refresh()
 	if args.has("compete"):  # 6.1: the Compete screen open with what competing would give now | won (6.2): just competed
 		if String(args["compete"]) == "won":
+			Game.collection_rng.seed = RANDOM_SEED  # the championship's Cube Collection drop (7.3a): the same every shot
 			Game.compete()
 			for i in 3:
 				main.news.advance(10.0)

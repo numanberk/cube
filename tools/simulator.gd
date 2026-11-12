@@ -64,6 +64,7 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 	var g := GameState.new()
 	g.persistence_enabled = false
 	g.reset_state()
+	g.collection_rng.seed = 7  # Cube Collection drops (7.3a): the same run every time
 
 	var duration := minutes * 60.0
 	var events: Array[Dictionary] = []

@@ -40,6 +40,7 @@ func new_game() -> GameState:
 	var game := GameState.new()
 	game.persistence_enabled = false
 	game.reset_state()
+	game.collection_rng.seed = 1  # Cube Collection drops (7.3a): the same in every run of the tests
 	return game
 
 
@@ -3623,8 +3624,10 @@ func test_achievement_bonus() -> void:
 	check(int(progress["earned"]) == 3 and int(progress["total"]) == Content.get_achievements().size(), "x/y: %s" % progress)
 	g.cheat_add_solves(GameState.solves_for_trophies(1))
 	check(g.compete() > 0, "test setup: a championship")
+	g._load_collection({})  # its Cube Collection drop could be a 2×2 cube: moves are measured below
 	check(g.is_achievement_earned("solves_3"), "achievements stay through a championship")
-	g.check_achievements()
+	g.check_achievements()  # (after the first championship achievements also drop items: cleared again below)
+	g._load_collection({})
 	check(g.is_achievement_earned("champion_1"), "...and the first win earns Champion I")
 	var count := g.achievements.size()
 	check_near(g.get_achievement_mult(), 1.0 + 0.01 * count, "after it: +1 %% trophies each (%d)" % count)
@@ -3846,6 +3849,205 @@ func test_stats_save() -> void:
 	check_near(float(back.stats["run_time"]), float(g.stats["run_time"]) + 600.0, "time away counts for the run")
 	check_near(float(back.stats["time_played"]), float(g.stats["time_played"]), "...not as time played")
 	back.free()
+	g.free()
+
+
+## 7.3a: the Cube Collection's data is complete and uses made-up brands.
+func test_collection_data() -> void:
+	var items: Array = Content.COLLECTION["items"]
+	check(items.size() >= 36 and items.size() <= 45, "about 40 items (%d)" % items.size())
+	var ids := {}
+	var per_rarity := {}
+	var kinds := {}
+	for def: Dictionary in items:
+		var id: String = def["id"]
+		check(not ids.has(id), "item ids are unique (%s)" % id)
+		ids[id] = true
+		check(Content.get_collection_item(id) == def, "get_collection_item finds %s" % id)
+		check(String(def["name"]).length() > 3 and String(def["brand"]) != "", "%s has a name and a brand" % id)
+		check(Content.COLLECTION_KINDS.has(def["kind"]), "%s has a known kind" % id)
+		kinds[def["kind"]] = true
+		check(Content.get_rarity_index(def["rarity"]) >= 0, "%s has a known rarity" % id)
+		per_rarity[def["rarity"]] = int(per_rarity.get(def["rarity"], 0)) + 1
+		check(ResourceLoader.exists(Content.ICON_DIR + String(def["icon"]) + ".svg"), "%s has an icon file" % id)
+		var effect: Dictionary = def["effect"]
+		check(Content.COLLECTION_EFFECT_TYPES.has(effect["type"]) and Content.EFFECT_TYPES.has(effect["type"]),
+				"%s has a multiplying upgrade effect (%s)" % [id, effect["type"]])
+		if effect["type"] == "puzzle_mult":
+			check(not (effect.get("puzzles", []) as Array).is_empty(), "%s: a puzzle_mult names its puzzles" % id)
+		if effect["type"] == "building_mult":
+			check(effect.has("target"), "%s: a building_mult names its helper" % id)
+		for puzzle: Variant in effect.get("puzzles", []):
+			check(not Content.get_puzzle(str(puzzle)).is_empty(), "%s: puzzle %s exists" % [id, puzzle])
+		if effect.has("target"):
+			check(not Content.get_building(effect["target"]).is_empty(), "%s: helper %s exists" % [id, effect["target"]])
+		check(Content.get_item_per_star(def) > 0.0 and Content.get_item_per_star(def) <= 0.1, "%s has a small passive" % id)
+		for real: String in ["gan", "moyu", "qiyi", "yj", "dayan", "shengshou", "x-man", "speedstacks", "cyclone", "rubik"]:
+			check(not String(def["name"]).to_lower().contains(real) and String(def["brand"]).to_lower() != real,
+					"%s doesn't use a real brand (%s)" % [id, real])
+	for rarity: Dictionary in Content.COLLECTION["rarities"]:
+		check(int(per_rarity.get(rarity["id"], 0)) > 0 and float(rarity["weight"]) > 0.0, "rarity %s has items and a weight" % rarity["id"])
+	for kind: String in Content.COLLECTION_KINDS:
+		check(kinds.has(kind), "there are %s items (for 7.4's Comp Kit)" % kind)
+	for source: String in Content.COLLECTION["sources"]:
+		var def: Dictionary = Content.COLLECTION["sources"][source]
+		check(float(def["chance"]) > 0.0 and float(def["chance"]) <= 1.0 and int(def["pity"]) >= 1, "source %s: a chance and a pity" % source)
+	check(Content.get_rarity_index(Content.COLLECTION["rarity_pity"]["rarity"]) > 0, "the rarity pity names a rare-or-better rarity")
+
+
+## 7.3a: drops: every source's pity caps a dry streak, the rarity pity caps a streak of low rarities, duplicates add a
+## star up to the max, and a maxed collection gets nothing.
+func test_collection_drops_and_pity() -> void:
+	var g := new_game()
+	g.championships = 1  # achievements drop items only from the first championship on
+	g.collection_rng.seed = 12345
+	var heard: Array = []
+	g.collection_drop.connect(func(id: String, stars: int, source: String) -> void: heard.append([id, stars, source]))
+	for source: String in Content.COLLECTION["sources"]:
+		var pity := int(Content.COLLECTION["sources"][source]["pity"])
+		var streak := 0
+		var longest := 0
+		var drops := 0
+		for i in 300:
+			if g.roll_collection_drop(source) == "":
+				streak += 1
+				longest = maxi(longest, streak)
+			else:
+				streak = 0
+				drops += 1
+			if g.get_collection_stars_total() >= 150:
+				g._load_collection({})  # keep room to grow
+		check(longest <= pity - 1, "%s: never more than %d misses in a row (%d)" % [source, pity - 1, longest])
+		check(drops > 0, "%s drops something" % source)
+	check(g.roll_collection_drop("banana") == "", "an unknown source drops nothing")
+	# The rarity pity: never more than `after` drops in a row below its rarity.
+	var floor_index := Content.get_rarity_index(Content.COLLECTION["rarity_pity"]["rarity"])
+	var after := int(Content.COLLECTION["rarity_pity"]["after"])
+	g._load_collection({})
+	var low := 0
+	var longest_low := 0
+	for i in 400:
+		if g.get_collection_stars_total() >= 180:
+			g._load_collection({"pity": {"rarity": g.collection_pity.get("rarity", 0)}})
+		var id := g.roll_collection_drop("championship")
+		low = low + 1 if Content.get_rarity_index(Content.get_collection_item(id)["rarity"]) < floor_index else 0
+		longest_low = maxi(longest_low, low)
+	check(longest_low <= after, "never more than %d drops in a row below %s (%d)" % [after, Content.COLLECTION["rarity_pity"]["rarity"], longest_low])
+	# Merging: a duplicate is the next star; the signal says so.
+	var fresh := new_game()
+	fresh.collection_rng.seed = 99
+	var got: Array = []
+	fresh.collection_drop.connect(func(id: String, stars: int, source: String) -> void: got.append([id, stars, source]))
+	var first := fresh.roll_collection_drop("championship")
+	check(first != "" and fresh.get_collection_stars(first) == 1 and got[0] == [first, 1, "championship"], "a new item starts at 1 star")
+	var maxed := {}
+	for def: Dictionary in Content.COLLECTION["items"]:
+		maxed[def["id"]] = int(Content.COLLECTION["max_stars"])
+	maxed[first] = 1
+	fresh._load_collection({"items": maxed})
+	check(fresh.roll_collection_drop("championship") == first and fresh.get_collection_stars(first) == 2
+			and got.back() == [first, 2, "championship"], "a duplicate merges into the next star (and drops land where they can grow)")
+	maxed[first] = int(Content.COLLECTION["max_stars"])
+	fresh._load_collection({"items": maxed})
+	var stars_before := fresh.get_collection_stars_total()
+	check(fresh.roll_collection_drop("championship") == "" and fresh.get_collection_stars_total() == stars_before,
+			"a full collection gets nothing, and nothing goes past max stars")
+	var progress := fresh.get_collection_progress()
+	check(int(progress["owned"]) == int(progress["total"]) and int(progress["stars"]) == int(progress["max_stars"]), "x/y: %s" % progress)
+	fresh.free()
+	g.free()
+
+
+## 7.3a: passives: 1 + per_star × stars, on the effect they name only.
+func test_collection_passives() -> void:
+	var g := new_game()
+	g.cheat_add_solves(1e6)
+	g.buy_building("friend")
+	g.unlock_puzzle("3x3")
+	var moves_3x3 := g.get_puzzle_moves_mult("3x3")
+	var moves_2x2 := g.get_puzzle_moves_mult("2x2")
+	var tap := g.get_tap_moves_flat()
+	var helper := g.get_building_mps("friend")
+	var value := g.get_solve_value("3x3")
+	g._load_collection({"items": {"torque_3m": 2, "pocket_lube": 3, "pocket_mat": 1, "kestrel_pro_timer": 1}})
+	check_near(g.get_item_mult("torque_3m"), 1.0 + 0.02 * 2, "a rare item at 2 stars: +4 %")
+	check_near(g.get_puzzle_moves_mult("3x3"), moves_3x3 * 1.04, "a 3×3 cube speeds up the 3×3")
+	check_near(g.get_puzzle_moves_mult("2x2"), moves_2x2, "...and nothing else")
+	check_near(g.get_tap_moves_flat(), tap * 1.03, "lube: taps")
+	check_near(g.get_building_mps("friend"), helper * 1.01, "a mat: helpers")
+	check_near(g.get_solve_value("3x3"), value * 1.05, "a legendary timer: Solves per solve")
+	check_near(g.get_item_mult("swift_duo"), 1.0, "an item not owned does nothing")
+	g.free()
+
+
+## 7.3a: what drops when (Golden Scrambles, achievements, championships), kept through championships, saved (v16).
+func test_collection_sources_and_save() -> void:
+	var g := new_game()
+	g.collection_rng.seed = 5
+	var sources: Array[String] = []
+	g.collection_drop.connect(func(_id: String, _stars: int, source: String) -> void: sources.append(source))
+	for i in int(Content.COLLECTION["sources"]["golden"]["pity"]):
+		g.golden_attempt_left = 10.0
+		g.finish_golden(true)
+	check(sources.count("golden") >= 1, "Golden Scrambles drop items (at the latest at their pity)")
+	var golden_drops := sources.count("golden")
+	g.golden_attempt_left = 10.0
+	g.finish_golden(false)
+	check(sources.count("golden") == golden_drops and int(g.collection_pity.get("golden", 0)) <= 2, "a missed one doesn't try")
+	g.total_solves = 1e6
+	g.check_achievements()
+	check(not sources.has("achievement") and not g.collection_pity.has("achievement"),
+			"before the first championship achievements drop nothing, and their pity doesn't move (owner, 2026-11-12)")
+	var before := g.get_collection_stars_total()
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	g.compete()
+	check(sources.has("championship") and g.get_collection_stars_total() > before, "a championship always drops one, and the collection stays")
+	for i in int(Content.COLLECTION["sources"]["achievement"]["pity"]):
+		g.total_solves = pow(10.0, i + 7)
+		g.check_achievements()
+	check(sources.has("achievement"), "after it, achievements drop items (at the latest at their pity)")
+	var data := g.get_save_data()
+	check(int(data["version"]) == GameState.SAVE_VERSION and GameState.SAVE_VERSION >= 16, "saves as v16 or later")
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.collection == g.collection and loaded.collection_pity == g.collection_pity
+			and loaded.get_collection_stars_total() == g.get_collection_stars_total(), "the collection and its pity survive save/load")
+	loaded.free()
+	data["collection"] = {"items": {"torque_3m": 9, "banana": 2, "pocket_mini": "x", "lumen_neon": 0, "swift_duo": 2.0},
+			"pity": {"golden": 2, "banana": 5, "rarity": -3, "achievement": "x"}}
+	var damaged := new_game()
+	damaged.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(damaged.collection == {"torque_3m": int(Content.COLLECTION["max_stars"]), "swift_duo": 2}
+			and damaged.get_collection_stars_total() == int(Content.COLLECTION["max_stars"]) + 2, "damaged items are dropped or clamped (%s)" % damaged.collection)
+	check(damaged.collection_pity == {"golden": 2, "rarity": 0}, "damaged pity is dropped (%s)" % damaged.collection_pity)
+	damaged.free()
+	var v15 := g.get_save_data()
+	v15["version"] = 15
+	v15.erase("collection")
+	var old := new_game()
+	var old_drops: Array = []
+	old.collection_drop.connect(func(id: String, _stars: int, _source: String) -> void: old_drops.append(id))
+	old.apply_save_data(JSON.parse_string(JSON.stringify(v15)), float(v15["saved_at"]))
+	check(old.championships == 1 and old.get_collection_stars_total() == 1 and old_drops.size() == 1,
+			"v15 → v16: one item per championship already won (the drops they'd give now) (%s)" % [old.collection])
+	check(int(old.get_save_data()["version"]) == GameState.SAVE_VERSION, "...and it saves as the current version")
+	var again := new_game()
+	again.apply_save_data(JSON.parse_string(JSON.stringify(v15)), float(v15["saved_at"]))
+	check(again.collection == old.collection, "...the same items each time that save loads (%s, %s)" % [again.collection, old.collection])
+	again.free()
+	old.free()
+	var huge := v15.duplicate(true)
+	huge["championship"]["count"] = 1000000
+	var veteran := new_game()
+	veteran.apply_save_data(JSON.parse_string(JSON.stringify(huge)), float(huge["saved_at"]))
+	var full := veteran.get_collection_progress()
+	check(int(full["stars"]) <= int(full["max_stars"]), "...and a huge count just fills the collection (no endless loop)")
+	veteran.free()
+	v15["championship"]["count"] = 0
+	var rookie := new_game()
+	rookie.apply_save_data(JSON.parse_string(JSON.stringify(v15)), float(v15["saved_at"]))
+	check(rookie.collection.is_empty(), "...none before a first championship")
+	rookie.free()
 	g.free()
 
 
@@ -5083,6 +5285,7 @@ func perk_game(trophy_count: int) -> GameState:
 	var g := new_game()
 	g.cheat_add_solves(GameState.solves_for_trophies(1))
 	g.compete()
+	g._load_collection({})  # the championship's Cube Collection drop (7.3a) would add its own passive to the numbers
 	g.trophies = trophy_count
 	return g
 

@@ -364,7 +364,7 @@ docs/BALANCE.md, docs/screenshots/
 - Content stays as data (`Content.PUZZLES`, `Content.TRACKS`, `Content.ACHIEVEMENTS`, …). If `content.gd` gets huge,
   split it into `content_helpers.gd`, `content_upgrades.gd`, and so on.
 - **Save versions:** v1 → **v2 puzzles** (4.2) → **v3 mastery** (4.6) → **v4 methods** (5.1) → **v5 solve records** (S.2) →
-  **v6 Golden Scramble + buff** (S.6) → **v7 drill records** (S.4) → **v8 daily scramble** (S.5) → **v9 Algorithm Lab** (5.6) → **v10 World Championships** (6.2) → **v11 trophy perks** (6.3) → **v12 auto-buyer switches** (6.3b) → **v13 career moments** (7.0a) → **v14 achievements** (7.1a) → **v15 stats** (7.2a).
+  **v6 Golden Scramble + buff** (S.6) → **v7 drill records** (S.4) → **v8 daily scramble** (S.5) → **v9 Algorithm Lab** (5.6) → **v10 World Championships** (6.2) → **v11 trophy perks** (6.3) → **v12 auto-buyer switches** (6.3b) → **v13 career moments** (7.0a) → **v14 achievements** (7.1a) → **v15 stats** (7.2a) → **v16 Cube Collection** (7.3a).
   Every bump has a `_migrate()` step and a test that loads the older format. Saves are written to a temp file then
   renamed, with `save.bak` kept (task 0.4).
 - Settings live in `user://settings.cfg`, separate from the save, so a reset never wipes volume or graphics choices.
@@ -423,6 +423,11 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
   a moves bonus compounds through the first run (+1 % each put the first championship at 63 min, against D6's 80–100).
   It counts from the second championship on, so the first run's pacing is unchanged (7.1a; one check in
   `GameState.get_achievement_mult()` if that should change).
+
+- **D17 Cube Collection in the first run:** (owner, 2026-11-12) achievements drop collection items only **from the first
+  championship on** (`after_first_championship` on the source). Drops from them in the first run made it ~3 min faster
+  (5×5 at 48:46, out of its 50–70 window). In the first run items come from Golden Scrambles, and the first
+  championship always drops one.
 
 ### Open
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?

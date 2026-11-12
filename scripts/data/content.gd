@@ -459,6 +459,7 @@ const CHAMPIONSHIP := {
 	"keeps": [
 		"Trophies and trophy perks",
 		"Achievements and their bonus",
+		"Cube Collection",
 		"Puzzle mastery levels",
 		"Solve Station records and their bonuses",
 		"Drill and daily results",
@@ -999,6 +1000,147 @@ static func _short_number(value: float) -> String:
 	if number.contains("."):
 		number = number.rstrip("0").rstrip(".")
 	return number + text.substr(digits) + exponent
+
+
+## Cube Collection (task 7.3a, D10: random drops with pity counters): cubes and gear to collect, kept through every
+## championship. A drop gives an item one star (a new item starts at 1); a duplicate merges into the next star, up to
+## `max_stars` (a drop never lands on a maxed item while another one can still grow). Each item's passive is an upgrade
+## effect (EFFECT_TYPES, multiplying ones only) worth 1 + per_star × stars, per_star from its rarity unless it sets its
+## own. Brands are made up (no real cube makers' names); 7.4's Comp Kit uses `brand` and `kind` for its slots and sets.
+##   sources: what can drop an item: chance per try and pity (the Nth try in a row is a sure drop); a source with
+##   after_first_championship tries nothing before the first World Championship (owner, 2026-11-12: drops from
+##   achievements made the first run ~3 min faster and pushed the 5×5 out of its window)
+##   rarity_pity: after this many drops in a row below `rarity`, the next one is that rarity or better
+##   items: id, name, brand, kind (cube|timer|mat|lube), rarity, icon, effect {type, puzzles|target}, per_star (optional)
+const COLLECTION := {
+	"max_stars": 5,
+	"rarities": [
+		{"id": "common", "name": "Common", "weight": 60.0, "per_star": 0.01},
+		{"id": "rare", "name": "Rare", "weight": 28.0, "per_star": 0.02},
+		{"id": "epic", "name": "Epic", "weight": 10.0, "per_star": 0.03},
+		{"id": "legendary", "name": "Legendary", "weight": 2.0, "per_star": 0.05},
+	],
+	"rarity_pity": {"rarity": "epic", "after": 10},
+	"sources": {
+		"golden": {"chance": 0.5, "pity": 3},        ## a Golden Scramble solved in time
+		"achievement": {"chance": 0.15, "pity": 10, "after_first_championship": true},  ## an achievement earned
+		"championship": {"chance": 1.0, "pity": 1},   ## a World Championship won (until 8.3's Competitions)
+	},
+	"items": [
+		{"id": "pocket_mini", "name": "Pocket Mini", "brand": "pocket", "kind": "cube", "rarity": "common", "icon": "small_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["2x2"]}},
+		{"id": "lumen_twobit", "name": "Lumen Twobit", "brand": "lumen", "kind": "cube", "rarity": "common", "icon": "small_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["2x2"]}},
+		{"id": "torque_2m", "name": "Torque 2 M", "brand": "torque", "kind": "cube", "rarity": "rare", "icon": "magnets",
+			"effect": {"type": "puzzle_mult", "puzzles": ["2x2"]}},
+		{"id": "swift_duo", "name": "Swift Duo", "brand": "swift", "kind": "cube", "rarity": "epic", "icon": "small_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["2x2"]}},
+		{"id": "kestrel_record_2", "name": "Kestrel Record 2×2", "brand": "kestrel", "kind": "cube", "rarity": "legendary",
+			"icon": "small_cubes", "effect": {"type": "puzzle_mult", "puzzles": ["2x2"]}},
+		{"id": "pocket_classic", "name": "Pocket Classic", "brand": "pocket", "kind": "cube", "rarity": "common", "icon": "beginner",
+			"effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "pocket_stickered", "name": "Pocket Stickered", "brand": "pocket", "kind": "cube", "rarity": "common",
+			"icon": "beginner", "effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "lumen_neon", "name": "Lumen Neon (stickerless)", "brand": "lumen", "kind": "cube", "rarity": "common",
+			"icon": "small_cubes", "effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "lumen_frost", "name": "Lumen Frost", "brand": "lumen", "kind": "cube", "rarity": "common", "icon": "small_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "torque_3m", "name": "Torque 3 M", "brand": "torque", "kind": "cube", "rarity": "rare", "icon": "magnets",
+			"effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "torque_3m_ball", "name": "Torque 3 M Ball-Core", "brand": "torque", "kind": "cube", "rarity": "rare",
+			"icon": "magnets", "effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "lumen_prism", "name": "Lumen Prism", "brand": "lumen", "kind": "cube", "rarity": "rare", "icon": "small_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "kestrel_air", "name": "Kestrel Air", "brand": "kestrel", "kind": "cube", "rarity": "rare", "icon": "small_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "swift_3_pro", "name": "Swift 3 Pro", "brand": "swift", "kind": "cube", "rarity": "epic", "icon": "speed_practice",
+			"effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "swift_3_maglev", "name": "Swift 3 Maglev", "brand": "swift", "kind": "cube", "rarity": "epic", "icon": "magnets",
+			"effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "swift_3_ultra", "name": "Swift 3 Ultra", "brand": "swift", "kind": "cube", "rarity": "legendary",
+			"icon": "speed_practice", "effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "kestrel_record_3", "name": "Kestrel Record 3×3", "brand": "kestrel", "kind": "cube", "rarity": "legendary",
+			"icon": "gods_number", "effect": {"type": "puzzle_mult", "puzzles": ["3x3"]}},
+		{"id": "pocket_4", "name": "Pocket 4×4", "brand": "pocket", "kind": "cube", "rarity": "common", "icon": "big_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["4x4"]}},
+		{"id": "torque_4m", "name": "Torque 4 M", "brand": "torque", "kind": "cube", "rarity": "rare", "icon": "big_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["4x4"]}},
+		{"id": "swift_4", "name": "Swift 4", "brand": "swift", "kind": "cube", "rarity": "epic", "icon": "big_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["4x4"]}},
+		{"id": "kestrel_record_4", "name": "Kestrel Record 4×4", "brand": "kestrel", "kind": "cube", "rarity": "legendary",
+			"icon": "big_cubes", "effect": {"type": "puzzle_mult", "puzzles": ["4x4"]}},
+		{"id": "pocket_5", "name": "Pocket 5×5", "brand": "pocket", "kind": "cube", "rarity": "common", "icon": "big_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["5x5"]}},
+		{"id": "torque_5m", "name": "Torque 5 M", "brand": "torque", "kind": "cube", "rarity": "rare", "icon": "big_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["5x5"]}},
+		{"id": "swift_5", "name": "Swift 5", "brand": "swift", "kind": "cube", "rarity": "epic", "icon": "big_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["5x5"]}},
+		{"id": "pocket_7", "name": "Pocket 7×7", "brand": "pocket", "kind": "cube", "rarity": "common", "icon": "big_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["7x7"]}},
+		{"id": "torque_7m", "name": "Torque 7 M", "brand": "torque", "kind": "cube", "rarity": "rare", "icon": "big_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["7x7"]}},
+		{"id": "lumen_dodeca", "name": "Lumen Dodeca", "brand": "lumen", "kind": "cube", "rarity": "common", "icon": "big_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["megaminx"]}},
+		{"id": "swift_minx", "name": "Swift Minx", "brand": "swift", "kind": "cube", "rarity": "epic", "icon": "big_cubes",
+			"effect": {"type": "puzzle_mult", "puzzles": ["megaminx"]}},
+		{"id": "pocket_timer", "name": "Pocket Timer", "brand": "pocket", "kind": "timer", "rarity": "common", "icon": "stackmat",
+			"effect": {"type": "solve_value_mult"}},
+		{"id": "lumen_glow_timer", "name": "Lumen Glow Timer", "brand": "lumen", "kind": "timer", "rarity": "rare",
+			"icon": "stackmat", "effect": {"type": "solve_value_mult"}},
+		{"id": "swift_comp_timer", "name": "Swift Comp Timer", "brand": "swift", "kind": "timer", "rarity": "epic",
+			"icon": "stackmat", "effect": {"type": "solve_value_mult"}},
+		{"id": "kestrel_pro_timer", "name": "Kestrel Pro Timer", "brand": "kestrel", "kind": "timer", "rarity": "legendary",
+			"icon": "stackmat", "effect": {"type": "solve_value_mult"}},
+		{"id": "pocket_mat", "name": "Pocket Mat", "brand": "pocket", "kind": "mat", "rarity": "common", "icon": "club",
+			"effect": {"type": "helper_mult"}},
+		{"id": "lumen_mat", "name": "Lumen Glow Mat", "brand": "lumen", "kind": "mat", "rarity": "rare", "icon": "club",
+			"effect": {"type": "helper_mult"}},
+		{"id": "torque_mat", "name": "Torque Grip Mat", "brand": "torque", "kind": "mat", "rarity": "rare", "icon": "club",
+			"effect": {"type": "helper_mult"}},
+		{"id": "kestrel_mat", "name": "Kestrel Comp Mat", "brand": "kestrel", "kind": "mat", "rarity": "epic", "icon": "club",
+			"effect": {"type": "helper_mult"}},
+		{"id": "pocket_lube", "name": "Pocket Silicone", "brand": "pocket", "kind": "lube", "rarity": "common", "icon": "lube",
+			"effect": {"type": "tap_mult"}},
+		{"id": "torque_lube", "name": "Torque Speed Oil", "brand": "torque", "kind": "lube", "rarity": "rare", "icon": "lube",
+			"effect": {"type": "tap_mult"}},
+		{"id": "swift_lube", "name": "Swift Glide", "brand": "swift", "kind": "lube", "rarity": "epic", "icon": "lube",
+			"effect": {"type": "tap_mult"}},
+		{"id": "kestrel_lube", "name": "Kestrel Silk", "brand": "kestrel", "kind": "lube", "rarity": "legendary", "icon": "lube",
+			"effect": {"type": "tap_mult"}},
+	],
+}
+
+const COLLECTION_EFFECT_TYPES := ["puzzle_mult", "tap_mult", "helper_mult", "solve_value_mult", "building_mult",
+		"global_mult", "mastery_xp_mult"]  ## the EFFECT_TYPES an item may use (multiplying ones)
+const COLLECTION_KINDS := ["cube", "timer", "mat", "lube"]
+
+
+static func get_collection_item(id: String) -> Dictionary:
+	for def: Dictionary in COLLECTION["items"]:
+		if def["id"] == id:
+			return def
+	return {}
+
+
+static func get_rarity(id: String) -> Dictionary:
+	for def: Dictionary in COLLECTION["rarities"]:
+		if def["id"] == id:
+			return def
+	return {}
+
+
+## The index of a rarity in COLLECTION["rarities"] (0 = common), -1 if unknown.
+static func get_rarity_index(id: String) -> int:
+	var rarities: Array = COLLECTION["rarities"]
+	for i in rarities.size():
+		if rarities[i]["id"] == id:
+			return i
+	return -1
+
+
+## An item's passive per star: its own `per_star`, else its rarity's.
+static func get_item_per_star(def: Dictionary) -> float:
+	return float(def.get("per_star", get_rarity(String(def.get("rarity", ""))).get("per_star", 0.0)))
 
 
 ## Hand-solve rewards (task S.3, D13: an active player earns ~2–3× an idle one). Per-puzzle time targets for the Solve
