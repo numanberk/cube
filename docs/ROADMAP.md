@@ -15,6 +15,7 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 |---|---|---|---|---|---|
 | R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
 | V.4 finish: shelf onto the stage (owner: option b) | `ccr-134df3dd-c0lub2` | 2026-11-11 | `scenes/main.tscn`, `scenes/puzzle_chip.tscn` | `main.gd` (layout), `ui/theme.tres`, `tests/test_runner.gd` | no |
+| 7.4a Comp Kit (rules) | `ccr-a9bfca64-fydj3l` | 2026-11-12 | — | `game.gd` (save v17), `content.gd` (`COMP_KIT`), `tests/test_runner.gd`, `tools/simulator.gd`? | **yes** (v17) |
 
 *(Rows added for the sessions that started before this rule; their own files are an estimate. Each
 session corrects its row when it merges.)*
@@ -514,6 +515,12 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
       with set bonuses for matching brands (Idle Pins formations / Perfect Tower modules). Only the kit's items give
       their full bonus; the rest of the collection gives a small "owned" bonus.
       *Done when:* tests cover slot types, set bonuses and swapping, and there's a screenshot.
+      Split (D15c) into:
+  - [ ] **7.4a Rules:** slots and set bonuses as data, equip/swap/auto-fill in GameState, kit items full bonus and the
+        rest a share, save v17. No `main.gd`/`main.tscn` changes.
+        *Done when:* tests cover slot types, set bonuses, swapping and save/load, and the pacing targets still pass.
+  - [ ] **7.4b Screen (after Phase V):** the kit's five slots on the Collection tab, drag or click to equip.
+        *Done when:* there's a screenshot.
 
 ## Phase 8 — Active play and Hall of Fame (D12: before 1.0)
 - [x] **8.1 Golden Scramble:** moved to **S.6** (now a quick solve). Old text: a small golden 3D cube flies across the stage every 2–5 min for 12 s. Clicking it gives a random buff
