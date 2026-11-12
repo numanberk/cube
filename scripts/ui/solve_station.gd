@@ -12,6 +12,7 @@ const LIST_LENGTH := 50       ## times shown in the list (the newest)
 
 @onready var _view: PuzzleView3D = %View
 @onready var _backdrop: ColorRect = %Backdrop
+@onready var _title_icon: Control = %TitleIcon
 @onready var _margin: Control = %Margin
 @onready var _scramble_label: Label = %ScrambleLabel
 @onready var _timer_label: Label = %TimerLabel
@@ -290,6 +291,7 @@ func set_drill_mode(on: bool, restart: bool = true) -> void:
 	drill_mode = on
 	_drills_toggle.set_pressed_no_signal(on)
 	_inspection_toggle.visible = not on
+	_title_icon.visible = not on  # V.8: the four drill-set chips need its room in the header
 	_records_dirty = true
 	if on:
 		if _puzzle != "3x3" or _view.puzzle_id != "3x3":

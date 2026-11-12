@@ -16,7 +16,8 @@ const COLUMN_WIDTH := 2.0 * 116.0 + 14.0
 @onready var _dim: ColorRect = %Dim
 @onready var _panel: Control = %Panel
 @onready var _close: Button = %CloseButton
-@onready var _trophy_count: Label = %TrophyCount
+@onready var _trophy_chip: StatChip = %TrophyChip
+@onready var _bonus_chip: StatChip = %BonusChip
 @onready var _branches: HBoxContainer = %Branches
 
 var _nodes: Dictionary = {}   ## perk id -> PerkNode
@@ -30,8 +31,8 @@ func _ready() -> void:
 	_build()
 
 
-func open(trophy_text: String, views: Dictionary) -> void:
-	set_view(trophy_text, views)
+func open(header: Dictionary, views: Dictionary) -> void:
+	set_view(header, views)
 	UiFx.open_panel(self, _dim, _panel)  # V.6
 
 
@@ -42,9 +43,11 @@ func close() -> void:
 	closed.emit()
 
 
-## trophy_text: the header line ("111 trophies · +222 % moves"); views: perk id -> PerkNode.set_view() dictionary.
-func set_view(trophy_text: String, views: Dictionary) -> void:
-	_trophy_count.text = trophy_text
+## header: {trophies: "111", unit: "unspent trophies", bonus: "+222 %"} (V.8: StatChips);
+## views: perk id -> PerkNode.set_view() dictionary.
+func set_view(header: Dictionary, views: Dictionary) -> void:
+	_trophy_chip.set_stat(String(header.get("trophies", "0")), String(header.get("unit", "trophies")))
+	_bonus_chip.set_stat(String(header.get("bonus", "+0 %")), "moves")
 	_owned.clear()
 	for id: String in views:
 		if _nodes.has(id):
@@ -125,9 +128,14 @@ func _draw_lines(area: Control, branch_id: String) -> void:
 			var parent: PerkNode = _nodes[str(need)]
 			var from := parent.position + Vector2(NODE_SIZE.x * 0.5, NODE_SIZE.y)
 			var to := child.position + Vector2(NODE_SIZE.x * 0.5, 0.0)
-			var color := get_theme_color(&"line_owned" if _owned.has(def["id"]) else &"line", &"PerkTree")
+			var owned := _owned.has(def["id"])
+			var color := get_theme_color(&"line_owned" if owned else &"line", &"PerkTree")
 			var mid := (from.y + to.y) * 0.5
-			area.draw_polyline(PackedVector2Array([from, Vector2(from.x, mid), Vector2(to.x, mid), to]), color, 2.0, true)
+			var path := PackedVector2Array([from, Vector2(from.x, mid), Vector2(to.x, mid), to])
+			if owned:  # V.8: an owned path glows (a wide soft line under the bright one)
+				area.draw_polyline(path, Color(color, 0.18), 10.0, true)
+				area.draw_polyline(path, Color(color, 0.3), 5.0, true)
+			area.draw_polyline(path, color, 2.5 if owned else 2.0, true)
 
 
 func _unhandled_input(event: InputEvent) -> void:

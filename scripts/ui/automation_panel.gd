@@ -5,6 +5,8 @@ extends VBoxContainer
 ## GameState (run_automation); this only reads Game and calls set_auto / set_auto_compete_at. main.gd shows the tab
 ## once the "automation" perk is owned and calls refresh() while it's open.
 
+const STICKER_SCENE := preload("res://scenes/icon_sticker.tscn")
+
 ## The steps − / + move auto-Compete's target through.
 const COMPETE_STEPS: Array[int] = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 300, 500, 750, 1000, 1500,
 		2000, 3000, 5000, 7500, 10000]
@@ -45,12 +47,12 @@ func _build() -> void:
 		var perk := perk_for(kind)
 		var row := HBoxContainer.new()
 		row.theme_type_variation = &"ColumnsBox"
-		var icon := TextureRect.new()
-		icon.texture = Content.icon(perk.get("icon", Content.LOCKED_ICON))
-		icon.custom_minimum_size = Vector2(36, 36)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		var icon: IconSticker = STICKER_SCENE.instantiate()  # V.8: the kit's coloured sticker (the perks are trophies')
+		icon.custom_minimum_size = Vector2(40, 40)
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(icon)
+		icon.texture = Content.icon(perk.get("icon", Content.LOCKED_ICON))
+		icon.category = &"trophies"
 		var text := VBoxContainer.new()
 		text.theme_type_variation = &"TightBox"
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL

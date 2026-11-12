@@ -95,6 +95,7 @@ The black background square was removed so the game can tint them; no other chan
 | `assets/icons/stat_moves.svg` | clockwise-rotation | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/clockwise-rotation.html |
 | `assets/icons/stat_trophy.svg` | trophy | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/trophy.html |
 | `assets/icons/ui_settings.svg` | cog | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/cog.html |
+| `assets/icons/ui_close.svg` | close (×) | Cube Idle (ours, V.8) | CC0 | — |
 | `assets/icons/stat_streak.svg` | small-fire | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/small-fire.html |
 | `assets/icons/stat_flow.svg` | wave-crest | Lorc | CC BY 3.0 | https://game-icons.net/1x1/lorc/wave-crest.html |
 | `assets/icons/stat_golden.svg` | sparkles | Delapouite | CC BY 3.0 | https://game-icons.net/1x1/delapouite/sparkles.html |

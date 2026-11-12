@@ -1,6 +1,8 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/welcome_panel.gd" id="1_welcome"]
+[ext_resource type="PackedScene" path="res://scenes/icon_sticker.tscn" id="v8_sticker"]
+[ext_resource type="Texture2D" path="res://assets/icons/stat_solves.svg" id="v8_icon"]
 
 [node name="WelcomePanel" type="Control"]
 visible = false
@@ -39,6 +41,13 @@ layout_mode = 2
 [node name="Box" type="VBoxContainer" parent="Center/Panel"]
 layout_mode = 2
 theme_type_variation = &"StackBox"
+
+[node name="TitleIcon" parent="Center/Panel/Box" instance=ExtResource("v8_sticker")]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+size_flags_horizontal = 4
+texture = ExtResource("v8_icon")
+category = &"helpers"
 
 [node name="Title" type="Label" parent="Center/Panel/Box"]
 layout_mode = 2

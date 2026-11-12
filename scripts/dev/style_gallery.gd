@@ -284,9 +284,15 @@ func _build_parts(columns: HBoxContainer) -> void:
 		grid.add_child(tile)
 		tile.set_view(view)
 	middle.add_child(_heading("Perk nodes: owned, buyable, too dear, locked, soon"))
+	var rule := HSeparator.new()  # V.8: the line under an overlay's title bar
+	rule.theme_type_variation = &"TitleRule"
+	middle.add_child(rule)
+	var board := PanelContainer.new()  # V.8: the perk tree's darker board
+	board.theme_type_variation = &"PerkBoard"
+	middle.add_child(board)
 	var perks := HBoxContainer.new()
 	perks.theme_type_variation = &"ColumnsBox"
-	middle.add_child(perks)
+	board.add_child(perks)
 	var perk_scene: PackedScene = load("res://scenes/perk_node.tscn")
 	var perk_views := [
 		{"icon": _icon("friend"), "title": "Team Captain", "cost": 10, "status": "owned"},
@@ -306,7 +312,7 @@ func _build_parts(columns: HBoxContainer) -> void:
 	row.theme_type_variation = &"ColumnsBox"
 	middle.add_child(row)
 	var view: Control = load("res://scenes/puzzle_view_3d.tscn").instantiate()
-	view.custom_minimum_size = Vector2(260, 240)
+	view.custom_minimum_size = Vector2(260, 196)
 	row.add_child(view)
 	var chip_scene: PackedScene = load("res://scenes/puzzle_chip.tscn")
 	var running: Control = chip_scene.instantiate()

@@ -1253,9 +1253,9 @@ func open_perks() -> void:
 	perk_panel.open(_perk_header(), _perk_views())
 
 
-func _perk_header() -> String:
-	return "%s unspent %s  ·  +%s %% moves" % [Num.format(float(Game.trophies)), "trophy" if Game.trophies == 1 else "trophies",
-		Num.format(roundf((Game.get_trophy_mult() - 1.0) * 100.0))]
+func _perk_header() -> Dictionary:
+	return {"trophies": Num.format(float(Game.trophies)), "unit": "unspent " + ("trophy" if Game.trophies == 1 else "trophies"),
+		"bonus": "+%s %%" % Num.format(roundf((Game.get_trophy_mult() - 1.0) * 100.0))}
 
 
 ## A PerkNode view for every perk, from Game.

@@ -2,6 +2,24 @@
 
 [ext_resource type="Script" path="res://scripts/ui/solve_station.gd" id="1_station"]
 [ext_resource type="PackedScene" path="res://scenes/puzzle_view_3d.tscn" id="2_puzzle"]
+[ext_resource type="PackedScene" path="res://scenes/icon_sticker.tscn" id="v8_sticker"]
+[ext_resource type="Texture2D" path="res://assets/icons/stackmat.svg" id="v8_icon"]
+[ext_resource type="Texture2D" path="res://assets/icons/ui_close.svg" id="v8_close"]
+
+[sub_resource type="Gradient" id="v8_spot_gradient"]
+offsets = PackedFloat32Array(0, 0.55, 1)
+colors = PackedColorArray(1, 0.93, 0.78, 0.12, 1, 0.93, 0.78, 0.042, 1, 0.93, 0.78, 0)
+
+[sub_resource type="GradientTexture2D" id="v8_spot_texture"]
+gradient = SubResource("v8_spot_gradient")
+width = 256
+height = 256
+fill = 1
+fill_from = Vector2(0.5, 0)
+fill_to = Vector2(0.5, 0.5)
+
+[sub_resource type="CanvasItemMaterial" id="v8_spot_material"]
+blend_mode = 1
 
 [node name="SolveStation" type="Control"]
 visible = false
@@ -23,6 +41,18 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.0667, 0.0745, 0.0941, 1)
 
+[node name="Spotlight" type="TextureRect" parent="Backdrop"]
+material = SubResource("v8_spot_material")
+layout_mode = 1
+anchor_right = 0.7
+anchor_bottom = 1.0
+offset_left = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("v8_spot_texture")
+expand_mode = 1
+
 [node name="Margin" type="MarginContainer" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
@@ -40,6 +70,14 @@ theme_type_variation = &"StackBox"
 [node name="Header" type="HBoxContainer" parent="Margin/Rows"]
 layout_mode = 2
 
+[node name="TitleIcon" parent="Margin/Rows/Header" instance=ExtResource("v8_sticker")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("v8_icon")
+category = &"station"
+
 [node name="Title" type="Label" parent="Margin/Rows/Header"]
 layout_mode = 2
 theme_type_variation = &"TitleLabel"
@@ -51,6 +89,11 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 alignment = 1
+
+[node name="HeaderSpacer" type="Control" parent="Margin/Rows/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
 
 [node name="DailyToggle" type="Button" parent="Margin/Rows/Header"]
 unique_name_in_owner = true
@@ -128,7 +171,13 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
 focus_mode = 0
-text = "Close (Esc)"
+tooltip_text = "Close (Esc)"
+theme_type_variation = &"IconButton"
+icon = ExtResource("v8_close")
+
+[node name="TitleRule" type="HSeparator" parent="Margin/Rows"]
+layout_mode = 2
+theme_type_variation = &"TitleRule"
 
 [node name="ScrambleLabel" type="Label" parent="Margin/Rows"]
 unique_name_in_owner = true

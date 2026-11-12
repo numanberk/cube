@@ -13,7 +13,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| V.8 Overlays restyle | `ccr-a9bfca64-fydj3l` | 2026-11-12 | `scenes/{settings,welcome,compete,perk}_panel.tscn`, `scenes/solve_station.tscn`, `scenes/perk_node.tscn`, their scripts | `ui/theme.tres`, `main.tscn` (Auto/Lab tabs), style gallery, `tests/test_runner.gd` | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -449,12 +448,14 @@ every new component or variation to the gallery (a test enforces variations).
       *Done when:* a `BANNER=puzzle` screenshot preset exists, and a 10-minute sim-speed smoke run shows no banner spam.
       *(Done 2026-11-12: `Banner` with merge/queue/cooldown, confetti, light sweep, rim-light flash on solve bursts;
       `BANNER=` presets; `test_banner_no_spam`. Shots in `docs/screenshots/V.7-moments/`.)*
-- [ ] **V.8 Overlays restyle:** Settings, Welcome back, Compete, Trophy Perks, Automation, Lab and the Solve Station use
+- [x] **V.8 Overlays restyle:** Settings, Welcome back, Compete, Trophy Perks, Automation, Lab and the Solve Station use
       the new kit: a title bar with the display font and an icon close button, panel frames from V.2, StatChips for
       numbers, perk nodes as coloured stickers on a darker board with glowing owned paths. Compete and the Solve Station
       take the "competition" mood from D15 (spotlight, timer digits).
       *Done when:* `SETTINGS=1`, `COMPETE=1`, `PERKS=1`, `AUTO=1`, `LAB=1`, `SOLVE=solving`, `welcome` screenshots are
       all in the new style and checked by `screenshot-checker`.
+      *(Done 2026-11-12: title bars with sticker + × button, StatChips, the perk board with glowing paths, spotlights
+      in Compete and the Solve Station, stickers in the Auto tab. Shots in `docs/screenshots/V.8-overlays/`.)*
 - [ ] **V.9 Identity and polish:** a "Cube Idle" wordmark (SVG, ours; keep it easy to swap until D2), the window/taskbar
       icon, a short boot splash (Godot's `boot_splash`), empty states for every list, hover/press sounds matched to the
       new buttons, a final pass on spacing at 1280×720, 1920×1080 and 2560×1440 (overlaps 9.1; tick 9.1 too if done).

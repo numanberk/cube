@@ -2,6 +2,28 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-12 — Task V.8: overlays restyle
+- **One title bar for every overlay** (Settings, Compete, Trophy Perks, the Solve Station; Welcome back gets the
+  sticker): a category-coloured `IconSticker` (Settings white gear, Compete gold podium, Perks gold trophy, Solve
+  Station white stopwatch), the display-font title, an **icon close button** (× = new `assets/icons/ui_close.svg`,
+  ours, CC0; `IconButton`, tooltip "Close (Esc)") instead of a "Close" text button, and a thin `TitleRule` under it.
+- **StatChips for numbers:** Compete's bonus is "Moves on every puzzle" + `%MovesNow` / `%MovesAfter` chips (the
+  after one green); the Perks header is `%TrophyChip` (gold) + `%BonusChip` (green). `PerkPanel.set_view/open` now
+  take a header dictionary {trophies, unit, bonus} (`main._perk_header()`).
+- **Perk tree:** on a darker rounded board (`PerkBoard`); owned paths glow (two wide soft lines under the bright one).
+- **Competition mood (D15):** a soft warm spotlight from above (an additive radial `GradientTexture2D`, no shader) in
+  the Compete panel and over the Solve Station's cube and timer. The timer keeps its big display digits.
+- **Auto tab:** its icons are coloured stickers (gold: they're trophy perks). The Lab tab's cards were already the
+  V.5 kit.
+- Theme: `TitleRule`, `PerkBoard` (gallery: parts page; its 3D sample is 44 px shorter to make room).
+- **Review fixes (screenshot-checker, diff-reviewer):** the Solve Station's × drifted left when its puzzle chips
+  hide (a Golden case; an expanding `HeaderSpacer` keeps it right); drill mode's four set chips pushed the header
+  past the margin (the title sticker hides while drilling, and it's 36 px there); the Station's spotlight sat
+  outside its fading backdrop (it lit up the main screen during the fade; it's the backdrop's child now); a dead
+  `_bonus`; a perk-header test (`test_perk_header_chips`).
+- Screenshots: `docs/screenshots/V.8-overlays/` (Compete on Low there: the High shot's blurred background is over
+  300 KB).
+
 ## 2026-11-12 — Task V.7: big moments
 - **Banners** (`scenes/banner.tscn`, `scripts/ui/banner.gd`, class `Banner`, `%Banner` in main.tscn between the FX
   layer and the panels, so an open panel covers it): full width, the item's icon sticker, a title in the display font

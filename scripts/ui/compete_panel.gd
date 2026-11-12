@@ -14,7 +14,8 @@ signal compete_pressed
 @onready var _panel: Control = %Panel
 @onready var _close: Button = %CloseButton
 @onready var _gain: Label = %Gain
-@onready var _bonus: Label = %Bonus
+@onready var _moves_now: StatChip = %MovesNow
+@onready var _moves_after: StatChip = %MovesAfter
 @onready var _next_label: Label = %NextLabel
 @onready var _next_bar: ProgressBar = %NextBar
 @onready var _formula: Label = %Formula
@@ -58,8 +59,8 @@ func set_preview(data: Dictionary) -> void:
 	var gain := int(data.get("gain", 0))
 	_gain.text = "+%s %s" % [Num.format(float(gain)), "trophy" if gain == 1 else "trophies"] if gain > 0 \
 			else "No trophies yet"
-	_bonus.text = "Moves on every puzzle: %s → %s" % [bonus_text(float(data.get("mult_now", 1.0))),
-			bonus_text(float(data.get("mult_after", 1.0)))]
+	_moves_now.set_stat(bonus_text(float(data.get("mult_now", 1.0))), "now")  # V.8: StatChips for the numbers
+	_moves_after.set_stat(bonus_text(float(data.get("mult_after", 1.0))), "after")
 	var run := float(data.get("run_solves", 0.0))
 	var next_at := float(data.get("next_at", 0.0))
 	_next_label.text = "%s / %s Solves this run for %s" % [Num.format(run), Num.format(next_at),

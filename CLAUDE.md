@@ -132,7 +132,7 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    StageChipRow, TickerText, KeyHint, GoalBar, GoalLabel, GoalLabelDim, NewsPanel, NewsNew, NewsOld, GoldenButton,
    TimerGolden, ChoiceBadge, PerkOwned, PerkName, CounterLabel, CounterCaption, StatChip, StatRow, StatValue,
    StatValueAccent, StatValueGold, StatUnit, IconButton, CostBar, CostBarDim, Pip, PipReady, PipOn, TileFrame, CountBubble,
-   Banner, BannerTitle, BannerSub;
+   Banner, BannerTitle, BannerSub, TitleRule, PerkBoard;
    PerkTree holds the tree's line colours), or add
    a new variation (and show it in the style gallery, `scenes/dev/style_gallery.tscn`; a test checks).
 9. **Taps:** clicking the puzzle, the `tap` input action (Space / Enter, no repeat when held), or a turn of the main

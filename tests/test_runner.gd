@@ -4480,6 +4480,26 @@ func test_rim_flash() -> void:
 	view.free()
 
 
+## V.8: the Trophy Perks header shows its numbers as StatChips (unspent trophies, singular for one, and the bonus).
+func test_perk_header_chips() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	game.trophies = 1
+	main.open_perks()
+	var trophies: StatChip = main.perk_panel.get_node("%TrophyChip")
+	var bonus: StatChip = main.perk_panel.get_node("%BonusChip")
+	check(trophies.get_text() == "1 unspent trophy" and bonus.get_text() == "+2 % moves",
+			"one trophy: \"%s\", \"%s\"" % [trophies.get_text(), bonus.get_text()])
+	game.trophies = 34
+	main._refresh()
+	check(trophies.get_text() == "34 unspent trophies" and bonus.get_text() == "+68 % moves", "34: \"%s\", \"%s\"" % [trophies.get_text(), bonus.get_text()])
+	main.free()
+	game.reset_state()
+
+
 func test_news_on_main_screen() -> void:
 	var game: GameState = root.get_node("Game")
 	game.persistence_enabled = false
@@ -5524,7 +5544,8 @@ func test_compete_panel() -> void:
 	check(panel.visible, "the button opens the Compete screen")
 	check(audio.override_track_id == "finals", "the Compete screen plays Finals")
 	check((panel.get_node("%Gain") as Label).text == "+51 trophies", "it shows the trophies you'd win")
-	check((panel.get_node("%Bonus") as Label).text == "Moves on every puzzle: +0 % → +102 %", "and the bonus before and after")
+	check((panel.get_node("%MovesNow") as StatChip).get_text() == "+0 % now" and (panel.get_node("%MovesAfter") as StatChip).get_text() == "+102 % after",
+			"and the bonus before and after, as StatChips (V.8)")
 	check((panel.get_node("%KeepList") as VBoxContainer).get_child_count() == (Content.CHAMPIONSHIP["keeps"] as Array).size()
 			and (panel.get_node("%ResetList") as VBoxContainer).get_child_count() == (Content.CHAMPIONSHIP["resets"] as Array).size(),
 			"it lists everything you keep and everything that starts over")

@@ -1,6 +1,11 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/perk_panel.gd" id="1_perks"]
+[ext_resource type="PackedScene" path="res://scenes/icon_sticker.tscn" id="v8_sticker"]
+[ext_resource type="Texture2D" path="res://assets/icons/stat_trophy.svg" id="v8_icon"]
+[ext_resource type="Texture2D" path="res://assets/icons/ui_close.svg" id="v8_close"]
+[ext_resource type="PackedScene" path="res://scenes/stat_chip.tscn" id="v8_chip"]
+[ext_resource type="Texture2D" path="res://assets/icons/stat_moves.svg" id="v8_moves"]
 
 [node name="PerkPanel" type="Control"]
 visible = false
@@ -42,26 +47,49 @@ theme_type_variation = &"StackBox"
 [node name="Header" type="HBoxContainer" parent="Center/Panel/Box"]
 layout_mode = 2
 
+[node name="TitleIcon" parent="Center/Panel/Box/Header" instance=ExtResource("v8_sticker")]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("v8_icon")
+category = &"trophies"
+
 [node name="Title" type="Label" parent="Center/Panel/Box/Header"]
 layout_mode = 2
 theme_type_variation = &"TitleLabel"
 text = "Trophy Perks"
 
-[node name="TrophyCount" type="Label" parent="Center/Panel/Box/Header"]
-unique_name_in_owner = true
+[node name="HeaderStats" type="HBoxContainer" parent="Center/Panel/Box/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 8
-theme_type_variation = &"SubtitleLabel"
-text = "111 trophies · +222 % moves"
-horizontal_alignment = 1
+size_flags_vertical = 4
+theme_type_variation = &"ColumnsBox"
+alignment = 1
+
+[node name="TrophyChip" parent="Center/Panel/Box/Header/HeaderStats" instance=ExtResource("v8_chip")]
+unique_name_in_owner = true
+layout_mode = 2
+icon = ExtResource("v8_icon")
+tone = "gold"
+
+[node name="BonusChip" parent="Center/Panel/Box/Header/HeaderStats" instance=ExtResource("v8_chip")]
+unique_name_in_owner = true
+layout_mode = 2
+icon = ExtResource("v8_moves")
+tone = "accent"
 
 [node name="CloseButton" type="Button" parent="Center/Panel/Box/Header"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
 focus_mode = 0
-text = "Close"
+tooltip_text = "Close (Esc)"
+theme_type_variation = &"IconButton"
+icon = ExtResource("v8_close")
+
+[node name="TitleRule" type="HSeparator" parent="Center/Panel/Box"]
+layout_mode = 2
+theme_type_variation = &"TitleRule"
 
 [node name="Intro" type="Label" parent="Center/Panel/Box"]
 custom_minimum_size = Vector2(1000, 0)
@@ -70,7 +98,11 @@ theme_type_variation = &"DimLabel"
 text = "Perks are yours for good: they stay through every championship. Only unspent trophies add to your moves, so every perk costs you some of that bonus. Pick what is worth more."
 autowrap_mode = 3
 
-[node name="Branches" type="HBoxContainer" parent="Center/Panel/Box"]
+[node name="Board" type="PanelContainer" parent="Center/Panel/Box"]
+layout_mode = 2
+theme_type_variation = &"PerkBoard"
+
+[node name="Branches" type="HBoxContainer" parent="Center/Panel/Box/Board"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ColumnsBox"
