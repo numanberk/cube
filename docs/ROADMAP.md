@@ -15,7 +15,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 |---|---|---|---|---|---|
 | R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
 | V.4 finish: shelf onto the stage (owner: option b) | `ccr-134df3dd-c0lub2` | 2026-11-11 | `scenes/main.tscn`, `scenes/puzzle_chip.tscn` | `main.gd` (layout), `ui/theme.tres`, `tests/test_runner.gd` | no |
-| 7.2a Stats (rules) | `ccr-a9bfca64-fydj3l` | 2026-11-12 | — | `game.gd` (save v15), `content.gd` (achievement rows for the new counters), `tests/test_runner.gd` | **yes** (v15) |
 
 *(Rows added for the sessions that started before this rule; their own files are an estimate. Each
 session corrects its row when it merges.)*
@@ -489,10 +488,12 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
 - [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
       Split (D15c) into:
-  - [ ] **7.2a Rules:** the counters in GameState (saved, v15 + migration): time played, taps, best Solves/s, Solves per
+  - [x] **7.2a Rules:** the counters in GameState (saved, v15 + migration): time played, taps, best Solves/s, Solves per
         puzzle, trophies earned, plus Golden Scrambles and dailies (7.1a left achievements for those), each with a
         rule for what a championship keeps; one `get_stats()` for the screen. No `main.gd`/`main.tscn` changes.
         *Done when:* tests cover counting, save/load, the v14 → v15 migration and what survives a championship.
+        *(Done 2026-11-12: `GameState.stats` + `get_stats()`, save v15; 13 more achievements on the new counters. See the
+        CHANGELOG.)*
   - [ ] **7.2b Screen (after Phase V):** the Stats tab.
         *Done when:* there's a screenshot.
 

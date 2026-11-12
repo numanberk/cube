@@ -3567,6 +3567,8 @@ func _reach_achievement(g: GameState, def: Dictionary) -> void:
 		"research":
 			for project: Dictionary in (Content.LAB["projects"] as Array).slice(0, int(value)):
 				g.research_done[project["id"]] = true
+		"taps", "golden_solved", "dailies", "time_played":
+			g.stats[def["type"]] = value
 		"tracks":
 			for puzzle: Dictionary in Content.PUZZLES:
 				if g.get_unlocked_track_ids().size() < int(value):
@@ -3697,6 +3699,153 @@ func test_achievement_save() -> void:
 	back13._process(1.0)
 	check(back13_heard.has("method_cfop") and not back13_heard.has("solves_5"), "...CFOP is signalled at the first check (%s)" % [back13_heard])
 	back13.free()
+	g.free()
+
+
+## 7.2a: the Stats counters count what they say, and a championship keeps all but this run's time.
+func test_stats_counting() -> void:
+	var g := new_game()
+	var fresh := g.get_stats()
+	for key: String in ["time_played", "run_time", "fastest_championship", "taps", "best_solves_per_second", "puzzle_solves",
+			"trophies_won", "golden_solved", "dailies", "lifetime_solves", "lifetime_moves", "run_solves", "championships",
+			"trophies", "hand_solves", "achievements_earned", "achievements_total"]:
+		check(fresh.has(key), "get_stats() has %s" % key)
+	check(float(fresh["taps"]) == 0.0 and (fresh["puzzle_solves"] as Dictionary).is_empty(), "a new game has counted nothing")
+	for i in 3:
+		g.tap()
+	check(float(g.get_stats()["taps"]) == 3.0, "taps are counted")
+	g._process(0.5)
+	g._process(0.6)
+	check_near(float(g.get_stats()["time_played"]), 1.1, "time played adds up while the game runs")
+	check_near(float(g.get_stats()["run_time"]), 1.1, "...and so does this run's time")
+	g.cheat_add_solves(5.0)
+	g.buy_building("friend")
+	g._process(1.0)
+	check(float(g.get_stats()["best_solves_per_second"]) > 0.0
+			and is_equal_approx(float(g.get_stats()["best_solves_per_second"]), g.get_solves_per_second()),
+			"the best Solves/s is checked once a second")
+	var signalled := [0.0]
+	g.solved.connect(func(count: int, puzzle_id: String) -> void:
+		if puzzle_id == "2x2":
+			signalled[0] += count)
+	var before_2x2 := float((g.get_stats()["puzzle_solves"] as Dictionary).get("2x2", 0.0))
+	g.add_moves_to("2x2", g.get_moves_per_solve("2x2") * 4.0)
+	var per_puzzle: Dictionary = g.get_stats()["puzzle_solves"]
+	check(signalled[0] >= 4.0 and float(per_puzzle.get("2x2", 0.0)) - before_2x2 == signalled[0] and not per_puzzle.has("3x3"),
+			"solves are counted per puzzle, exactly (%s, %s signalled)" % [per_puzzle, signalled[0]])
+	var counted_2x2 := float(per_puzzle["2x2"])
+	per_puzzle["2x2"] = -1.0
+	check(float((g.stats["puzzle_solves"] as Dictionary)["2x2"]) == counted_2x2, "get_stats() hands out a copy")
+	g.golden_attempt_left = 10.0
+	g.finish_golden(false)
+	g.golden_attempt_left = 10.0
+	g.finish_golden(true)
+	check(float(g.get_stats()["golden_solved"]) == 1.0, "a Golden Scramble solved in time counts, a missed one doesn't")
+	g.daily_now = 1.8e9
+	g.record_daily("3x3", "time", 30.0)
+	g.record_daily("3x3", "time", 20.0)
+	check(float(g.get_stats()["dailies"]) == 1.0, "a daily reward counts once a day")
+	# A championship: trophies won add up, the run's time becomes the fastest, and only the run's time resets.
+	g.stats["run_time"] = 5000.0
+	g.cheat_add_solves(GameState.solves_for_trophies(3))
+	var won := g.compete()
+	var after := g.get_stats()
+	check(won > 0 and float(after["trophies_won"]) == won, "trophies won are counted (%d)" % won)
+	check_near(float(after["fastest_championship"]), 5000.0, "the run's time is the fastest championship so far")
+	check(float(after["run_time"]) == 0.0, "a new run starts its clock at 0")
+	check(float(after["taps"]) == 3.0 and float(after["golden_solved"]) == 1.0 and float(after["dailies"]) == 1.0
+			and float((after["puzzle_solves"] as Dictionary)["2x2"]) == counted_2x2 and float(after["time_played"]) > 1.0
+			and float(after["best_solves_per_second"]) > 0.0, "every other counter is kept through it")
+	g.perks["comp_prep"] = true
+	g.trophies -= 1
+	check(float(g.get_stats()["trophies_won"]) == won, "spending trophies doesn't lower trophies won")
+	g.stats["run_time"] = 9000.0
+	g.cheat_add_solves(GameState.solves_for_trophies(3))
+	g.compete()
+	check_near(float(g.get_stats()["fastest_championship"]), 5000.0, "a slower run doesn't replace the fastest")
+	g.stats["run_time"] = 100.0
+	g.cheat_add_solves(GameState.solves_for_trophies(3))
+	g.compete()
+	check_near(float(g.get_stats()["fastest_championship"]), 100.0, "a faster one does")
+	g.free()
+	# Time from _process reaches the championship.
+	var timed := new_game()
+	timed._process(30.0)
+	timed.cheat_add_solves(GameState.solves_for_trophies(1))
+	timed.compete()
+	check_near(float(timed.get_stats()["fastest_championship"]), 30.0, "the run's played time is what a championship records")
+	timed.free()
+
+
+## 7.2a: stats are saved; damaged values are dropped; v14 saves start them (trophies won worked out); time away counts
+## for the run, not as time played.
+func test_stats_save() -> void:
+	var g := new_game()
+	g.tap()
+	g.update_play_time(120.0)
+	g.add_moves_to("2x2", g.get_moves_per_solve("2x2") * 2.0)
+	g.stats["golden_solved"] = 4.0
+	var data := g.get_save_data()
+	check(int(data["version"]) == GameState.SAVE_VERSION and GameState.SAVE_VERSION >= 15, "saves as v15 or later")
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.stats == g.stats, "stats survive save/load (%s)" % loaded.stats)
+	loaded.free()
+	data["stats"] = {"taps": "lots", "time_played": -5.0, "golden_solved": 2, "banana": 1.0,
+			"puzzle_solves": {"2x2": 3.0, "9x9": 1.0, "3x3": "x"}}
+	var damaged := new_game()
+	damaged.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(float(damaged.stats["taps"]) == 0.0 and float(damaged.stats["time_played"]) == 0.0
+			and float(damaged.stats["golden_solved"]) == 2.0 and not damaged.stats.has("banana")
+			and damaged.stats["puzzle_solves"] == {"2x2": 3.0}, "damaged values are dropped (%s)" % damaged.stats)
+	damaged.free()
+	var not_a_dict := g.get_save_data()
+	not_a_dict["stats"] = [1, 2]
+	var odd := new_game()
+	odd.apply_save_data(JSON.parse_string(JSON.stringify(not_a_dict)), float(not_a_dict["saved_at"]))
+	check(odd.stats == GameState._new_stats(), "stats that aren't a dictionary start fresh")
+	odd.free()
+	# v14 -> v15: trophies won = the ones held + the ones spent on perks; the rest starts at 0.
+	var v14 := g.get_save_data()
+	v14["version"] = 14
+	v14.erase("stats")
+	v14["championship"]["trophies"] = 7
+	v14["championship"]["count"] = 1
+	v14["championship"]["perks"] = ["warm_up", "team_captain", "warm_up", "banana"]
+	var old := new_game()
+	old.apply_save_data(JSON.parse_string(JSON.stringify(v14)), float(v14["saved_at"]))
+	var spent := float(Content.get_perk("warm_up")["cost"]) + float(Content.get_perk("team_captain")["cost"])
+	check(old.perks.size() == 2 and float(old.stats["trophies_won"]) == 7.0 + spent,
+			"v14 → v15: trophies won = held + spent on perks (%s)" % old.stats["trophies_won"])
+	check(float(old.stats["taps"]) == 0.0 and float(old.stats["time_played"]) == 0.0, "...and the rest starts at 0")
+	old.update_play_time(1200.0)
+	old.cheat_add_solves(GameState.solves_for_trophies(1))
+	check(old.compete() > 0 and float(old.stats["fastest_championship"]) == 0.0,
+			"...and the run it was in (started before its clock) doesn't set the fastest championship")
+	old.update_play_time(900.0)
+	old.cheat_add_solves(GameState.solves_for_trophies(1))
+	old.compete()
+	check_near(float(old.stats["fastest_championship"]), 900.0, "...the next one does")
+	check(int(old.get_save_data()["version"]) == GameState.SAVE_VERSION, "...and it saves as the current version")
+	old.free()
+	for champ: Variant in [null, {"trophies": 3, "perks": null}, {"trophies": 3, "perks": "warm_up"}]:
+		var odd_v14 := v14.duplicate(true)
+		if typeof(champ) == TYPE_NIL:
+			odd_v14.erase("championship")
+		else:
+			odd_v14["championship"] = champ
+		var odd_old := new_game()
+		odd_old.apply_save_data(JSON.parse_string(JSON.stringify(odd_v14)), float(odd_v14["saved_at"]))
+		check(float(odd_old.stats["trophies_won"]) == (0.0 if typeof(champ) == TYPE_NIL else 3.0), "a damaged v14 championship still loads (%s)" % [champ])
+		odd_old.free()
+	# Time away: the run goes on, nobody played.
+	var away := g.get_save_data()
+	away["saved_at"] = 1000.0
+	var back := new_game()
+	back.apply_save_data(JSON.parse_string(JSON.stringify(away)), 1000.0 + 600.0)
+	check_near(float(back.stats["run_time"]), float(g.stats["run_time"]) + 600.0, "time away counts for the run")
+	check_near(float(back.stats["time_played"]), float(g.stats["time_played"]), "...not as time played")
+	back.free()
 	g.free()
 
 

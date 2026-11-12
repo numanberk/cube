@@ -33,11 +33,12 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 14  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 15  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
                           ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
-                          ## v12 (6.3b): auto-buyer toggles; v13 (7.0a): career moments seen; v14 (7.1a): achievements
+                          ## v12 (6.3b): auto-buyer toggles; v13 (7.0a): career moments seen; v14 (7.1a): achievements;
+                          ## v15 (7.2a): stats
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -86,6 +87,7 @@ var _automation_timer := 0.0
 var career_seen: Dictionary = {}  ## Content.CAREER ids that already fired (7.0a, saved; kept through championships)
 var _career_timer := 0.0  ## also times the once-a-second achievement check
 var achievements: Dictionary = {}  ## achievement ids earned (7.1a, saved; kept through championships): id -> true
+var stats: Dictionary = {}  ## the Stats screen's counters (7.2a, saved; see _new_stats() for each one and what a championship keeps)
 var _applying_save := false  ## true inside apply_save_data: no career moment is signalled (no UI listens yet)
 var championships := 0          ## World Championships won (6.2); the first one opens the 7×7, the Megaminx and "Finals"
 var puzzles_reached: Dictionary = {}  ## puzzle id -> true for every puzzle ever unlocked (kept through prestige: its music stays)
@@ -138,6 +140,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	add_helper_moves(delta)
+	update_play_time(delta)
 	update_golden(delta)
 	update_flow(delta)
 	update_streak(delta)
@@ -146,6 +149,7 @@ func _process(delta: float) -> void:
 	if _career_timer >= 1.0:  # lifetime Solves grow without a purchase, so the career is also checked once a second
 		_career_timer = 0.0
 		check_career()
+		stats["best_solves_per_second"] = maxf(float(stats["best_solves_per_second"]), get_solves_per_second())
 		check_achievements()  # achievements only here (7.1a): a toast a second late is fine, and nothing else waits on them
 	_automation_timer += delta
 	if _automation_timer >= float(Content.AUTOMATION["interval"]):
@@ -170,6 +174,7 @@ func _notification(what: int) -> void:
 func tap() -> float:
 	var amount := get_tap_moves()
 	add_moves_to(focused_puzzle, amount)
+	stats["taps"] = float(stats["taps"]) + 1.0
 	var data: Dictionary = Content.TAPS
 	streak = minf(1.0, streak + float(data["fill_per_tap"]))
 	_tap_times.append(_tap_clock)
@@ -241,6 +246,8 @@ func add_moves_to(puzzle_id: String, amount: float) -> void:
 			_next_solves_milestone = passed * 10.0
 			solves_milestone.emit(passed)
 		puzzle_progress[puzzle_id] = progress
+		var per_puzzle: Dictionary = stats["puzzle_solves"]
+		per_puzzle[puzzle_id] = float(per_puzzle.get(puzzle_id, 0.0)) + count
 		_add_mastery_xp(puzzle_id, count * get_mastery_xp_per_solve(puzzle_id))
 		solved.emit(int(count), puzzle_id)
 	else:
@@ -705,6 +712,13 @@ func compete() -> int:
 	var gain := get_pending_trophies()
 	trophies += gain
 	championships += 1
+	stats["trophies_won"] = float(stats["trophies_won"]) + gain
+	var run_time := float(stats["run_time"])
+	if run_time > 0.0 and float(stats["run_untimed"]) == 0.0:  # a run that started before v15 has no real time
+		var fastest := float(stats["fastest_championship"])
+		stats["fastest_championship"] = run_time if fastest <= 0.0 else minf(fastest, run_time)
+	stats["run_time"] = 0.0
+	stats["run_untimed"] = 0.0
 	solves = 0.0
 	run_solves = 0.0
 	unlocked_puzzles.clear()
@@ -1034,6 +1048,8 @@ func get_achievement_value(def: Dictionary) -> float:
 			return float(research_done.size())
 		"tracks":
 			return float(get_unlocked_track_ids().size())
+		"taps", "golden_solved", "dailies", "time_played":
+			return float(stats.get(String(def["type"]), 0.0))
 	return -INF  # an unknown type is never earned
 
 
@@ -1053,6 +1069,57 @@ func get_achievement_mult() -> float:
 	if not has_won_championship():
 		return 1.0
 	return 1.0 + float(Content.ACHIEVEMENTS["bonus"]) * achievements.size()
+
+
+# --- Stats (task 7.2a) ----------------------------------------------------------------
+
+## Every counter starts here. All are lifetime (kept through championships) except `run_time`.
+##   time_played: seconds with the game open · run_time: seconds this run took (open + time away as offline progress
+##   counts it: capped like it, so a long break counts as the cap; a championship resets it) · run_untimed: 1 while the
+##   run started before stats existed (v14 saves): its time isn't known, so it can't be the fastest ·
+##   fastest_championship: the shortest run_time a championship ended (0 = none yet) · taps ·
+##   best_solves_per_second (helpers', checked once a second) · puzzle_solves: puzzle id -> solves completed there ·
+##   trophies_won (spent or not) · golden_solved (Golden Scrambles solved in time) · dailies (daily rewards earned)
+static func _new_stats() -> Dictionary:
+	return {"time_played": 0.0, "run_time": 0.0, "run_untimed": 0.0, "fastest_championship": 0.0, "taps": 0.0,
+			"best_solves_per_second": 0.0,
+			"puzzle_solves": {}, "trophies_won": 0.0, "golden_solved": 0.0, "dailies": 0.0}
+
+
+## Time with the game open (from _process; never offline).
+func update_play_time(delta: float) -> void:
+	if delta <= 0.0:
+		return
+	stats["time_played"] = float(stats["time_played"]) + delta
+	stats["run_time"] = float(stats["run_time"]) + delta
+
+
+## Everything the Stats screen shows, read from the counters and the rest of the state:
+##   the _new_stats() counters (puzzle_solves copied), plus lifetime_solves, lifetime_moves, run_solves, championships,
+##   trophies (unspent), hand_solves, achievements_earned, achievements_total
+func get_stats() -> Dictionary:
+	var out: Dictionary = stats.duplicate(true)
+	var progress := get_achievement_progress()
+	out.merge({"lifetime_solves": total_solves, "lifetime_moves": total_moves, "run_solves": run_solves,
+			"championships": championships, "trophies": trophies, "hand_solves": get_achievement_value({"type": "hand_solves"}),
+			"achievements_earned": progress["earned"], "achievements_total": progress["total"]}, true)
+	return out
+
+
+## The saved counters; anything missing, unknown or damaged keeps its starting value.
+func _load_stats(saved: Variant) -> void:
+	stats = _new_stats()
+	if typeof(saved) != TYPE_DICTIONARY:
+		return
+	for key: String in stats:
+		var value: Variant = (saved as Dictionary).get(key)
+		if key == "puzzle_solves":
+			if typeof(value) == TYPE_DICTIONARY:
+				for id: Variant in value:
+					if not Content.get_puzzle(str(id)).is_empty() and typeof(value[id]) in [TYPE_INT, TYPE_FLOAT]:
+						stats["puzzle_solves"][str(id)] = maxf(0.0, float(value[id]))
+		elif typeof(value) in [TYPE_INT, TYPE_FLOAT]:
+			stats[key] = maxf(0.0, float(value))
 
 
 ## How long offline progress (and the Lab's time away) can run: 8 h plus "offline_hours" perks.
@@ -1580,6 +1647,7 @@ func record_daily(puzzle_id: String, mode: String, value: float) -> Dictionary:
 		total_solves += reward
 		run_solves += reward
 		today["rewarded"] = true
+		stats["dailies"] = float(stats["dailies"]) + 1.0
 		daily_rewarded.emit(reward)
 	return {"best": float(bests.get(puzzle_id, INF)), "pb_today": pb, "reward": reward}
 
@@ -1709,6 +1777,7 @@ func finish_golden(success: bool) -> Dictionary:
 		golden_finished.emit(false, {})
 		return {}
 	var result := _apply_golden_buff(_roll_golden_buff())
+	stats["golden_solved"] = float(stats["golden_solved"]) + 1.0
 	golden_finished.emit(true, result)
 	return result
 
@@ -2092,6 +2161,7 @@ func reset_state() -> void:
 	career_seen.clear()
 	_career_timer = 0.0
 	achievements.clear()
+	stats = _new_stats()
 	automation = {"compete_at": int(Content.AUTOMATION["compete_at_default"])}
 	_automation_timer = 0.0
 	championships = 0
@@ -2146,6 +2216,7 @@ func get_save_data() -> Dictionary:
 		"automation": automation.duplicate(),
 		"career": career_seen.keys(),
 		"achievements": achievements.keys(),
+		"stats": stats.duplicate(true),
 	}
 
 
@@ -2261,6 +2332,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		for id: Variant in saved_achievements:
 			if not Content.get_achievement(str(id)).is_empty():
 				achievements[str(id)] = true
+	_load_stats(data.get("stats", {}))
 	var saved_auto: Variant = data.get("automation", {})
 	if typeof(saved_auto) == TYPE_DICTIONARY:
 		for kind: String in Content.AUTOMATION["kinds"]:
@@ -2347,6 +2419,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	var elapsed := clampf(now - saved_at, 0.0, get_offline_cap_seconds())
 	if elapsed >= MIN_OFFLINE_SECONDS:
 		var before := total_solves
+		stats["run_time"] = float(stats["run_time"]) + elapsed  # the run went on (time played doesn't: nobody played)
 		_offline_catch_up = true  # a buff pauses while the game is closed
 		add_helper_moves(elapsed)
 		_offline_catch_up = false
@@ -2508,6 +2581,24 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("achievements"):
 			data["achievements"] = "backfill"
 		data["version"] = 14
+	if int(data["version"]) < 15:
+		# v15 adds stats (7.2a). Most weren't counted before, so they start at 0 (best Solves/s fills in within a second).
+		# Trophies won can be worked out: the ones held plus the ones spent on perks.
+		# The run in progress started before its clock did, so it can't set the fastest championship.
+		if not data.has("stats"):
+			var champ: Variant = data.get("championship", {})
+			var won := 0.0
+			if typeof(champ) == TYPE_DICTIONARY:
+				won = maxf(0.0, float((champ as Dictionary).get("trophies", 0)))
+				var owned: Variant = (champ as Dictionary).get("perks", [])
+				var counted := {}
+				if typeof(owned) == TYPE_ARRAY:
+					for id: Variant in owned:
+						if not counted.has(str(id)):  # a perk dropped on load (a missing requirement) was still paid for
+							counted[str(id)] = true
+							won += float(Content.get_perk(str(id)).get("cost", 0))
+			data["stats"] = {"trophies_won": won, "run_untimed": 1.0}
+		data["version"] = 15
 	return data
 
 

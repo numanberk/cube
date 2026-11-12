@@ -115,6 +115,7 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 			g.tap()
 		g.add_helper_moves(STEP)
 		g.update_flow(STEP)
+		g.update_play_time(STEP)
 		g.update_streak(STEP)
 		g.update_research(STEP)
 		achievement_timer -= STEP

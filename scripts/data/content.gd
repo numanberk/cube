@@ -850,6 +850,10 @@ const ACHIEVEMENT_TYPES := [
 	"drill_set",          ## drill set `target` learned
 	"research",           ## Lab research projects finished (methods not counted)
 	"tracks",             ## music tracks unlocked
+	"taps",               ## taps made (7.2a stats)
+	"golden_solved",      ## Golden Scrambles solved in time (7.2a stats)
+	"dailies",            ## daily scramble rewards earned (7.2a stats)
+	"time_played",        ## seconds with the game open (7.2a stats)
 ]
 
 const ACHIEVEMENTS := {
@@ -906,6 +910,14 @@ const ACHIEVEMENTS := {
 			"noun": ["Lab research project", "Lab research projects"], "tiers": [1.0, 3.0, 6.0]},
 		{"id": "tracks", "name": "Mixtape", "icon": "live_stream", "type": "tracks", "text": "Unlock %s.",
 			"noun": ["music track", "music tracks"], "tiers": [3.0, 5.0, 7.0]},
+		{"id": "taps", "name": "Turner", "icon": "lube", "type": "taps", "text": "Turn the cube %s yourself.",
+			"noun": ["time", "times"], "tiers": [100.0, 1e3, 1e4, 1e5]},
+		{"id": "golden", "name": "Golden Hands", "icon": "stat_golden", "type": "golden_solved",
+			"text": "Solve %s in time.", "noun": ["Golden Scramble", "Golden Scrambles"], "tiers": [1.0, 10.0, 50.0]},
+		{"id": "dailies", "name": "Daily Habit", "icon": "stackmat", "type": "dailies",
+			"text": "Earn the daily scramble's reward %s.", "noun": ["time", "times"], "tiers": [1.0, 7.0, 30.0]},
+		{"id": "time_played", "name": "Regular", "icon": "stat_streak", "type": "time_played", "text": "Play for %s.",
+			"tiers": [3600.0, 36000.0, 360000.0], "labels": ["1 hour", "10 hours", "100 hours"]},
 	],
 }
 

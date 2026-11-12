@@ -2,6 +2,36 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-12 — Task 7.2a: stats (rules only, save v15)
+- **Counters (`GameState.stats`, saved):** `time_played` (seconds with the game open, from `_process`), `run_time`
+  (this run: open time + time away; a championship resets it), `fastest_championship` (the shortest `run_time` a
+  championship ended), `taps`, `best_solves_per_second` (helpers', in the once-a-second block), `puzzle_solves`
+  (puzzle id -> solves completed there, offline included), `trophies_won` (spent or not), `golden_solved` (Golden
+  Scrambles solved in time), `dailies` (daily rewards earned). All are lifetime (kept through championships) except
+  `run_time`. `_new_stats()` documents each.
+- **`Game.get_stats()`**: everything the 7.2b Stats tab needs in one dictionary: the counters plus lifetime Solves and
+  moves, run Solves, championships, unspent trophies, hand solves and achievements x/y.
+- **Save v15:** `"stats": {...}`; damaged or unknown values are dropped (each falls back to its start). v14 → v15:
+  everything starts at 0, except `trophies_won` = trophies held + the cost of the perks owned. (The time already
+  played before v15 is unknown, so it starts at 0.)
+- **Achievements for the new counters** (7.1a left these for 7.2): Turner (100 → 100K taps), Golden Hands (1/10/50
+  Golden Scrambles), Daily Habit (1/7/30 daily rewards), Regular (1/10/100 hours played): 13 more, **130** in all.
+- **Run time and offline:** time away adds to `run_time` as offline progress counts it (capped at the offline cap,
+  gaps under 10 s skipped), so a 3-day break counts as 8 h: "fastest championship" measures the run's progress time.
+- **Saves from before v15** don't know when their current run started (`run_untimed`), so that run's championship
+  doesn't set the fastest time; the next one does.
+- **Balance:** unchanged (`docs/BALANCE.md` identical: the new achievements only pay from the second championship, which
+  the bot doesn't reach).
+- **Simulator:** calls `update_play_time` (it mirrors `_process`), so the bot plays "Regular I" and times its runs.
+- **Review (diff-reviewer) fixes:** a migrated mid-run save would have set an unbeatable fastest championship (and a
+  run with `run_time` 0 wiped the record); the per-puzzle test couldn't catch double counting (now exact against the
+  `solved` signal); the simulator skipped the play clock; the v15 migration counted duplicate perk ids and would have
+  failed on a damaged `perks` value (tests for both, and for a v14 save with no championship).
+- **Next for 7.2b (after Phase V):** a Stats tab reading `Game.get_stats()`: times through `Num.format_duration`,
+  numbers through `Num.format`, solves per puzzle as a list in ladder order.
+- Tests: `test_stats_counting` (each counter, the best Solves/s check, copies, what a championship keeps, fastest
+  championship), `test_stats_save` (round trip, damaged values, v14 → v15, time away counts for the run only).
+
 ## 2026-11-12 — Task 7.1a: achievements (rules only, save v14)
 - **Owner decision (2026-11-12, asked this session):** an achievement gives **+1 % trophies per championship**, not
   +1 % moves as the roadmap said. Measured with the balance bot first: any moves bonus compounds through the whole first
