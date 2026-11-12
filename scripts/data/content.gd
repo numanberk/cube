@@ -67,7 +67,7 @@ const BUILDINGS := [
 		"id": "factory",
 		"milestone_name": "Assembly Line",
 		"icon": "factory",
-		"name": "Cube Factory",
+		"name": "Cube Factory", "plural": "Cube Factories",
 		"description": "Mass-produced, pre-lubed, pre-scrambled.",
 		"base_cost": 1.7e6,
 		"mps": 1000.0,
@@ -458,6 +458,7 @@ const CHAMPIONSHIP := {
 	"bonus_per_trophy": 0.02,
 	"keeps": [
 		"Trophies and trophy perks",
+		"Achievements and their bonus",
 		"Puzzle mastery levels",
 		"Solve Station records and their bonuses",
 		"Drill and daily results",
@@ -820,6 +821,172 @@ static func get_career_moment(id: String) -> Dictionary:
 		if def["id"] == id:
 			return def
 	return {}
+
+
+## Achievements (task 7.1a, PLAN §4.6 "achievements as a map", like Revolution Idle's): permanent goals, kept through
+## every championship; each one earned gives `bonus` (+1 %) more trophies per championship from the second one on
+## (owner, 2026-11-12, D16: trophies, not moves: a moves bonus compounds and pulled the first championship from ~84 to
+## ~63 min). GameState checks them once a second (GameState._process only). Most are tiered: a row with `tiers` becomes
+## one achievement per value ("<name> I", "II", ...; ids "<row id>_1", "_2", ...); `labels` replace the numbers in the
+## text; `each_helper` makes one tiered row per helper (icon, name and noun from the helper). A row without `tiers` is
+## one achievement at `value` (default 1).
+##   id, name, icon, type (ACHIEVEMENT_TYPES), target (helper/puzzle/method/drill set id, for the types that take one),
+##   text (%s = the value, and the noun after it), noun ([singular, plural], optional), tiers or value, labels (optional)
+## Use get_achievements() for the expanded list and describe_achievement() for a text (numbers in the player's notation).
+const ACHIEVEMENT_TYPES := [
+	"lifetime_solves",    ## lifetime Solves earned
+	"lifetime_moves",     ## lifetime moves made
+	"solves_per_second",  ## helpers' Solves/s right now
+	"helper",             ## copies of `target` owned right now (this run)
+	"upgrades",           ## upgrades owned right now (milestones count; methods and Lab research don't)
+	"puzzle",             ## `target` ever unlocked
+	"method",             ## `target` learned (this run)
+	"mastery",            ## the best mastery level on any puzzle
+	"championships",      ## World Championships won
+	"perks",              ## trophy perks owned
+	"hand_solves",        ## Solve Station solves recorded, every puzzle together
+	"hand_tier",          ## the best S.3 tier any puzzle's PB single has reached (0 = Bronze)
+	"drill_cases",        ## drill cases learned (S.4)
+	"drill_set",          ## drill set `target` learned
+	"research",           ## Lab research projects finished (methods not counted)
+	"tracks",             ## music tracks unlocked
+]
+
+const ACHIEVEMENTS := {
+	"bonus": 0.01,
+	"rows": [
+		{"id": "solves", "name": "Solver", "icon": "stat_solves", "type": "lifetime_solves", "text": "Earn %s in total.",
+			"noun": ["Solve", "Solves"], "tiers": [1.0, 10.0, 100.0, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15]},
+		{"id": "moves", "name": "Turning Point", "icon": "stat_moves", "type": "lifetime_moves", "text": "Make %s in total.",
+			"noun": ["move", "moves"], "tiers": [1e3, 1e6, 1e9, 1e12, 1e15, 1e18]},
+		{"id": "pace", "name": "Pace Setter", "icon": "stackmat", "type": "solves_per_second",
+			"text": "Reach %s Solves/s from helpers.", "tiers": [1.0, 100.0, 1e4, 1e6, 1e8, 1e10, 1e12]},
+		{"id": "team", "type": "helper", "each_helper": true, "text": "Own %s at once.", "tiers": [1.0, 10.0, 100.0]},
+		{"id": "upgrades", "name": "Fully Modded", "icon": "magnets", "type": "upgrades", "text": "Own %s at once.",
+			"noun": ["upgrade", "upgrades"], "tiers": [5.0, 25.0, 50.0, 100.0]},
+		{"id": "puzzle_3x3", "name": "The Classic", "icon": "small_cubes", "type": "puzzle", "target": "3x3",
+			"text": "Unlock the 3×3."},
+		{"id": "puzzle_4x4", "name": "Parity Awaits", "icon": "big_cubes", "type": "puzzle", "target": "4x4",
+			"text": "Unlock the 4×4."},
+		{"id": "puzzle_5x5", "name": "Big Cube Energy", "icon": "big_cubes", "type": "puzzle", "target": "5x5",
+			"text": "Unlock the 5×5."},
+		{"id": "puzzle_7x7", "name": "Two Hands Needed", "icon": "big_cubes", "type": "puzzle", "target": "7x7",
+			"text": "Unlock the 7×7."},
+		{"id": "puzzle_megaminx", "name": "Twelve Faces", "icon": "big_cubes", "type": "puzzle", "target": "megaminx",
+			"text": "Unlock the Megaminx."},
+		{"id": "method_cfop", "name": "Cross, F2L, OLL, PLL", "icon": "cfop", "type": "method", "target": "cfop",
+			"text": "Learn CFOP."},
+		{"id": "method_roux", "name": "Blockbuilder", "icon": "roux", "type": "method", "target": "roux",
+			"text": "Learn Roux."},
+		{"id": "method_zz", "name": "Edges First", "icon": "zz", "type": "method", "target": "zz", "text": "Learn ZZ."},
+		{"id": "method_gods_number", "name": "Twenty Moves", "icon": "gods_number", "type": "method",
+			"target": "gods_number", "text": "Learn God's Number."},
+		{"id": "mastery", "name": "Dedicated", "icon": "mastery_focus", "type": "mastery",
+			"text": "Reach mastery level %s on a puzzle.", "tiers": [5.0, 10.0, 25.0, 50.0, 100.0]},
+		{"id": "champion", "name": "Champion", "icon": "stat_trophy", "type": "championships", "text": "Win %s.",
+			"noun": ["World Championship", "World Championships"], "tiers": [1.0, 3.0, 10.0, 25.0, 50.0]},
+		{"id": "perks", "name": "Perked Up", "icon": "federation_rankings", "type": "perks", "text": "Own %s.",
+			"noun": ["trophy perk", "trophy perks"], "tiers": [1.0, 5.0, 10.0, 16.0]},  # 16: every perk that can be bought
+		{"id": "hand_solves", "name": "Hands On", "icon": "speed_practice", "type": "hand_solves",
+			"text": "Finish %s in the Solve Station.", "noun": ["solve", "solves"], "tiers": [1.0, 10.0, 100.0, 1000.0]},
+		{"id": "hand_tier", "name": "Podium", "icon": "stackmat", "type": "hand_tier",
+			"text": "Reach %s with a Solve Station single on any puzzle.", "tiers": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0],
+			"labels": ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master"]},
+		{"id": "drills", "name": "Muscle Memory", "icon": "cfop", "type": "drill_cases", "text": "Learn %s.",
+			"noun": ["drill case", "drill cases"], "tiers": [1.0, 10.0, 25.0, 50.0, 78.0]},
+		{"id": "drill_2look_oll", "name": "Two Looks Up", "icon": "cfop", "type": "drill_set", "target": "2look_oll",
+			"text": "Learn every 2-look OLL case in the drills."},
+		{"id": "drill_2look_pll", "name": "Two Looks Around", "icon": "cfop", "type": "drill_set", "target": "2look_pll",
+			"text": "Learn every 2-look PLL case in the drills."},
+		{"id": "drill_pll", "name": "All 21", "icon": "cfop", "type": "drill_set", "target": "pll",
+			"text": "Learn every PLL in the drills."},
+		{"id": "drill_oll", "name": "All 57", "icon": "cfop", "type": "drill_set", "target": "oll",
+			"text": "Learn every OLL in the drills."},
+		{"id": "research", "name": "Researcher", "icon": "lab_prototypes", "type": "research", "text": "Finish %s.",
+			"noun": ["Lab research project", "Lab research projects"], "tiers": [1.0, 3.0, 6.0]},
+		{"id": "tracks", "name": "Mixtape", "icon": "live_stream", "type": "tracks", "text": "Unlock %s.",
+			"noun": ["music track", "music tracks"], "tiers": [3.0, 5.0, 7.0]},
+	],
+}
+
+const _ROMAN := ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI",
+		"XVII", "XVIII", "XIX", "XX"]
+
+static var _achievements: Array[Dictionary] = []
+static var _achievement_index: Dictionary = {}
+
+
+## Every achievement, expanded from ACHIEVEMENTS["rows"] (built once): {id, row, tier (0-based, -1 if untiered), name,
+## icon, type, target, value, text, noun, label}. Its text: describe_achievement(def).
+static func get_achievements() -> Array[Dictionary]:
+	if _achievements.is_empty():
+		for row: Dictionary in ACHIEVEMENTS["rows"]:
+			if row.get("each_helper", false):
+				for helper: Dictionary in BUILDINGS:
+					var per_helper: Dictionary = row.duplicate(true)
+					per_helper.erase("each_helper")
+					per_helper["id"] = "%s_%s" % [row["id"], helper["id"]]
+					per_helper["name"] = helper["name"]
+					per_helper["icon"] = helper["icon"]
+					per_helper["target"] = helper["id"]
+					per_helper["noun"] = [helper["name"], helper.get("plural", String(helper["name"]) + "s")]
+					_add_achievement_row(per_helper)
+			else:
+				_add_achievement_row(row)
+		for def in _achievements:
+			_achievement_index[def["id"]] = def
+	return _achievements
+
+
+static func _add_achievement_row(row: Dictionary) -> void:
+	var base := {"row": row["id"], "icon": row["icon"], "type": row["type"], "target": row.get("target", ""),
+			"text": row["text"], "noun": row.get("noun", []), "label": ""}
+	if not row.has("tiers"):
+		var single: Dictionary = base.duplicate()
+		single.merge({"id": row["id"], "tier": -1, "name": row["name"], "value": float(row.get("value", 1.0))}, true)
+		_achievements.append(single)
+		return
+	var tiers: Array = row["tiers"]
+	var labels: Array = row.get("labels", [])
+	for i in tiers.size():
+		var def: Dictionary = base.duplicate()
+		def.merge({"id": "%s_%d" % [row["id"], i + 1], "tier": i, "name": "%s %s" % [row["name"], _ROMAN[i]],
+				"value": float(tiers[i]), "label": String(labels[i]) if i < labels.size() else ""}, true)
+		_achievements.append(def)
+
+
+## An achievement's text, with its number in the player's notation now: "Own 10 Cubing Friends at once."
+static func describe_achievement(def: Dictionary) -> String:
+	var text := String(def.get("text", ""))
+	if not text.contains("%s"):
+		return text
+	var value := float(def["value"])
+	var shown := String(def["label"]) if String(def.get("label", "")) != "" else _short_number(value)
+	var noun: Array = def.get("noun", [])
+	if noun.size() == 2:
+		shown += " " + String(noun[0] if value == 1.0 else noun[1])
+	return text % shown
+
+
+static func get_achievement(id: String) -> Dictionary:
+	get_achievements()
+	return _achievement_index.get(id, {})
+
+
+## A round number for a text: 1000 -> "1K", 1e15 -> "1Qa" or "1e15" (Num.format without the trailing ".00").
+static func _short_number(value: float) -> String:
+	var text := Num.format(value)
+	var exponent := ""
+	if text.contains("e"):  # scientific: "1.00e15"
+		exponent = text.substr(text.find("e"))
+		text = text.substr(0, text.find("e"))
+	var digits := text.length()
+	while digits > 0 and not (text[digits - 1].is_valid_int() or text[digits - 1] == "."):
+		digits -= 1  # the suffix
+	var number := text.substr(0, digits)
+	if number.contains("."):
+		number = number.rstrip("0").rstrip(".")
+	return number + text.substr(digits) + exponent
 
 
 ## Hand-solve rewards (task S.3, D13: an active player earns ~2–3× an idle one). Per-puzzle time targets for the Solve

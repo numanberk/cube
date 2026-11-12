@@ -2,6 +2,41 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-12 — Task 7.1a: achievements (rules only, save v14)
+- **Owner decision (2026-11-12, asked this session):** an achievement gives **+1 % trophies per championship**, not
+  +1 % moves as the roadmap said. Measured with the balance bot first: any moves bonus compounds through the whole first
+  run (+1 % each: Robot 7:38, 4×4 23:36, 5×5 42:00, first championship 1:03:11; even +0.25 % each: championship 1:16:09),
+  so D6 (80–100 min) broke. **This session's call, easy to change:** the bonus counts **from the second championship
+  on** (`get_achievement_mult()` is 1 until `has_won_championship()`). Counted in the first one too, the bot reached its
+  50 trophies sooner and competed at 1:14:08. If the owner wants it in the first championship as well, drop that one
+  check and raise `CHAMPIONSHIP["divisor"]` until the first championship is back near 84 min.
+- **Data:** `Content.ACHIEVEMENTS` (`bonus`, `rows`) + `Content.ACHIEVEMENT_TYPES` (16 condition types).
+  26 rows expand (`Content.get_achievements()`, built once) into **117 achievements**: tiered rows become "Solver I",
+  "Solver II"... (ids `solves_1`, `solves_2`...), `each_helper` makes a 3-tier row per helper ("Own 10 Cubing Friends
+  at once."), single rows are one goal ("Unlock the 4×4."). Every one has an icon (existing ones), a name and a text.
+  Rows: lifetime Solves (1 → 1Qa), lifetime moves, helpers' Solves/s, 1/10/100 of each helper, upgrades owned, each
+  puzzle, each method, best mastery level, championships, perks owned, Solve Station solves, best hand-solve tier
+  (Bronze → Master), drill cases, each drill set, Lab research, music tracks unlocked.
+- **Rules (`game.gd`):** `achievements` (id -> true, saved, **kept through championships**: `CHAMPIONSHIP["keeps"]`
+  lists it), `check_achievements(emit)` **once a second** in `_process` (not on purchase: a toast a second late is fine,
+  and it keeps every other test's numbers exact), signal `achievement_earned(id)`, `get_achievement_value(def)` (where a
+  condition stands, for 7.1b's per-achievement bars), `get_achievement_progress()` ({earned, total}, the x/y bar),
+  `is_achievement_earned(id)`, `get_achievement_mult()` (inside `get_trophy_gain_mult()`, so the Compete screen's
+  "× N" already shows it). Like career moments, nothing is signalled while a save is applied; what was reached while
+  away is earned at the first check after loading.
+- **Save v14:** `"achievements": [ids]`; unknown ids are dropped. v13 → v14 migration writes `"backfill"`: an old save
+  earns, silently, everything it has already reached (what it can tell from its current state).
+- **Balance:** `tools/simulator.gd` checks achievements once per simulated second. `docs/BALANCE.md` is unchanged
+  (the bonus only starts after the first championship, and the bot's second run doesn't compete again).
+- **Not done (left for 7.1b / 7.2):** the Achievements tab with its x/y bar and the toast (7.1b, after Phase V: connect
+  `Game.achievement_earned`, read `Content.get_achievements()` + `Game.get_achievement_value(def)`). "Every track
+  heard" became "tracks unlocked" (hearing a track is Audio's business, not GameState's). Achievements on taps, Golden
+  Scrambles and dailies need counters that don't exist yet: add them with 7.2's stats.
+- Tests: `test_achievement_data` (ids, icons, types, targets, tiers going up, every value reachable with today's
+  content, texts), `test_achievement_conditions` (every one of the 117 is earned exactly at its condition, not the next
+  tier with it, once; every type used; the once-a-second check), `test_achievement_bonus`, `test_achievement_save`
+  (round trip, damaged ids, v13 → v14 backfill, reached while away).
+
 ## 2026-11-10 — Task V.4 (mostly done): declutter the main screen
 - **Not ticked: the size criterion is missed.** Done-when asks for the puzzle at ≥ 50 % of the screen height in `mid`;
   it's **~40 % (the 3×3) / ~44 % with its mat** (before: ~28 %). The other criteria hold: under the puzzle there's only

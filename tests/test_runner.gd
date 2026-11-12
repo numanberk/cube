@@ -899,10 +899,14 @@ func test_settings_panel() -> void:
 	# Numbers
 	settings.set_value("notation", "scientific")
 	check(Num.format(1500.0) == "1.50e3", "scientific notation")
+	check(Num.format(1e15) == "1.00e15" and Num.format(1e3) == "1.00e3" and Num.format(999999.0) == "1.00e6"
+			and Num.format(9.9951e14) == "1.00e15", "the mantissa never reads 10.00 (%s, %s)" % [Num.format(1e15), Num.format(999999.0)])
 	main._animate_counter(1.0)
 	check((main.get_node("%SolvesLabel") as Label).text == "1.50e3", "the UI uses the chosen notation")
 	settings.set_value("notation", "short")
 	check(Num.format(1500.0) == "1.50K", "back to short notation")
+	check(Num.format(999999.0) == "1.00M" and Num.format(99995.0) == "100.0K" and Num.format(9.9999e35) == "1.00e36"
+			and Num.format(1e6) == "1.00M", "rounding moves up a unit, never 1000.0K (%s, %s)" % [Num.format(999999.0), Num.format(99995.0)])
 	# Volumes and music
 	(panel._sliders["sfx_volume"] as HSlider).value = 0.4
 	check(absf(root.get_node("Audio").get_bus_volume(AudioManager.SFX_BUS) - 0.4) < 0.01, "the SFX slider sets the bus volume")
@@ -3444,6 +3448,255 @@ func test_career_save() -> void:
 	old.free()
 	g.reset_state()
 	check(g.career_seen.is_empty(), "a wiped save starts the story over")
+	g.free()
+
+
+## 7.1a: the achievement data is complete and every tier can be reached with today's content.
+func test_achievement_data() -> void:
+	var all := Content.get_achievements()
+	check(all.size() >= 100, "about 100 achievements (%d)" % all.size())
+	var ids := {}
+	var full_cases := 0
+	for alg: Dictionary in Content.ALGORITHMS:
+		if alg.get("full", false):
+			full_cases += 1
+	var previous := {}  # row -> the previous tier's value
+	for def: Dictionary in all:
+		var id: String = def["id"]
+		check(not ids.has(id), "achievement ids are unique (%s)" % id)
+		ids[id] = true
+		check(Content.get_achievement(id) == def, "get_achievement finds %s" % id)
+		check(Content.ACHIEVEMENT_TYPES.has(def["type"]), "%s has a known type (%s)" % [id, def["type"]])
+		check(ResourceLoader.exists(Content.ICON_DIR + String(def["icon"]) + ".svg"), "%s has an icon file" % id)
+		var text := Content.describe_achievement(def)
+		check(String(def["name"]).length() > 2 and text.ends_with(".") and not text.contains("%"),
+				"%s has a name and a finished text (%s)" % [id, text])
+		var value := float(def["value"])
+		var target := String(def["target"])
+		if previous.has(def["row"]):
+			check(value > float(previous[def["row"]]), "%s: tiers go up" % id)
+		previous[def["row"]] = value
+		match String(def["type"]):
+			"helper":
+				check(not Content.get_building(target).is_empty(), "%s: helper %s exists" % [id, target])
+			"puzzle":
+				check(not Content.get_puzzle(target).is_empty() and float(Content.get_puzzle(target)["unlock_cost"]) > 0.0,
+						"%s: puzzle %s exists and must be unlocked" % [id, target])
+			"method":
+				check(Content.get_method_index(target) > 0, "%s: method %s exists" % [id, target])
+			"drill_set":
+				check(not Content.get_drill_set(target).is_empty(), "%s: drill set %s exists" % [id, target])
+			"mastery":
+				check(value <= float(Content.MASTERY["max_level"]), "%s: the level exists" % id)
+			"perks":
+				check(value <= _buyable_perks().size(), "%s: that many perks can be bought" % id)
+			"hand_tier":
+				check(value < (Content.SOLVE_REWARDS["tiers"] as Array).size() and Content.describe_achievement(def).contains(
+						Content.SOLVE_REWARDS["tiers"][int(value)]), "%s: the tier exists and is named" % id)
+			"drill_cases":
+				check(value <= full_cases, "%s: there are that many drill cases (%d)" % [id, full_cases])
+			"research":
+				check(value <= (Content.LAB["projects"] as Array).size(), "%s: there are that many Lab projects" % id)
+			"tracks":
+				check(value <= Content.TRACKS.size(), "%s: there are that many tracks" % id)
+			"upgrades":
+				check(value <= Content.get_upgrades().size(), "%s: there are that many upgrades" % id)
+	var say := func(id: String) -> String: return Content.describe_achievement(Content.get_achievement(id))
+	check(say.call("team_friend_2") == "Own 10 Cubing Friends at once." and say.call("team_friend_1") == "Own 1 Cubing Friend at once."
+			and say.call("team_factory_2") == "Own 10 Cube Factories at once.", "a helper row reads naturally (%s)" % say.call("team_factory_2"))
+	check(say.call("solves_1") == "Earn 1 Solve in total." and say.call("champion_1") == "Win 1 World Championship."
+			and say.call("champion_2") == "Win 3 World Championships.", "one is singular (%s)" % say.call("solves_1"))
+	check(say.call("solves_4") == "Earn 1K Solves in total." and Content.get_achievement("solves_4")["name"] == "Solver IV",
+			"numbers are round in the text (%s)" % say.call("solves_4"))
+	check(say.call("hand_tier_3") == "Reach Gold with a Solve Station single on any puzzle.", "labels replace numbers")
+	check(Content._short_number(1e5) == "100K" and Content._short_number(1.5e3) == "1.5K" and Content._short_number(7.0) == "7",
+			"short numbers (%s, %s)" % [Content._short_number(1e5), Content._short_number(1.5e3)])
+	var notation := Num.notation
+	Num.notation = "scientific"
+	check(say.call("solves_16") == "Earn 1e15 Solves in total.", "the text follows the notation setting (%s)" % say.call("solves_16"))
+	Num.notation = notation
+
+
+## The perks a player can buy (`buyable` isn't false).
+func _buyable_perks() -> Array:
+	return Content.PERKS.filter(func(perk: Dictionary) -> bool: return perk.get("buyable", true))
+
+
+## Puts a game exactly at an achievement's condition (for test_achievement_conditions).
+func _reach_achievement(g: GameState, def: Dictionary) -> void:
+	var value := float(def["value"])
+	var target := String(def["target"])
+	match String(def["type"]):
+		"lifetime_solves":
+			g.total_solves = value
+		"lifetime_moves":
+			g.total_moves = value
+		"solves_per_second":
+			g.buildings["friend"] = 1  # a slow team, then just enough trophies (+2 % each) to reach the value
+			var base := g.get_solves_per_second()
+			g.trophies = ceili((value / base - 1.0) / g.get_bonus_per_trophy() * 1.001)
+		"helper":
+			g.buildings[target] = int(value)
+		"upgrades":
+			for up: Dictionary in Content.get_upgrades().slice(0, int(value)):
+				g.upgrades[up["id"]] = true
+		"puzzle":
+			g.puzzles_reached[target] = true
+		"method":
+			g.method = target
+		"mastery":
+			g._add_mastery_xp("2x2", g._mastery_xp_at(int(value)))
+		"championships":
+			g.championships = int(value)
+		"perks":
+			for perk: Dictionary in _buyable_perks().slice(0, int(value)):
+				g.perks[perk["id"]] = true
+		"hand_solves":
+			g.solve_records["2x2"] = {"history": [], "count": int(value)}
+		"hand_tier":
+			g.record_hand_solve("3x3", float(Content.SOLVE_REWARDS["targets"]["3x3"][int(value)]) * 0.99, "", 40)
+		"drill_cases":
+			var learned := 0
+			for alg: Dictionary in Content.ALGORITHMS:
+				if alg.get("full", false) and learned < int(value):
+					g.drills[alg["id"]] = {"best": 5.0, "clean": int(Content.DRILLS["clean_needed"]), "count": 5}
+					learned += 1
+		"drill_set":
+			for alg: Dictionary in Content.get_drill_cases(target):
+				g.drills[alg["id"]] = {"best": 5.0, "clean": int(Content.DRILLS["clean_needed"]), "count": 5}
+		"research":
+			for project: Dictionary in (Content.LAB["projects"] as Array).slice(0, int(value)):
+				g.research_done[project["id"]] = true
+		"tracks":
+			for puzzle: Dictionary in Content.PUZZLES:
+				if g.get_unlocked_track_ids().size() < int(value):
+					g.puzzles_reached[puzzle["id"]] = true
+			if g.get_unlocked_track_ids().size() < int(value):
+				g.championships = 1
+
+
+## 7.1a: every achievement is earned exactly at its condition (not before, and not the next tier with it), once.
+func test_achievement_conditions() -> void:
+	var types := {}
+	for def: Dictionary in Content.get_achievements():
+		var id: String = def["id"]
+		types[def["type"]] = true
+		var g := new_game()
+		var heard: Array[String] = []
+		g.achievement_earned.connect(func(earned: String) -> void: heard.append(earned))
+		check(not g.check_achievements().has(id), "%s isn't earned by a new game" % id)
+		_reach_achievement(g, def)
+		var earned := g.check_achievements()
+		check(earned.has(id) and heard.has(id) and g.is_achievement_earned(id), "%s is earned at its condition (%s)" % [id, earned])
+		var next := Content.get_achievement("%s_%d" % [def["row"], int(def["tier"]) + 2])
+		if int(def["tier"]) >= 0 and not next.is_empty():
+			check(not g.is_achievement_earned(next["id"]), "...but not %s with it" % next["id"])
+		check(g.check_achievements().is_empty(), "%s: nothing is earned twice" % id)
+		g.free()
+	for type: String in Content.ACHIEVEMENT_TYPES:
+		check(types.has(type), "achievement type %s is used" % type)
+	# They're checked once a second (GameState._process), purchases included.
+	var live := new_game()
+	var live_heard: Array[String] = []
+	live.achievement_earned.connect(func(id: String) -> void: live_heard.append(id))
+	live.buy_building("friend")
+	live.cheat_add_solves(5.0)
+	live._process(0.5)
+	check(live_heard.is_empty(), "nothing is earned before the once-a-second check (%s)" % [live_heard])
+	live._process(0.6)
+	check(live_heard.has("solves_1") and live_heard.has("team_friend_1"), "...then they are (%s)" % [live_heard])
+	live.free()
+
+
+## 7.1a: each achievement gives +1 % trophies per championship (owner, 2026-11-12: not moves), kept through championships.
+func test_achievement_bonus() -> void:
+	var g := new_game()
+	var moves_before := g.get_puzzle_moves_mult("2x2")
+	g.total_solves = 100.0
+	var earned := g.check_achievements()
+	check(earned.size() == 3, "100 Solves earn Solver I–III (%s)" % [earned])
+	check_near(g.get_achievement_mult(), 1.0, "before the first championship they give nothing yet (the first run's pacing)")
+	check_near(g.get_puzzle_moves_mult("2x2"), moves_before, "...and never more moves")
+	var progress := g.get_achievement_progress()
+	check(int(progress["earned"]) == 3 and int(progress["total"]) == Content.get_achievements().size(), "x/y: %s" % progress)
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	check(g.compete() > 0, "test setup: a championship")
+	check(g.is_achievement_earned("solves_3"), "achievements stay through a championship")
+	g.check_achievements()
+	check(g.is_achievement_earned("champion_1"), "...and the first win earns Champion I")
+	var count := g.achievements.size()
+	check_near(g.get_achievement_mult(), 1.0 + 0.01 * count, "after it: +1 %% trophies each (%d)" % count)
+	check_near(g.get_trophy_gain_mult(), g.get_achievement_mult(), "...in the trophy gain multiplier")
+	check_near(g.get_puzzle_moves_mult("2x2"), moves_before * g.get_trophy_mult(), "...and still not in moves")
+	var run := GameState.solves_for_trophies(100)
+	g.cheat_add_solves(run)
+	check(g.get_pending_trophies() == GameState.trophies_for(g.get_run_solves(), g.get_achievement_mult())
+			and g.get_pending_trophies() > 100, "Solves for 100 trophies win more (%d)" % g.get_pending_trophies())
+	check_near(float(g.get_championship_preview()["gain_mult"]), g.get_achievement_mult(), "the Compete screen shows the ×")
+	check(Array(Content.CHAMPIONSHIP["keeps"]).any(func(line: String) -> bool: return line.begins_with("Achievements")),
+			"the Compete screen lists achievements as kept")
+	g.free()
+
+
+## 7.1a: achievements are saved; unknown ids are dropped; v13 saves earn what they already reached, silently (v14).
+func test_achievement_save() -> void:
+	var g := new_game()
+	g.buildings["friend"] = 10
+	g.total_solves = 1000.0
+	g.check_achievements()
+	var data := g.get_save_data()
+	check(int(data["version"]) == GameState.SAVE_VERSION and GameState.SAVE_VERSION >= 14, "saves as v14 or later")
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.achievements.keys() == g.achievements.keys(), "achievements survive save/load")
+	check_near(loaded.get_trophy_gain_mult(), g.get_trophy_gain_mult(), "...with their bonus")
+	loaded.free()
+	data["achievements"] = ["banana", 5, "solves_1", "team_friend_2"]
+	var damaged := new_game()
+	damaged.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(damaged.achievements.keys() == ["solves_1", "team_friend_2"], "unknown ids are dropped (%s)" % [damaged.achievements.keys()])
+	damaged.free()
+	# v13 -> v14: what the save already reached is earned without a signal; the rest waits.
+	var v13 := g.get_save_data()
+	v13["version"] = 13
+	v13.erase("achievements")
+	var old := new_game()
+	var heard: Array[String] = []
+	old.achievement_earned.connect(func(id: String) -> void: heard.append(id))
+	old.apply_save_data(JSON.parse_string(JSON.stringify(v13)), float(v13["saved_at"]))
+	check(heard.is_empty() and old.is_achievement_earned("team_friend_2") and old.is_achievement_earned("solves_4"),
+			"v13 → v14: what an old save reached is earned, silently (%s)" % [old.achievements.keys()])
+	check(not old.is_achievement_earned("team_friend_3") and not old.is_achievement_earned("solves_5"), "...and nothing more")
+	old.championships = 1
+	check_near(old.get_achievement_mult(), 1.0 + 0.01 * old.achievements.size(), "...with its bonus (after a championship)")
+	old.free()
+	# Reached while away (CFOP learned): not signalled during the load, earned at the first check afterwards.
+	var away := new_game()
+	away.cheat_add_solves(1e4)
+	away.research = {"id": "method_cfop", "left": 60.0}
+	var away_data := away.get_save_data()
+	away_data["saved_at"] = 1000.0
+	away.free()
+	var back := new_game()
+	var back_heard: Array[String] = []
+	back.achievement_earned.connect(func(id: String) -> void: back_heard.append(id))
+	back.apply_save_data(JSON.parse_string(JSON.stringify(away_data)), 1000.0 + 3600.0)
+	check(back.method == "cfop" and not back_heard.has("method_cfop"), "CFOP learned while away: nothing signalled during the load")
+	back._process(1.0)
+	check(back_heard.has("method_cfop"), "...it's earned at the first check after loading")
+	back.free()
+	# The same from a v13 save: the backfill runs before the time away, so CFOP isn't earned silently with it.
+	away_data["version"] = 13
+	away_data.erase("achievements")
+	var back13 := new_game()
+	var back13_heard: Array[String] = []
+	back13.achievement_earned.connect(func(id: String) -> void: back13_heard.append(id))
+	back13.apply_save_data(JSON.parse_string(JSON.stringify(away_data)), 1000.0 + 3600.0)
+	check(back13.method == "cfop" and back13.is_achievement_earned("solves_5") and not back13.is_achievement_earned("method_cfop"),
+			"v13 + time away: the backfill earned what was reached before leaving, not CFOP")
+	back13._process(1.0)
+	check(back13_heard.has("method_cfop") and not back13_heard.has("solves_5"), "...CFOP is signalled at the first check (%s)" % [back13_heard])
+	back13.free()
 	g.free()
 
 

@@ -419,6 +419,11 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
     not restyled. Phase 7 rules sessions keep `main.gd`/`main.tscn` untouched (no UI) and claim **Save: yes** in the
     In progress table when they bump the save (7.0a did v13; 7.1 does v14), so only one runs at a time.
 
+- **D16 Achievement reward:** (owner, 2026-11-12) **+1 % trophies per championship** for each achievement, not +1 % moves:
+  a moves bonus compounds through the first run (+1 % each put the first championship at 63 min, against D6's 80–100).
+  It counts from the second championship on, so the first run's pacing is unchanged (7.1a; one check in
+  `GameState.get_achievement_mult()` if that should change).
+
 ### Open
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?
 - **D4 Price** (needed by 10.2): free, pay-what-you-want on itch, or paid on Steam?

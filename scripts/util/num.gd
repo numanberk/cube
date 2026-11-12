@@ -16,13 +16,23 @@ static func format(n: float) -> String:
 		if n < 10.0 and not is_equal_approx(n, floorf(n)):
 			return "%.1f" % n
 		return str(int(floorf(n)))
+	# The mantissa is rounded to what will be shown *before* picking the unit, and log() may land just under a
+	# power (1e15 -> 14.999...), so both steps normalise: 999,999 reads "1.00M" / "1.00e6", never "1000.0K" / "10.00e5".
 	var tier := int(floorf(log(n) / log(1000.0)))
-	if notation == "short" and tier < SUFFIXES.size():
+	if notation == "short":
 		var scaled := n / pow(1000.0, tier)
-		var digits := "%.2f" if scaled < 100.0 else "%.1f"
-		return (digits % scaled) + SUFFIXES[tier]
+		scaled = snappedf(scaled, 0.01 if scaled < 100.0 else 0.1)
+		if scaled >= 1000.0:
+			tier += 1
+			scaled = snappedf(scaled / 1000.0, 0.01)
+		if tier < SUFFIXES.size():
+			return ("%.2f" if scaled < 100.0 else "%.1f") % scaled + SUFFIXES[tier]
 	var exponent := int(floorf(log(n) / log(10.0)))
-	return "%.2fe%d" % [n / pow(10.0, exponent), exponent]
+	var mantissa := snappedf(n / pow(10.0, exponent), 0.01)
+	if mantissa >= 10.0:
+		exponent += 1
+		mantissa = snappedf(mantissa / 10.0, 0.01)
+	return "%.2fe%d" % [mantissa, exponent]
 
 
 ## 75 -> "1m 15s", 7300 -> "2h 1m"

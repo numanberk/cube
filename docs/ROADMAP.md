@@ -15,7 +15,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 |---|---|---|---|---|---|
 | R.6a Big cubes 4×4/5×5 | (its own) | 2026-11-07 | new `scripts/cube/big_cube_solver.gd`, `showcase_solve.gd` | `main.gd` (stage chips), `content.gd` (`ALGORITHMS`)?, `tests/test_runner.gd` | no |
 | V.4 finish: shelf onto the stage (owner: option b) | `ccr-134df3dd-c0lub2` | 2026-11-11 | `scenes/main.tscn`, `scenes/puzzle_chip.tscn` | `main.gd` (layout), `ui/theme.tres`, `tests/test_runner.gd` | no |
-| 7.1a Achievements (rules) | `ccr-a9bfca64-fydj3l` | 2026-11-12 | new `scripts/systems/achievements.gd`? | `game.gd` (save v14), `content.gd` (`ACHIEVEMENTS`), `tests/test_runner.gd`, `tools/simulator.gd`? | **yes** (v14) |
 
 *(Rows added for the sessions that started before this rule; their own files are an estimate. Each
 session corrects its row when it merges.)*
@@ -473,15 +472,17 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
         career line lands just before that event's own news line; push it after if that reads better.
         *Done when:* there's a screenshot.
 - [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
-      all moves, with a toast when earned. Save v14 (v13 is 7.0a's career moments). **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
+      all moves (**changed by the owner, 2026-11-12: +1 % trophies**, see 7.1a), with a toast when earned. Save v14 (v13 is 7.0a's career moments). **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
       so they work as a map of the game, like Revolution Idle's.
       *Done when:* there are tests for the conditions and the v13 → v14 migration, and a screenshot of the tab and toast.
       Split (D15c) into:
-  - [ ] **7.1a Rules:** `Content.ACHIEVEMENTS` (~100, tiered), GameState checks them once a second, each earned one gives
+  - [x] **7.1a Rules:** `Content.ACHIEVEMENTS` (~100, tiered), GameState checks them once a second, each earned one gives
         +1 % all moves (kept through championships), saved (v14 + migration), a signal for the screen part, x/y counts.
         No `main.gd`/`main.tscn` changes.
         *Done when:* tests cover every condition type, the +1 % bonus, earning once only, and the v13 → v14 migration.
+        *(Done 2026-11-12: 117 achievements from 26 rows. **Owner: +1 % trophies per championship, not moves** (a moves
+        bonus broke D6); it counts from the second championship on. Save v14 with a silent backfill. See the CHANGELOG.)*
   - [ ] **7.1b Screen (after Phase V):** an Achievements tab with the x/y bar and a toast when one is earned.
         *Done when:* there's a screenshot of the tab and the toast.
 - [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.

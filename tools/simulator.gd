@@ -89,6 +89,7 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 
 	var t := 0.0
 	var tap_credit := 0.0
+	var achievement_timer := 1.0
 	var replan_timer := 0.0
 	var split_timer := 0.0
 	var target := {}
@@ -116,6 +117,10 @@ func run(taps_per_sec: float, minutes: float, hand: Dictionary = {}, forbid: Arr
 		g.update_flow(STEP)
 		g.update_streak(STEP)
 		g.update_research(STEP)
+		achievement_timer -= STEP
+		if achievement_timer <= 0.0:  # GameState._process checks achievements once a second (7.1a)
+			g.check_achievements()
+			achievement_timer = 1.0
 		if g.method != learned_method:  # a method's Lab research finished: that's when it counts (and is logged)
 			learned_method = g.method
 			purchases += 1

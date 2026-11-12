@@ -25,6 +25,7 @@ signal daily_rewarded(amount: float)  ## the first daily scramble finished today
 signal research_started(project_id: String)   ## Algorithm Lab (5.6)
 signal research_finished(project_id: String)  ## a project's effect counts from now (methods also emit purchased("method"))
 signal career_moment(moment_id: String)  ## a Content.CAREER story beat happened, once per player (7.0a)
+signal achievement_earned(achievement_id: String)  ## a Content achievement was earned, once per player (7.1a)
 signal championship_won(trophies_won: int)  ## a World Championship reset the run (6.2); the UI rebuilds after it
 ## Buying a trophy perk (6.3) emits purchased("perk", id).
 signal golden_spawned
@@ -32,11 +33,11 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 13  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 14  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
                           ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
-                          ## v12 (6.3b): auto-buyer toggles; v13 (7.0a): career moments seen
+                          ## v12 (6.3b): auto-buyer toggles; v13 (7.0a): career moments seen; v14 (7.1a): achievements
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -83,7 +84,8 @@ var automation_paused := false   ## set by the UI while "Welcome back" is open: 
 var auto_compete_held := false   ## set by the UI while a hand solve or the Compete screen is open: no auto-Compete
 var _automation_timer := 0.0
 var career_seen: Dictionary = {}  ## Content.CAREER ids that already fired (7.0a, saved; kept through championships)
-var _career_timer := 0.0
+var _career_timer := 0.0  ## also times the once-a-second achievement check
+var achievements: Dictionary = {}  ## achievement ids earned (7.1a, saved; kept through championships): id -> true
 var _applying_save := false  ## true inside apply_save_data: no career moment is signalled (no UI listens yet)
 var championships := 0          ## World Championships won (6.2); the first one opens the 7×7, the Megaminx and "Finals"
 var puzzles_reached: Dictionary = {}  ## puzzle id -> true for every puzzle ever unlocked (kept through prestige: its music stays)
@@ -144,6 +146,7 @@ func _process(delta: float) -> void:
 	if _career_timer >= 1.0:  # lifetime Solves grow without a purchase, so the career is also checked once a second
 		_career_timer = 0.0
 		check_career()
+		check_achievements()  # achievements only here (7.1a): a toast a second late is fine, and nothing else waits on them
 	_automation_timer += delta
 	if _automation_timer >= float(Content.AUTOMATION["interval"]):
 		_automation_timer = 0.0
@@ -661,9 +664,9 @@ static func solves_for_trophies(count: int, gain_mult: float = 1.0) -> float:
 	return root * root * float(Content.CHAMPIONSHIP["divisor"])
 
 
-## How many times more trophies a championship gives, from "trophy_gain_mult" perks (6.3).
+## How many times more trophies a championship gives: "trophy_gain_mult" perks (6.3) × achievements (7.1a).
 func get_trophy_gain_mult() -> float:
-	return _perk_product("trophy_gain_mult")
+	return _perk_product("trophy_gain_mult") * get_achievement_mult()
 
 
 ## The moves bonus each unspent trophy gives: Content.CHAMPIONSHIP's 2 % plus "trophy_bonus" perks (6.3).
@@ -740,7 +743,7 @@ func get_trophy_mult(count: int = -1) -> float:
 
 ## Everything the Compete screen shows: trophies now / won / after, the bonus before and after, and the next trophy.
 ##   {run_solves, trophies, gain, after, mult_now, mult_after, next_at (run Solves for one more trophy), next_progress (0..1),
-##    bonus_per_trophy, gain_mult (perks, 6.3)}
+##    bonus_per_trophy, gain_mult (perks 6.3 × achievements 7.1a)}
 func get_championship_preview() -> Dictionary:
 	var run := get_run_solves()
 	var gain_mult := get_trophy_gain_mult()
@@ -958,6 +961,98 @@ func is_career_trigger_met(def: Dictionary) -> bool:
 		"championships":
 			return championships >= int(trigger.get("value", 1))
 	return false
+
+
+# --- Achievements (task 7.1a) ---------------------------------------------------------
+
+## Earns every achievement (Content.get_achievements()) whose condition is now true and that isn't earned yet, in data
+## order, and signals each. `emit` false earns them silently (an old save loading). Like check_career, it does nothing
+## while a save is being applied (nobody listens yet): what was reached then is earned at the first check afterwards.
+## Returns the ids earned.
+func check_achievements(emit: bool = true) -> Array[String]:
+	var earned: Array[String] = []
+	if emit and _applying_save:
+		return earned
+	for def: Dictionary in Content.get_achievements():
+		var id: String = def["id"]
+		if achievements.has(id) or get_achievement_value(def) < float(def["value"]):
+			continue
+		achievements[id] = true
+		earned.append(id)
+	if emit:
+		for id in earned:
+			achievement_earned.emit(id)
+	return earned
+
+
+## Where an achievement's condition stands now, in the units of its `value` (a progress bar is value / def["value"]).
+func get_achievement_value(def: Dictionary) -> float:
+	var target := String(def.get("target", ""))
+	match String(def.get("type", "")):
+		"lifetime_solves":
+			return total_solves
+		"lifetime_moves":
+			return total_moves
+		"solves_per_second":
+			return get_solves_per_second()
+		"helper":
+			return float(buildings.get(target, 0))
+		"upgrades":
+			return float(upgrades.size())
+		"puzzle":
+			return 1.0 if puzzles_reached.has(target) else 0.0
+		"method":
+			return 1.0 if Content.get_method_index(target) > 0 and is_method_learned(target) else 0.0
+		"mastery":
+			var best := 0
+			for id: String in _mastery_levels:
+				best = maxi(best, int(_mastery_levels[id]))
+			return float(best)
+		"championships":
+			return float(championships)
+		"perks":
+			return float(perks.size())
+		"hand_solves":
+			var count := 0
+			for id: String in solve_records:
+				count += get_hand_solve_count(id)
+			return float(count)
+		"hand_tier":
+			var tier := -1
+			for id: String in solve_records:
+				tier = maxi(tier, get_best_hand_tier(id))
+			return float(tier)
+		"drill_cases":
+			var learned := 0
+			for id: String in drills:
+				if is_case_learned(id):
+					learned += 1
+			return float(learned)
+		"drill_set":
+			return 1.0 if is_drill_set_learned(target) else 0.0
+		"research":
+			return float(research_done.size())
+		"tracks":
+			return float(get_unlocked_track_ids().size())
+	return -INF  # an unknown type is never earned
+
+
+func is_achievement_earned(id: String) -> bool:
+	return achievements.has(id)
+
+
+## {earned, total}: the x/y of the achievements screen.
+func get_achievement_progress() -> Dictionary:
+	return {"earned": achievements.size(), "total": Content.get_achievements().size()}
+
+
+## Trophy multiplier from achievements: +Content.ACHIEVEMENTS["bonus"] (1 %) more trophies per championship for each
+## one earned, from the second championship on (owner, 2026-11-12: trophies, not moves, so the first run's pacing stays;
+## counting it in the first championship too made competing worth it ~10 min sooner). Part of get_trophy_gain_mult.
+func get_achievement_mult() -> float:
+	if not has_won_championship():
+		return 1.0
+	return 1.0 + float(Content.ACHIEVEMENTS["bonus"]) * achievements.size()
 
 
 ## How long offline progress (and the Lab's time away) can run: 8 h plus "offline_hours" perks.
@@ -1996,6 +2091,7 @@ func reset_state() -> void:
 	perks.clear()
 	career_seen.clear()
 	_career_timer = 0.0
+	achievements.clear()
 	automation = {"compete_at": int(Content.AUTOMATION["compete_at_default"])}
 	_automation_timer = 0.0
 	championships = 0
@@ -2049,6 +2145,7 @@ func get_save_data() -> Dictionary:
 				"reached": puzzles_reached.keys(), "perks": perks.keys()},
 		"automation": automation.duplicate(),
 		"career": career_seen.keys(),
+		"achievements": achievements.keys(),
 	}
 
 
@@ -2159,6 +2256,11 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 		for id: Variant in saved_career:
 			if not Content.get_career_moment(str(id)).is_empty():
 				career_seen[str(id)] = true
+	var saved_achievements: Variant = data.get("achievements", [])
+	if typeof(saved_achievements) == TYPE_ARRAY:
+		for id: Variant in saved_achievements:
+			if not Content.get_achievement(str(id)).is_empty():
+				achievements[str(id)] = true
 	var saved_auto: Variant = data.get("automation", {})
 	if typeof(saved_auto) == TYPE_DICTIONARY:
 		for kind: String in Content.AUTOMATION["kinds"]:
@@ -2238,6 +2340,8 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	check_helper_times(false)
 	if typeof(data.get("career")) == TYPE_STRING and String(data["career"]) == "backfill":
 		check_career(false)  # a pre-v13 save: what already happened doesn't pop again (time away below still can)
+	if typeof(data.get("achievements")) == TYPE_STRING and String(data["achievements"]) == "backfill":
+		check_achievements(false)  # a pre-v14 save: what it already reached is earned (with its bonus), silently
 	_next_solves_milestone = _milestone_above(total_solves)
 	var saved_at := float(data.get("saved_at", now))
 	var elapsed := clampf(now - saved_at, 0.0, get_offline_cap_seconds())
@@ -2398,6 +2502,12 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("career"):
 			data["career"] = "backfill"
 		data["version"] = 13
+	if int(data["version"]) < 14:
+		# v14 adds achievements (7.1a). "backfill" earns, silently, every one an older save has already reached (the
+		# ones it can tell: what it owns and has done now), so its bonus counts at once and nothing floods the screen.
+		if not data.has("achievements"):
+			data["achievements"] = "backfill"
+		data["version"] = 14
 	return data
 
 
