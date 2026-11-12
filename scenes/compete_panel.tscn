@@ -32,6 +32,7 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Panel" type="PanelContainer" parent="Center"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(640, 0)
 layout_mode = 2
 

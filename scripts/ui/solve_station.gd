@@ -11,6 +11,8 @@ const TURN_TIME := 0.055      ## quarter-turn animation here: snappy enough for 
 const LIST_LENGTH := 50       ## times shown in the list (the newest)
 
 @onready var _view: PuzzleView3D = %View
+@onready var _backdrop: ColorRect = %Backdrop
+@onready var _margin: Control = %Margin
 @onready var _scramble_label: Label = %ScrambleLabel
 @onready var _timer_label: Label = %TimerLabel
 @onready var _status_label: Label = %StatusLabel
@@ -77,6 +79,8 @@ func _ready() -> void:
 
 ## Opens the station on a puzzle (the focused one if it's a cube the player has, else their biggest cube).
 func open(puzzle_id: String = "") -> void:
+	if not visible or UiFx.is_closing(self):
+		UiFx.open_panel(self, _backdrop, _margin, false)  # V.6 (its backdrop is opaque: no blur needed, it just fades)
 	visible = true
 	set_process(true)
 	_build_picker()
@@ -100,7 +104,7 @@ func close() -> void:
 		Game.finish_golden(false)  # walking away from a golden case is a miss
 	golden_mode = false
 	_puzzle_picker.visible = true
-	visible = false
+	UiFx.close_panel(self, _backdrop, _margin)
 	set_process(false)
 
 
@@ -493,7 +497,7 @@ func _key_name(key: int) -> String:
 
 ## Keys go to the station while it's open (and never reach the main screen's Space/Enter tap).
 func _input(event: InputEvent) -> void:
-	if not visible:
+	if not visible or UiFx.is_closing(self):  # fading out (V.6): keys belong to the main screen again
 		return
 	var key := event as InputEventKey
 	if key == null:
@@ -537,7 +541,7 @@ func handle_key(code: int, shift: bool = false) -> void:
 
 ## A turn from a drag across the cube (or anything else that isn't a key).
 func play_move(move: Dictionary) -> void:
-	if not visible or session.model == null:
+	if not visible or UiFx.is_closing(self) or session.model == null:
 		return
 	var was_done := session.state == "done"
 	session.turn(move, _now())

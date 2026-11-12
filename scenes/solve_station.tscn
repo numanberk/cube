@@ -14,6 +14,7 @@ grow_vertical = 2
 script = ExtResource("1_station")
 
 [node name="Backdrop" type="ColorRect" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -23,6 +24,7 @@ grow_vertical = 2
 color = Color(0.0667, 0.0745, 0.0941, 1)
 
 [node name="Margin" type="MarginContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

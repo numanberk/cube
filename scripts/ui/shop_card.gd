@@ -34,6 +34,10 @@ var locked := false
 var _hovered := false
 var _held := false
 var _tween: Tween
+var _shown := false        ## set_view() ran before (V.6: only a change pops, not the first view)
+var _owned_roll: Tween     ## the owned count rolling up after a buy (V.6)...
+var _owned_target := ""    ## ...and the count it rolls to
+var _pop: Tween            ## the pop when the card becomes affordable (V.6)
 
 
 func _ready() -> void:
@@ -62,11 +66,16 @@ func set_view(view: Dictionary) -> void:
 	_line1.text = view.get("line1", "")
 	_line2.text = view.get("line2", "")
 	_line2.visible = _line2.text != ""
-	_owned.text = view.get("owned", "")
+	_set_owned(String(view.get("owned", "")))
 	_cost.text = view.get("cost", "")
 	locked = view.get("locked", false)
 	_sticker.category = &"locked" if locked else StringName(view.get("category", &"helpers"))
+	var was_affordable := affordable
 	affordable = view.get("affordable", false) and not locked
+	if _shown and affordable and not was_affordable:  # V.6: a card you can now buy pops once, its bar shines
+		_pop = UiFx.pop(self)
+		UiFx.sheen(_bar)
+	_shown = true
 	disabled = not affordable
 	_cost.theme_type_variation = &"CostAffordable" if affordable else &"CostUnaffordable"
 	_content.modulate.a = 1.0 if affordable or view.get("active", false) else (DIM_LOCKED if locked else DIM_UNAFFORDABLE)
@@ -80,6 +89,28 @@ func set_view(view: Dictionary) -> void:
 		_bar.modulate.a = 1.0
 	_set_pips(view.get("pips", []))
 	_update_lift()
+
+
+## The owned count; a count that went up rolls up to its new value (V.6).
+func _set_owned(text: String) -> void:
+	var rolling := _owned_roll != null and _owned_roll.is_valid() and _owned_roll.is_running()
+	if rolling and text == _owned_target:
+		return  # rolling to it already
+	if rolling:
+		_owned_roll.kill()  # a new count while rolling: roll on from where it is
+	var before := _owned.text
+	_owned_target = text
+	if _shown and before.is_valid_int() and text.is_valid_int() and int(text) > int(before):
+		_owned_roll = UiFx.roll_number(_owned, float(before), float(text),
+				func(value: float) -> String: return str(roundi(value)))
+		if _owned_roll != null:
+			return
+	_owned.text = text
+
+
+## Where the owned count is (global), for a "+1" flying to it.
+func get_owned_center() -> Vector2:
+	return _owned.get_global_rect().get_center()
 
 
 ## Milestone pips (V.5): the bought ones gold, then the ready ones (reached, buyable in Upgrades) outlined in gold.

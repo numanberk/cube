@@ -1313,6 +1313,147 @@ func test_shop_cards() -> void:
 	game.reset_state()
 
 
+## V.6: every motion-kit helper ends at once (no tween) with Reduce motion on, and animates with it off.
+func test_ui_fx() -> void:
+	var holder := Control.new()
+	root.add_child(holder)
+	var node := Control.new()
+	node.size = Vector2(100, 40)
+	holder.add_child(node)
+	var label := Label.new()
+	holder.add_child(label)
+	var dim := ColorRect.new()
+	holder.add_child(dim)
+	var fmt := func(value: float) -> String: return str(roundi(value))
+	var was := UiFx.reduce_motion
+	UiFx.reduce_motion = true
+	var instant: Array = [UiFx.pop_in(node), UiFx.pop(node), UiFx.squash(node), UiFx.slide_in(node, Vector2(30, 0)),
+			UiFx.shake(node), UiFx.roll_number(label, 1.0, 9.0, fmt), UiFx.sheen(node), UiFx.breathe(node),
+			UiFx.fly_text(holder, "+1", Vector2.ZERO, Vector2(50, 50))]
+	check(instant.all(func(tween: Variant) -> bool: return tween == null), "Reduce motion: no helper starts a tween")
+	check(node.scale == Vector2.ONE and is_equal_approx(node.modulate.a, 1.0) and label.text == "9"
+			and node.self_modulate == Color.WHITE, "...everything is already in its end state")
+	check(holder.get_child_count() == 3, "...and nothing flies")
+	holder.visible = false
+	check(UiFx.open_panel(holder, dim, node) == null and holder.visible and is_equal_approx(dim.modulate.a, 1.0), "panels open at once")
+	var closed := [0]
+	check(UiFx.close_panel(holder, dim, node, func() -> void: closed[0] += 1) == null and not holder.visible and closed[0] == 1,
+			"...and close at once, calling back")
+	UiFx.reduce_motion = false
+	holder.visible = true
+	label.text = "x"
+	var probe := UiFx.roll_number(label, 1.0, 9.0, fmt)
+	probe.custom_step(UiFx.ROLL_TIME / 3.0)
+	check(label.text != "x" and label.text != "1" and label.text != "9", "a number rolls through the values between (%s)" % label.text)
+	probe.custom_step(5.0)
+	var moving: Array = [UiFx.pop(node), UiFx.squash(node), UiFx.shake(node), UiFx.roll_number(label, 1.0, 9.0, fmt),
+			UiFx.sheen(node), UiFx.fly_text(holder, "+1", Vector2.ZERO, Vector2(50, 50))]
+	check(moving.all(func(tween: Variant) -> bool: return tween is Tween), "with motion: each helper animates")
+	for tween: Tween in moving:
+		tween.custom_step(5.0)
+	check(node.scale.is_equal_approx(Vector2.ONE) and label.text == "9" and node.self_modulate.is_equal_approx(Color.WHITE),
+			"...and ends where it should")
+	var opening := UiFx.open_panel(holder, dim, node)
+	check(opening != null and is_zero_approx(dim.modulate.a), "a panel fades in from a clear backdrop")
+	opening.custom_step(UiFx.OPEN_TIME / 2.0)
+	check(dim.modulate.a > 0.1 and dim.modulate.a < 0.95 and node.modulate.a < 1.0, "...half-way: half dim, still fading in")
+	opening.custom_step(1.0)
+	check(is_equal_approx(dim.modulate.a, 1.0) and node.scale.is_equal_approx(Vector2.ONE), "...then fully open")
+	check((dim.material != null) == UiFx.backdrop_blur, "the backdrop blurs on High only")
+	var blur_was := UiFx.backdrop_blur
+	UiFx.backdrop_blur = not blur_was
+	check((dim.material != null) == UiFx.backdrop_blur, "switching Graphics re-dresses an open panel's backdrop")
+	UiFx.backdrop_blur = blur_was
+	var closing := UiFx.close_panel(holder, dim, node, func() -> void: closed[0] += 1)
+	check(holder.visible and UiFx.is_closing(holder), "closing: still visible while it fades, marked closing")
+	closing.custom_step(1.0)
+	check(not holder.visible and not UiFx.is_closing(holder) and closed[0] == 2 and is_equal_approx(dim.modulate.a, 1.0)
+			and node.scale.is_equal_approx(Vector2.ONE), "...then hidden, called back, and reset for next time")
+	# In a CenterContainer (as the dialogs are), which resets its child's scale when it lays it out on showing.
+	var centre := CenterContainer.new()
+	centre.size = Vector2(400, 300)
+	holder.add_child(centre)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(200, 100)
+	centre.add_child(panel)
+	holder.visible = false
+	var growing := UiFx.open_panel(holder, dim, panel)
+	growing.pause()  # only the container's layout runs in this frame
+	await process_frame  # the container sorts its child here (scale back to 1)
+	growing.custom_step(0.001)  # just started: from OPEN_SCALE, not from the 1 the container set
+	check(panel.scale.x < 0.99, "a panel in a CenterContainer really grows in (scale %s)" % panel.scale.x)
+	growing.custom_step(1.0)
+	check(panel.scale.is_equal_approx(Vector2.ONE), "...to full size")
+	UiFx.reduce_motion = was
+	holder.free()
+
+
+## V.6: the shop's motion: buying squashes the card and flies "+N" to its count; a card that becomes affordable pops.
+func test_shop_motion() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	UiFx.reduce_motion = false
+	game.buy_building("friend")
+	main._refresh()
+	var friend: ShopCard = main._helper_cards["friend"]
+	check(not friend.affordable, "test setup: the second Friend isn't affordable")
+	game.cheat_add_solves(1000.0)
+	main._refresh()
+	check(friend.affordable and friend._pop != null and friend._pop.is_running(), "a card that becomes affordable pops")
+	friend._pop.custom_step(UiFx.POP_TIME * 0.4)
+	check(friend.scale.x > 1.01, "...it swells (%s)" % friend.scale)
+	friend._pop.custom_step(1.0)
+	check(friend.scale.is_equal_approx(Vector2.ONE), "...and settles")
+	var layer_before: int = main.fx.get_child_count()
+	friend.pressed.emit()
+	check(game.buildings["friend"] == 2 and main.fx.get_child_count() == layer_before + 1, "buying flies a \"+1\"")
+	main._refresh()
+	check(friend._owned_roll != null and friend._owned_roll.is_running(), "...and the owned count rolls up")
+	friend._owned_roll.custom_step(1.0)
+	main._refresh()
+	check(friend._owned.text == "2", "...to the new count (%s)" % friend._owned.text)
+	UiFx.reduce_motion = false
+	main.free()
+	UiFx.reduce_motion = bool(root.get_node("Settings").get_value("reduce_motion"))
+	game.reset_state()
+
+
+## V.6: the motion kit at speed: ~1,000 moves/s with buys every few frames for 120 frames leaves no flying labels or
+## running pops behind (an error anywhere fails run_tests.sh's log check).
+func test_motion_at_speed() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	UiFx.reduce_motion = false
+	game.buildings["robot"] = 30  # ~1,000 helper moves/s
+	game.cheat_add_solves(1e7)
+	check(game.get_moves_per_second() >= 900.0, "test setup: about 1,000 moves/s (%s)" % game.get_moves_per_second())
+	for frame in 120:
+		if frame % 5 == 0:
+			main._on_helper_card_pressed("friend")
+		if frame == 30:
+			main.settings_panel.open()
+		if frame == 40:
+			main.settings_panel.close()
+		await process_frame
+	check(int(game.buildings["friend"]) >= 20, "it kept buying (%d Friends)" % game.buildings["friend"])
+	await create_timer(UiFx.FLY_TIME + 0.2).timeout
+	var flying := 0
+	for child in main.fx.get_children():
+		if child is Label and not (main.fx._labels as Array).has(child):  # FxLayer's own pooled labels stay
+			flying += 1
+	check(flying == 0, "every \"+N\" that flew is gone (%d left)" % flying)
+	check(not main.settings_panel.visible, "the panel finished closing")
+	main.free()
+	UiFx.reduce_motion = bool(root.get_node("Settings").get_value("reduce_motion"))
+	game.reset_state()
+
+
 func test_upgrade_tiles_show_owned() -> void:
 	var game: GameState = root.get_node("Game")
 	game.persistence_enabled = false
@@ -1654,7 +1795,7 @@ func test_welcome_panel() -> void:
 	var chimes_before := int(audio.played["chime"])
 	audio._last_played.clear()  # deterministic: don't depend on the rate-limit clock
 	panel.collect()
-	check(not panel.visible, "Collect closes the panel")
+	check(_closed(panel), "Collect closes the panel")
 	check(int(audio.played["chime"]) == chimes_before + 1, "collecting chimes")
 	for i in 120:
 		main._animate_counter(1.0 / 60.0)
@@ -2390,7 +2531,7 @@ func test_solve_station() -> void:
 	station.handle_key(KEY_ENTER)
 	check(station.session.state == "inspecting" and not station.session.model.is_solved(), "Enter scrambles the next attempt")
 	station.handle_key(KEY_ESCAPE)
-	check(not station.visible, "Esc closes the station")
+	check(_closed(station), "Esc closes the station")
 	main.free()
 	game.reset_state()
 
@@ -3548,6 +3689,11 @@ func _buyable_perks() -> Array:
 	return Content.PERKS.filter(func(perk: Dictionary) -> bool: return perk.get("buyable", true))
 
 
+## A panel is closed for the game: hidden, or fading out (V.6 animates closing).
+func _closed(panel: Control) -> bool:
+	return not panel.visible or UiFx.is_closing(panel)
+
+
 ## Puts a game exactly at an achievement's condition (for test_achievement_conditions).
 func _reach_achievement(g: GameState, def: Dictionary) -> void:
 	var value := float(def["value"])
@@ -4338,14 +4484,14 @@ func test_golden_scramble_on_screen() -> void:
 	check(station.golden_result != "" and (not game.buff.is_empty() or game.solves > solves_before), "solving it in time gives a buff: %s" % station.golden_result)
 	check(game.get_hand_solve_count("3x3") == count_before, "a golden case isn't a hand-solve record")
 	station._process(float(station.GOLDEN_CLOSE_DELAY) + 0.1)  # untyped: SolveStation uses the autoloads by name
-	check(not station.visible, "the station closes by itself after showing the buff")
+	check(_closed(station), "the station closes by itself after showing the buff")
 	# Esc on a case is a miss.
 	game.update_golden(game.golden_next + 0.01)
 	main.open_golden()
 	var missed := []
 	game.golden_finished.connect(func(success: bool, _buff: Dictionary) -> void: missed.append(success), CONNECT_ONE_SHOT)
 	station.handle_key(KEY_ESCAPE)
-	check(missed == [false] and not station.visible, "Esc walks away from the case: a miss")
+	check(missed == [false] and _closed(station), "Esc walks away from the case: a miss")
 	main.free()
 	game.reset_state()
 
@@ -5251,7 +5397,7 @@ func test_compete_panel() -> void:
 	escape.action = &"ui_cancel"
 	escape.pressed = true
 	panel._unhandled_input(escape)
-	check(not panel.visible and audio.override_track_id == "", "Escape closes it and the music goes back")
+	check(_closed(panel) and audio.override_track_id == "", "Escape closes it and the music goes back")
 	# Wording at the edges: one trophy, none yet, and the enabled button (6.2).
 	panel.compete_enabled = true
 	panel.set_preview({"gain": 1, "mult_now": 1.0, "mult_after": 1.02, "run_solves": 5e10, "next_at": 1.6e11, "next_progress": 0.1})
@@ -5266,7 +5412,7 @@ func test_compete_panel() -> void:
 	button.pressed.emit()
 	check(panel.visible, "the screen opens again")
 	compete.pressed.emit()
-	check(game.trophies == 52 and game.championships == 1 and not panel.visible and audio.override_track_id == "",
+	check(game.trophies == 52 and game.championships == 1 and _closed(panel) and audio.override_track_id == "",
 			"pressing Compete wins 52 trophies, closes the screen and the music goes back")
 	var view: PuzzleView3D = main.get_node("%PuzzleView")
 	check(int(game.buildings["friend"]) == 0 and view.puzzle_id == "2x2", "the new run starts on the 2×2 with no helpers")

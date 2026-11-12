@@ -196,6 +196,16 @@ func _ready() -> void:
 			main._on_tap_pressed(center + offset)
 		main._pending_solve_value = 5.0
 		main._pop_solves(0.0)
+		# V.6: a helper bought (its card squashes, a "+1" flies to the count) and Settings caught half-way open,
+		# its backdrop half dimmed (and blurred on High).
+		Game.solves += Game.get_building_cost("friend")
+		main._on_helper_card_pressed("friend")
+		main.settings_panel.open()
+		var opening: Variant = main.settings_panel.get_meta(&"ui_fx_tween") if main.settings_panel.has_meta(&"ui_fx_tween") else null
+		if opening is Tween:
+			(opening as Tween).pause()
+			await get_tree().process_frame  # let its CenterContainer lay it out first (the tween waits)
+			(opening as Tween).custom_step(UiFx.OPEN_TIME * 0.12)  # early: still small, backdrop half-faded
 		for i in 8:
 			await get_tree().process_frame
 	await RenderingServer.frame_post_draw

@@ -11,6 +11,7 @@ signal closed
 signal compete_pressed
 
 @onready var _dim: ColorRect = %Dim
+@onready var _panel: Control = %Panel
 @onready var _close: Button = %CloseButton
 @onready var _gain: Label = %Gain
 @onready var _bonus: Label = %Bonus
@@ -40,13 +41,13 @@ func _ready() -> void:
 
 func open(data: Dictionary) -> void:
 	set_preview(data)
-	show()
+	UiFx.open_panel(self, _dim, _panel)  # V.6
 
 
 func close() -> void:
-	if not visible:
+	if not visible or UiFx.is_closing(self):
 		return
-	hide()
+	UiFx.close_panel(self, _dim, _panel)
 	closed.emit()
 
 

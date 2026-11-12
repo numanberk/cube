@@ -2,6 +2,37 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-12 — Task V.6: motion kit
+- **`scripts/ui/ui_fx.gd` (class `UiFx`):** static tween helpers, no rules: `pop_in`, `pop`, `squash`, `slide_in`,
+  `shake`, `roll_number`, `sheen`, `breathe`, `open_panel` / `close_panel`, `fly_text`, `is_closing`. **Every one honours
+  Reduce motion:** with `UiFx.reduce_motion` on it puts the node in its end state and returns null (a test checks each).
+  main.gd sets `reduce_motion` and `backdrop_blur` (Graphics High) from Settings.
+- **Panels** (Settings, Compete, Trophy Perks, Welcome back) open with a scale + fade over a backdrop that fades in,
+  and close the same way backwards (0.18 s / 0.12 s). On **High** the backdrop is the screen softly blurred and
+  darkened (`scripts/ui/shaders/backdrop_blur.gdshader`, 13 taps on the screen texture, on the panels' existing Dim
+  ColorRect); on **Low** the plain dim as before. The **Solve Station** fades and grows in and out too (its backdrop is
+  opaque, so no blur). The panels got `%Panel` / `%Dim` (Station: `%Backdrop` / `%Margin`) unique names.
+- **Closing is animated, so "visible" no longer means "open":** a panel fading out is `UiFx.is_closing(panel)`.
+  main.gd's `_overlay_open()` / new `_is_up()` treat it as closed (a Golden case can open while the Station fades);
+  Compete/Perks don't emit `closed` twice and Welcome's Collect can't fire twice while fading.
+- **Shop:** buying a helper squashes its card and flies "+N" from the card to its owned count; the owned count rolls
+  up (restarting towards a newer count if another buy lands mid-roll); a card that becomes affordable pops once and
+  its bar gets a sheen. (Digit-by-digit rolling of the big Solves counter, moved here from V.1, stays the existing
+  smooth ease: the counter changes every frame, so a per-change roll would only stutter.)
+- **`JUICE=1`** now also buys a Friend and freezes Settings half-way open (the Done-when's panel mid-transition).
+- **Notes:** the blur reads the screen through `hint_screen_texture` (the shader way of a BackBufferCopy; one screen
+  copy + 13 taps per frame, High only, only while a panel is open). Switching Graphics in the open Settings panel
+  re-dresses its backdrop at once (`UiFx.backdrop_blur` setter). Known and left: a panel's buttons still answer during
+  its 0.12 s fade-out (Compete's button is disabled after a win; the rest is harmless).
+- **Review fixes (screenshot-checker, diff-reviewer):** the dialogs only faded in, never grew (their CenterContainer
+  reset the scale as it laid them out on showing; the tweens now give explicit start values; a test covers it); Low
+  kept the blur on a panel already open; the Solve Station took keys while fading out (they go to the main screen now);
+  tests restore `UiFx.reduce_motion`.
+- Tests: `test_ui_fx` (every helper with and without Reduce motion, a panel half-way open, closing, the High blur),
+  `test_shop_motion` (pop, "+1", the roll), `test_motion_at_speed` (~1,000 moves/s with buys every 5 frames for 120
+  frames plus a panel opening and closing: no errors, no labels left flying); older tests check `_closed(panel)`.
+- Screenshots: `docs/screenshots/V.6-motion/` (mid_juice High and Low, mid_settings fully open).
+
 ## 2026-11-12 — Task V.5: Shop v2
 - **Helper cards:** the sticker, the name and **one short line** (the rate; the flavour description moved to the
   card's tooltip, with the "each" rate and the next milestone's owned count; the line shows the team's total, so it

@@ -13,7 +13,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| V.6 Motion kit | `ccr-a9bfca64-fydj3l` | 2026-11-12 | new `scripts/ui/ui_fx.gd`, new backdrop shader, the overlay panels' scripts (open/close) | `main.gd`, `main.tscn`, `ui/theme.tres`, `shop_card.gd`, `tools/screenshot.gd` (JUICE), `tests/test_runner.gd` | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -434,12 +433,14 @@ every new component or variation to the gallery (a test enforces variations).
       *(Done 2026-11-12: bars towards the cost (green, breathing when affordable), milestone pips, a silhouette for the
       next helper, category frames and corner badges on tiles, pill tabs with icons and count bubbles. Shots in
       `docs/screenshots/V.5-shop/`.)*
-- [ ] **V.6 Motion kit:** `scripts/ui/ui_fx.gd` (static helpers, no rules): pop-in, slide-in, press, shake, number roll,
+- [x] **V.6 Motion kit:** `scripts/ui/ui_fx.gd` (static helpers, no rules): pop-in, slide-in, press, shake, number roll,
       bar sheen, breathe. Panels (Settings, Compete, Perks, Welcome, Solve Station) open with a scale + fade over a
       darkened, slightly blurred backdrop (`BackBufferCopy` + a cheap blur shader on High, plain dim on Low), and close the
       same way. Buying a card squashes it and flies a "+1" to the owned count; a newly affordable card pops once.
       *Done when:* every one of these honours Reduce motion (a test checks `ui_fx` returns instantly with it on),
       a `JUICE=1` screenshot shows a panel mid-transition, and the 1,000 moves/s smoke run is clean.
+      *(Done 2026-11-12: `UiFx`; panels scale + fade over a blurred (High) or dimmed (Low) backdrop; card squash, "+N",
+      rolling counts, pops. Shots in `docs/screenshots/V.6-motion/`.)*
 - [ ] **V.7 Big moments:** full-width banners for "New puzzle unlocked", "New helper", "Method learned" and a
       championship won (title in the display font, the item's icon, a burst of confetti in the six sticker colours, a
       short light sweep over the stage), queued so two never overlap; the solve burst uses the stage light (a brief

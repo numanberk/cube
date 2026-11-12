@@ -213,9 +213,17 @@ func _learned_methods() -> Array:
 	return out
 
 
+## Is a panel over the main screen? One fading out (V.6) already counts as closed.
 func _overlay_open() -> bool:
-	return settings_panel.visible or welcome_panel.visible or solve_station.visible or compete_panel.visible \
-			or perk_panel.visible
+	for panel: Control in [settings_panel, welcome_panel, solve_station, compete_panel, perk_panel]:
+		if _is_up(panel):
+			return true
+	return false
+
+
+## A panel is up: shown and not fading out (V.6).
+func _is_up(panel: Control) -> bool:
+	return panel.visible and not UiFx.is_closing(panel)
 
 
 ## A Solve Station key on the main screen (S.7; tests call this directly): turns the big cube, and every turn (not a
@@ -398,7 +406,11 @@ func set_buy_amount(amount: int) -> void:
 
 
 func _on_helper_card_pressed(id: String) -> void:
-	Game.buy_buildings(id, _buy_amount)
+	var bought := Game.buy_buildings(id, _buy_amount)
+	if bought > 0:  # V.6: the card squashes and a "+N" flies to its owned count
+		var card: ShopCard = _helper_cards[id]
+		UiFx.squash(card)
+		UiFx.fly_text(fx, "+%d" % bought, card.get_global_rect().get_center(), card.get_owned_center(), &"PopTap")
 
 
 ## Upgrades are a grid of icon tiles (details in each tile's tooltip): ones you can buy, then a dimmer "Owned" tile for
@@ -1021,7 +1033,7 @@ func _on_golden_gone() -> void:
 ## Clicking the golden sticker or the button: start the 10 s case in the Solve Station (on the focused puzzle, or the
 ## biggest cube the player has when the focused puzzle isn't a cube).
 func open_golden() -> void:
-	if solve_station.visible or not Game.claim_golden():
+	if _is_up(solve_station) or not Game.claim_golden():
 		return
 	_on_golden_gone()
 	solve_station.open_golden(Game.get_focused_puzzle_id(), Game.roll_golden_case_moves())
@@ -1253,6 +1265,8 @@ func _apply_display_settings() -> void:
 	for id: String in _chips:
 		(_chips[id] as PuzzleChip).set_reduce_motion(reduce)
 	ShopCard.reduce_motion = reduce  # no breathing cost bars (V.5)
+	UiFx.reduce_motion = reduce  # the motion kit (V.6): panels, pops, squashes, rolls
+	UiFx.backdrop_blur = Settings.get_value("quality") == "high"  # open panels blur the screen behind them on High
 
 
 ## The background's lamp glow sits behind the puzzle, wherever the layout puts it. Called from _refresh (10×/s),

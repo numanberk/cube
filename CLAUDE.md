@@ -74,6 +74,10 @@ scripts/ui/news_feed.gd    class NewsFeed (main.news): the news feed under the s
 scripts/ui/automation_panel.gd  class AutomationPanel (%AutomationPanel, the shop's "Auto" tab, 6.3b): On/Off per
                            auto-buyer + auto-Compete's target; rules in Game.run_automation(). Uses Game by name
 scripts/ui/split_panel.gd  class SplitPanel (%SplitPanel, the shop's "Puzzles" tab): per-puzzle share −/+ and presets
+scripts/ui/ui_fx.gd        class UiFx: the motion kit (V.6), static tween helpers (pop_in, pop, squash, slide_in, shake,
+                           roll_number, sheen, breathe, open_panel/close_panel, fly_text); UiFx.reduce_motion makes every
+                           one end at once (returns null). Panels open/close through it; a closing panel is
+                           UiFx.is_closing() (still visible): don't read `.visible` alone as "open"
 scripts/ui/fx_layer.gd     class FxLayer (%FxLayer in main.tscn): pooled floating "+N" texts (max 20) + solve particle burst
 scripts/ui/puzzle_view_3d.gd  class PuzzleView3D: draws a TwistyModel; scramble_step/show_solved/set_puzzle/set_speed,
                            `tapped`; animated turn queue, solve replay, speed mode (see its header comment)
@@ -199,7 +203,7 @@ PUZZLE=7x7 bash tools/screenshot.sh /tmp/shots mid                # another puzz
 POSE=turn bash tools/screenshot.sh /tmp/shots mid                 # frozen moment: turn | solved -> mid_turn.png
 GRAPHICS=low bash tools/screenshot.sh /tmp/shots mid              # Graphics: Low -> mid_low.png
 TAB=1 bash tools/screenshot.sh /tmp/shots mid                     # shop tab 1 Upgrades / 2 Puzzles / 3 Lab -> mid_tab1.png
-JUICE=1 bash tools/screenshot.sh /tmp/shots mid                   # taps + solve pop mid-animation -> mid_juice.png
+JUICE=1 bash tools/screenshot.sh /tmp/shots mid                   # taps, solve pop, a buy, Settings half-open (V.6) -> mid_juice.png
 BUY=10 bash tools/screenshot.sh /tmp/shots mid                    # shop on ×10 (BUY=-1: Max) -> mid_buy10.png
 SETTINGS=1 bash tools/screenshot.sh /tmp/shots mid                # Settings panel open -> mid_settings.png
 SOLVE=done bash tools/screenshot.sh /tmp/shots mid                # Solve Station: inspecting|solving|done -> mid_solvedone.png

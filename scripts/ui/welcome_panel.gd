@@ -10,6 +10,8 @@ signal collected(solves: float)
 @onready var _detail: Label = %Detail
 @onready var _notice: Label = %Notice
 @onready var _collect: Button = %CollectButton
+@onready var _dim: ColorRect = %Dim
+@onready var _panel: Control = %Panel
 
 var _solves := 0.0
 
@@ -41,16 +43,18 @@ func show_report(report: Dictionary, notice: String) -> bool:
 	_notice.visible = notice != ""
 	_notice.text = notice
 	_collect.text = "Collect" if earned else "OK"
-	show()
+	UiFx.open_panel(self, _dim, _panel)  # V.6
 	return true
 
 
 func collect() -> void:
-	hide()
+	if not visible or UiFx.is_closing(self):
+		return  # already collected (the panel is fading out)
+	UiFx.close_panel(self, _dim, _panel)
 	collected.emit(_solves)
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if visible and (event.is_action_pressed(&"ui_accept") or event.is_action_pressed(&"tap", false)):
+	if visible and not UiFx.is_closing(self) and (event.is_action_pressed(&"ui_accept") or event.is_action_pressed(&"tap", false)):
 		collect()
 		get_viewport().set_input_as_handled()

@@ -13,6 +13,7 @@ grow_vertical = 2
 script = ExtResource("1_welcome")
 
 [node name="Dim" type="ColorRect" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -31,6 +32,7 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Panel" type="PanelContainer" parent="Center"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(440, 0)
 layout_mode = 2
 

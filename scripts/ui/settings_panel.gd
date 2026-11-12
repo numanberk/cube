@@ -13,6 +13,7 @@ const UNLOCK_NAMES := {
 }
 
 @onready var _dim: ColorRect = %Dim
+@onready var _panel: Control = %Panel
 @onready var _close: Button = %CloseButton
 @onready var _sliders := {"master_volume": %MasterSlider, "music_volume": %MusicSlider, "sfx_volume": %SfxSlider}
 @onready var _slider_values := {"master_volume": %MasterSliderValue, "music_volume": %MusicSliderValue, "sfx_volume": %SfxSliderValue}
@@ -44,11 +45,11 @@ func _ready() -> void:
 
 func open() -> void:
 	sync()
-	show()
+	UiFx.open_panel(self, _dim, _panel)  # V.6: scale + fade over a dimmed (High: blurred) backdrop
 
 
 func close() -> void:
-	hide()
+	UiFx.close_panel(self, _dim, _panel)
 
 
 ## Fills every control from the current settings and rebuilds the Jukebox.

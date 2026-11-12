@@ -14,6 +14,7 @@ const GAP := Vector2(14, 26)
 const COLUMN_WIDTH := 2.0 * 116.0 + 14.0
 
 @onready var _dim: ColorRect = %Dim
+@onready var _panel: Control = %Panel
 @onready var _close: Button = %CloseButton
 @onready var _trophy_count: Label = %TrophyCount
 @onready var _branches: HBoxContainer = %Branches
@@ -31,13 +32,13 @@ func _ready() -> void:
 
 func open(trophy_text: String, views: Dictionary) -> void:
 	set_view(trophy_text, views)
-	show()
+	UiFx.open_panel(self, _dim, _panel)  # V.6
 
 
 func close() -> void:
-	if not visible:
+	if not visible or UiFx.is_closing(self):
 		return
-	hide()
+	UiFx.close_panel(self, _dim, _panel)
 	closed.emit()
 
 
