@@ -31,7 +31,7 @@ extends RefCounted
 ## then planned in ~12 ms (4×4) / ~20 ms (5×5), ~165 / ~290 moves. Written with any n in mind, but only 4×4 and 5×5
 ## are tested and switched on: R.6b adds 6×6 and 7×7 (more centre orbits and a second wing orbit).
 
-const PUZZLES := ["4x4", "5x5"]
+const PUZZLES := ["4x4", "5x5", "6x6", "7x7"]
 const STAGE_NAMES := {"centres": "Centres", "edges": "Edges", "parity": "Parity"}
 ## Faces in the order their centres are built: U, its opposite D, then the four around (F R B L).
 const FACE_ORDER := [0, 1, 2, 4, 3, 5]
@@ -163,9 +163,12 @@ class _Shape:
 	var e_flips := PackedInt32Array()                 ## the slice-flip-slice macros
 
 	var slot_hand := PackedInt32Array()               ## per slot: +1 if fa × fb points along the edge's rising coordinate
-	var parity_slot := 0                              ## the edge the flip algorithm works on (UF)
-	var oll_alg: Array[Dictionary] = []
-	var pll_alg: Array[Dictionary] = []
+	var parity_slot := 0                              ## the edge the parity algorithms work on (UF)
+	var oll_alg: Array[Dictionary] = []               ## even cubes: OLL parity (the 4×4 one in blocks: 3Rw on a 6×6)
+	var pll_alg: Array[Dictionary] = []               ## even cubes: PLL parity (likewise)
+	var orbits := PackedInt32Array()                  ## the wing orbits, by the index of their lower wing along an edge
+	var ref_orbit := -1                               ## even cubes: the orbit the reference piece is in, else -1
+	var swap_algs := {}                               ## orbit -> WING_PARITY on that orbit's slices (2R, 3R, ...)
 	var reduced: Array = []                           ## [3×3 piece][rotation] -> the big facelets its stickers read
 
 
@@ -255,10 +258,17 @@ class _Shape:
 			for b in outer.size():
 				if a / 3 != b / 3:
 					setups.append(PackedInt32Array([a, b]))
-		oll_alg = model.parse_sequence(OLL_PARITY if n % 2 == 0 else WING_PARITY)
-		pll_alg = model.parse_sequence(PLL_PARITY)
-		var flipped := identity.duplicate()  # which edge the flip algorithm works on: mark every facelet, see what moved
-		for move in oll_alg:
+		oll_alg = in_blocks(OLL_PARITY)
+		pll_alg = in_blocks(PLL_PARITY)
+		var last := n - 3
+		for o in range(0, (last + 1) / 2):
+			orbits.append(o)
+			if ref == o or ref == last - o:
+				ref_orbit = o
+			elif n >= 5:
+				swap_algs[o] = model.parse_sequence(WING_PARITY.replace("2R", "%dR" % (o + 2)).replace("2L", "%dL" % (o + 2)))
+		var flipped := identity.duplicate()  # which edge the parity algorithms work on: mark every facelet, see what moved
+		for move in (swap_algs[orbits[0]] if swap_algs.has(orbits[0]) else oll_alg):
 			flipped = apply(flipped, move)
 		for slot in 12:
 			for k in slot_a[slot].size():
@@ -268,6 +278,20 @@ class _Shape:
 			var cross := model.face_normals[slot_fa[slot]].cross(model.face_normals[slot_fb[slot]])
 			slot_hand.append(1 if cross.x + cross.y + cross.z > 0.0 else -1)
 		_build_reduced()
+
+
+	## A 4×4 algorithm on this cube with its layers in blocks (R | the inner layers on R's side | ... | L), as people
+	## turn 4×4 parity algorithms on a 6×6 (Rw = 3Rw, 2R = 2-3R). On a 4×4 it is the algorithm itself.
+	func in_blocks(text: String) -> Array[Dictionary]:
+		var out: Array[Dictionary] = []
+		var start := [0, 1, n / 2, n - 1]
+		var finish := [0, n / 2 - 1, n - 2, n - 1]
+		for move in PuzzleShapes.cube(4).parse_sequence(text):
+			var depth := int(move.get("depth", 0))
+			var first: int = start[depth]
+			var last: int = finish[depth + int(move.get("width", 1)) - 1]
+			out.append(model.make_move(move["face"], move["turns"], last - first + 1, first))
+		return out
 
 
 	func _face_of(direction: Vector3) -> int:
@@ -544,13 +568,25 @@ class _Shape:
 								safe = false
 						if safe:
 							middles.append([alg, compose(alg)])
-				for width in range(2, n / 2 + 1):
+				for layers: Vector2i in pairing_slices():
 					for k: int in (TURNS if pass_index == 0 else [1, -1]):
-						var slice := model.make_move(f, k, width)
+						var slice := model.make_move(f, k, layers.x, layers.y)
 						var s_dest := dest_of(slice)
 						var s_back := dest_of(model.inverse(slice))
 						for middle: Array in middles:
 							_register_edge(slice, middle[0], s_dest, middle[1], s_back, pass_index == 1)
+
+
+	## The slices pairing turns, as (width, depth): wide turns from the face (Uw, 3Uw, ...) and, on 6×6 and up, each
+	## single inner slice (3U ...), so one wing orbit can move without the other.
+	func pairing_slices() -> Array[Vector2i]:
+		var out: Array[Vector2i] = []
+		for width in range(2, n / 2 + 1):
+			out.append(Vector2i(width, 0))
+		if n >= 6:
+			for depth in range(1, n / 2):
+				out.append(Vector2i(1, depth))
+		return out
 
 
 	func _register_edge(slice: Dictionary, middle: Array[Dictionary], s_dest: PackedInt32Array,
@@ -996,17 +1032,20 @@ class _Run:
 		return false
 
 
-	## True if the wings `distance` from the middle of their edges are an odd permutation (odd cubes, centres done):
-	## then they can't all be paired without swapping two (the edge parity). A wing's home is read from its colours:
-	## the edge between the two centres of those colours, on the side that keeps its handedness.
-	func wing_parity(distance: int = 1) -> bool:
+	## True if the wings of an orbit (`orbit`: the index of its lower wing along an edge; the others are `n - 3 - orbit`)
+	## are an odd permutation (centres done). A wing's home is read from its colours: the edge between the two centres
+	## of those colours, on the side that keeps its handedness. Pairing keeps it (a face turn moves an orbit in two
+	## 4-cycles, a slice is undone), and a paired cube has every orbit as odd as its edges are flipped, so an orbit that
+	## differs (odd cubes: from the middle pieces, always even; even cubes: from the reference orbit) can't be paired
+	## without swapping two of its wings: the edge parity.
+	func wing_parity(orbit: int = 0) -> bool:
 		var s := shape
 		var sigma := _sigma()
 		var perm := PackedInt32Array()
 		perm.resize(24)
 		for slot in 12:
 			for side: int in [-1, 1]:
-				var k := s.ref + side * distance
+				var k := orbit if side < 0 else s.n - 3 - orbit
 				var fa := sigma[col[s.slot_a[slot][k]]]
 				var fb := sigma[col[s.slot_b[slot][k]]]
 				var hand := s.slot_hand[slot] * side
@@ -1016,8 +1055,19 @@ class _Run:
 		return _odd(perm)
 
 
+	## The orbits whose wings need a swap (the edge parity; see wing_parity).
+	func orbits_to_swap() -> PackedInt32Array:
+		var s := shape
+		var out := PackedInt32Array()
+		var reference := wing_parity(s.ref_orbit) if s.ref_orbit >= 0 else false
+		for o in s.orbits:
+			if o != s.ref_orbit and wing_parity(o) != reference:
+				out.append(o)
+		return out
+
+
 	func _pair_edges() -> void:
-		var odd := shape.n % 2 == 1 and wing_parity()
+		var odd := not orbits_to_swap().is_empty()
 		while _edge_metric(col) < _edge_max():
 			if odd and unpaired_edges() <= 2:
 				return  # the last edges can't be paired until two wings are swapped: the parity stage
@@ -1108,9 +1158,12 @@ class _Run:
 
 	func _fix_parity() -> void:
 		var s := shape
-		if _edge_metric(col) < _edge_max() and s.n % 2 == 1 and wing_parity():
-			_swap_wings()
-			_pair_edges()
+		if _edge_metric(col) < _edge_max():
+			var swaps := orbits_to_swap()
+			for o in swaps:
+				_swap_wings(s.swap_algs[o])
+			if not swaps.is_empty():
+				_pair_edges()
 		var tries := 0
 		while _edge_metric(col) < _edge_max():
 			tries += 1
@@ -1127,9 +1180,9 @@ class _Run:
 					play(move)
 
 
-	## Odd cubes: the edge parity. An unfinished edge is brought to UF (whichever one, and whichever way round, leaves
-	## the most paired) and its two wings are swapped.
-	func _swap_wings() -> void:
+	## The edge parity of one orbit: an unfinished edge is brought to UF (whichever one, and whichever way round, leaves
+	## the most paired) and its two wings of that orbit are swapped by `alg`.
+	func _swap_wings(alg: Array[Dictionary]) -> void:
 		var s := shape
 		var uf := s.parity_slot
 		var best := PackedInt32Array()
@@ -1146,7 +1199,7 @@ class _Run:
 				var after := col
 				for o in way:
 					after = s.apply(after, s.outer[o])
-				for move in s.oll_alg:
+				for move in alg:
 					after = s.apply(after, move)
 				var metric := _edge_metric(after)
 				if metric > best_metric:
@@ -1154,7 +1207,7 @@ class _Run:
 					best = way
 		for o in best:
 			play(s.outer[o])
-		for move in s.oll_alg:
+		for move in alg:
 			play(move)
 
 
