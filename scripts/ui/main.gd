@@ -11,6 +11,7 @@ const LAB_TAB := 3
 const AUTO_TAB := 4
 const TAB_ICONS: Array[String] = ["friend", "magnets", "small_cubes", "lab", "firmware"]  ## per tab (V.5 pills): Helpers ... Auto
 const PLAYER_TURN_TIME := 0.08      ## seconds per quarter turn for your own key turns on the main cube (S.7)
+const SHOWCASE_PLAN_BUDGET_USEC := 4000  ## a big cube's showcase solve is planned ~4 ms a frame, in inspection (R.6b)
 const SOLVE_POP_INTERVAL := 0.25   ## at most ~4 "+X Solves" pops a second, however many solves happen
 const BURST_INTERVAL := 0.5
 const COUNTER_EASE := 12.0         ## how fast the Solves counter catches up (higher = faster)
@@ -736,15 +737,15 @@ func puzzle_banner(puzzle_id: String) -> Dictionary:
 
 # --- Showcase solve (task R.2) -------------------------------------------------------
 
-## The big cube plays one real solve (StagedSolver; BigCubeSolver on 4×4 and 5×5) of the focused puzzle at a speed you
-## can follow; puzzles without a staged solver yet (7×7, Megaminx) keep the old scramble + rewind. Visual only:
-## numbers never wait for it.
+## The big cube plays one real solve (StagedSolver; BigCubeSolver on 4×4, 5×5 and 7×7, planned a few ms a frame) of the
+## focused puzzle at a speed you can follow; the Megaminx (no staged solver yet) keeps the old scramble + rewind. Visual
+## only: numbers never wait for it.
 func _start_showcase(puzzle_id: String = "") -> void:
 	if puzzle_id == "":
 		puzzle_id = Game.get_focused_puzzle_id()
 	_showcase = null
 	if ShowcaseSolve.supports(puzzle_id):
-		_showcase = ShowcaseSolve.new(puzzle_id, Game.method, randi())
+		_showcase = ShowcaseSolve.new(puzzle_id, Game.method, randi(), SHOWCASE_PLAN_BUDGET_USEC)
 		_showcase.solver_options = _solver_options()
 		if not _showcase.solver_options.is_empty():
 			_showcase.start_new()  # the first scramble was solved before the options were known
@@ -752,6 +753,7 @@ func _start_showcase(puzzle_id: String = "") -> void:
 		_showcase.stage_changed.connect(_on_showcase_stage)
 		_showcase.finished.connect(puzzle_view.flash)
 		_showcase.resumed.connect(_build_stage_chips)
+		_showcase.planned.connect(_build_stage_chips)
 		puzzle_view.set_speed(0.0)
 		_on_showcase_started()
 	else:
@@ -759,8 +761,8 @@ func _start_showcase(puzzle_id: String = "") -> void:
 		_build_stage_chips()
 
 
-## Builds the big-cube solver's libraries for the big cubes the player has (R.6a; ~0.1-0.2 s each, once a session),
-## so the first 4×4 or 5×5 showcase doesn't pause for them.
+## Builds the big-cube solver's libraries for the big cubes the player has (R.6; ~0.1-0.2 s each, a 7×7's ~0.5 s, once
+## a session), so the first big-cube showcase doesn't pause for them.
 func _warm_up_big_cubes() -> void:
 	for id: String in BigCubeSolver.PUZZLES:
 		if Game.is_puzzle_unlocked(id):

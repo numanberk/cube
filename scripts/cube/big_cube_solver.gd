@@ -1,6 +1,6 @@
 class_name BigCubeSolver
 extends RefCounted
-## Solves a big cube (4×4, 5×5; task R.6a) the way a person does, by **reduction**, in named stages, so the main
+## Solves a big cube (4×4-7×7; tasks R.6a/R.6b) the way a person does, by **reduction**, in named stages, so the main
 ## cube's showcase solve (R.2) works on them too:
 ##
 ##   var stages := BigCubeSolver.solve(model, "cfop")   # model is not changed
@@ -13,10 +13,11 @@ extends RefCounted
 ##   Edges     pairing with free slices: a few outer turns line two matching pieces up, a slice joins them, three
 ##             outer turns swap the finished edge for an unfinished one (R U R'), and the slice goes back
 ##             (Uw R U R' Uw'). The last two edges use the slice-flip-slice algorithm (Uw' R U R' F R' F' R Uw).
-##   Parity    only when needed. 4×4: OLL parity (one edge flipped) and PLL parity (two edges swapped), found on the
-##             reduced cube before its 3×3 stage; 5×5: the edge parity (an edge's two wings swapped: the wings are
-##             an odd permutation, known as soon as the centres are done, so the last edges wait for this stage).
-##             Each is fixed by its usual algorithm (the constants below).
+##   Parity    only when needed. The edge parity, one wing orbit at a time (an edge's two wings of that orbit swapped:
+##             the orbit is an odd permutation, known as soon as the centres are done, so the last edges wait for this
+##             stage): 5×5 and 7×7 every wing orbit, 6×6 the outer wings when they differ from the inner ones; fixed by
+##             WING_PARITY on that orbit's slices (2R, 3R). Even cubes then OLL parity (one edge flipped) and PLL
+##             parity (two edges swapped), found on the reduced cube; on a 6×6 the 4×4 algorithms turned in blocks (3Rw).
 ##   3×3 stage the reduced cube is read as a 3×3 and solved by StagedSolver with the learned method; its moves are
 ##             mapped back (the 3×3's middle layer = every inner layer).
 ##
@@ -26,10 +27,12 @@ extends RefCounted
 ## indexed by "moves the piece at A to B" (centres) or "joins the pieces at A and B" (edges); a step looks the wanted
 ## piece up, checks the candidates on the real colours and plays the cheapest. Visual only, never game state.
 ##
-## The libraries are built on first use (~0.1 s a size, ~0.15-0.3 s with the first solve; `warm_up` does it ahead of
-## time) and cached; a solve is
-## then planned in ~12 ms (4×4) / ~20 ms (5×5), ~165 / ~290 moves. Written with any n in mind, but only 4×4 and 5×5
-## are tested and switched on: R.6b adds 6×6 and 7×7 (more centre orbits and a second wing orbit).
+## On 6×6 and 7×7 the pairing also turns single inner slices (3U), so one wing orbit moves without the other.
+##
+## The libraries are built on first use (~0.1 s a size, a 7×7's ~0.3 s; `warm_up` does it ahead of time) and cached; a
+## solve is then planned in ~15 ms (4×4) / ~22 ms (5×5) / ~100 ms (6×6, 7×7), ~170 / ~310 / ~520 / ~760 moves. `plan`
+## does it a step at a time (a step is a few ms, rarely up to ~80) so the showcase spreads a 7×7's over its inspection.
+## The game has no 6×6; it is solved here (and tested) because it is the even cube with two wing orbits.
 
 const PUZZLES := ["4x4", "5x5", "6x6", "7x7"]
 const STAGE_NAMES := {"centres": "Centres", "edges": "Edges", "parity": "Parity"}
@@ -62,13 +65,18 @@ static func solve(model: TwistyModel, method: String = "cfop", options: Dictiona
 	var none: Array[Dictionary] = []
 	if model == null or model.notation_style != "wca" or not supports("%dx%d" % [model.size, model.size]):
 		return none
-	var run := _Run.new(_shape(model.size))
-	run.col = run.shape.read(model)
-	run.solve(method, options)
-	if not run.ok:
-		push_warning("BigCubeSolver: no solution found for a %d×%d state" % [model.size, model.size])
-		return none
-	return run.stages
+	var planner := plan(model, method, options)
+	planner.step(-1)
+	return planner.stages()
+
+
+## The same solve, planned a bit at a time (a 7×7's takes ~0.1-0.25 s, too long for one frame): call
+## `step(budget_usec)` once a frame until it returns true, then read `stages()`. null for a puzzle it can't solve.
+## The model is read now; changing it later doesn't change the plan.
+static func plan(model: TwistyModel, method: String = "cfop", options: Dictionary = {}) -> Planner:
+	if model == null or model.notation_style != "wca" or not supports("%dx%d" % [model.size, model.size]):
+		return null
+	return Planner.new(model, method, options)
 
 
 ## Builds the libraries for a puzzle now (cached for the session), and the 3×3 stage's tables for `methods`.
@@ -103,6 +111,44 @@ static func unpaired_edges(model: TwistyModel) -> int:
 	var run := _Run.new(_shape(model.size))
 	run.col = run.shape.read(model)
 	return run.unpaired_edges()
+
+
+class Planner:
+	extends RefCounted
+	var _run: _Run
+	var _done := false
+
+
+	func _init(model: TwistyModel, method: String, options: Dictionary) -> void:
+		_run = _Run.new(BigCubeSolver._shape(model.size))
+		_run.col = _run.shape.read(model)
+		_run.start(method, options)
+
+
+	## Plans for about `budget_usec` microseconds (a step is a few ms at most, a rare one more; -1 = to the end).
+	## True once the plan is done.
+	func step(budget_usec: int) -> bool:
+		var until := Time.get_ticks_usec() + budget_usec
+		while not _done:
+			_done = _run.step()
+			if budget_usec >= 0 and Time.get_ticks_usec() >= until:
+				break
+		return _done
+
+
+	func is_done() -> bool:
+		return _done
+
+
+	## The stages (see BigCubeSolver.solve), once done; [] if no solution was found.
+	func stages() -> Array[Dictionary]:
+		var none: Array[Dictionary] = []
+		if not _done:
+			return none
+		if not _run.ok:
+			push_warning("BigCubeSolver: no solution found for a %d×%d state" % [_run.shape.n, _run.shape.n])
+			return none
+		return _run.stages
 
 
 static func _shape(size: int) -> _Shape:
@@ -677,6 +723,8 @@ class _Run:
 
 	func _init(s: _Shape) -> void:
 		shape = s
+		_gain_a.resize(s.n - 2)
+		_gain_b.resize(s.n - 2)
 
 
 	func play(move: Dictionary) -> void:
@@ -689,20 +737,83 @@ class _Run:
 		moves = []
 
 
-	func solve(method: String, options: Dictionary) -> void:
-		_solve_centres()
-		end_stage("centres")
-		if not ok:
-			return
-		shape.build_edges()
-		_pair_edges()
-		end_stage("edges")
-		_fix_parity()
-		if not ok:
-			return
-		if not moves.is_empty():
-			end_stage("parity")
-		_solve_reduced(method, options)
+	# Planned a step at a time (Planner): `phase` is the stage being built.
+	var phase := "centres"
+	var method := "cfop"
+	var options := {}
+	var _scheme := PackedInt32Array()   ## centres: the colour each face's centres get
+	var _locked := PackedByteArray()    ## centres: facelets that are finished
+	var _face_index := 0                ## centres: FACE_ORDER index of the face being built
+	var _face_steps := 0
+	var _left := 0                      ## edges: how many edges may stay unpaired for the parity stage
+	var _tier := 0                      ## edges: the pairing search _pair_tick is in (see there)
+	var _targets := PackedInt32Array()  ## edges: the wanted pairs while the slower searches run
+	var _route := 0                     ## edges: the next of them to route
+	var _swaps := PackedInt32Array()    ## parity: the wing orbits still to swap
+	var _escapes := 0
+	var _gain_a := PackedInt32Array()   ## scratch arrays for _edge_gain
+	var _gain_b := PackedInt32Array()
+
+
+	func start(m: String, o: Dictionary) -> void:
+		method = m
+		options = o
+		phase = "centres"
+		_start_centres()
+
+
+	## One step of the plan (a centre step, a pairing step, the parity stage, the 3×3 stage). True when done.
+	func step() -> bool:
+		match phase:
+			"centres":
+				if not _centre_tick():
+					return false
+				end_stage("centres")
+				if not ok:
+					return true
+				shape.build_edges()
+				_left = 2 * orbits_to_swap().size()  # each swap leaves one or two edges
+				phase = "edges"
+			"edges":
+				if _pair_tick():
+					return false
+				end_stage("edges")
+				phase = "parity"
+			"parity":  # the edge parity first: wing swaps, then pairing the last edges
+				_swaps = orbits_to_swap() if _edge_metric(col) < _edge_max() else PackedInt32Array()
+				_escapes = 0
+				phase = "swap"
+			"swap":
+				if not _swaps.is_empty():
+					_swap_wings(shape.swap_algs[_swaps[0]])
+					_swaps.remove_at(0)
+					return false
+				_left = 0
+				_tier = 0
+				phase = "repair"
+			"repair":
+				if _pair_tick():
+					return false
+				phase = "escape" if _edge_metric(col) < _edge_max() else "parity_algs"
+			"escape":  # still stuck: rare (a test watches the counter)
+				_escapes += 1
+				if _escapes > MAX_ESCAPES or not _escape():
+					ok = false
+					return true
+				_tier = 0
+				phase = "repair"
+			"parity_algs":  # even cubes: OLL and PLL parity on the reduced cube
+				_fix_parity()
+				if not moves.is_empty():
+					end_stage("parity")
+				phase = "reduced"
+			"reduced":
+				_solve_reduced(method, options)
+				phase = "done"
+				return true
+			_:
+				return true
+		return false
 
 
 	# --- Centres ---
@@ -716,35 +827,47 @@ class _Run:
 		return true
 
 
-	func _solve_centres() -> void:
+	func _start_centres() -> void:
 		var s := shape
 		s.build_centres()
-		var scheme := PackedInt32Array()
-		var locked := PackedByteArray()
-		locked.resize(s.count)
+		_scheme = PackedInt32Array()
+		_locked = PackedByteArray()
+		_locked.resize(s.count)
 		for f in 6:
 			if s.fixed[f] >= 0:
-				scheme.append(col[s.fixed[f]])
-				locked[s.fixed[f]] = 1
+				_scheme.append(col[s.fixed[f]])
+				_locked[s.fixed[f]] = 1
 			else:
-				scheme.append(s.model.face_colors[f])
-		for f: int in FACE_ORDER:
-			var c := scheme[f]
-			for guard in 200:
-				var wrong := PackedInt32Array()
-				for t in s.face_centres[f]:
-					if col[t] == c:
-						locked[t] = 1
-					else:
-						wrong.append(t)
-				if wrong.is_empty():
-					break
-				var step := _centre_step(f, c, locked, scheme)
-				if step.is_empty():
-					ok = false
-					return
-				for move in _prefer_wide(step, f, c, locked, scheme):
-					play(move)
+				_scheme.append(s.model.face_colors[f])
+		_face_index = 0
+		_face_steps = 0
+
+
+	## One centre step (faces in FACE_ORDER, a piece or a few at a time). True when every centre is done (or stuck).
+	func _centre_tick() -> bool:
+		var s := shape
+		while _face_index < FACE_ORDER.size():
+			var f: int = FACE_ORDER[_face_index]
+			var c := _scheme[f]
+			var wrong := false
+			for t in s.face_centres[f]:
+				if col[t] == c:
+					_locked[t] = 1
+				else:
+					wrong = true
+			if not wrong or _face_steps >= 200:
+				_face_index += 1
+				_face_steps = 0
+				continue
+			_face_steps += 1
+			var step := _centre_step(f, c, _locked, _scheme)
+			if step.is_empty():
+				ok = false
+				return true
+			for move in _prefer_wide(step, f, c, _locked, _scheme):
+				play(move)
+			return false
+		return true
 
 
 	## What a macro would do to face `f`: how many more of its centres show `c`, or -1 if it undoes a locked one.
@@ -995,6 +1118,7 @@ class _Run:
 		for index in range(first, last):
 			var setup := s.setups[index]
 			var turned := PackedInt32Array()
+			var seen := {}
 			var i := 0
 			while i < targets.size():
 				var wing := targets[i]
@@ -1010,7 +1134,7 @@ class _Run:
 					turned = col
 					for o in setup:
 						turned = s.apply(turned, s.outer[o])
-				if _play_first_gain(setup, turned, s.e_index[key]):
+				if _play_first_gain(setup, turned, s.e_index[key], seen):
 					return true
 		return false
 
@@ -1050,8 +1174,13 @@ class _Run:
 
 	## Plays `setup` and the first of `macros` that leaves more wings paired than before; false if none does.
 	## `turned` is the cube after the set-up. Only the edges a macro changes are counted.
-	func _play_first_gain(setup: PackedInt32Array, turned: PackedInt32Array, macros: PackedInt32Array) -> bool:
+	## `seen`: macros already scored on this `turned` (skipped; they gained nothing).
+	func _play_first_gain(setup: PackedInt32Array, turned: PackedInt32Array, macros: PackedInt32Array,
+			seen: Dictionary = {}) -> bool:
 		for id in macros:
+			if seen.has(id):
+				continue
+			seen[id] = true
 			if _edge_gain(id, turned) > 0:
 				_play_macro(setup, id)
 				return true
@@ -1068,10 +1197,8 @@ class _Run:
 	## How many more wings an edge macro pairs than it unpairs, on the cube `turned`.
 	func _edge_gain(id: int, turned: PackedInt32Array) -> int:
 		var s := shape
-		var a := PackedInt32Array()
-		var b := PackedInt32Array()
-		a.resize(s.n - 2)
-		b.resize(s.n - 2)
+		var a := _gain_a
+		var b := _gain_b
 		var source := s.e_source[id]
 		var gain := 0
 		for slot in s.e_slots[id]:
@@ -1160,13 +1287,41 @@ class _Run:
 		return out
 
 
-	func _pair_edges() -> void:
-		var left := 2 * orbits_to_swap().size()  # each swap leaves one or two edges
-		while _edge_metric(col) < _edge_max():
-			if unpaired_edges() <= left:
-				return  # the last edges can't be paired until two wings are swapped: the parity stage
-			if not _edge_step() and not _sideways():
-				return
+	## One pairing step, or one slice of a slower search; false when there's nothing more to pair now (all paired,
+	## only the parity's edges left, or stuck: the parity stage's escape takes over). The searches, as in _edge_step:
+	## tier 0 at most one set-up turn; when that finds nothing, tier 1 routes one wanted pair a step (a step stays a few
+	## ms), tier 2 every two-turn set-up, tier 3 a sideways step. Any success starts again at tier 0.
+	func _pair_tick() -> bool:
+		if _edge_metric(col) >= _edge_max() or unpaired_edges() <= _left:
+			return false  # the last edges can't be paired until two wings are swapped: the parity stage
+		var found := false
+		match _tier:
+			0:
+				_targets = _edge_targets()
+				found = _try_setups(_targets, 0, 19)
+				if not found:
+					_tier = 1
+					_route = 0
+				return true
+			1:
+				if _route < _targets.size():
+					found = _try_routes(_targets[_route], _targets[_route + 1])
+					_route += 2
+				else:
+					_tier = 2
+					return true
+			2:
+				found = _try_setups(_targets, 19, shape.setups.size())
+				if not found:
+					_tier = 3
+					return true
+			_:
+				found = _sideways()
+				if not found:
+					return false
+		if found:
+			_tier = 0
+		return true
 
 
 	func _copy() -> _Run:
@@ -1250,21 +1405,9 @@ class _Run:
 		return odd
 
 
+	## Even cubes, every edge paired: OLL parity, then PLL parity, when the reduced cube has them.
 	func _fix_parity() -> void:
 		var s := shape
-		if _edge_metric(col) < _edge_max():
-			var swaps := orbits_to_swap()
-			for o in swaps:
-				_swap_wings(s.swap_algs[o])
-			if not swaps.is_empty():
-				_pair_edges()
-		var tries := 0
-		while _edge_metric(col) < _edge_max():
-			tries += 1
-			if tries > MAX_ESCAPES or not _escape():
-				ok = false
-				return
-			_pair_edges()
 		if s.n % 2 == 0:
 			if oll_parity():
 				for move in s.oll_alg:

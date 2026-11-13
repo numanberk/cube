@@ -1,8 +1,9 @@
 class_name ShowcaseSolve
 extends RefCounted
 ## The main cube's showcase solve (task R.2): a real WCA scramble, a short inspection, then a StagedSolver solve played a
-## move at a time, then the next scramble. 4×4 and 5×5 are solved by BigCubeSolver (R.6a: centres, edges, parity, then
-## the method's own stages on the reduced cube). Pure data (no nodes), so tests drive it with fake time; main.gd feeds the
+## move at a time, then the next scramble. 4×4, 5×5 and 7×7 are solved by BigCubeSolver (R.6: centres, edges, parity,
+## then the method's own stages on the reduced cube); with `plan_budget_usec` set, their solve is planned a few ms per
+## `advance` during inspection (a 7×7's takes ~0.1 s), and `planned` tells when `stages` are there. Pure data (no nodes), so tests drive it with fake time; main.gd feeds the
 ## moves it returns to PuzzleView3D's manual mode (show_state / turn). Visual only: it never changes a game number.
 ##
 ##   var show := ShowcaseSolve.new("3x3", "cfop")
@@ -22,10 +23,12 @@ signal started                    ## a new scramble is ready: show `scramble` (t
 signal stage_changed(index: int)  ## `stage_index` moved on (the stage chips follow it)
 signal finished                   ## the solve is done (flash!)
 signal resumed                    ## the team took the cube back from the player: new `stages`, same cube (no reset)
+signal planned                    ## a solve planned over several `advance` calls is ready: `stages` changed
 
 var puzzle_id := ""
 var method := "beginner"          ## used from the next scramble on (a method learned mid-solve waits for it)
 var solver_options := {}          ## StagedSolver options, e.g. {"full_pll": true} once the player learned full PLL (S.4)
+var plan_budget_usec := 0         ## big cubes: plan for at most about this long per `advance` (0 = all at once)
 var phase := "inspection"
 var scramble: Array[Dictionary] = []
 var stages: Array[Dictionary] = []
@@ -37,15 +40,17 @@ var player_moves: Array[Dictionary] = []  ## the player's turns since they took 
 var by_player := false            ## the last solve was finished by the player's own turns
 var _history: Array[Dictionary] = []  ## every move since the scramble began (God's Number undoes them, R.5)
 var _taken_solved := false        ## the cube was already solved when the player took it (undoing R with R' isn't a solve)
+var _planner: BigCubeSolver.Planner   ## a big cube's solve being planned (stages are [] until it's done)
 
 var _rng := RandomNumberGenerator.new()
 var _timer := 0.0
 var _move_clock := 0.0
 
 
-func _init(puzzle: String, method_id: String = "beginner", seed: int = -1) -> void:
+func _init(puzzle: String, method_id: String = "beginner", seed: int = -1, budget_usec: int = 0) -> void:
 	puzzle_id = puzzle
 	method = method_id
+	plan_budget_usec = budget_usec
 	if seed >= 0:
 		_rng.seed = seed
 	else:
@@ -89,6 +94,7 @@ func player_turn(move: Dictionary) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if move.is_empty():
 		return out
+	_planner = null  # planned for a cube that's changing: the team plans again when it takes the cube back
 	if phase != "player":
 		player_moves.clear()
 		_taken_solved = model.is_solved()
@@ -137,9 +143,28 @@ func _plan() -> Array[Dictionary]:
 
 
 func _staged(method_id: String) -> Array[Dictionary]:
+	_planner = null
 	if BigCubeSolver.supports(puzzle_id):
+		if plan_budget_usec > 0:
+			_planner = BigCubeSolver.plan(model, method_id, solver_options)
+			var later: Array[Dictionary] = []
+			return later
 		return BigCubeSolver.solve(model, method_id, solver_options)
 	return StagedSolver.solve(model, method_id, solver_options)
+
+
+## True while a big cube's solve is still being planned (no `stages` yet).
+func is_planning() -> bool:
+	return _planner != null
+
+
+## Plans for about `budget_usec` (-1: to the end); when done, the stages are in and `planned` is emitted.
+func _plan_step(budget_usec: int) -> void:
+	if _planner == null or not _planner.step(budget_usec):
+		return
+	stages = _planner.stages()
+	_planner = null
+	planned.emit()
 
 
 ## Moves to play for `delta` seconds at `tps` turns per second (0 = only taps turn it).
@@ -148,6 +173,10 @@ func advance(delta: float, tps: float) -> Array[Dictionary]:
 	match phase:
 		"inspection":
 			_timer -= delta
+			_plan_step(plan_budget_usec)
+			if _planner != null:  # inspection lasts until the plan is ready
+				_timer = maxf(_timer, 0.0)
+				return out
 			var turns := _inspection_moves()
 			if turns.size() > move_index and _timer < float(Content.SHOWCASE["inspection"]) * 0.6:
 				out.append_array(_take_inspection())  # pick the cube up and turn it, part-way through inspection
@@ -176,6 +205,7 @@ func tap() -> Array[Dictionary]:
 	if phase == "player":  # a click hands the cube back to the team straight away
 		_resume()
 	if phase == "inspection":
+		_plan_step(-1)
 		out.append_array(_take_inspection())
 		_begin_solving()
 	if phase == "solving":
