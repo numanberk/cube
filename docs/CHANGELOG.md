@@ -2,6 +2,53 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-13 — Task R.6a: big cubes in the solver (4×4 and 5×5)
+- **`scripts/cube/big_cube_solver.gd` (class `BigCubeSolver`):** solves a 4×4 or 5×5 by reduction, in stages, for the
+  showcase solve: **Centres** → **Edges** → **Parity** (only when there is one) → the learned method's own stages on
+  the reduced cube (`StagedSolver`, its moves mapped back: the 3×3's middle layer = every inner layer; its `z2`
+  inspection turn opens the first 3×3 stage). `BigCubeSolver.solve(model, method, options)` returns the same stage
+  list as `StagedSolver.solve`; `supports`, `warm_up`, `is_stage_done(model, "centres"|"edges"|"parity")`.
+- **How it tracks the cube:** as facelets (6·n² colours) with one table per move built from the model's geometry, as
+  the roadmap asked ("per-move tables, not by re-reading the model"). The model is read once at the start.
+- **Centres** (U, D, then F R B L): a cached library of short sequences, indexed by "moves the piece here to there":
+  a slice turn, a slice-face-slice insert (`Rw U Rw'`), each also after one turn of the face the piece is on, and the
+  8-move centre commutator (`Rw U' Lw' U Rw' U' Lw U`) once inserts would undo finished pieces. Each step takes the
+  fewest moves per centre gained and never undoes a finished one. Inner slices are played as wide turns (`Rw`, not
+  `2R`) whenever that does the same job on the cube as it is. 4×4 ~34 moves, 5×5 ~117.
+- **Edges:** free-slice pairing. A few outer turns line up two matching pieces, a slice joins them, three outer turns
+  swap the paired edge for an unpaired one, the slice goes back (`Uw R U R' Uw'`); the last two edges use
+  slice-flip-slice (`Uw' R U R' F R' F' R Uw`). Found by lookup in a second library ("joins the pieces here and
+  there") and checked on the real colours: a step must pair more than it unpairs. 4×4 ~50 moves, 5×5 ~97.
+- **Parity:** 4×4: OLL parity (`Rw U2 x Rw U2 Rw U2 Rw' U2 Lw U2 Rw' U2 Rw U2 Rw' U2 Rw'`) and PLL parity
+  (`2R2 U2 2R2 Uw2 2R2 Uw2`), read off the reduced cube (edge flips / edge vs corner permutation). 5×5: the edge
+  parity (two wings of one edge swapped), known from the wings' permutation as soon as the centres are done, so the
+  last one or two edges wait for the Parity stage: the edge goes to UF, `2R2 B2 U2 2L U2 2R' U2 2R U2 F2 2R F2 2L'
+  B2 2R2`, then pairing finishes. (The wide `Rw` version of that algorithm breaks a 5×5's centres; it is 4×4-only.)
+- **Showcase:** `ShowcaseSolve.supports()` is now true for 4×4 and 5×5; the chips read Centres · Edges · (Parity) ·
+  then the method's (ten for Beginner: they fit). God's Number still undoes the scramble; after long own turns it
+  falls back to a staged Roux solve, as on the 3×3. In the ticker a big cube's whole middle block is `M`/`E`/`S`
+  (not `2-4Lw`). Full real speed, as the owner chose: a 5×5 CFOP solve is ~290 moves, about a minute at 5 turns/s.
+  main.gd builds the libraries at start for the big cubes the player owns (`_warm_up_big_cubes`).
+- **Numbers:** libraries build in under 0.1 s a size (once a session). Planning a solve: 4×4 ~12 ms (worst 47),
+  5×5 ~20 ms (worst 52), on the main thread when a showcase starts (during the inspection pause). A stress run solved
+  600/600 random scrambles on each size; the slow fallback (`_escape`) was never needed (a test watches the counter).
+- Tests: `test_big_cube_solver` (60 scrambles a size across the four methods, every stage goal, both 4×4 parities
+  and the 5×5 one, time and length, turned-over and sliced cubes, the parity algorithms themselves),
+  `test_big_cube_showcase` (whole solves, the player taking the cube, God's Number, notation). Older tests that
+  used the 4×4 as "a puzzle with no showcase" use the 7×7 now.
+- Screenshots: `docs/screenshots/R.6a-big-cubes/` (4×4 centres and parity, 5×5 edges and the Beginner 3×3 stage).
+  I checked them myself (no `screenshot-checker` run): the only screen change is more chips in the existing row.
+- No save, content or balance change. Parallel sessions: none were running; merged with `origin/main` at the claim.
+- **For R.6b (6×6, 7×7):** the class takes any n but only 4 and 5 are in `PUZZLES`. Expected work: (1) centres: the
+  oblique orbits come in mirror pairs, so check that the insert/commutator library still reaches every piece (the
+  "turn the source face first" set-up maps an orbit onto itself, not onto its mirror); (2) edges: two wing orbits.
+  `_edge_targets` already matches by orbit and `wing_parity(distance)` takes the orbit, but `_pair_edges` only reads
+  orbit 1 and `_swap_wings` has one algorithm (the 7×7 needs the inner-wing version with `3R` slices); the pairing
+  slices are wide turns of width 2..n/2, so on 6×6/7×7 `3Uw` carries both wing orbits at once: add single inner
+  slices if pairing stalls; an even cube's reference piece is an inner wing; (3) the bench (`bench`, `bench_row`)
+  with the showcase on the 7×7, and planning time (libraries grow with n: measure, and plan over a few frames if a
+  solve takes much more than 50 ms).
+
 ## 2026-11-12 — Task V.9: identity and polish (all but the owner's sign-off)
 - **Wordmark:** `assets/images/brand/wordmark.svg`, "Cube Idle" as outlines of Fredoka SemiBold ("Idle" in the buy
   green), written by `tools/make_wordmark.py` (dev-only fontTools: `pip install --target /tmp/pylib fonttools`, then

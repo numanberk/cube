@@ -2755,7 +2755,7 @@ func test_staged_solver_details() -> void:
 	check(not f2l_faces.is_empty() and f2l_faces.keys().all(func(f: String) -> bool: return f in ["R", "U", "L"]),
 			"ZZ F2L is R, U and L only: %s" % str(f2l_faces.keys()))
 	check(StagedSolver.supports("3x3") and StagedSolver.supports("2x2"), "3x3 and 2x2 are supported")
-	check(not StagedSolver.supports("4x4") and not StagedSolver.supports("megaminx"), "bigger cubes come in R.6")
+	check(not StagedSolver.supports("4x4") and not StagedSolver.supports("megaminx"), "bigger cubes are BigCubeSolver's (R.6)")
 	check(StagedSolver.solve(PuzzleShapes.from_id("4x4")).is_empty(), "an unsupported puzzle gives no stages")
 	check(StagedSolver.solve(PuzzleShapes.from_id("megaminx")).is_empty(), "...the Megaminx too")
 	# Beginner's last step is the real R' D' R D corner twist.
@@ -2837,6 +2837,170 @@ func test_algorithm_data() -> void:
 		check(model.is_solved(), "%s six times is back to solved" % id)
 
 
+# --- Big cubes in the solver (task R.6a) -------------------------------------------------
+
+func test_big_cube_solver() -> void:
+	check(BigCubeSolver.supports("4x4") and BigCubeSolver.supports("5x5"), "4×4 and 5×5 are supported")
+	check(not BigCubeSolver.supports("3x3") and not BigCubeSolver.supports("7x7") and not BigCubeSolver.supports("megaminx"),
+			"3×3 is StagedSolver's; 6×6 and 7×7 come in R.6b")
+	check(BigCubeSolver.solve(PuzzleShapes.from_id("7x7")).is_empty() and BigCubeSolver.solve(PuzzleShapes.from_id("megaminx")).is_empty(),
+			"an unsupported puzzle gives no stages")
+	var methods := ["cfop", "beginner", "roux", "zz"]
+	var last_stage := {"cfop": "pll", "beginner": "corner_twist", "roux": "lse", "zz": "last_layer"}
+	var escapes := BigCubeSolver.escapes
+	for id: String in ["4x4", "5x5"]:
+		var start := Time.get_ticks_usec()
+		BigCubeSolver.warm_up(id, methods)
+		var warm_ms := (Time.get_ticks_usec() - start) / 1000.0
+		check(warm_ms < 3000.0, "%s: warming up takes well under a few seconds (took %.0f ms)" % [id, warm_ms])
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 61
+		var length := int(Content.get_puzzle(id)["scramble_length"])
+		var unsolved := 0
+		var misses := {}
+		var parity_moves := {}
+		var total_usec := 0
+		var total_moves := 0
+		var runs := 60
+		for i in runs:
+			var model := PuzzleShapes.from_id(id)
+			model.scramble(length, rng)
+			var before := model.orientations.duplicate()
+			var method: String = methods[i % methods.size()]
+			var t := Time.get_ticks_usec()
+			var stages := BigCubeSolver.solve(model, method)
+			total_usec += Time.get_ticks_usec() - t
+			if model.orientations != before:
+				misses["solve() changed the model"] = true
+			var ids := []
+			for stage: Dictionary in stages:
+				ids.append(stage["id"])
+				if stage["name"] == "" or stage["name"] == stage["id"]:
+					misses["%s has no display name" % stage["id"]] = true
+			var has_parity := "parity" in ids
+			if ids.size() < 4 or ids[0] != "centres" or ids[1] != "edges" or ids[-1] != last_stage[method] or "inspection" in ids:
+				misses["stage order: %s" % str(ids)] = true
+			for stage: Dictionary in stages:
+				model.apply_all(stage["moves"])
+				total_moves += (stage["moves"] as Array).size()
+				match stage["id"]:
+					"centres":
+						if not BigCubeSolver.is_stage_done(model, "centres"):
+							misses["centres"] = true
+					"edges":
+						# Every edge is paired, and with no parity stage the reduced cube is a solvable 3×3 already.
+						# A 5×5 with the edge parity leaves its last one or two edges for the parity stage.
+						var left := BigCubeSolver.unpaired_edges(model)
+						var allowed := 2 if id == "5x5" and has_parity else 0
+						if not BigCubeSolver.is_stage_done(model, "centres") or left > allowed:
+							misses["edges (%d unpaired)" % left] = true
+						if not has_parity and not BigCubeSolver.is_stage_done(model, "parity"):
+							misses["a parity went unnoticed"] = true
+					"parity":
+						parity_moves[(stage["moves"] as Array).size()] = true
+						if (stage["moves"] as Array).is_empty() or not BigCubeSolver.is_stage_done(model, "parity"):
+							misses["parity"] = true
+			if not model.is_solved():
+				unsolved += 1
+		check(unsolved == 0, "%s: %d random scrambles are all solved (%d failed)" % [id, runs, unsolved])
+		check(misses.is_empty(), "%s: every stage reaches its goal (missed: %s)" % [id, misses.keys()])
+		var ms := total_usec / 1000.0 / runs
+		check(ms < 50.0, "%s: a solve is planned in under 50 ms on average (%.1f ms)" % [id, ms])
+		var average := float(total_moves) / runs
+		var limits: Array = [130.0, 230.0] if id == "4x4" else [230.0, 400.0]
+		check(average > limits[0] and average < limits[1], "%s: a reduction solve is about %d-%d moves (%.0f)" % [id, limits[0], limits[1], average])
+		if id == "4x4":  # OLL parity is 18 moves, PLL parity 6: alone, and both
+			check(parity_moves.has(18) and parity_moves.has(6) and parity_moves.has(24), "4×4: OLL parity, PLL parity and both come up (%s)" % str(parity_moves.keys()))
+		else:
+			check(not parity_moves.is_empty(), "5×5: the edge parity comes up")
+	check(BigCubeSolver.escapes == escapes, "the edge stage never needed its slow way out")
+	# A solved cube: nothing to do but the 3×3 stage's z2.
+	for id: String in ["4x4", "5x5"]:
+		var count := 0
+		for stage: Dictionary in BigCubeSolver.solve(PuzzleShapes.from_id(id), "cfop"):
+			count += (stage["moves"] as Array).size()
+		check(count == 1, "%s: a solved cube needs only the z2 (%d moves)" % [id, count])
+	# Any state the player's own turns can leave (S.7): rotations, inner slices, the 5×5's middle layers.
+	var turned_rng := RandomNumberGenerator.new()
+	turned_rng.seed = 62
+	for id: String in ["4x4", "5x5"]:
+		for i in 10:
+			var cube := PuzzleShapes.from_id(id)
+			cube.apply_all(cube.parse_sequence("x y' 2R U 2F' D2 2U z" + (" 3R U' 3F 3U2" if id == "5x5" else "")))
+			cube.scramble(20, turned_rng)
+			for stage: Dictionary in BigCubeSolver.solve(cube, "cfop", {"full_oll": true, "full_pll": true}):
+				cube.apply_all(stage["moves"])
+			check(cube.is_solved(), "%s: a cube turned over and sliced is solved too (%d)" % [id, i])
+	# The parity algorithms do what their stage says, on the model.
+	var four := PuzzleShapes.from_id("4x4")
+	four.apply_all(four.parse_sequence(BigCubeSolver.OLL_PARITY))
+	check(BigCubeSolver.is_stage_done(four, "edges") and not BigCubeSolver.is_stage_done(four, "parity"),
+			"4×4 OLL parity algorithm: centres and edges stay, one edge is flipped")
+	four.reset()
+	four.apply_all(four.parse_sequence(BigCubeSolver.PLL_PARITY))
+	check(BigCubeSolver.is_stage_done(four, "edges") and not BigCubeSolver.is_stage_done(four, "parity"),
+			"4×4 PLL parity algorithm: centres and edges stay, two edges are swapped")
+	var five := PuzzleShapes.from_id("5x5")
+	five.apply_all(five.parse_sequence(BigCubeSolver.WING_PARITY))
+	check(BigCubeSolver.is_stage_done(five, "centres") and BigCubeSolver.unpaired_edges(five) == 1,
+			"5×5 edge parity algorithm: the centres stay, one edge's wings are swapped")
+
+
+func test_big_cube_showcase() -> void:
+	for id: String in ["4x4", "5x5"]:
+		var show := ShowcaseSolve.new(id, "cfop", 71)
+		var shown := PuzzleShapes.from_id(id)
+		shown.apply_all(show.scramble)
+		var ids := []
+		for stage in show.chip_stages():
+			ids.append(stage["id"])
+		check(ids.slice(0, 2) == ["centres", "edges"] and ids.slice(-7) == ["cross", "f2l_1", "f2l_2", "f2l_3", "f2l_4", "oll", "pll"],
+				"%s: the chips are centres, edges, (parity,) then CFOP's: %s" % [id, ids])
+		check(show.phase == "inspection" and show.stages[0]["id"] == "centres", "%s: starts in inspection, with no inspection turns" % id)
+		var guard := 0
+		while show.phase != "solved" and guard < 2000:
+			guard += 1
+			for move in show.advance(0.1, 10.0):
+				shown.apply(move)
+		check(show.phase == "solved" and shown.is_solved(), "%s: the showcase plays the whole solve (%d steps)" % [id, guard])
+		check(show.model.is_solved(), "%s: its own model agrees" % id)
+		# The player takes the cube (S.7) mid-solve; the team solves it from there.
+		show.start_new()
+		shown = PuzzleShapes.from_id(id)
+		shown.apply_all(show.scramble)
+		for i in 30:
+			for move in show.tap():
+				shown.apply(move)
+		for text: String in ["Rw", "U'", "2F", "x"]:
+			for move in show.player_turn(shown.parse(text)):
+				shown.apply(move)
+		check(show.phase == "player", "%s: a key turn takes the cube" % id)
+		guard = 0
+		while show.phase != "solved" and guard < 2000:
+			guard += 1
+			for move in show.advance(0.2, 10.0):
+				shown.apply(move)
+		check(shown.is_solved(), "%s: the team solves it from where the player left it" % id)
+		# God's Number: the scramble undone when that's short, else the team's shortest staged solve (Roux).
+		var gods := ShowcaseSolve.new(id, "gods_number", 72)
+		check(gods.stages.size() == 1 and gods.stages[0]["id"] == "gods_number"
+				and (gods.stages[0]["moves"] as Array).size() <= int(Content.get_puzzle(id)["scramble_length"]),
+				"%s: God's Number undoes the scramble" % id)
+		for i in 60:
+			gods.player_turn(gods.model.random_move())
+		gods.tap()
+		check(gods.stages[0]["id"] == "centres" and gods.stages[-1]["id"] == "lse", "%s: after many own turns, a staged Roux solve" % id)
+	# In the ticker, every inner layer together is M / E / S (the 3×3 stage's slices), wide turns stay WCA.
+	var four := PuzzleShapes.from_id("4x4")
+	var five := PuzzleShapes.from_id("5x5")
+	check(ShowcaseSolve.notation(four, four.make_move(5, 1, 2, 1)) == "M" and ShowcaseSolve.notation(five, five.make_move(5, -1, 3, 1)) == "M'",
+			"a big cube's whole middle is written M")
+	check(ShowcaseSolve.notation(five, five.make_move(1, 2, 3, 1)) == "E2" and ShowcaseSolve.notation(four, four.make_move(2, 1, 2, 1)) == "S",
+			"...and E and S")
+	check(ShowcaseSolve.notation(four, four.make_move(4, 1, 2)) == "Rw" and ShowcaseSolve.notation(five, five.make_move(4, 1, 1, 1)) == "2R"
+			and ShowcaseSolve.notation(five, five.make_move(4, 1, 1, 2)) == "3R", "wide turns and single slices keep their WCA names")
+
+
 # --- Showcase solve (task R.2) -----------------------------------------------------
 
 func test_showcase_solve_rules() -> void:
@@ -2881,7 +3045,8 @@ func test_showcase_solve_rules() -> void:
 	tapped.start_new()
 	check(tapped.stages[-1]["id"] == "pll", "the next solve is CFOP")
 	# 2×2 and the unsupported puzzles.
-	check(ShowcaseSolve.supports("2x2") and not ShowcaseSolve.supports("5x5"), "2×2/3×3 only, for now (R.6)")
+	check(ShowcaseSolve.supports("2x2") and ShowcaseSolve.supports("5x5") and not ShowcaseSolve.supports("7x7")
+			and not ShowcaseSolve.supports("megaminx"), "2×2 to 5×5 (R.6a); the 7×7 and Megaminx not yet")
 	# Roux and ZZ (R.5) are staged too; God's Number undoes the cube's history, labelled, and is short.
 	for method: String in ["roux", "zz", "gods_number"]:
 		var other := ShowcaseSolve.new("3x3", method, 21)
@@ -2958,11 +3123,25 @@ func test_showcase_on_main_screen() -> void:
 		check("Solved in" in ticker, "%s: the ticker says it's solved: %s" % [method, ticker])
 		for label: Label in chips.get_children():
 			check(label.theme_type_variation == &"StageChipDone", "%s: every chip is done" % method)
-	# A puzzle without a staged solver yet keeps the old scramble + rewind, and the chips hide.
+	# The 4×4 is a reduction solve (R.6a): its chips start with Centres and Edges, then the method's own.
+	game.method = "cfop"
 	game.cheat_add_solves(1e9)
 	game.unlock_puzzle("4x4")
 	game.set_focus("4x4")
-	check(main._showcase == null and not chips.visible, "the 4×4 has no showcase yet (R.6)")
+	check(main._showcase != null and chips.visible and chips.get_child_count() >= 5, "the 4×4 has a showcase solve")
+	check((chips.get_child(0) as Label).text == "Centres" and (chips.get_child(1) as Label).text == "Edges",
+			"...its chips start with Centres and Edges")
+	check(view.model.size == 4 and not view.model.is_solved(), "...and the big cube shows its scramble")
+	for i in 400:
+		main._on_tap_pressed()
+		if main._showcase.phase == "solved":
+			break
+	view.finish_animations()
+	check(main._showcase.phase == "solved" and view.model.is_solved(), "tapping plays the whole 4×4 solve")
+	# A puzzle without a staged solver yet keeps the old scramble + rewind, and the chips hide.
+	game._add_puzzle("7x7")
+	game.set_focus("7x7")
+	check(main._showcase == null and not chips.visible, "the 7×7 has no showcase yet (R.6b)")
 	main.free()
 	game.reset_state()
 
@@ -3131,13 +3310,13 @@ func test_main_screen_key_turns() -> void:
 	main._unhandled_input(key_event(KEY_R, true, false))
 	check_near(game.total_moves, moves, "no key turns while the settings are open")
 	main.get_node("%SettingsPanel").visible = false
-	# Without a showcase (4×4 until R.6), turns are still taps.
+	# Without a showcase (7×7 until R.6b), turns are still taps.
 	game.cheat_add_solves(1e9)
 	game.unlock_puzzle("3x3")
-	game.unlock_puzzle("4x4")
-	game.set_focus("4x4")
+	game._add_puzzle("7x7")
+	game.set_focus("7x7")
 	moves = game.total_moves
-	check(main._showcase == null and main.handle_turn_key(KEY_R) and game.total_moves > moves, "4×4: R is still a tap")
+	check(main._showcase == null and main.handle_turn_key(KEY_R) and game.total_moves > moves, "7×7: R is still a tap")
 	# A championship or reset changes focus without focus_changed: the keys follow the new puzzle.
 	game.reset_state()
 	main._rebuild_after_reset()

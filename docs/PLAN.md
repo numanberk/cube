@@ -192,7 +192,7 @@ streaks) and snaps occasional turns. The game's numbers never wait for the anima
 **Showcase solve (ROADMAP R.1–R.6, owner feedback 2026-11-03):** the scramble + rewind above made the cube look like
 "random scrambles" with nothing happening. It is being replaced on the big puzzle by **one real example solve at a
 watchable speed**: a WCA scramble, then a staged solution from the learned method (Beginner: layer by layer; CFOP:
-cross, F2L, OLL, PLL; Roux, ZZ and big-cube reduction later), with stage chips, the real solution in the ticker and a
+cross, F2L, OLL, PLL; Roux, ZZ; 4×4 and 5×5 by reduction: centres, edges, parity, then the method), with stage chips, the real solution in the ticker and a
 "1 of N solves/s" line. Helpers show **solve times** (moves per solve ÷ moves/s), and at high speed the moves bar becomes a
 next-goal bar. The small row cubes and the Megaminx keep speed mode / rewind. It stays visual state, never game state.
 

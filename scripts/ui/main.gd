@@ -144,6 +144,7 @@ func _ready() -> void:
 	_reset_key_session()
 	for id: String in StagedSolver.PUZZLES:  # builds the learned methods' tables now (cached), not mid-game
 		StagedSolver.warm_up(id, _learned_methods())
+	_warm_up_big_cubes()
 	_start_showcase()
 	_shown_solves = Game.solves
 	welcome_panel.collected.connect(_on_welcome_collected)
@@ -734,8 +735,9 @@ func puzzle_banner(puzzle_id: String) -> Dictionary:
 
 # --- Showcase solve (task R.2) -------------------------------------------------------
 
-## The big cube plays one real solve (StagedSolver) of the focused puzzle at a speed you can follow; puzzles without a
-## staged solver yet (4×4+, Megaminx) keep the old scramble + rewind. Visual only: numbers never wait for it.
+## The big cube plays one real solve (StagedSolver; BigCubeSolver on 4×4 and 5×5) of the focused puzzle at a speed you
+## can follow; puzzles without a staged solver yet (7×7, Megaminx) keep the old scramble + rewind. Visual only:
+## numbers never wait for it.
 func _start_showcase(puzzle_id: String = "") -> void:
 	if puzzle_id == "":
 		puzzle_id = Game.get_focused_puzzle_id()
@@ -754,6 +756,14 @@ func _start_showcase(puzzle_id: String = "") -> void:
 	else:
 		puzzle_view.turn_time = PuzzleView3D.TURN_TIME
 		_build_stage_chips()
+
+
+## Builds the big-cube solver's libraries for the big cubes the player has (R.6a; ~0.1-0.2 s each, once a session),
+## so the first 4×4 or 5×5 showcase doesn't pause for them.
+func _warm_up_big_cubes() -> void:
+	for id: String in BigCubeSolver.PUZZLES:
+		if Game.is_puzzle_unlocked(id):
+			BigCubeSolver.warm_up(id, [Game.method])
 
 
 ## One-look OLL / PLL in the showcase once the player has learned the full set in the drills (S.4).

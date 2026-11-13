@@ -94,6 +94,9 @@ scripts/cube/solve_session.gd  class SolveSession: Solve Station rules (scramble
 scripts/cube/staged_solver.gd  class StagedSolver: solves a 2×2/3×3 like a person, in named stages (Beginner, CFOP:
                            cross, F2L 1-4, OLL, PLL) for the showcase solve (R.2). Pure data; algorithms are
                            Content.ALGORITHMS (shared with S.4). Call StagedSolver.warm_up() before the first solve
+scripts/cube/big_cube_solver.gd class BigCubeSolver: solves a 4×4/5×5 by reduction for the showcase (R.6a): Centres, Edges,
+                           Parity (only when needed), then StagedSolver's stages on the reduced cube. Pure data: facelet
+                           tables per move + cached macro libraries. BigCubeSolver.warm_up(id) before the first solve
 scripts/cube/showcase_solve.gd class ShowcaseSolve: the main cube's showcase solve (R.2): scramble, inspection, then a
                            StagedSolver solve one move at a time (advance(delta, tps) / tap()); main.gd feeds the moves to
                            PuzzleView3D's manual mode and draws the stage chips (%StageChips) + ticker (%MoveTicker)

@@ -1,7 +1,8 @@
 class_name ShowcaseSolve
 extends RefCounted
 ## The main cube's showcase solve (task R.2): a real WCA scramble, a short inspection, then a StagedSolver solve played a
-## move at a time, then the next scramble. Pure data (no nodes), so tests drive it with fake time; main.gd feeds the
+## move at a time, then the next scramble. 4×4 and 5×5 are solved by BigCubeSolver (R.6a: centres, edges, parity, then
+## the method's own stages on the reduced cube). Pure data (no nodes), so tests drive it with fake time; main.gd feeds the
 ## moves it returns to PuzzleView3D's manual mode (show_state / turn). Visual only: it never changes a game number.
 ##
 ##   var show := ShowcaseSolve.new("3x3", "cfop")
@@ -54,7 +55,7 @@ func _init(puzzle: String, method_id: String = "beginner", seed: int = -1) -> vo
 
 ## True if this puzzle can be shown as a real staged solve (else the main cube keeps its scramble + rewind).
 static func supports(puzzle: String) -> bool:
-	return StagedSolver.supports(puzzle)
+	return StagedSolver.supports(puzzle) or BigCubeSolver.supports(puzzle)
 
 
 ## Turns per second for a method and the focused puzzle's real moves per second (see Content.SHOWCASE).
@@ -131,8 +132,14 @@ func _plan() -> Array[Dictionary]:
 		var undo := StagedSolver.simplify(model, model.inverse_sequence(StagedSolver.simplify(model, _history)))
 		if undo.size() <= int(Content.get_puzzle(puzzle_id).get("scramble_length", 25)):
 			return [{"id": "gods_number", "name": "God's Number", "moves": undo}]
-		return StagedSolver.solve(model, "roux", solver_options)
-	return StagedSolver.solve(model, method, solver_options)
+		return _staged("roux")
+	return _staged(method)
+
+
+func _staged(method_id: String) -> Array[Dictionary]:
+	if BigCubeSolver.supports(puzzle_id):
+		return BigCubeSolver.solve(model, method_id, solver_options)
+	return StagedSolver.solve(model, method_id, solver_options)
 
 
 ## Moves to play for `delta` seconds at `tps` turns per second (0 = only taps turn it).
@@ -191,7 +198,11 @@ func chip_stages() -> Array[Dictionary]:
 
 
 ## Moves in a stage written the way cubers write algorithms: on the 3×3, two-layer moves as lower case (r U R' U' r').
+## On a bigger cube, every inner layer together is M, E or S, as in its 3×3 stage (not "2-4Lw").
 static func notation(m: TwistyModel, move: Dictionary) -> String:
+	if m.size > 3 and int(move.get("depth", 0)) == 1 and int(move.get("width", 1)) == m.size - 2:
+		var slice: Array = TwistyModel.SLICES[m.face_names[int(move["face"])]]
+		return m._named_turn(slice[0], int(move["turns"]) * int(slice[1]))
 	var text := m.notation(move)
 	if m.size == 3 and text.length() >= 2 and text[1] == "w":
 		text = text[0].to_lower() + text.substr(2)

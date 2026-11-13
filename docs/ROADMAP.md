@@ -13,7 +13,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| **R.6a** big cubes in the solver (4×4, 5×5) | `ccr-0a4118b1-qflln5` | 2026-11-13 | `scripts/cube/big_cube_solver.gd` (new) | `scripts/cube/showcase_solve.gd`, `scripts/cube/staged_solver.gd` (entry point only), `scripts/ui/main.gd` (stage chips), `tests/test_runner.gd`, `tools/screenshot*`, `CLAUDE.md` | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -226,7 +225,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       stage on even cubes), so the showcase works on every cube. Megaminx stays on scramble + rewind (Phase 11).
       **Owner, 2026-11-07:** full real speed (no fast-forward: a 7×7 solve may take a minute or more to watch), and a
       **human-style** solver (not commutator-only), split in two:
-  - [ ] **R.6a 4×4 and 5×5:** a pure class `BigCubeSolver` (`scripts/cube/big_cube_solver.gd`), stages **Centres** (first
+  - [x] **R.6a 4×4 and 5×5:** a pure class `BigCubeSolver` (`scripts/cube/big_cube_solver.gd`), stages **Centres** (first
         centre, opposite centre, last four, built piece by piece with face turns, inner slices and slice-face-slice
         inserts that never undo a finished piece), **Edges** (pair dedges/tredges with a few setup turns and one
         slice-flip-slice insert, then a last-two-edges algorithm), **Parity** (4×4: OLL parity flips a dedge, PLL parity
@@ -235,6 +234,9 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
         layer). Pieces are tracked as positions/orientations with per-move tables, not by re-reading the model.
         *Done when:* tests solve 50+ random scrambles each on 4×4 and 5×5 with every stage goal checked (centres solved,
         every edge paired, parity fixed, solved), the showcase plays them, and there are screenshots.
+        *(Done 2026-11-13: `BigCubeSolver` tracks facelets with a table per move; centres and edges each pick from a
+        cached macro library. 4×4 ~165 moves planned in ~12 ms, 5×5 ~290 in ~20 ms; 600/600 random scrambles each.
+        Shots in `docs/screenshots/R.6a-big-cubes/`. Notes for R.6b in the CHANGELOG.)*
   - [ ] **R.6b 6×6 and 7×7:** the same stages with more centre orbits (obliques) and the bench check.
         *Done when:* tests solve 6×6 and 7×7 scrambles with the stage goals checked, and `bench`/`bench_row` still hold
         with the showcase on the 7×7.

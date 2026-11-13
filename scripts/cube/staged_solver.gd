@@ -8,7 +8,7 @@ extends RefCounted
 ##
 ## Applying every stage's moves in order solves the model. Supported: 3×3 (Beginner, CFOP, Roux, ZZ) and 2×2 (layer by
 ## layer for every method). God's Number isn't a staged method: ShowcaseSolve plays it (here it falls back to CFOP).
-## Bigger cubes come in R.6. Visual only, never game state.
+## Bigger cubes: BigCubeSolver (R.6a) reduces them and calls this for the 3×3 stage. Visual only, never game state.
 ##
 ## How it works. Pieces are tracked as *slots*: a corner slot is position × 3 + twist, an edge slot position × 2 + flip
 ## (24 each). Every move becomes a table slot -> slot, built from the model's own geometry, so a whole move is a few
