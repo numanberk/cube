@@ -864,19 +864,43 @@ class _Run:
 
 	# --- Edges ---
 
-	## How many wings sit next to their edge's reference piece showing the same colours (all = every edge paired).
+	## How many wings are paired, edge by edge (all = every edge paired): see _slot_score.
 	func _edge_metric(c: PackedInt32Array) -> int:
 		var s := shape
 		var total := 0
+		var a := PackedInt32Array()
+		var b := PackedInt32Array()
+		a.resize(s.n - 2)
+		b.resize(s.n - 2)
 		for slot in 12:
-			var on_a := s.slot_a[slot]
-			var on_b := s.slot_b[slot]
-			var ra := c[on_a[s.ref]]
-			var rb := c[on_b[s.ref]]
-			for k in on_a.size():
-				if k != s.ref and c[on_a[k]] == ra and c[on_b[k]] == rb:
-					total += 1
+			for k in s.n - 2:
+				a[k] = c[s.slot_a[slot][k]]
+				b[k] = c[s.slot_b[slot][k]]
+			total += _slot_score(a, b)
 		return total
+
+
+	## The paired wings on one edge, from the colours along it on its two faces. Odd cubes: the wings that match the
+	## middle piece. Even cubes: the biggest group of matching pieces, less one. Not "the ones that match the reference
+	## piece's place": an outer turn can reverse an edge, which would move that place to another piece and change the
+	## count without pairing anything (6×6: steps that "gained" undid each other for ever).
+	func _slot_score(a: PackedInt32Array, b: PackedInt32Array) -> int:
+		var size := a.size()
+		if shape.n % 2 == 1:
+			var middle := shape.ref
+			var paired := 0
+			for k in size:
+				if k != middle and a[k] == a[middle] and b[k] == b[middle]:
+					paired += 1
+			return paired
+		var best := 0
+		for k in size:
+			var same := 0
+			for j in size:
+				if a[j] == a[k] and b[j] == b[k]:
+					same += 1
+			best = maxi(best, same)
+		return best - 1
 
 
 	func _edge_max() -> int:
@@ -1005,24 +1029,24 @@ class _Run:
 	## `turned` is the cube after the set-up. Only the edges a macro changes are counted.
 	func _play_first_gain(setup: PackedInt32Array, turned: PackedInt32Array, macros: PackedInt32Array) -> bool:
 		var s := shape
-		var last := s.n - 3
+		var a := PackedInt32Array()
+		var b := PackedInt32Array()
+		a.resize(s.n - 2)
+		b.resize(s.n - 2)
 		for id in macros:
 			var source := s.e_source[id]
 			var gain := 0
 			for slot in s.e_slots[id]:
 				var on_a := s.slot_a[slot]
 				var on_b := s.slot_b[slot]
-				var ra := turned[on_a[s.ref]]
-				var rb := turned[on_b[s.ref]]
-				var new_a := turned[source[on_a[s.ref]]]
-				var new_b := turned[source[on_b[s.ref]]]
-				for k in last + 1:
-					if k == s.ref:
-						continue
-					if turned[on_a[k]] == ra and turned[on_b[k]] == rb:
-						gain -= 1
-					if turned[source[on_a[k]]] == new_a and turned[source[on_b[k]]] == new_b:
-						gain += 1
+				for k in s.n - 2:
+					a[k] = turned[on_a[k]]
+					b[k] = turned[on_b[k]]
+				gain -= _slot_score(a, b)
+				for k in s.n - 2:
+					a[k] = turned[source[on_a[k]]]
+					b[k] = turned[source[on_b[k]]]
+				gain += _slot_score(a, b)
 			if gain > 0:
 				for o in setup:
 					play(s.outer[o])
