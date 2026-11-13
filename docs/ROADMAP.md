@@ -484,12 +484,13 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
         and the save change has a migration test.
         *(Done 2026-11-07: 17 moments, `Game.career_moment(id)`, save v13 with a silent backfill for older saves,
         `NewsFeed.on_career_moment(id)` ready for 7.0b to connect.)*
-  - [ ] **7.0b Screen (after Phase V):** show each moment in the news feed and as a pop in the new kit. In `main.gd`:
+  - [x] **7.0b Screen (after Phase V):** show each moment in the news feed and as a pop in the new kit. In `main.gd`:
         `Game.career_moment.connect(news.on_career_moment)` plus the pop (text: `Content.get_career_moment(id)["text"]`).
         Note: GameState checks the career on `purchased`/`championship_won` before main.gd's own handlers run, so a
         career line lands just before that event's own news line; push it after if that reads better.
         *Done when:* there's a screenshot.
-- [ ] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
+        *(Done 2026-11-13: news line + a "YOUR STORY" pop (`Toast`). Shot: `docs/screenshots/7.0b-7.4b-goals/`.)*
+- [x] **7.1 Achievements:** data (`id`, `name`, `description`, condition type + value), checked once a second, each giving +1 %
       all moves (**changed by the owner, 2026-11-12: +1 % trophies**, see 7.1a), with a toast when earned. Save v14 (v13 is 7.0a's career moments). **~100 achievements (PR)**, mostly tiered (Solve 1/10/100/1K/…,
       own 1/10/100 of each helper, every puzzle, every track heard, mastery levels, …), shown with an x/y progress bar
       so they work as a map of the game, like Revolution Idle's.
@@ -501,9 +502,10 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
         *Done when:* tests cover every condition type, the +1 % bonus, earning once only, and the v13 → v14 migration.
         *(Done 2026-11-12: 117 achievements from 26 rows. **Owner: +1 % trophies per championship, not moves** (a moves
         bonus broke D6); it counts from the second championship on. Save v14 with a silent backfill. See the CHANGELOG.)*
-  - [ ] **7.1b Screen (after Phase V):** an Achievements tab with the x/y bar and a toast when one is earned.
+  - [x] **7.1b Screen (after Phase V):** an Achievements tab with the x/y bar and a toast when one is earned.
         *Done when:* there's a screenshot of the tab and the toast.
-- [ ] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
+        *(Done 2026-11-13: the Goals screen's Achievements tab, a card per row; a pop per achievement.)*
+- [x] **7.2 Stats tab:** time played, total taps, best solves/s, solves per puzzle, achievements x/y, trophies earned.
       *Done when:* stats survive save/load and prestige where intended, and tests cover this.
       Split (D15c) into:
   - [x] **7.2a Rules:** the counters in GameState (saved, v15 + migration): time played, taps, best Solves/s, Solves per
@@ -512,10 +514,11 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
         *Done when:* tests cover counting, save/load, the v14 → v15 migration and what survives a championship.
         *(Done 2026-11-12: `GameState.stats` + `get_stats()`, save v15; 13 more achievements on the new counters. See the
         CHANGELOG.)*
-  - [ ] **7.2b Screen (after Phase V):** the Stats tab.
+  - [x] **7.2b Screen (after Phase V):** the Stats tab.
         *Done when:* there's a screenshot.
+        *(Done 2026-11-13: the Goals screen's Stats tab.)*
 
-- [ ] **7.3 Cube Collection (PR) [D10]:** ~40 cubes as data (budget, magnetic, stickerless, flagship, world-record cubes…),
+- [x] **7.3 Cube Collection (PR) [D10]:** ~40 cubes as data (budget, magnetic, stickerless, flagship, world-record cubes…),
       each with 1–5 stars and a small passive (e.g. +2 % moves on 3×3). Sources: Golden Scramble, Competitions,
       achievements. Duplicates merge into the next star. Every random drop has a pity counter (guaranteed after N tries).
       A Collection tab shows owned and "???" cards.
@@ -526,9 +529,10 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
         *Done when:* tests cover drops with pity, merging, passives and save/load, and the pacing targets still pass.
         *(Done 2026-11-12: 40 items, 3 sources; **owner (D17): achievements drop items only after the first
         championship**. Save v16. See the CHANGELOG.)*
-  - [ ] **7.3b Screen (after Phase V):** the Collection tab (owned and "???" cards) and a drop pop.
+  - [x] **7.3b Screen (after Phase V):** the Collection tab (owned and "???" cards) and a drop pop.
         *Done when:* there's a screenshot.
-- [ ] **7.4 Comp Kit loadout (PR):** 5 typed slots (Main cube, Backup cube, Timer, Mat, Lube) filled from the collection,
+        *(Done 2026-11-13: the Goals screen's Collection tab; a pop + news line per drop.)*
+- [x] **7.4 Comp Kit loadout (PR):** 5 typed slots (Main cube, Backup cube, Timer, Mat, Lube) filled from the collection,
       with set bonuses for matching brands (Idle Pins formations / Perfect Tower modules). Only the kit's items give
       their full bonus; the rest of the collection gives a small "owned" bonus.
       *Done when:* tests cover slot types, set bonuses and swapping, and there's a screenshot.
@@ -537,8 +541,9 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
         rest a share, save v17. No `main.gd`/`main.tscn` changes.
         *Done when:* tests cover slot types, set bonuses, swapping and save/load, and the pacing targets still pass.
         *(Done 2026-11-12: slots fill themselves until the player picks; 7 brand-set tiers; save v17. See the CHANGELOG.)*
-  - [ ] **7.4b Screen (after Phase V):** the kit's five slots on the Collection tab, drag or click to equip.
+  - [x] **7.4b Screen (after Phase V):** the kit's five slots on the Collection tab, drag or click to equip.
         *Done when:* there's a screenshot.
+        *(Done 2026-11-13: click a card, slot then card, or drag; Auto per slot; brand-set lines.)*
 
 ## Phase 8 — Active play and Hall of Fame (D12: before 1.0)
 - [x] **8.1 Golden Scramble:** moved to **S.6** (now a quick solve). Old text: a small golden 3D cube flies across the stage every 2–5 min for 12 s. Clicking it gives a random buff

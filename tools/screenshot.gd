@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--turns 1] [--drill solving|done] [--daily fmc|timed] [--banner puzzle|helper|method|champion]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--turns 1] [--drill solving|done] [--daily fmc|timed] [--banner puzzle|helper|method|champion] [--goals achievements|collection|stats|kit] [--toast career|achievement|drop]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -205,6 +205,28 @@ func _ready() -> void:
 		main.banner.advance(0.0)
 		for i in 5:  # the slide done, confetti in the air, the sweep on its way
 			await get_tree().process_frame
+	if args.has("goals") or args.has("toast"):  # 7.0b-7.4b: a few collection items (the same every shot), achievements
+		_stage_goals(main)
+	if args.has("goals"):  # 7.1b-7.4b: the Goals screen open on a tab
+		var tab := ["achievements", "collection", "stats", "kit"].find(String(args["goals"]))
+		main.open_goals(1 if tab == 3 else maxi(0, tab))
+		if tab == 3:  # kit: the Collection tab with the Timer slot picked to fill (the other kinds dim)
+			main.goals_panel.select_slot("timer")
+		for i in 8:
+			await get_tree().process_frame
+	if args.has("toast"):  # 7.0b/7.1b/7.3b: a small pop in the stage's corner
+		var kind := String(args["toast"])
+		var views := {
+			"career": main.career_toast("first_competition"),
+			"achievement": {"kind": "achievement", "caption": "ACHIEVEMENT", "title": "Solver V",
+					"text": Content.describe_achievement(Content.get_achievement("solves_5")), "icon": Content.icon("stat_solves"),
+					"category": &"trophies"},
+			"drop": main.drop_toast("torque_3m", 2),
+		}
+		main.toast.push(views.get(kind, views["career"]))
+		main.toast.advance(0.0)
+		for i in 12:  # the slide done
+			await get_tree().process_frame
 	if args.has("juice"):  # a few taps and a solve, caught mid-animation
 		var center := view.get_global_rect().get_center()
 		for offset: Vector2 in [Vector2(-60, -20), Vector2(40, 30), Vector2(90, -50)]:
@@ -233,6 +255,30 @@ func _ready() -> void:
 		return
 	print("Saved %s (%dx%d, preset '%s')" % [out, image.get_width(), image.get_height(), bench_name if bench else preset])
 	_quit(0)
+
+
+## Goals screens (7.1b-7.4b): the achievements the preset has reached (earned silently), some play stats, and a fixed
+## handful of Cube Collection items (one of them put in the kit by hand), so every shot shows the same thing.
+func _stage_goals(main: Node) -> void:
+	Game.check_achievements(false)
+	Game.stats["time_played"] = 5.0 * 3600.0 + 23.0 * 60.0
+	Game.stats["run_time"] = 2.0 * 3600.0 + 4.0 * 60.0
+	Game.stats["taps"] = 4210.0
+	Game.stats["best_solves_per_second"] = Game.get_solves_per_second()
+	Game.stats["golden_solved"] = 7.0
+	Game.stats["dailies"] = 3.0
+	Game.stats["puzzle_solves"] = {"2x2": 2.1e13, "3x3": 1.4e14, "4x4": 9.0e13, "5x5": 3.2e13}
+	var items := {"pocket_mini": 3, "pocket_classic": 2, "torque_3m": 2, "lumen_neon": 1, "swift_3_pro": 1,
+			"pocket_4": 1, "pocket_timer": 2, "lumen_glow_timer": 1, "pocket_mat": 1, "torque_lube": 1, "kestrel_air": 4}
+	for id: String in items:
+		Game.collection[id] = items[id]
+	Game._collection_stars = 0
+	for id: String in Game.collection:
+		Game._collection_stars += int(Game.collection[id])
+	Game.auto_fill_kit(false)
+	Game.equip("backup", "pocket_classic")
+	Game.invalidate_upgrade_cache()
+	main._refresh()
 
 
 ## The Solve Station in a repeatable moment: "inspecting" (9 s left), "solving" (half way, clock running) or "done"

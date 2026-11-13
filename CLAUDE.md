@@ -51,6 +51,12 @@ scenes/compete_panel.tscn  class CompetePanel: the Compete screen (6.1): trophie
                            trophy, keep/reset lists (Content.CHAMPIONSHIP); display only, main.gd plays "Finals" meanwhile
 scenes/perk_panel.tscn    class PerkPanel: the trophy perk tree (6.3): a column per Content.PERK_BRANCHES, PerkNodes
                            (scenes/perk_node.tscn) joined by lines; display only, main.gd buys with Game.buy_perk()
+scenes/goals_panel.tscn    class GoalsPanel (scripts/ui/goals_panel.gd, %GoalsPanel; top bar's Goals button): tabs Achievements
+                           (a card per achievement row: x/y, next tier, bar; "???" for helpers not met), Collection (the
+                           Comp Kit's 5 slots: click a slot then a card, click a card, drag onto a slot, Auto; brand sets;
+                           every item or a "???" card), Stats (Game.get_stats()). Reads Game by name, calls equip/set_slot_auto
+scripts/ui/toast.gd        class Toast (%Toast in main.tscn): small pops in the stage's corner for career moments (7.0b),
+                           achievements (7.1b) and collection drops (7.3b): one at a time, same kinds merge, short queue
 scenes/settings_panel.tscn class SettingsPanel: sound, music mode, Jukebox, graphics, reduce motion, notation, reset save
 scenes/solve_station.tscn  class SolveStation (scripts/ui/solve_station.gd): the "Solve it yourself" overlay: keyboard
                            solving (csTimer or simple keys), drag-to-turn, key hints on the cube, scramble, inspection,
@@ -139,7 +145,7 @@ docs/                      PLAN (why/how), ROADMAP (tasks), CHANGELOG, FEEDBACK,
    StageChipRow, TickerText, KeyHint, GoalBar, GoalLabel, GoalLabelDim, NewsPanel, NewsNew, NewsOld, GoldenButton,
    TimerGolden, ChoiceBadge, PerkOwned, PerkName, CounterLabel, CounterCaption, StatChip, StatRow, StatValue,
    StatValueAccent, StatValueGold, StatUnit, IconButton, CostBar, CostBarDim, Pip, PipReady, PipOn, TileFrame, CountBubble,
-   Banner, BannerTitle, BannerSub, TitleRule, PerkBoard;
+   Banner, BannerTitle, BannerSub, TitleRule, PerkBoard, ItemCard, Toast;
    PerkTree holds the tree's line colours), or add
    a new variation (and show it in the style gallery, `scenes/dev/style_gallery.tscn`; a test checks).
 9. **Taps:** clicking the puzzle, the `tap` input action (Space / Enter, no repeat when held), or a turn of the main
@@ -234,6 +240,8 @@ COMPETE=1 bash tools/screenshot.sh /tmp/shots endgame            # the Compete s
 COMPETE=won bash tools/screenshot.sh /tmp/shots endgame          # just after a championship (6.2) -> endgame_competewon.png
 PERKS=1 bash tools/screenshot.sh /tmp/shots endgame              # the trophy perk tree open (6.3) -> endgame_perks.png
 AUTO=1 bash tools/screenshot.sh /tmp/shots endgame               # the shop's Auto tab (6.3b) -> endgame_auto.png
+GOALS=achievements bash tools/screenshot.sh /tmp/shots endgame   # the Goals screen: achievements|collection|stats|kit -> endgame_goalsachievements.png
+TOAST=career bash tools/screenshot.sh /tmp/shots mid              # a small pop: career|achievement|drop -> mid_toastcareer.png
 TURNS=1 bash tools/screenshot.sh /tmp/shots mid                   # your own key turns on the main cube + streak (S.7) -> mid_turns.png
 GALLERY=all bash tools/screenshot.sh /tmp/shots                   # the style gallery (V.0): kit | parts | all -> gallery_kit.png
 GALLERY=kit FONT=/path/Rubik.ttf bash tools/screenshot.sh /tmp/shots  # ...with a candidate display font -> gallery_kit_Rubik.png

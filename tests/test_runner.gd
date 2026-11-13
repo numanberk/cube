@@ -4797,6 +4797,165 @@ func test_perk_header_chips() -> void:
 	game.reset_state()
 
 
+## 7.0b/7.1b/7.3b: the small pops: one at a time, merged when a burst comes, a short queue, clear(), Reduce motion.
+func test_toast_queue() -> void:
+	var was := UiFx.reduce_motion
+	UiFx.reduce_motion = false
+	var toast: Toast = load("res://scripts/ui/toast.gd").new()
+	root.add_child(toast)
+	toast.corner_rect = Rect2(0, 0, 900, 600)
+	var view := func(kind: String, title: String) -> Dictionary:
+		return {"kind": kind, "caption": kind.to_upper(), "title": title, "text": "line", "icon": Content.icon("friend"),
+				"category": &"trophies"}
+	check(toast.push(view.call("career", "first")), "a pop queues")
+	toast.advance(0.0)
+	check(toast.is_showing() and toast.get_texts()[1] == "first", "...and shows at once")
+	for name: String in ["Solver I", "Solver II", "Solver III"]:
+		toast.push(view.call("achievement", name))
+	check(toast.get_waiting() == 1, "three achievements while one shows: one waiting pop")
+	toast.advance(Toast.HOLD + 0.01)
+	check(not toast.is_showing(), "the first goes after its time")
+	toast.advance(Toast.GAP + 0.01)
+	check(toast.get_showing().get("kind", "") == "achievement" and toast.get_texts()[2].contains("2 more")
+			and toast.get_texts()[2].contains("Solver III"), "the merged pop says how many more came (%s)" % [toast.get_texts()])
+	for kind: String in ["a", "b", "c", "d", "e", "f"]:
+		toast.push(view.call(kind, kind))
+	check(toast.get_waiting() == Toast.MAX_QUEUE, "the queue stays short (%d)" % toast.get_waiting())
+	toast.clear()
+	check(not toast.is_showing() and toast.get_waiting() == 0 and not toast._card.visible, "clear() drops them all")
+	UiFx.reduce_motion = true
+	toast.push(view.call("drop", "Torque 3 M"))
+	toast.advance(0.0)
+	check(toast._card.visible and is_equal_approx(toast._card.modulate.a, 1.0), "Reduce motion: shown at once, no slide")
+	check(toast._card.position.x >= 0.0 and toast._card.position.x + toast._card.size.x <= 900.0 + 0.5
+			and toast._card.position.y + toast._card.size.y <= 600.0 + 0.5,
+			"...inside the corner it was given (%s)" % [Rect2(toast._card.position, toast._card.size)])
+	toast.advance(Toast.HOLD + 0.01)
+	check(not toast._card.visible, "...and gone at once")
+	UiFx.reduce_motion = was
+	toast.free()
+
+
+## 7.0b/7.1b/7.3b on the real main screen: a career moment makes a news line and a pop; an achievement or a drop pops
+## and counts on the Goals button until the Goals screen opens.
+func test_goals_pops_on_main_screen() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var toast: Toast = main.toast
+	game.career_moment.emit("first_competition")
+	toast.advance(0.0)
+	check(toast.get_showing().get("kind", "") == "career" and toast.get_texts()[2].contains("first competition"),
+			"a career moment pops with its story line (%s)" % [toast.get_texts()])
+	check(toast._icon.category == &"helpers", "...in the colour of what triggered it (a helper)")
+	main.news.advance(10.0)
+	check(not main.news.history.is_empty() and main.news.history[0].contains("first competition"), "...and makes a news line")
+	game.achievement_earned.emit("solves_1")
+	game.collection_rng.seed = 3
+	game.roll_collection_drop("championship")
+	check(main.unseen_goals == 2 and main._goals_bubble != null and main._goals_bubble.visible and main._goals_bubble.text == "2",
+			"an achievement and a drop count on the Goals button (%d)" % main.unseen_goals)
+	var kinds: Array[String] = []
+	for i in 40:
+		var before := toast.shown_count
+		toast.advance(0.25)
+		if toast.shown_count > before:
+			kinds.append(String(toast.get_showing()["kind"]))
+	check(kinds == ["achievement", "drop"], "...each pops in turn (%s)" % [kinds])
+	main.news.advance(10.0)
+	check(main.news.history[0].begins_with("New in your collection"), "the drop makes a news line (%s)" % main.news.history[0])
+	main.open_goals()
+	check(main.unseen_goals == 0 and not main._goals_bubble.visible, "opening Goals clears the count")
+	check(main._overlay_open(), "Goals is an overlay: taps and pops wait while it's up")
+	toast.clear()
+	var before_open := toast.shown_count
+	game.achievement_earned.emit("solves_2")
+	main._process(Toast.HOLD + 1.0)
+	check(toast.shown_count == before_open and toast.get_waiting() == 1, "...pops wait while it's open")
+	check(main.unseen_goals == 0, "...and what comes while it's open isn't counted as unseen")
+	main.goals_panel.close()
+	main.free()
+	game.reset_state()
+
+
+## 7.1b, 7.2b, 7.3b, 7.4b: the Goals screen: achievement rows (x/y, "???" for helpers not met, bars), the collection
+## and the kit (click a card, click a slot then a card, drag onto a slot, Auto), and the stats.
+func test_goals_panel() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var panel = main.goals_panel  # untyped: GoalsPanel uses Game by name (CLAUDE.md "Testing gotcha")
+	game.cheat_add_solves(5000.0)
+	game.check_achievements(false)
+	main.open_goals(0)
+	var rows := {}
+	for def: Dictionary in Content.get_achievements():
+		rows[def["row"]] = true
+	check(panel._achievement_rows.size() == rows.size(), "one card per achievement row (%d)" % rows.size())
+	var solver: Dictionary = panel._achievement_rows["solves"]
+	check(solver["name"].text == "Solver V" and solver["count"].text == "4/16", "Solver: 4 of 16 earned, V next (%s, %s)"
+			% [solver["name"].text, solver["count"].text])
+	check(is_equal_approx(solver["bar"].value, 0.5) and solver["value"].text == Num.format(5000.0) + " / " + Num.format(1e4),
+			"...its bar half way to 10K (%s)" % solver["value"].text)
+	var quantum: Dictionary = panel._achievement_rows["team_quantum"]
+	check(quantum["name"].text == "???" and quantum["icon"].silhouette, "a helper not met yet is \"???\"")
+	check(panel._achievement_summary.text == "4 / %d achievements" % Content.get_achievements().size(), "the x/y line: %s"
+			% panel._achievement_summary.text)
+	var tier: Dictionary = Content.get_achievement("hand_tier_1")
+	check(is_equal_approx(panel.achievement_fraction(tier), 0.0), "no hand tier yet: Bronze's bar is empty")
+	# Collection and kit.
+	for id: String in ["pocket_classic", "torque_3m", "pocket_timer"]:
+		game.collection[id] = 2 if id == "pocket_classic" else 1
+	game.auto_fill_kit(false)
+	main.open_goals(1)
+	check(game.get_kit().get("main", "") == "torque_3m" and game.get_kit().get("backup", "") == "pocket_classic",
+			"test setup: the kit filled itself (%s)" % [game.get_kit()])
+	check(panel._item_cards["swift_duo"]["name"].text == "???" and panel._item_cards["swift_duo"]["icon"].silhouette,
+			"an item not found yet is a \"???\" card")
+	check(panel._item_cards["torque_3m"]["badge"].visible and panel._item_cards["torque_3m"]["badge"].text == "MAIN CUBE",
+			"a kit item says where it is")
+	check(panel.press_item("pocket_classic") and game.get_kit()["main"] == "pocket_classic" and game.get_kit()["backup"] == "torque_3m",
+			"clicking the backup cube makes it the main cube (they swap)")
+	check(not panel.press_item("swift_duo"), "an item not owned does nothing")
+	panel.select_slot("timer")
+	check(panel._slot_views["timer"]["frame"].visible and panel._item_cards["torque_3m"]["card"].modulate.a < 0.5,
+			"a picked slot is framed, and cards that don't fit it dim")
+	panel.select_slot("timer")
+	check(panel.selected_slot == "", "a second click un-picks it")
+	game.equip("timer", "")
+	panel.select_slot("timer")
+	check(panel.press_item("pocket_timer") and game.get_kit().get("timer", "") == "pocket_timer" and panel.selected_slot == "",
+			"slot, then card: it goes in")
+	check(not panel._can_drop_on_slot(Vector2.ZERO, {"collection_item": "pocket_timer"}, "main"), "a timer can't be dropped on a cube slot")
+	check(panel._can_drop_on_slot(Vector2.ZERO, {"collection_item": "torque_3m"}, "main"), "a cube can")
+	panel._drop_on_slot(Vector2.ZERO, {"collection_item": "torque_3m"}, "main")
+	check(game.get_kit()["main"] == "torque_3m" and game.is_slot_manual("main"), "dropping a card on a slot equips it (chosen by hand)")
+	check(panel._item_drag_data(Vector2.ZERO, "swift_duo") == null, "an item not owned can't be dragged")
+	panel.set_slot_auto(true, "main")
+	panel._drop_on_slot(Vector2.ZERO, {"collection_item": game.get_kit()["main"]}, "main")
+	check(not game.is_slot_manual("main"), "dropping a slot's own item back on it changes nothing (Auto stays on)")
+	check(not game.is_slot_manual("main") and panel._slot_views["main"]["auto"].button_pressed, "Auto: the slot fills itself again")
+	panel.set_slot_auto(false, "main")
+	check(game.is_slot_manual("main") and game.get_kit().get("main", "") != "", "Auto off keeps what's there, by hand")
+	check(panel.item_effect_text("torque_3m").contains("3×3 moves"), "an item's bonus text: %s" % panel.item_effect_text("torque_3m"))
+	# Stats.
+	game.stats["time_played"] = 3725.0
+	game.stats["puzzle_solves"] = {"2x2": 120.0}
+	main.open_goals(2)
+	check(panel._stat_values["time_played"].text == Num.format_duration(3725.0), "stats: time played (%s)" % panel._stat_values["time_played"].text)
+	check(panel._stat_values["fastest_championship"].text == "—", "no championship yet: no fastest time")
+	check(panel._puzzle_rows["2x2"]["value"].text == "120" and panel._puzzle_rows["megaminx"]["name"].text == "???",
+			"Solves per puzzle, \"???\" for puzzles not reached")
+	panel.close()
+	check(UiFx.is_closing(panel) or not panel.visible, "it closes")
+	main.free()
+	game.reset_state()
+
+
 func test_news_on_main_screen() -> void:
 	var game: GameState = root.get_node("Game")
 	game.persistence_enabled = false
