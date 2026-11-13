@@ -13,6 +13,7 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
+| **R.6a** big cubes in the solver (4×4, 5×5) | `ccr-0a4118b1-qflln5` | 2026-11-13 | `scripts/cube/big_cube_solver.gd` (new) | `scripts/cube/showcase_solve.gd`, `scripts/cube/staged_solver.gd` (entry point only), `scripts/ui/main.gd` (stage chips), `tests/test_runner.gd`, `tools/screenshot*`, `CLAUDE.md` | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
