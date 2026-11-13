@@ -13,6 +13,7 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
+| R.6b 6×6 and 7×7 in the solver | claude/laughing-lovelace-mixsx8 | 2026-11-13 | scripts/cube/big_cube_solver.gd | showcase_solve.gd, main.gd (warm-up list), tests/test_runner.gd | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
