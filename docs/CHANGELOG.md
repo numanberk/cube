@@ -2,6 +2,62 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-13 — Tasks 7.0b, 7.1b, 7.2b, 7.3b, 7.4b: the Goals screens (owner asked for all five in one session)
+- **Goals screen** (`scenes/goals_panel.tscn`, `scripts/ui/goals_panel.gd`, class `GoalsPanel`, `%GoalsPanel`): a new
+  overlay opened by a **Goals** icon button in the top bar (podium icon, left of Settings; a count bubble shows
+  achievements and drops since it was last opened). V.8's kit: sticker + display title + × button, StatChips in the
+  header (achievements x/y, items x/40), pill tabs with icons. It's an overlay like the others (`_overlay_open`): taps,
+  banners and pops wait while it's up. Reads Game by name and calls `equip` / `set_slot_auto` (no rules in it).
+  - **Achievements (7.1b):** the x/y line with its bar and the bonus now ("+55 % trophies per championship (from your
+    second)"), then one card per achievement **row** (41 cards for the 130 achievements: tiered rows are one card),
+    two columns: sticker, the next tier's name ("Solver V", ✓ when the row is done), "4/16", its text and a bar towards
+    it with "5.00K / 10.0K". A helper not met yet shows "???" with a silhouette, so the list stays a map of the game.
+  - **Collection (7.3b):** every item as a card (6 columns, scrolling): owned ones in their rarity's sticker colour
+    (Common white, Rare blue, Epic purple, Legendary gold: the category tokens, no new colours), name, star pips; the
+    rest "???" silhouettes. Tooltips give brand, rarity, stars and the bonus (in the kit and out of it).
+  - **Comp Kit (7.4b):** the five slots beside the grid: the item, "Main cube · +8 % 3×3 moves", an **Auto** chip
+    (on: the slot fills itself; off: keeps what's there, chosen by hand). To equip: **click a card** (it goes into a
+    slot of its kind; the backup cube clicked becomes the main one), **click a slot then a card** (cards of other kinds
+    dim; Escape or a second click un-picks), or **drag** a card (or a slot's item) onto a slot (`set_drag_forwarding`).
+    Kit items wear a "MAIN CUBE"/"TIMER"… badge. Under the slots, one line per brand: "Pocket 2/3 · Budget Kit: +15 %
+    tap moves", ✓ and brighter once active.
+  - **Stats (7.2b):** a grid of cards from `Game.get_stats()`: time played, this run, fastest championship, taps,
+    Solves lifetime/this run, moves, best Solves/s, championships, trophies won/unspent, Solve Station solves, Golden
+    Scrambles, daily rewards, achievements and collection x/y; then Solves per puzzle with bars ("???" for puzzles not
+    reached). The open tab refreshes twice a second.
+- **Pops** (`scripts/ui/toast.gd`, class `Toast`, `%Toast` in main.tscn under the Banner): a small card in the stage's
+  bottom-right corner (above the chips strip) for 3.4 s: one at a time, the same kind waiting merges ("and 2 more,
+  latest: …"), at most 4 wait; Reduce motion shows it without the slide. Tests drive it with fake time.
+  - **Career moments (7.0b):** `Game.career_moment` → `news.on_career_moment` (the news line) and a pop "YOUR STORY"
+    with the story text, the sticker of what triggered it (helper blue, puzzle red, method purple, upgrade orange,
+    championship gold, Solves white). The ordering note from 7.0a is left as is: the career line lands just before the
+    event's own news line, which reads fine ("A friend from school asks…" then "Your friend Ana joins the team").
+  - **Achievements (7.1b):** "ACHIEVEMENT", its name and text, gold. An old save earning a burst at its first check
+    becomes one pop + "and N more".
+  - **Drops (7.3b):** "NEW IN YOUR COLLECTION" / "COLLECTION: ONE MORE STAR", the item, rarity, stars and bonus, plus a
+    news line. A championship's drop shows after the "World Champion!" banner (pops aren't cleared by a championship,
+    only by a save reset).
+- Theme: `ItemCard` (the level-2 card style as a PanelContainer with margins) and `Toast` (the same, floating on a soft
+  shadow); in the style gallery's parts page and CLAUDE.md rule 8.
+- Screenshot options: `GOALS=achievements|collection|stats|kit` (with a fixed handful of items and the preset's
+  achievements earned silently; `kit` = Collection with the Timer slot picked) and `TOAST=career|achievement|drop`.
+- Tests: `test_toast_queue`, `test_goals_pops_on_main_screen` (career line + pop, achievement and drop pops in turn,
+  the Goals button's count, pops wait while Goals is open), `test_goals_panel` (row cards, "???", bars, every way to
+  equip, Auto on/off, drop rules, stats).
+- Screenshots: `docs/screenshots/7.0b-7.4b-goals/` (+ `row6`: the Goals button in a full top bar).
+- **Review fixes (screenshot-checker, diff-reviewer):** what comes in while Goals is open no longer counts on its
+  button; clicking or dropping an item already in its slot no longer switches that slot's Auto off; the "pops wait
+  while Goals is open" test can now fail; merged career pops name the latest moment; a little more room under the
+  "MAIN CUBE" badges; the "???" tooltip says achievements drop only after the first championship (D17).
+  **Left as is:** the pop sits over the lower right of the stage (the mat's corner, sometimes the cube's edge) for
+  3.4 s: every spot on the stage covers something, and the shop/news column is busier; the owner may want it moved
+  after a playtest. On a championship the news reads "New in your collection: …" before "World Champion!" (Game
+  drops the item before its signal); the pops show them the right way round. A slot's long bonus line is cut with "…"
+  (the full text is in its tooltip).
+- No save, content or balance change (screens only). Parallel sessions: R.6b (claude/laughing-lovelace-mixsx8) was
+  claimed but had pushed nothing to `main` when this merged (nothing to merge).
+- **Phase 7 is done** (all its tasks ticked); the commit gate asks for a `fun-designer` pass at the end of a phase.
+
 ## 2026-11-13 — Task R.6a: big cubes in the solver (4×4 and 5×5)
 - **`scripts/cube/big_cube_solver.gd` (class `BigCubeSolver`):** solves a 4×4 or 5×5 by reduction, in stages, for the
   showcase solve: **Centres** → **Edges** → **Parity** (only when there is one) → the learned method's own stages on

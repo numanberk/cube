@@ -80,7 +80,7 @@ func on_purchased(kind: String, id: String) -> void:
 			push("perk:" + id, "Trophy perk: %s. %s" % [perk.get("name", id), perk.get("description", "")])
 
 
-## A career moment (7.0a): its story line. (7.0b connects Game.career_moment to this and adds the pop.)
+## A career moment (7.0a): its story line. main.gd connects Game.career_moment to this and adds the pop (7.0b).
 func on_career_moment(moment_id: String) -> void:
 	var text := String(Content.get_career_moment(moment_id).get("text", ""))
 	if text != "":

@@ -23,6 +23,9 @@
 [ext_resource type="Script" path="res://scripts/ui/fit_row.gd" id="21_fitrow"]
 [ext_resource type="Shader" path="res://scripts/ui/shaders/ui_background.gdshader" id="22_bg"]
 [ext_resource type="PackedScene" path="res://scenes/banner.tscn" id="23_banner"]
+[ext_resource type="PackedScene" path="res://scenes/goals_panel.tscn" id="24_goals"]
+[ext_resource type="Script" path="res://scripts/ui/toast.gd" id="25_toast"]
+[ext_resource type="Texture2D" path="res://assets/icons/federation_rankings.svg" id="26_goals_icon"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_background"]
 shader = ExtResource("22_bg")
@@ -181,6 +184,15 @@ focus_mode = 0
 theme_type_variation = &"PrimaryButton"
 text = "Solve it yourself"
 icon = ExtResource("19_solve")
+
+[node name="GoalsButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Goals: achievements, your cube collection and kit, stats"
+focus_mode = 0
+theme_type_variation = &"IconButton"
+icon = ExtResource("26_goals_icon")
 
 [node name="SettingsButton" type="Button" parent="Margin/Rows/TopBar/TopRow"]
 unique_name_in_owner = true
@@ -595,6 +607,17 @@ scale_amount_max = 9.0
 color_ramp = SubResource("Gradient_fade")
 color_initial_ramp = SubResource("Gradient_cube_colors")
 
+[node name="Toast" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("25_toast")
+
 [node name="Banner" parent="." instance=ExtResource("23_banner")]
 unique_name_in_owner = true
 layout_mode = 1
@@ -627,6 +650,10 @@ layout_mode = 1
 [node name="PerkPanel" parent="." instance=ExtResource("9_perks")]
 unique_name_in_owner = true
 visible = false
+layout_mode = 1
+
+[node name="GoalsPanel" parent="." instance=ExtResource("24_goals")]
+unique_name_in_owner = true
 layout_mode = 1
 
 [node name="WelcomePanel" parent="." instance=ExtResource("5_welcome")]

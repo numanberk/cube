@@ -73,6 +73,9 @@ var _lamp_center := Vector2(-1.0, -1.0)  ## last lamp_center sent to the backgro
 @onready var perks_button: Button = %PerksButton
 @onready var perk_panel: PerkPanel = %PerkPanel
 @onready var automation_panel: AutomationPanel = %AutomationPanel
+@onready var goals_button: Button = %GoalsButton
+@onready var goals_panel: GoalsPanel = %GoalsPanel
+@onready var toast: Toast = %Toast
 
 var _helper_cards: Dictionary = {}    ## building id -> ShopCard
 var _tab_bubbles: Dictionary = {}     ## tab index -> its count bubble (V.5), a Label on the tab bar
@@ -97,6 +100,8 @@ var showcase_paused := false       ## screenshots freeze the showcase at a chose
 ## applies anything); the same layout as the Solve Station (Settings "solve_keys"), with its hands and widths.
 var _key_session := SolveSession.new()
 var news := NewsFeed.new()          ## the news feed (task R.4): GameState events in, a line every ~1.2 s out
+var unseen_goals := 0              ## achievements and drops since the Goals screen was last opened (its button's bubble)
+var _goals_bubble: Label
 
 
 func _ready() -> void:
@@ -116,6 +121,10 @@ func _ready() -> void:
 	compete_panel.compete_pressed.connect(func() -> void: Game.compete())
 	Game.championship_won.connect(_on_championship_won)
 	perks_button.pressed.connect(open_perks)
+	goals_button.pressed.connect(open_goals)
+	Game.achievement_earned.connect(_on_achievement_earned)
+	Game.collection_drop.connect(_on_collection_drop)
+	Game.career_moment.connect(_on_career_moment)
 	perk_panel.perk_pressed.connect(func(id: String) -> void: Game.buy_perk(id))
 	solve_button.pressed.connect(func() -> void: solve_station.open(Game.get_focused_puzzle_id()))
 	Settings.changed.connect(_on_setting_changed)
@@ -161,6 +170,9 @@ func _process(delta: float) -> void:
 	banner.stage_rect = puzzle_view.get_global_rect()
 	if not _overlay_open():  # V.7: big moments, one at a time; they wait while a panel covers them
 		banner.advance(delta)
+		toast.advance(delta)  # 7.0b/7.1b/7.3b: small pops, in the stage's corner above the chips strip
+	var stage := puzzle_view.get_global_rect()
+	toast.corner_rect = Rect2(stage.position, Vector2(stage.size.x, stage_overlay.global_position.y - stage.position.y))
 	Game.automation_paused = welcome_panel.visible  # auto-buyers (6.3b) wait until "Welcome back" is collected
 	Game.auto_compete_held = solve_station.visible or compete_panel.visible  # never reset the run under the player
 	if _goal_bar_mode():
@@ -222,7 +234,7 @@ func _learned_methods() -> Array:
 
 ## Is a panel over the main screen? One fading out (V.6) already counts as closed.
 func _overlay_open() -> bool:
-	for panel: Control in [settings_panel, welcome_panel, solve_station, compete_panel, perk_panel]:
+	for panel: Control in [settings_panel, welcome_panel, solve_station, compete_panel, perk_panel, goals_panel]:
 		if _is_up(panel):
 			return true
 	return false
@@ -1184,6 +1196,9 @@ func _on_lab_card_pressed(id: String) -> void:
 
 func _on_state_reset() -> void:
 	banner.clear()
+	toast.clear()
+	unseen_goals = 0
+	_refresh_goals_bubble()
 	news = NewsFeed.new()
 	_show_news()
 	_rebuild_after_reset()
@@ -1267,6 +1282,103 @@ func _refresh_compete() -> void:
 
 func open_perks() -> void:
 	perk_panel.open(_perk_header(), _perk_views())
+
+
+# --- Goals: career moments, achievements, collection, kit, stats (tasks 7.0b-7.4b) --------------------------
+
+## Opens the Goals screen (achievements, collection + kit, stats); `tab` -1 keeps the last tab.
+func open_goals(tab: int = -1) -> void:
+	unseen_goals = 0
+	_refresh_goals_bubble()
+	goals_panel.open(tab)
+
+
+## Career moments (7.0b): their story line in the news feed and a pop.
+func _on_career_moment(moment_id: String) -> void:
+	news.on_career_moment(moment_id)
+	toast.push(career_toast(moment_id))
+
+
+## The pop for a career moment: the story line, with the icon and colour of what triggered it.
+func career_toast(moment_id: String) -> Dictionary:
+	var moment := Content.get_career_moment(moment_id)
+	var trigger: Dictionary = moment.get("trigger", {})
+	var target := String(trigger.get("id", ""))
+	var icon := "stat_solves"
+	var category := &"station"
+	match String(trigger.get("type", "")):
+		"helper":
+			icon = String(Content.get_building(target).get("icon", icon))
+			category = &"helpers"
+		"upgrade":
+			icon = String(Content.get_upgrade(target).get("icon", icon))
+			category = &"upgrades"
+		"puzzle":
+			icon = "small_cubes" if target in ["2x2", "3x3"] else "big_cubes"
+			category = &"puzzles"
+		"method":
+			icon = String(Content.get_method(target).get("icon", icon))
+			category = &"lab"
+		"championships":
+			icon = "stat_trophy"
+			category = &"trophies"
+	return {"kind": "career", "caption": "YOUR STORY", "text": String(moment.get("text", "")), "name": String(moment.get("text", "")).get_slice(".", 0),
+			"icon": Content.icon(icon), "category": category}
+
+
+## An achievement earned (7.1b): a pop, and the Goals button counts it.
+func _on_achievement_earned(achievement_id: String) -> void:
+	var def := Content.get_achievement(achievement_id)
+	toast.push({"kind": "achievement", "caption": "ACHIEVEMENT", "title": String(def.get("name", "")),
+			"text": Content.describe_achievement(def), "icon": Content.icon(String(def.get("icon", "stat_trophy"))),
+			"category": &"trophies"})
+	_count_unseen_goal()
+
+
+## A Cube Collection drop (7.3b): a pop and a news line; the Goals button counts it.
+func _on_collection_drop(item_id: String, stars: int, _source: String) -> void:
+	toast.push(drop_toast(item_id, stars))
+	var item := Content.get_collection_item(item_id)
+	news.push("drop", "New in your collection: %s!" % item.get("name", item_id) if stars <= 1
+			else "%s is now %d stars." % [item.get("name", item_id), stars])
+	_count_unseen_goal()
+	if goals_panel.visible:
+		goals_panel.refresh()
+
+
+func drop_toast(item_id: String, stars: int) -> Dictionary:
+	var item := Content.get_collection_item(item_id)
+	var rarity := String(Content.get_rarity(String(item.get("rarity", ""))).get("name", ""))
+	return {"kind": "drop", "caption": "NEW IN YOUR COLLECTION" if stars <= 1 else "COLLECTION: ONE MORE STAR",
+			"title": String(item.get("name", item_id)),
+			"text": "%s %s  ·  %d/%d stars  ·  %s" % [rarity, item.get("kind", ""), stars, int(Content.COLLECTION["max_stars"]),
+					GoalsPanel.item_effect_text(item_id)],
+			"icon": Content.icon(String(item.get("icon", "small_cubes"))),
+			"category": GoalsPanel.RARITY_CATEGORY.get(item.get("rarity", ""), &"station")}
+
+
+## One more thing to see on the Goals screen (not while it's up: it's seen there).
+func _count_unseen_goal() -> void:
+	if _is_up(goals_panel):
+		return
+	unseen_goals += 1
+	_refresh_goals_bubble()
+
+
+## A count bubble on the Goals button while there's something new to see.
+func _refresh_goals_bubble() -> void:
+	if _goals_bubble == null:
+		if unseen_goals <= 0:
+			return
+		_goals_bubble = Label.new()
+		_goals_bubble.theme_type_variation = &"CountBubble"
+		_goals_bubble.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_goals_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		goals_button.add_child(_goals_bubble)
+	_goals_bubble.visible = unseen_goals > 0
+	_goals_bubble.text = str(unseen_goals) if unseen_goals < 100 else "99+"
+	_goals_bubble.size = _goals_bubble.get_combined_minimum_size()
+	_goals_bubble.position = Vector2(goals_button.size.x - _goals_bubble.size.x * 0.6, -6.0)
 
 
 func _perk_header() -> Dictionary:

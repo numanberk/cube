@@ -327,9 +327,29 @@ func _build_parts(columns: HBoxContainer) -> void:
 	var banner_text := VBoxContainer.new()
 	banner_text.theme_type_variation = &"TightBox"
 	banner_text.add_child(_label("New helper: Solving Robot", &"BannerTitle"))
-	banner_text.add_child(_label("Banner (V.7): big moments, full width in the game", &"BannerSub"))
+	banner_text.add_child(_label("Banner (V.7): big moments", &"BannerSub"))
 	banner.add_child(banner_text)
-	middle.add_child(banner)
+	var moments := HBoxContainer.new()  # the banner, then 7.0b-7.4b's small pop and the Goals screen's card
+	middle.add_child(moments)
+	moments.add_child(banner)
+	var toast := PanelContainer.new()
+	toast.theme_type_variation = &"Toast"
+	toast.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var toast_text := VBoxContainer.new()
+	toast_text.theme_type_variation = &"TightBox"
+	toast_text.add_child(_label("ACHIEVEMENT", &"FaintLabel"))
+	toast_text.add_child(_label("Toast: Solver V", &"CardLine"))
+	toast.add_child(toast_text)
+	moments.add_child(toast)
+	var item_card := PanelContainer.new()
+	item_card.theme_type_variation = &"ItemCard"
+	item_card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var item_text := VBoxContainer.new()
+	item_text.theme_type_variation = &"TightBox"
+	item_text.add_child(_label("ItemCard", &"FaintLabel"))
+	item_text.add_child(_label("5h 23m", &"CardLine"))
+	item_card.add_child(item_text)
+	moments.add_child(item_card)
 	for chip: Control in [running, locked, buyable]:
 		chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	running.show_running("2x2", "2×2")

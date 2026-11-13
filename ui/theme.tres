@@ -1043,6 +1043,40 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_item_card"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0.1529, 0.1686, 0.2039, 1)
+border_width_top = 1
+border_color = Color(0.2275, 0.2471, 0.2902, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.0392, 0.0431, 0.0549, 1)
+shadow_size = 1
+shadow_offset = Vector2(0, 3)
+anti_aliasing_size = 0.75
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toast"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.1529, 0.1686, 0.2039, 0.985)
+border_width_top = 1
+border_color = Color(0.2275, 0.2471, 0.2902, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 12
+shadow_offset = Vector2(0, 5)
+anti_aliasing_size = 0.75
+
 [resource]
 default_font = SubResource("FontVariation_tdyqp")
 default_font_size = 16
@@ -1103,6 +1137,10 @@ TitleRule/constants/separation = 8
 TitleRule/styles/separator = SubResource("StyleBoxLine_title_rule")
 PerkBoard/base_type = &"PanelContainer"
 PerkBoard/styles/panel = SubResource("StyleBoxFlat_perk_board")
+ItemCard/base_type = &"PanelContainer"
+ItemCard/styles/panel = SubResource("StyleBoxFlat_item_card")
+Toast/base_type = &"PanelContainer"
+Toast/styles/panel = SubResource("StyleBoxFlat_toast")
 SubtitleLabel/base_type = &"Label"
 SubtitleLabel/colors/font_color = Color(0.6666667, 0.6901961, 0.7411765, 1)
 SubtitleLabel/font_sizes/font_size = 18
