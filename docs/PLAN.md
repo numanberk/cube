@@ -455,9 +455,10 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
   (5×5 at 48:46, out of its 50–70 window). In the first run items come from Golden Scrambles, and the first
   championship always drops one.
 
+- **D18 Golden cases:** (owner, 2026-11-13) **yes**: any OLL/PLL case may appear in a Golden Scramble (solvable by
+  intuition, the normal reward); a case learned in the drills pays more.
+
 ### Open
-- **D18 Golden cases** (needed by 7.13): may a case the player hasn't learned in the drills appear (solvable by
-  intuition, the normal reward), or only learned ones? *Recommended: yes, any case; learned ones pay more.*
 - **D19 Competitions' shape** (needed by 8.3): replace "hold a Solves/s target for 60 s" with the WCA weekend of §4.8
   (2)? If so: how long should an event take (15 min to ~8 h suggested), and should one attempt be the player's own
   hand solve?

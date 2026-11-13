@@ -13,6 +13,7 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
+| 7.5–7.13 Goals polish (Phase 7b) | claude/zen-albattani-squxya | 2026-11-13 | goals_panel.gd, toast.gd, welcome_panel.gd | game.gd, content.gd, main.gd, main.tscn, tests/test_runner.gd, tools/screenshot.* | yes (v18: Legendary pity, career backfill) |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -547,7 +548,7 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
 
 ## Phase 7b — Goals polish (fun pass, 2026-11-13)
 The owner picked these from the fun pass after Phase 7 (the quick wins and idea #1; ideas #2, #3, #5 are in PLAN §4.8).
-Small tasks; any order, but 7.6 needs a save change and 7.13 an owner decision (**D18**).
+Small tasks; any order, but 7.6 needs a save change. D18 answered (owner, 2026-11-13: any case may appear).
 - [ ] **7.5 Drop odds on screen (fun pass, 2026-11-13):** the Collection tab and the "???" tooltips show every source's
       chance and pity ("Golden Scramble: 50 % · sure by your 3rd try", "Achievements: 15 % · sure by the 10th, from
       your first championship on") and the rarity pity, with the tries left on each counter (PLAN §4.6: every system
