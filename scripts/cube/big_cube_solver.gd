@@ -51,10 +51,8 @@ const EDGE_FLIPS := ["R U R' F R' F' R", "R F' U R' F"]
 const MAX_ESCAPES := 6
 ## Two-turn set-ups the pairing search tries per planning step (of ~290), so a step stays short.
 const SETUPS_PER_TICK := 30
-## A route search (_try_routes) gives up on a pair after this many places, or this many places a macro could join
-## them at (each is scored on the cube), so a step stays short; nearer ones come first.
-const ROUTE_STATES := 1500
-const ROUTE_SCORES := 12
+## Zero-gain steps one sideways step (_sideways) tries before moving on to the next set-up, so a step stays short.
+const SIDEWAYS_PROBES := 24
 
 static var _shapes := {}
 ## How often the edge stage needed its slow way out (a look-ahead over every flip macro) since start-up. Tests watch it.
@@ -1153,15 +1151,13 @@ class _Run:
 		var parent := {start: [-1, -1]}
 		var queue := PackedInt32Array([start])
 		var head := 0
-		var scored := 0
-		while head < queue.size() and head < ROUTE_STATES and scored < ROUTE_SCORES:
+		while head < queue.size():
 			var state := queue[head]
 			head += 1
 			var w := state / s.count
 			var a := state % s.count
 			var key := state if w < a else (a * s.count + w)
 			if s.e_index.has(key):
-				scored += 1
 				var setup := PackedInt32Array()
 				var at := state
 				while at != start:
@@ -1255,6 +1251,8 @@ class _Run:
 					if tried.has(index * 100000 + id) or _edge_gain(id, turned) != 0:
 						continue
 					tried[index * 100000 + id] = true
+					if tried.size() > SIDEWAYS_PROBES * (last - first):
+						return false
 					var probe := _copy()
 					probe._play_macro(setup, id)
 					if probe._edge_step(false) and probe._edge_metric(probe.col) > before:
