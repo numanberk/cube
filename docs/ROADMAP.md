@@ -545,6 +545,38 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
         *Done when:* there's a screenshot.
         *(Done 2026-11-13: click a card, slot then card, or drag; Auto per slot; brand-set lines.)*
 
+## Phase 7b — Goals polish (fun pass, 2026-11-13)
+The owner picked these from the fun pass after Phase 7 (the quick wins and idea #1; ideas #2, #3, #5 are in PLAN §4.8).
+Small tasks; any order, but 7.6 needs a save change and 7.13 an owner decision (**D18**).
+- [ ] **7.5 Drop odds on screen (fun pass, 2026-11-13):** the Collection tab and the "???" tooltips show every source's
+      chance and pity ("Golden Scramble: 50 % · sure by your 3rd try", "Achievements: 15 % · sure by the 10th, from
+      your first championship on") and the rarity pity, with the tries left on each counter (PLAN §4.6: every system
+      explains its numbers). *Done when:* a test checks the texts against `Content.COLLECTION`, and there's a screenshot.
+- [ ] **7.6 Legendary pity (fun pass, 2026-11-13):** a Legendary is sure after ~50 drops without one, alongside today's
+      "Epic or better after 10" (`rarity_pity` becomes a list). Save change (a second counter + migration).
+      *Done when:* tests cover both pities together and the migration, and the pacing targets still pass.
+- [ ] **7.7 Brand set completed (fun pass, 2026-11-13):** when a kit change reaches a set tier, a pop and a news line
+      ("Speed Kit complete: +8 % all moves"); not again for the same tier until it was lost and regained.
+      *Done when:* a test covers it, and there's a screenshot.
+- [ ] **7.8 Late-game career moments (fun pass, 2026-11-13):** new `Content.CAREER` beats for the Cube Museum, AI Solver,
+      Orbital, Quantum, the 3rd and 10th championship and the first Legendary (a new trigger type `item_rarity`), and
+      one for the first Gold hand solve (`hand_tier`). Mostly data; new trigger types go in GameState's check.
+      *Done when:* each fires once at its trigger (test) and old saves get them silently (as 7.0a's backfill).
+- [ ] **7.9 Welcome back lists more (fun pass, 2026-11-13):** besides Solves and the Lab, the mastery levels and
+      achievements earned while away. *Done when:* a test covers the report, and there's a `welcome` screenshot.
+- [ ] **7.10 Achievements in the goal strip (fun pass, 2026-11-13):** an achievement at ≥ 80 % can be one of the goal
+      card's goals (`Game.get_goals`). *Done when:* a test covers when it shows and when it gives way, and there's a screenshot.
+- [ ] **7.11 Star-up feel (fun pass, 2026-11-13):** in a drop pop the new star pip pops in (`UiFx.pop`; not with Reduce
+      motion). *Done when:* a test checks the pip and Reduce motion, and there's a `TOAST=drop` screenshot.
+- [ ] **7.12 Where your bonus comes from (fun pass, 2026-11-13):** a line (or small table) on the Stats tab: Collection
+      +X %, Kit +Y %, brand sets, achievements' trophy bonus, trophies, perks. *Done when:* a test compares it with the
+      real multipliers, and there's a screenshot.
+- [ ] **7.13 Golden Scrambles as real cases (fun pass, 2026-11-13) [D18]:** sometimes the golden sticker opens a real
+      OLL or PLL case on the 3×3 (from `Content.ALGORITHMS`) instead of a short random scramble; a case the player has
+      learned in the drills shows "You know this one!" and pays more (or gets a longer window). Kinds and weights as
+      data in `Content.GOLDEN`. Design: PLAN §4.8 (1). *Done when:* tests cover picking a case, the learned bonus and
+      the timing; there's a `GOLDEN=case` screenshot of a known case; the pacing targets still pass.
+
 ## Phase 8 — Active play and Hall of Fame (D12: before 1.0)
 - [x] **8.1 Golden Scramble:** moved to **S.6** (now a quick solve). Old text: a small golden 3D cube flies across the stage every 2–5 min for 12 s. Clicking it gives a random buff
       (×7 moves for 30 s, or 15 minutes' worth of Solves instantly). The timing and buff logic live in `GameState`.
@@ -556,6 +588,8 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
       Each asks for a solves/s target held for 60 s with your current kit and puzzle. Medals (bronze/silver/gold) give
       permanent bonuses and collection drops. You can fail and come back later. Unlocked by the Competition branch (6.3).
       *Done when:* tests cover pass/fail, medal rewards and the unlock, and there's a screenshot.
+      **Fun pass (2026-11-13):** PLAN §4.8 (2) proposes a WCA-weekend shape instead of the 60 s hold; decide **D19**
+      with the owner before starting.
       **From 6.3:** the perk `comp_circuit` (Competition branch's first node) has `"buyable": false` and a `soon` note
       until this task: remove both and check `Game.is_system_unlocked("competitions")`. Medal bonus perks go in that branch.
       **Save safety:** players can own Comp Prep / Home Crowd / Appearance Fees without `comp_circuit` today, and

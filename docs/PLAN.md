@@ -319,6 +319,32 @@ screenshot preset, so the look can be tuned and compared without game state. Eac
 
 ---
 
+### 4.8 After Phase 7: fun-pass directions (owner, 2026-11-13)
+The `fun-designer` pass after Phase 7 found: drop odds hidden, no pity for Legendaries, a kit that Auto solves (every
+3×3 cube does the same thing), the story stopping mid-game, and many similar runs before the Hall of Fame. The owner
+put its quick wins and (1) on the roadmap (Phase 7b) and these four ideas in the plan, as the direction for later work:
+1. **Golden Scrambles as real cases** (ROADMAP 7.13): sometimes the golden sticker opens a real OLL/PLL case on the
+   3×3 instead of a short random scramble. A case learned in the Solve Station drills shows "You know this one!" and
+   pays more, so the drills and the idle side feed each other and the player's real skill pays. Kinds and weights are
+   data in `Content.GOLDEN`; probably no save change. Open: **D18**.
+2. **Competitions as a WCA weekend** (for 8.3): register for a comp (Local → Worlds) with events from the puzzles you
+   own; it runs in real time (15 min to ~8 h), also while the game is closed, as WCA-style rounds (averages of 5,
+   cutoffs, time limits). The team's strength on that puzzle (Solves/s, kit, mastery) becomes a believable average
+   ("your 3×3 average: 7.82"); a results sheet shows placings, a medal and a collection drop, and a national ranking
+   of named rivals moves with each result. Optionally one of the five attempts is the player's own, in the Solve
+   Station. It gives the Comp Kit a stage, can be failed and retried (PLAYER_RESEARCH: bosses), and finishes while
+   away. Open: **D19**.
+3. **Item traits + two kits:** every collection item gets one trait from real hardware besides its stars (maglev:
+   the streak fills faster; ball-core: Flow lasts +25 %; stickerless: more mastery XP; UV-coated: the golden sticker
+   glows 3 s longer; comp timer: a bigger daily reward; grip mat: more offline Solves), and the player keeps an
+   **Active** and an **Away** kit (the Away kit equips itself when the game closes). The kit becomes a playstyle
+   choice that Auto can't solve, and the 40 items get an identity. Mostly data plus a few small rules; the two kits
+   need a save change.
+4. **Championship venues:** from the second championship on, the Compete screen offers three host cities for the next
+   run, each with a twist ("Melbourne: 4×4 and bigger pay ×3, the 2×2 ×0.5", "Golden City: Golden Scrambles twice
+   as often"), so the many runs before the Hall of Fame play differently, with nothing to fail (that stays 8.4's
+   job). Venues as data, the active one saved; the first run is untouched (D6 holds). Open: **D20**.
+
 ## 5. Phases
 
 Each phase ends with something playable. Task details and "Done when" are in the roadmap.
@@ -430,6 +456,13 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
   championship always drops one.
 
 ### Open
+- **D18 Golden cases** (needed by 7.13): may a case the player hasn't learned in the drills appear (solvable by
+  intuition, the normal reward), or only learned ones? *Recommended: yes, any case; learned ones pay more.*
+- **D19 Competitions' shape** (needed by 8.3): replace "hold a Solves/s target for 60 s" with the WCA weekend of §4.8
+  (2)? If so: how long should an event take (15 min to ~8 h suggested), and should one attempt be the player's own
+  hand solve?
+- **D20 Venues and challenge runs** (needed before 8.4): Phase 8 with both venues (§4.8 (4)) and challenge runs, or
+  venues first?
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?
 - **D4 Price** (needed by 10.2): free, pay-what-you-want on itch, or paid on Steam?
   *Either way, only CC0/CC-BY assets, so a paid release stays possible.*

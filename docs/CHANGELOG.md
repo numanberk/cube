@@ -66,6 +66,16 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   balance change. Parallel sessions: 7.0b–7.4b (the Goals screens) landed on `main` meanwhile. Merged it into this
   branch: only CHANGELOG conflicted (both entries kept); `main.gd` and `tests/test_runner.gd` merged cleanly. Tests and
   a 7×7 screenshot were re-run on the merged tree.
+## 2026-11-13 — Fun pass after Phase 7: new roadmap block and plan directions (docs only)
+- The `fun-designer` pass after Phase 7 went to the owner. **Owner's picks:** the quick wins and idea (1) become
+  ROADMAP **Phase 7b — Goals polish** (7.5 drop odds on screen, 7.6 Legendary pity (save change), 7.7 brand set
+  completed pop, 7.8 late-game career moments, 7.9 Welcome back lists more, 7.10 achievements in the goal strip,
+  7.11 star-up feel, 7.12 where your bonus comes from, 7.13 Golden Scrambles as real cases [D18]); ideas (1), (2)
+  competitions as a WCA weekend, (3) item traits + Active/Away kits and (5) championship venues go into **PLAN §4.8**.
+- New open decisions in PLAN §7: **D18** (unlearned golden cases?), **D19** (competitions' shape, for 8.3; 8.3 now
+  points to it), **D20** (venues and challenge runs, which first).
+- Not picked: (4) Cube Mail, (6) a Theory research track, (7) a team table on the desk.
+
 ## 2026-11-13 — Tasks 7.0b, 7.1b, 7.2b, 7.3b, 7.4b: the Goals screens (owner asked for all five in one session)
 - **Goals screen** (`scenes/goals_panel.tscn`, `scripts/ui/goals_panel.gd`, class `GoalsPanel`, `%GoalsPanel`): a new
   overlay opened by a **Goals** icon button in the top bar (podium icon, left of Settings; a count bubble shows
