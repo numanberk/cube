@@ -31,8 +31,9 @@ extends RefCounted
 ##
 ## The libraries are built on first use (~0.1 s a size, a 7×7's ~0.3 s; `warm_up` does it ahead of time) and cached; a
 ## solve is then planned in ~15 ms (4×4) / ~22 ms (5×5) / ~100 ms (6×6, 7×7), ~170 / ~310 / ~520 / ~760 moves. `plan`
-## does it a step at a time (most under 1 ms; the slowest, a set-up scan or a route search, a few tens of ms) so the
-## showcase spreads a 7×7's over its inspection.
+## does it a step at a time so the showcase spreads a 7×7's over its inspection: most steps take under 1 ms, a few a
+## solve 20-60 ms, and now and then a route search for the last edges ~100 ms (7×7; up to ~0.3 s on the 6×6, which has
+## rare slow solves, ~3 s, and isn't in the game).
 ## The game has no 6×6; it is solved here (and tested) because it is the even cube with two wing orbits.
 
 const PUZZLES := ["4x4", "5x5", "6x6", "7x7"]

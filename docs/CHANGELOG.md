@@ -29,13 +29,19 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   The solve is now a resumable state machine (`_Run.start/step`, phases centres · edges · parity · swap · repair ·
   escape · parity_algs · reduced). The public `BigCubeSolver.plan(model, method)` returns a `Planner`; call
   `step(budget_usec)` until it returns true, then read `stages()`. `solve()` is `plan` + step to the end. The slower
-  pairing searches are split across steps too (`_pair_tick` tiers). Most steps take well under 1 ms. A few per 7×7
-  solve take 20–80 ms (a failed set-up scan or one route search), and those happen while the cube sits in inspection.
+  pairing searches are split across steps too (`_pair_tick` tiers: one route a tick, `SETUPS_PER_TICK` two-turn set-ups,
+  one sideways set-up with at most `SIDEWAYS_PROBES` tries). Measured over 40 solves per size: most steps take under
+  1 ms, a few per 7×7 solve 20–60 ms, and a couple in 40 solves ~100–115 ms (one route search for the last edges).
+  Those happen while the cube sits in inspection, and that's where it stops: capping the route search made pairing
+  fall through to the far slower sideways search (single steps of 1–3 s), so the cap was reverted. The 6×6 (not in
+  the game) has rare slow plans, ~2–3 s in all, single steps up to ~0.3 s; its test limit is a looser 800 ms average.
 - **`ShowcaseSolve`:** `plan_budget_usec` (constructor's 4th argument; 0 = plan at once, as before, which the tests
-  use), `is_planning()`, signal `planned`. Big cubes are planned during inspection, `plan_budget_usec` per `advance`.
-  Inspection waits for the plan. A tap (and `pose_showcase`) finishes it at once. A key turn by the player drops it, and
-  the team plans again when it takes the cube back. main.gd passes `SHOWCASE_PLAN_BUDGET_USEC` (4 ms) and rebuilds the
-  chips on `planned`, so on 4×4–7×7 the chip row fills in a moment after a new scramble appears.
+  use), `is_planning()`, `finish_plan()`, signal `planned`. Big cubes are planned during inspection, `plan_budget_usec`
+  per `advance`, and inspection waits for the plan. A tap while planning only ends inspection early: the solve starts
+  as soon as the plan is ready, so a click never runs a whole 7×7 plan in one frame. `pose_showcase` (screenshots)
+  calls `finish_plan()`. A key turn by the player drops the plan, and the team plans again when it takes the cube back.
+  While planning, `chip_stages()` gives Centres and Edges, so the chip row never empties. main.gd passes
+  `SHOWCASE_PLAN_BUDGET_USEC` (4 ms) and rebuilds the chips on `planned`.
 - **Numbers:** 30/30 random scrambles per size in a probe (4×4 ~170 moves, 5×5 ~315, 6×6 ~520, 7×7 ~765). Warm-up
   (libraries + one solve) 7×7 ~0.4 s, at start or unlock for players who own it. **Bench** (software Mesa, relative;
   `main` → this branch, ms/frame): `bench` Low 31.4 → 33.1, High 82.3 → 83.2; `bench_row` Low 37.9 → 39.6, High
@@ -48,6 +54,9 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   while planning, and a tap that finishes it. Tests that used the 7×7 as "no showcase" use the Megaminx now.
 - Screenshots: `docs/screenshots/R.6b-big-cubes/` (7×7: Centres, Edges, Parity on the endgame preset, and a Beginner
   solve's second layer), checked by `screenshot-checker`. They were quantised to 256 colours to stay under 300 KB.
+- **Review (`diff-reviewer`):** found the tap stall (fixed as above), steps far over budget in the 6×6's tier 2/3
+  searches (sliced per tick), an empty chip row while planning (placeholders), and a stale planner on the God's Number
+  path (`_plan()` clears it). All fixed; per-step times as measured above.
 - **Known, not fixed (since R.6a):** a Beginner solve with parity has 10 stage chips, and that HBox row is wider than
   the stage column, so the left column grows and the shop moves ~40 px right during such a solve (no clipping). A fix
   touches `main.tscn` (a shared hot file): for example shorter chip names, or a row that shrinks its chips. Worth a small

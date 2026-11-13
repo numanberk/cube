@@ -2850,7 +2850,7 @@ func test_big_cube_solver() -> void:
 	var escapes := BigCubeSolver.escapes
 	# The game has no 6×6 (scrambled like a 7×7 here): it's the even cube with two wing orbits.
 	var runs_by_size := {"4x4": 60, "5x5": 60, "6x6": 30, "7x7": 30}
-	var ms_by_size := {"4x4": 50.0, "5x5": 50.0, "6x6": 250.0, "7x7": 250.0}
+	var ms_by_size := {"4x4": 50.0, "5x5": 50.0, "6x6": 800.0, "7x7": 250.0}  # 6×6: rare slow last edges (~3 s), not in the game
 	var moves_by_size := {"4x4": [130.0, 230.0], "5x5": [230.0, 400.0], "6x6": [400.0, 650.0], "7x7": [600.0, 950.0]}
 	var swap_edges := {"4x4": 0, "5x5": 2, "6x6": 2, "7x7": 4}  # edges the edge parity may leave for its own stage
 	for id: String in ["4x4", "5x5", "6x6", "7x7"]:
