@@ -931,6 +931,7 @@ func _refresh_stage_chips() -> void:
 func pose_showcase(moves: int) -> void:
 	if _showcase == null:
 		return
+	_showcase.finish_plan()
 	for i in moves:
 		for move in _showcase.tap():
 			puzzle_view.turn(move)

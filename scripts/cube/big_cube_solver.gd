@@ -31,7 +31,8 @@ extends RefCounted
 ##
 ## The libraries are built on first use (~0.1 s a size, a 7×7's ~0.3 s; `warm_up` does it ahead of time) and cached; a
 ## solve is then planned in ~15 ms (4×4) / ~22 ms (5×5) / ~100 ms (6×6, 7×7), ~170 / ~310 / ~520 / ~760 moves. `plan`
-## does it a step at a time (a step is a few ms, rarely up to ~80) so the showcase spreads a 7×7's over its inspection.
+## does it a step at a time (most under 1 ms; the slowest, a set-up scan or a route search, a few tens of ms) so the
+## showcase spreads a 7×7's over its inspection.
 ## The game has no 6×6; it is solved here (and tested) because it is the even cube with two wing orbits.
 
 const PUZZLES := ["4x4", "5x5", "6x6", "7x7"]
@@ -48,6 +49,8 @@ const PLL_PARITY := "2R2 U2 2R2 Uw2 2R2 Uw2"
 ## The edge-flip algorithms the last two edges use, between a slice and its undo (written for a U slice, edge at FR).
 const EDGE_FLIPS := ["R U R' F R' F' R", "R F' U R' F"]
 const MAX_ESCAPES := 6
+## Two-turn set-ups the pairing search tries per planning step (of ~290), so a step stays short.
+const SETUPS_PER_TICK := 30
 
 static var _shapes := {}
 ## How often the edge stage needed its slow way out (a look-ahead over every flip macro) since start-up. Tests watch it.
@@ -1216,13 +1219,15 @@ class _Run:
 
 
 	## Stuck (every pairing step unpairs as much as it pairs, e.g. a 6×6's last outer wings in a cycle): one step that
-	## pairs one wing and unpairs another, when a pairing step follows it. Cheap, so it comes before _escape.
-	func _sideways() -> bool:
+	## pairs one wing and unpairs another, when a pairing step follows it. Set-ups `first` to `last` (at most one outer
+	## turn: 0-19); far cheaper than _escape, though a whole scan can take a second on a 6×6, so _pair_tick does one
+	## set-up a tick.
+	func _sideways(first: int = 0, last: int = 19) -> bool:
 		var s := shape
 		var before := _edge_metric(col)
 		var targets := _edge_targets()
 		var tried := {}
-		for index in range(0, 19):
+		for index in range(first, last):
 			var setup := s.setups[index]
 			var turned := PackedInt32Array()
 			var i := 0
@@ -1289,8 +1294,8 @@ class _Run:
 
 	## One pairing step, or one slice of a slower search; false when there's nothing more to pair now (all paired,
 	## only the parity's edges left, or stuck: the parity stage's escape takes over). The searches, as in _edge_step:
-	## tier 0 at most one set-up turn; when that finds nothing, tier 1 routes one wanted pair a step (a step stays a few
-	## ms), tier 2 every two-turn set-up, tier 3 a sideways step. Any success starts again at tier 0.
+	## tier 0 at most one set-up turn; when that finds nothing, tier 1 routes one wanted pair a tick, tier 2 the two-turn
+	## set-ups, SETUPS_PER_TICK a tick, tier 3 a sideways step, one set-up a tick. Any success starts again at tier 0.
 	func _pair_tick() -> bool:
 		if _edge_metric(col) >= _edge_max() or unpaired_edges() <= _left:
 			return false  # the last edges can't be paired until two wings are swapped: the parity stage
@@ -1309,16 +1314,21 @@ class _Run:
 					_route += 2
 				else:
 					_tier = 2
+					_route = 19
 					return true
 			2:
-				found = _try_setups(_targets, 19, shape.setups.size())
-				if not found:
+				var last := mini(_route + SETUPS_PER_TICK, shape.setups.size())
+				found = _try_setups(_targets, _route, last)
+				_route = last
+				if not found and _route >= shape.setups.size():
 					_tier = 3
+					_route = 0
 					return true
 			_:
-				found = _sideways()
-				if not found:
+				if _route >= 19:
 					return false
+				found = _sideways(_route, _route + 1)
+				_route += 1
 		if found:
 			_tier = 0
 		return true

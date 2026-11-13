@@ -3032,6 +3032,10 @@ func test_big_cube_showcase() -> void:
 	var planned := [0]
 	slow.planned.connect(func() -> void: planned[0] += 1)
 	check(slow.is_planning() and slow.stages.is_empty() and slow.phase == "inspection", "7×7 with a budget: planning at the start")
+	var early_chips := []
+	for stage in slow.chip_stages():
+		early_chips.append(stage["id"])
+	check(early_chips == ["centres", "edges"], "...its chips start as Centres and Edges meanwhile: %s" % str(early_chips))
 	check(slow.advance(10.0, 10.0).is_empty() and slow.phase == "inspection", "...inspection waits for the plan")
 	var frames := 1
 	while slow.is_planning() and frames < 2000:
@@ -3047,12 +3051,18 @@ func test_big_cube_showcase() -> void:
 	tapped.player_turn(view_7.parse("R"))
 	view_7.apply(view_7.parse("R"))
 	check(not tapped.is_planning() and tapped.phase == "player", "a key turn while planning drops the plan")
-	for move in tapped.tap():  # takes the cube back: a new plan, finished at once because a tap wants a move now
-		view_7.apply(move)
-	check(not tapped.is_planning() and tapped.phase == "solving" and not tapped.stages.is_empty(), "a tap finishes planning at once")
+	check(tapped.tap().is_empty() and tapped.is_planning() and tapped.phase == "inspection",
+			"a tap takes the cube back: a new plan, still planned a few ms a frame (no stall)")
 	var guard_7 := 0
-	for move in tapped.tap():
+	while tapped.is_planning() and guard_7 < 2000:
+		guard_7 += 1
+		for move in tapped.advance(0.001, 10.0):
+			view_7.apply(move)
+	for move in tapped.advance(0.001, 10.0):
 		view_7.apply(move)
+	check(not tapped.is_planning() and tapped.phase == "solving",
+			"...and the tap ended inspection: the solve starts as soon as it's planned")
+	guard_7 = 0
 	while tapped.phase != "solved" and guard_7 < 3000:
 		guard_7 += 1
 		for move in tapped.advance(0.1, 10.0):

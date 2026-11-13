@@ -1,9 +1,9 @@
 class_name ShowcaseSolve
 extends RefCounted
 ## The main cube's showcase solve (task R.2): a real WCA scramble, a short inspection, then a StagedSolver solve played a
-## move at a time, then the next scramble. 4×4, 5×5 and 7×7 are solved by BigCubeSolver (R.6: centres, edges, parity,
-## then the method's own stages on the reduced cube); with `plan_budget_usec` set, their solve is planned a few ms per
-## `advance` during inspection (a 7×7's takes ~0.1 s), and `planned` tells when `stages` are there. Pure data (no nodes), so tests drive it with fake time; main.gd feeds the
+## move at a time, then the next scramble. 4×4, 5×5 and 7×7 are solved by BigCubeSolver (R.6: centres, edges,
+## parity, then the method's own stages on the reduced cube); with `plan_budget_usec` set, their solve is planned a few
+## ms per `advance` during inspection (a 7×7's takes ~0.1 s), and `planned` tells when `stages` are there. Pure data (no nodes), so tests drive it with fake time; main.gd feeds the
 ## moves it returns to PuzzleView3D's manual mode (show_state / turn). Visual only: it never changes a game number.
 ##
 ##   var show := ShowcaseSolve.new("3x3", "cfop")
@@ -134,6 +134,7 @@ func _resume() -> void:
 ## method learned mid-solve that history can get long; when it's longer than the scramble, the team shows its
 ## shortest staged solve (Roux) instead, with Roux's own stage names, so nothing long is labelled God's Number.
 func _plan() -> Array[Dictionary]:
+	_planner = null
 	if method == "gods_number":
 		var undo := StagedSolver.simplify(model, model.inverse_sequence(StagedSolver.simplify(model, _history)))
 		if undo.size() <= int(Content.get_puzzle(puzzle_id).get("scramble_length", 25)):
@@ -156,6 +157,11 @@ func _staged(method_id: String) -> Array[Dictionary]:
 ## True while a big cube's solve is still being planned (no `stages` yet).
 func is_planning() -> bool:
 	return _planner != null
+
+
+## Plans the rest now, in one go (screenshots pose the solve straight away).
+func finish_plan() -> void:
+	_plan_step(-1)
 
 
 ## Plans for about `budget_usec` (-1: to the end); when done, the stages are in and `planned` is emitted.
@@ -205,7 +211,9 @@ func tap() -> Array[Dictionary]:
 	if phase == "player":  # a click hands the cube back to the team straight away
 		_resume()
 	if phase == "inspection":
-		_plan_step(-1)
+		if _planner != null:  # still planning: the tap ends inspection, the solve starts once planned (no frame stall)
+			_timer = 0.0
+			return out
 		out.append_array(_take_inspection())
 		_begin_solving()
 	if phase == "solving":
@@ -218,9 +226,14 @@ func current_stage() -> Dictionary:
 	return stages[stage_index] if stage_index < stages.size() else {}
 
 
-## The stages a viewer follows (no inspection): the chips under the cube.
+## The stages a viewer follows (no inspection): the chips under the cube. While a big cube is being planned, its first
+## two (known before the plan: the rest wait for it), so the row doesn't empty.
 func chip_stages() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	if is_planning():
+		for id: String in ["centres", "edges"]:
+			out.append({"id": id, "name": BigCubeSolver.STAGE_NAMES[id], "moves": []})
+		return out
 	for stage in stages:
 		if stage["id"] != "inspection":
 			out.append(stage)
