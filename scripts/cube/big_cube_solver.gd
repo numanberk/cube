@@ -51,6 +51,8 @@ const EDGE_FLIPS := ["R U R' F R' F' R", "R F' U R' F"]
 const MAX_ESCAPES := 6
 ## Two-turn set-ups the pairing search tries per planning step (of ~290), so a step stays short.
 const SETUPS_PER_TICK := 30
+## Places a route search (_try_routes) looks at before giving up on a pair (a step stays short; nearer ones come first).
+const ROUTE_STATES := 1500
 
 static var _shapes := {}
 ## How often the edge stage needed its slow way out (a look-ahead over every flip macro) since start-up. Tests watch it.
@@ -1149,7 +1151,7 @@ class _Run:
 		var parent := {start: [-1, -1]}
 		var queue := PackedInt32Array([start])
 		var head := 0
-		while head < queue.size():
+		while head < queue.size() and head < ROUTE_STATES:
 			var state := queue[head]
 			head += 1
 			var w := state / s.count
