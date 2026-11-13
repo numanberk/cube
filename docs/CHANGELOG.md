@@ -38,6 +38,12 @@ Newest first. Every session adds an entry: what changed, what's unfinished, note
   used the 4×4 as "a puzzle with no showcase" use the 7×7 now.
 - Screenshots: `docs/screenshots/R.6a-big-cubes/` (4×4 centres and parity, 5×5 edges and the Beginner 3×3 stage).
   I checked them myself (no `screenshot-checker` run): the only screen change is more chips in the existing row.
+- **Review fixes (diff-reviewer):** the 5×5 wing swap now only runs when the wings really are an odd permutation
+  (before, a stuck even state would have been made unsolvable; no run ever got stuck, so it never showed); the
+  libraries are also built when a big cube is unlocked, not only at start; comments. Its probe of 300 player-style
+  states (any slice, width, rotation) solved all of them. Left as is: the pairing moves after a 5×5 wing swap show
+  under the Parity chip; the two timing checks in `test_big_cube_solver` (50 ms average, 3 s warm-up) could fail on
+  a very slow machine (averages are 12 / 20 ms).
 - No save, content or balance change. Parallel sessions: none were running; merged with `origin/main` at the claim.
 - **For R.6b (6×6, 7×7):** the class takes any n but only 4 and 5 are in `PUZZLES`. Expected work: (1) centres: the
   oblique orbits come in mirror pairs, so check that the insert/commutator library still reaches every piece (the

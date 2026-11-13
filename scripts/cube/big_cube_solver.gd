@@ -26,7 +26,8 @@ extends RefCounted
 ## indexed by "moves the piece at A to B" (centres) or "joins the pieces at A and B" (edges); a step looks the wanted
 ## piece up, checks the candidates on the real colours and plays the cheapest. Visual only, never game state.
 ##
-## The libraries are built on first use (under 0.1 s a size; `warm_up` does it ahead of time) and cached; a solve is
+## The libraries are built on first use (~0.1 s a size, ~0.15-0.3 s with the first solve; `warm_up` does it ahead of
+## time) and cached; a solve is
 ## then planned in ~12 ms (4×4) / ~20 ms (5×5), ~165 / ~290 moves. Written with any n in mind, but only 4×4 and 5×5
 ## are tested and switched on: R.6b adds 6×6 and 7×7 (more centre orbits and a second wing orbit).
 
@@ -166,7 +167,6 @@ class _Shape:
 	var oll_alg: Array[Dictionary] = []
 	var pll_alg: Array[Dictionary] = []
 	var reduced: Array = []                           ## [3×3 piece][rotation] -> the big facelets its stickers read
-	var three: TwistyModel
 
 
 	func _init(size: int) -> void:
@@ -352,7 +352,7 @@ class _Shape:
 	## The 3×3 the reduced cube is: for each 3×3 piece and each of the 24 rotations, the big facelets its stickers
 	## would be read from (a 3×3 coordinate 0 = the reference inner piece).
 	func _build_reduced() -> void:
-		three = PuzzleShapes.cube(3)
+		var three := PuzzleShapes.cube(3)
 		var inner := -half + 1.0 + ref
 		var group: Array[Basis] = three._group
 		for p in three.piece_count():
@@ -807,7 +807,8 @@ class _Run:
 		return gained > 0
 
 
-	## The same step with wide turns (Rw) for its inner slices (2R), as people turn them, when that does the same job.
+	## The same step with wide turns (Rw) for its inner slices (2R), as people turn them, when that also keeps every finished
+	## centre and gains at least one.
 	func _prefer_wide(step: Array[Dictionary], f: int, c: int, locked: PackedByteArray, scheme: PackedInt32Array) -> Array[Dictionary]:
 		var wide: Array[Dictionary] = []
 		var changed := false
@@ -1107,7 +1108,7 @@ class _Run:
 
 	func _fix_parity() -> void:
 		var s := shape
-		if _edge_metric(col) < _edge_max() and s.n % 2 == 1:
+		if _edge_metric(col) < _edge_max() and s.n % 2 == 1 and wing_parity():
 			_swap_wings()
 			_pair_edges()
 		var tries := 0

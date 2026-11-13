@@ -715,6 +715,7 @@ func _on_mastery_level_up(puzzle_id: String, level: int) -> void:
 
 
 func _on_puzzle_unlocked(puzzle_id: String) -> void:
+	_warm_up_big_cubes()  # a 4×4 or 5×5 just unlocked: its solver libraries, before its first showcase (cached after)
 	_build_puzzle_row()
 	puzzle_view.drop_in()
 	Audio.play_unlock()
