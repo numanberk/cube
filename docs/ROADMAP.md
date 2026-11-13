@@ -13,7 +13,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| R.6b 6×6 and 7×7 in the solver | claude/laughing-lovelace-mixsx8 | 2026-11-13 | scripts/cube/big_cube_solver.gd | showcase_solve.gd, main.gd (warm-up list), tests/test_runner.gd | no |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -222,7 +221,7 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
       *(Done 2026-11-07: Roux = Block 1, Block 2, CMLL, LSE (M/U only), ~56 moves, ~3 ms; ZZ = EOLine, F2L (R/U/L),
       Last layer, ~65 moves, ~2.5 ms. God's Number plays the cube's history undone (merged), labelled: not a real optimal
       solver. Shots in `docs/screenshots/r5-roux-zz/`.)*
-- [ ] **R.6 Big cubes in the solver:** 4×4–7×7 by reduction (centres → edge pairing → 3×3 stage, with **parity** as its own
+- [x] **R.6 Big cubes in the solver:** 4×4–7×7 by reduction (centres → edge pairing → 3×3 stage, with **parity** as its own
       stage on even cubes), so the showcase works on every cube. Megaminx stays on scramble + rewind (Phase 11).
       **Owner, 2026-11-07:** full real speed (no fast-forward: a 7×7 solve may take a minute or more to watch), and a
       **human-style** solver (not commutator-only), split in two:
@@ -238,9 +237,12 @@ look at all the time) stays noise. These tasks make it show real cubing. S.1's m
         *(Done 2026-11-13: `BigCubeSolver` tracks facelets with a table per move; centres and edges each pick from a
         cached macro library. 4×4 ~165 moves planned in ~12 ms, 5×5 ~290 in ~20 ms; 600/600 random scrambles each.
         Shots in `docs/screenshots/R.6a-big-cubes/`. Notes for R.6b in the CHANGELOG.)*
-  - [ ] **R.6b 6×6 and 7×7:** the same stages with more centre orbits (obliques) and the bench check.
+  - [x] **R.6b 6×6 and 7×7:** the same stages with more centre orbits (obliques) and the bench check.
         *Done when:* tests solve 6×6 and 7×7 scrambles with the stage goals checked, and `bench`/`bench_row` still hold
         with the showcase on the 7×7.
+        *(Done 2026-11-13: the 7×7 plays its showcase (~760 moves, a minute at 12 turns/s); 6×6 solved in tests only (the
+        game has none). Edge parity per wing orbit, single inner slices for pairing, planned a few ms a frame during
+        inspection. 30/30 scrambles each; bench within ~5 %. Shots in `docs/screenshots/R.6b-big-cubes/`.)*
 
 - [x] **S.3 Rewards [D13 = ~2–3×]:** hand solves pay into the idle game. Per-puzzle **time targets** as data (e.g. 3×3: 60/40/25/
       15/10 s, bronze → "WR pace"); reaching a tier for the first time gives a permanent bonus on that puzzle, every solve

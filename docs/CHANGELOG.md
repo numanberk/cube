@@ -2,6 +2,60 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-13 — Task R.6b: big cubes in the solver (6×6 and 7×7)
+- **The 7×7 plays the showcase solve** (it kept scramble + rewind until now): Centres · Edges · (Parity) · the method's
+  stages. About 760 moves (Centres ~470 of them), so about a minute at the showcase's 12 turns/s, as the owner chose
+  (full real speed). Only the Megaminx keeps scramble + rewind. The **6×6** is solved too, though the game has no 6×6:
+  it is the even cube with two wing orbits, so the tests cover it (`BigCubeSolver.PUZZLES` lists it;
+  `Game.is_puzzle_unlocked("6x6")` is always false, so main.gd never warms it up).
+- **What 6×6/7×7 needed in `BigCubeSolver`:**
+  - **Pairing with single inner slices** (`pairing_slices()`): on 6×6+ wide turns (`3Uw`) carry both wing orbits at
+    once, so one orbit can't move without the other. The library now also has each single slice (`2U`, `3U`).
+    4×4/5×5 are unchanged.
+  - **The pairing score on even cubes** (`_slot_score`): it counted "wings that match the piece at the reference
+    place", but an outer turn can reverse an edge, so a set-up turn changed the score without pairing anything. On the
+    6×6, steps that "gained" undid each other for ever. Even cubes now count the biggest group of matching pieces on an
+    edge. The library indexes every piece as a possible anchor (`_register_edge`), and targets aim at that group
+    (`_main_piece`). Odd cubes still pair to the middle piece.
+  - **Edge parity per wing orbit** (`orbits_to_swap`, `wing_parity(orbit)`): 5×5 and 7×7 swap every odd orbit; the 6×6
+    swaps its outer wings when their parity differs from the inner ones'. `WING_PARITY` on that orbit's slices (`2R`,
+    `3R`) is built per orbit (`_Shape.swap_algs`). Pairing leaves up to 2 edges per needed swap for the Parity stage.
+  - **6×6 OLL/PLL parity:** the 4×4 algorithms turned in blocks (`in_blocks`: `Rw` = `3Rw`, `2R` = `2-3R`).
+  - **A cheap way out before the slow one** (`_sideways`): the 6×6 sometimes ends up with four edges each holding one
+    wrong outer wing, in a cycle, so every pairing step unpairs as much as it pairs. One zero-gain step, played only
+    when a gaining step follows, fixes it. The slow `_escape` (every flip macro, up to 2.8 s) is no longer needed
+    (the test still watches the counter).
+- **Planned a step at a time:** a 7×7 solve takes ~100 ms to plan (6×6 ~110, 4×4 ~15, 5×5 ~22), too long for one frame.
+  The solve is now a resumable state machine (`_Run.start/step`, phases centres · edges · parity · swap · repair ·
+  escape · parity_algs · reduced). The public `BigCubeSolver.plan(model, method)` returns a `Planner`; call
+  `step(budget_usec)` until it returns true, then read `stages()`. `solve()` is `plan` + step to the end. The slower
+  pairing searches are split across steps too (`_pair_tick` tiers). Most steps take well under 1 ms. A few per 7×7
+  solve take 20–80 ms (a failed set-up scan or one route search), and those happen while the cube sits in inspection.
+- **`ShowcaseSolve`:** `plan_budget_usec` (constructor's 4th argument; 0 = plan at once, as before, which the tests
+  use), `is_planning()`, signal `planned`. Big cubes are planned during inspection, `plan_budget_usec` per `advance`.
+  Inspection waits for the plan. A tap (and `pose_showcase`) finishes it at once. A key turn by the player drops it, and
+  the team plans again when it takes the cube back. main.gd passes `SHOWCASE_PLAN_BUDGET_USEC` (4 ms) and rebuilds the
+  chips on `planned`, so on 4×4–7×7 the chip row fills in a moment after a new scramble appears.
+- **Numbers:** 30/30 random scrambles per size in a probe (4×4 ~170 moves, 5×5 ~315, 6×6 ~520, 7×7 ~765). Warm-up
+  (libraries + one solve) 7×7 ~0.4 s, at start or unlock for players who own it. **Bench** (software Mesa, relative;
+  `main` → this branch, ms/frame): `bench` Low 31.4 → 33.1, High 82.3 → 83.2; `bench_row` Low 37.9 → 39.6, High
+  79.7 → 80.7. bench_row/bench stays far under 1.5×. The worst High frame went from 110 to 134 ms, probably a planning
+  step. The bench's 7×7 now runs the showcase (manual turns at 12 turns/s) instead of speed mode.
+- **Tests:** `test_big_cube_solver` covers all four sizes: 60 scrambles each on 4×4/5×5 and 30 each on 6×6/7×7, with
+  every stage goal checked and limits per size on plan time (7×7 < 250 ms average) and length. It also checks the
+  per-orbit wing swaps and the 6×6 block parities on the model, and that a step-by-step plan matches `solve()`.
+  `test_big_cube_showcase` adds the 7×7, planning with a budget (inspection waits, `planned` fires once), a key turn
+  while planning, and a tap that finishes it. Tests that used the 7×7 as "no showcase" use the Megaminx now.
+- Screenshots: `docs/screenshots/R.6b-big-cubes/` (7×7: Centres, Edges, Parity on the endgame preset, and a Beginner
+  solve's second layer), checked by `screenshot-checker`. They were quantised to 256 colours to stay under 300 KB.
+- **Known, not fixed (since R.6a):** a Beginner solve with parity has 10 stage chips, and that HBox row is wider than
+  the stage column, so the left column grows and the shop moves ~40 px right during such a solve (no clipping). A fix
+  touches `main.tscn` (a shared hot file): for example shorter chip names, or a row that shrinks its chips. Worth a small
+  task.
+- **Gate:** the work-in-progress commits on the branch used `CUBE_SKIP_GATE=1`, to save unfinished work at the stop
+  hook's request. They went only to the branch, and the final commit passed the gate's checks. No save, content or
+  balance change. Parallel sessions: none were running; merged with `origin/main` at the claim.
+
 ## 2026-11-13 — Task R.6a: big cubes in the solver (4×4 and 5×5)
 - **`scripts/cube/big_cube_solver.gd` (class `BigCubeSolver`):** solves a 4×4 or 5×5 by reduction, in stages, for the
   showcase solve: **Centres** → **Edges** → **Parity** (only when there is one) → the learned method's own stages on
