@@ -602,25 +602,26 @@ class _Shape:
 			source[x] = e
 		var id := e_moves.size()
 		var useful := false
+		var anchors := [ref] if n % 2 == 1 else range(n - 2)  # even cubes: any piece can be the one the others join
 		for slot in 12:
 			for side in 2:
 				var places := slot_a[slot] if side == 0 else slot_b[slot]
-				var anchor := source[places[ref]]
-				for k in places.size():
-					if k == ref:
-						continue
-					var wing := source[places[k]]
-					if wing == places[k] and anchor == places[ref]:
-						continue  # not touched
-					if slot_of[wing] == slot_of[anchor] and side_of[wing] == side_of[anchor]:
-						continue  # they were together already
-					var key := (wing * count + anchor) if wing < anchor else (anchor * count + wing)
-					if not e_index.has(key):
-						e_index[key] = PackedInt32Array()
-					var list: PackedInt32Array = e_index[key]
-					list.append(id)
-					e_index[key] = list
-					useful = true
+				for at: int in anchors:
+					var anchor := source[places[at]]
+					for k in range(at + 1 if n % 2 == 0 else 0, places.size()):
+						if k == at:
+							continue
+						var wing := source[places[k]]
+						if wing == places[k] and anchor == places[at]:
+							continue  # not touched
+						if slot_of[wing] == slot_of[anchor] and side_of[wing] == side_of[anchor]:
+							continue  # they were together already
+						var key := (wing * count + anchor) if wing < anchor else (anchor * count + wing)
+						var list: PackedInt32Array = e_index.get(key, PackedInt32Array())
+						if list.is_empty() or list[-1] != id:
+							list.append(id)
+							e_index[key] = list
+						useful = true
 		if not useful and not is_flip:
 			return
 		var moves: Array[Dictionary] = [slice]
@@ -927,26 +928,48 @@ class _Run:
 		var out := PackedInt32Array()
 		var last := s.n - 3
 		for slot in 12:
-			var ra := col[s.slot_a[slot][s.ref]]
-			var rb := col[s.slot_b[slot][s.ref]]
+			var main := _main_piece(slot)
+			var ra := col[s.slot_a[slot][main]]
+			var rb := col[s.slot_b[slot][main]]
 			for k in last + 1:
-				if k == s.ref or (col[s.slot_a[slot][k]] == ra and col[s.slot_b[slot][k]] == rb):
+				if k == main or (col[s.slot_a[slot][k]] == ra and col[s.slot_b[slot][k]] == rb):
 					continue
 				var orbit := mini(k, last - k)
 				for other in 12:
 					for k2 in last + 1:
-						if mini(k2, last - k2) != orbit or (other == slot and k2 == s.ref):
+						if mini(k2, last - k2) != orbit or (other == slot and k2 == main):
 							continue
 						var pa := col[s.slot_a[other][k2]]
 						var pb := col[s.slot_b[other][k2]]
 						if pa == ra and pb == rb:
 							if other != slot:
 								out.append(s.slot_a[other][k2])
-								out.append(s.slot_a[slot][s.ref])
+								out.append(s.slot_a[slot][main])
 						elif pa == rb and pb == ra:
 							out.append(s.slot_b[other][k2])
-							out.append(s.slot_a[slot][s.ref])
+							out.append(s.slot_a[slot][main])
 		return out
+
+
+	## The piece on an edge the others are paired to: odd cubes the middle one; even cubes one of the biggest group of
+	## matching pieces (the reference place if it is in one), so what counts as progress matches _slot_score.
+	func _main_piece(slot: int) -> int:
+		var s := shape
+		if s.n % 2 == 1:
+			return s.ref
+		var on_a := s.slot_a[slot]
+		var on_b := s.slot_b[slot]
+		var best := s.ref
+		var best_count := -1
+		for k: int in [s.ref] + range(s.n - 2):
+			var same := 0
+			for j in s.n - 2:
+				if col[on_a[j]] == col[on_a[k]] and col[on_b[j]] == col[on_b[k]]:
+					same += 1
+			if same > best_count:
+				best_count = same
+				best = k
+		return best
 
 
 	## One pairing step: a few outer turns, then a library macro that pairs something without unpairing more. Tried in
@@ -1028,31 +1051,78 @@ class _Run:
 	## Plays `setup` and the first of `macros` that leaves more wings paired than before; false if none does.
 	## `turned` is the cube after the set-up. Only the edges a macro changes are counted.
 	func _play_first_gain(setup: PackedInt32Array, turned: PackedInt32Array, macros: PackedInt32Array) -> bool:
+		for id in macros:
+			if _edge_gain(id, turned) > 0:
+				_play_macro(setup, id)
+				return true
+		return false
+
+
+	func _play_macro(setup: PackedInt32Array, id: int) -> void:
+		for o in setup:
+			play(shape.outer[o])
+		for move: Dictionary in shape.e_moves[id]:
+			play(move)
+
+
+	## How many more wings an edge macro pairs than it unpairs, on the cube `turned`.
+	func _edge_gain(id: int, turned: PackedInt32Array) -> int:
 		var s := shape
 		var a := PackedInt32Array()
 		var b := PackedInt32Array()
 		a.resize(s.n - 2)
 		b.resize(s.n - 2)
-		for id in macros:
-			var source := s.e_source[id]
-			var gain := 0
-			for slot in s.e_slots[id]:
-				var on_a := s.slot_a[slot]
-				var on_b := s.slot_b[slot]
-				for k in s.n - 2:
-					a[k] = turned[on_a[k]]
-					b[k] = turned[on_b[k]]
-				gain -= _slot_score(a, b)
-				for k in s.n - 2:
-					a[k] = turned[source[on_a[k]]]
-					b[k] = turned[source[on_b[k]]]
-				gain += _slot_score(a, b)
-			if gain > 0:
+		var source := s.e_source[id]
+		var gain := 0
+		for slot in s.e_slots[id]:
+			var on_a := s.slot_a[slot]
+			var on_b := s.slot_b[slot]
+			for k in s.n - 2:
+				a[k] = turned[on_a[k]]
+				b[k] = turned[on_b[k]]
+			gain -= _slot_score(a, b)
+			for k in s.n - 2:
+				a[k] = turned[source[on_a[k]]]
+				b[k] = turned[source[on_b[k]]]
+			gain += _slot_score(a, b)
+		return gain
+
+
+	## Stuck (every pairing step unpairs as much as it pairs, e.g. a 6×6's last outer wings in a cycle): one step that
+	## pairs one wing and unpairs another, when a pairing step follows it. Cheap, so it comes before _escape.
+	func _sideways() -> bool:
+		var s := shape
+		var before := _edge_metric(col)
+		var targets := _edge_targets()
+		var tried := {}
+		for index in range(0, 19):
+			var setup := s.setups[index]
+			var turned := PackedInt32Array()
+			var i := 0
+			while i < targets.size():
+				var wing := targets[i]
+				var anchor := targets[i + 1]
+				i += 2
 				for o in setup:
-					play(s.outer[o])
-				for move: Dictionary in s.e_moves[id]:
-					play(move)
-				return true
+					wing = s.outer_dest[o][wing]
+					anchor = s.outer_dest[o][anchor]
+				var key := (wing * s.count + anchor) if wing < anchor else (anchor * s.count + wing)
+				if not s.e_index.has(key):
+					continue
+				if turned.is_empty():
+					turned = col
+					for o in setup:
+						turned = s.apply(turned, s.outer[o])
+				for id: int in s.e_index[key]:
+					if tried.has(index * 100000 + id) or _edge_gain(id, turned) != 0:
+						continue
+					tried[index * 100000 + id] = true
+					var probe := _copy()
+					probe._play_macro(setup, id)
+					if probe._edge_step(false) and probe._edge_metric(probe.col) > before:
+						moves.append_array(probe.moves)
+						col = probe.col
+						return true
 		return false
 
 
@@ -1091,11 +1161,11 @@ class _Run:
 
 
 	func _pair_edges() -> void:
-		var odd := not orbits_to_swap().is_empty()
+		var left := 2 * orbits_to_swap().size()  # each swap leaves one or two edges
 		while _edge_metric(col) < _edge_max():
-			if odd and unpaired_edges() <= 2:
+			if unpaired_edges() <= left:
 				return  # the last edges can't be paired until two wings are swapped: the parity stage
-			if not _edge_step():
+			if not _edge_step() and not _sideways():
 				return
 
 
