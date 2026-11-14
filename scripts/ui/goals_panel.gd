@@ -15,7 +15,8 @@ const StickerScene := preload("res://scenes/icon_sticker.tscn")
 const ACHIEVEMENTS_TAB := 0
 const COLLECTION_TAB := 1
 const STATS_TAB := 2
-const TAB_ICONS: Array[String] = ["federation_rankings", "small_cubes", "stackmat"]
+const COMPETITIONS_TAB := 3  ## 8.3b: hidden until the Competition Circuit perk opens the system
+const TAB_ICONS: Array[String] = ["federation_rankings", "small_cubes", "stackmat", "competition"]
 const REFRESH_INTERVAL := 0.5
 const ACHIEVEMENT_COLUMNS := 2
 const ITEM_COLUMNS := 6
@@ -38,6 +39,7 @@ const BOOLEAN_TYPES := ["puzzle", "method", "drill_set"]  ## achievements with n
 @onready var _pages: TabContainer = %Pages
 @onready var _achievement_chip: StatChip = %AchievementChip
 @onready var _collection_chip: StatChip = %CollectionChip
+@onready var competitions: CompetitionView = %Competitions
 
 var selected_slot := ""            ## the kit slot picked to fill ("" = none)
 var _refresh_left := 0.0
@@ -77,9 +79,10 @@ func _process(delta: float) -> void:
 		refresh()
 
 
-## Opens on `tab` (ACHIEVEMENTS_TAB, COLLECTION_TAB, STATS_TAB; -1 keeps the last one).
+## Opens on `tab` (ACHIEVEMENTS_TAB, COLLECTION_TAB, STATS_TAB, COMPETITIONS_TAB; -1 keeps the last one).
 func open(tab: int = -1) -> void:
-	if tab >= 0:
+	_sync_tabs()
+	if tab >= 0 and not _pages.is_tab_hidden(tab):
 		_pages.current_tab = tab
 	selected_slot = ""
 	refresh()
@@ -98,6 +101,15 @@ func current_tab() -> int:
 	return _pages.current_tab
 
 
+## The Competitions tab shows once its system is unlocked (8.3b).
+func _sync_tabs() -> void:
+	var comps_open: bool = Game.is_system_unlocked("competitions")
+	if _pages.is_tab_hidden(COMPETITIONS_TAB) == comps_open:
+		_pages.set_tab_hidden(COMPETITIONS_TAB, not comps_open)
+		if not comps_open and _pages.current_tab == COMPETITIONS_TAB:
+			_pages.current_tab = ACHIEVEMENTS_TAB
+
+
 ## Updates the header and the open tab.
 func refresh() -> void:
 	_refresh_left = REFRESH_INTERVAL
@@ -105,7 +117,10 @@ func refresh() -> void:
 	_achievement_chip.set_stat("%d/%d" % [achievements["earned"], achievements["total"]], "achievements")
 	var items: Dictionary = Game.get_collection_progress()
 	_collection_chip.set_stat("%d/%d" % [items["owned"], items["total"]], "items")
+	_sync_tabs()
 	match _pages.current_tab:
+		COMPETITIONS_TAB:
+			competitions.refresh()
 		ACHIEVEMENTS_TAB:
 			_refresh_achievements()
 		COLLECTION_TAB:
@@ -680,7 +695,8 @@ const STAT_ROWS := [
 
 ## 7.12: Game.get_bonus_breakdown()'s rows, named.
 const BONUS_ROWS := [["kit", "Comp Kit"], ["collection", "Rest of the collection"], ["sets", "Brand sets"],
-		["trophies", "Unspent trophies"], ["achievements", "Achievements"], ["perks", "Trophy perks"]]
+		["trophies", "Unspent trophies"], ["achievements", "Achievements"], ["perks", "Trophy perks"],
+		["medals", "Competition medals"]]
 
 
 ## A breakdown row's effects as text: "+8 % 3×3 moves, +2 % tap moves" ("—" for none).

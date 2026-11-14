@@ -46,6 +46,8 @@ var _hint_labels: Dictionary = {}    ## face index -> Label (key hints on the cu
 var golden_mode := false             ## a Golden Scramble case (S.6): short scramble, 10 s clock, not a record
 var golden_result := ""              ## what the case gave ("" while it runs)
 var golden_case: Dictionary = {}     ## 7.13: a real OLL/PLL golden case ({} for a short scramble)
+var competition_note := ""           ## what happened to the attempt (shown under the timer until the next scramble)
+var competition_attempt := false     ## 8.3b: the next finished solve is your attempt in the running competition's round
 const GOLDEN_CLOSE_DELAY := 2.2      ## seconds the result shows before the station closes by itself
 var _golden_close_left := 0.0
 var drill_mode := false              ## algorithm drills (S.4): the picker shows drill sets, each attempt is one case
@@ -105,6 +107,8 @@ func close() -> void:
 	if golden_mode and Game.golden_attempt_left > 0.0:
 		Game.finish_golden(false)  # walking away from a golden case is a miss
 	golden_mode = false
+	competition_attempt = false
+	competition_note = ""
 	_puzzle_picker.visible = true
 	UiFx.close_panel(self, _backdrop, _margin)
 	set_process(false)
@@ -128,6 +132,22 @@ func open_golden(puzzle_id: String, moves: int) -> void:
 	_scramble_label.text = "Golden Scramble:  %s" % session.scramble_text()
 	_build_hints()
 	_refresh()
+
+
+## Opens on the running competition's event for your own attempt (8.3b, D19): the next solve you finish counts as one
+## of the round's five (it replaces the team's worst time if it's faster) and is a normal hand solve too.
+func open_competition_attempt(puzzle_id: String) -> void:
+	open(puzzle_id)
+	set_drill_mode(false, false)
+	set_daily_mode(false, false)
+	competition_attempt = Game.can_submit_competition_attempt() and _puzzle == puzzle_id  # (open() fell back if it can't be solved here)
+	_refresh()
+
+
+## Would the solve being done now count as the competition attempt? (Armed, on the event's puzzle, the round open.)
+func _attempt_armed() -> bool:
+	return competition_attempt and not daily_mode and not drill_mode and not golden_mode \
+			and session.puzzle_id == String(Game.competition.get("puzzle", "")) and Game.can_submit_competition_attempt()
 
 
 ## Opens a Golden Scramble that is a real OLL/PLL case on the 3×3 (7.13): `golden` is Game.golden_case
@@ -192,6 +212,7 @@ func new_attempt(rng: RandomNumberGenerator = null) -> void:
 	session.inspection = bool(Settings.get_value("inspection"))
 	session.start(_puzzle, _now(), rng)
 	last_info = {}
+	competition_note = ""
 	_view.show_state(session.scramble)
 	_scramble_label.text = session.scramble_text()
 	_keys_help.text = keys_help_text()
@@ -245,6 +266,8 @@ func keys_help_text() -> String:
 ## Daily on (today's scramble for the current cube, timed or FMC) or off.
 func set_daily_mode(on: bool, restart: bool = true) -> void:
 	daily_mode = on
+	if on:
+		competition_attempt = false  # a competition attempt is a fresh scramble, never the daily one (it can be replayed)
 	_daily_toggle.set_pressed_no_signal(on)
 	_fmc_toggle.visible = on
 	if not on:
@@ -321,6 +344,8 @@ func _refresh_daily_panel() -> void:
 func set_drill_mode(on: bool, restart: bool = true) -> void:
 	if on and daily_mode:
 		set_daily_mode(false, false)
+	if on:
+		competition_attempt = false
 	drill_mode = on
 	_drills_toggle.set_pressed_no_signal(on)
 	_inspection_toggle.visible = not on
@@ -611,6 +636,11 @@ func _after_turn(was_done: bool) -> void:
 		var result: Dictionary = session.results.back()
 		last_info = Game.record_hand_solve(session.puzzle_id, float(result["time"]), String(result["penalty"]),
 				int(result["moves"]))
+		if _attempt_armed():
+			competition_attempt = false
+			competition_note = "Competition attempt: %s. It counts if it beats your team's worst time this round." % Num.solve_time(
+					SolveSession.final_time(result)) if Game.submit_competition_attempt(SolveSession.final_time(result)) \
+					else "That solve couldn't count as your competition attempt (a DNF, or the round ended)."
 		_view.flash()
 		Audio.play_solve()
 
@@ -682,11 +712,12 @@ func _refresh_clock() -> void:
 			var left := session.inspection_left(now)
 			_timer_label.text = str(ceili(left)) if left > 0.0 else ("DNF" if session.penalty == "DNF" else "+2")
 			_timer_label.theme_type_variation = &"TimerWaiting"
-			_status_label.text = "Inspection: look around (rotations are free). Your first turn starts the timer."
+			_status_label.text = "Inspection: look around (rotations are free). Your first turn starts the timer." \
+					+ (" This solve is your competition attempt." if _attempt_armed() else "")
 		"ready":
 			_timer_label.text = "0.00"
 			_timer_label.theme_type_variation = &"TimerWaiting"
-			_status_label.text = "Your first turn starts the timer."
+			_status_label.text = "Your first turn starts the timer." + (" This solve is your competition attempt." if _attempt_armed() else "")
 		"solving":
 			_timer_label.text = Num.solve_time(session.elapsed(now))
 			_timer_label.theme_type_variation = &"TimerLabel"
@@ -698,6 +729,8 @@ func _refresh_clock() -> void:
 			_status_label.text = "%s  %d moves  ·  %.2f TPS%s%s  ·  Enter: %s" % [
 				pb_text(last_info), int(result["moves"]), session.tps(now), reward_text(last_info),
 				_daily_suffix() if daily_mode else "", "try today's scramble again" if daily_mode else "next scramble"]
+			if competition_note != "":
+				_status_label.text = competition_note
 		_:
 			_timer_label.text = "0.00"
 			_status_label.text = " "

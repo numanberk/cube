@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/stat_chip.tscn" id="5_chip"]
 [ext_resource type="Texture2D" path="res://assets/icons/stat_trophy.svg" id="6_trophy"]
 [ext_resource type="Texture2D" path="res://assets/icons/small_cubes.svg" id="7_cubes"]
+[ext_resource type="Script" path="res://scripts/ui/competition_view.gd" id="8_comps"]
 
 [node name="GoalsPanel" type="Control"]
 visible = false
@@ -117,3 +118,10 @@ visible = false
 layout_mode = 2
 horizontal_scroll_mode = 0
 metadata/_tab_index = 2
+
+[node name="Competitions" type="VBoxContainer" parent="Center/Panel/Box/Pages"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+script = ExtResource("8_comps")
+metadata/_tab_index = 3

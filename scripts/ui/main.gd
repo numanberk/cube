@@ -129,6 +129,9 @@ func _ready() -> void:
 	Game.collection_drop.connect(_on_collection_drop)
 	Game.career_moment.connect(_on_career_moment)
 	Game.kit_changed.connect(_on_kit_changed)
+	Game.competition_started.connect(_on_competition_started)
+	Game.competition_finished.connect(_on_competition_finished)
+	goals_panel.competitions.attempt_requested.connect(open_competition_attempt)
 	_kit_sets = _active_kit_set_keys()  # sets already active at start don't pop
 	perk_panel.perk_pressed.connect(func(id: String) -> void: Game.buy_perk(id))
 	solve_button.pressed.connect(func() -> void: solve_station.open(Game.get_focused_puzzle_id()))
@@ -661,7 +664,13 @@ func _animate_helper_moves(delta: float) -> void:
 ## The "Welcome back" panel after time away (or a damaged-save notice). The Solves counter holds the old amount
 ## until Collect, then counts up with a chime.
 func _show_offline_report() -> void:
-	if welcome_panel.show_report(Game.offline_report, Game.load_notice):
+	var report := Game.offline_report.duplicate()
+	var was_running := not Game.competition.is_empty()
+	Game.update_competition()  # one that ended while away: its result now (pop and news), and a line in Welcome back
+	if was_running and Game.competition.is_empty() and not report.is_empty():
+		var result: Dictionary = Game.get_competition_result()
+		report["competition"] = CompetitionView.result_line(result)
+	if welcome_panel.show_report(report, Game.load_notice):
 		_shown_solves = Game.solves - float(Game.offline_report.get("solves", 0.0))
 		_hold_counter = true
 	Game.load_notice = ""  # show it once
@@ -1350,7 +1359,11 @@ func _on_achievement_earned(achievement_id: String) -> void:
 
 
 ## A Cube Collection drop (7.3b): a pop and a news line; the Goals button counts it.
-func _on_collection_drop(item_id: String, stars: int, _source: String) -> void:
+func _on_collection_drop(item_id: String, stars: int, source: String) -> void:
+	if source == "competition":  # 8.3b: the competition's result pop and news line name the item
+		if goals_panel.visible:
+			goals_panel.refresh()
+		return
 	toast.push(drop_toast(item_id, stars))
 	var item := Content.get_collection_item(item_id)
 	news.push("drop", "New in your collection: %s!" % item.get("name", item_id) if stars <= 1
@@ -1368,6 +1381,36 @@ func drop_toast(item_id: String, stars: int) -> Dictionary:
 			"text": "%s %s  ·  %s" % [rarity, item.get("kind", ""), GoalsPanel.item_effect_text(item_id)],  # the stars: pips
 			"icon": Content.icon(String(item.get("icon", "small_cubes"))), "stars": [stars, int(Content.COLLECTION["max_stars"])],
 			"category": GoalsPanel.RARITY_CATEGORY.get(item.get("rarity", ""), &"station")}
+
+
+# --- Competitions (task 8.3b) ----------------------------------------------------------------
+
+func _on_competition_started(tier: String, puzzle_id: String) -> void:
+	news.push("competition", "Your team is off to the %s (%s). Results in %s." % [Content.get_competition_tier(tier)["name"],
+			Content.get_puzzle(puzzle_id)["name"], CompetitionView.length_text(float(Content.get_competition_tier(tier)["seconds"]))])
+	Audio.play_unlock()
+
+
+## A competition ended (also one that finished while the game was closed): a pop, a news line, the Goals count.
+func _on_competition_finished(result: Dictionary) -> void:
+	var medal := String(result.get("medal", ""))
+	toast.push({"kind": "competition", "caption": "COMPETITION RESULT", "title": CompetitionView.result_title(result),
+			"text": CompetitionView.result_text(result), "icon": Content.icon("competition"),
+			"category": &"trophies" if medal != "" else &"station"})
+	news.push("competition", CompetitionView.result_line(result))
+	if medal != "":
+		Audio.play_unlock()
+	_count_unseen_goal()
+	if goals_panel.visible:
+		goals_panel.refresh()
+
+
+## "Take your attempt" (D19): the Solve Station on the event's puzzle; the next finished solve counts.
+func open_competition_attempt(puzzle_id: String) -> void:
+	if not Game.can_submit_competition_attempt() or not CompetitionView.can_hand_solve(puzzle_id):
+		return
+	goals_panel.close()
+	solve_station.open_competition_attempt(puzzle_id)
 
 
 ## 7.7: a brand set tier the kit just reached pops and makes a news line (once until it's lost and regained).

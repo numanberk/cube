@@ -24,7 +24,7 @@ const SAMPLE_INTERVAL := 5.0  ## lifetime Solves are sampled this often (see "sa
 const COMPETE_FACTOR := 2.0
 ## The perks the bot buys after a championship, in this order, each only while it keeps at least PERK_KEEP of its
 ## trophies unspent (a perk is a trade: only unspent trophies give the +2 %, D14).
-const PERK_PLAN: Array[String] = ["team_captain", "warm_up", "comp_prep", "team_spirit", "practice_away",
+const PERK_PLAN: Array[String] = ["team_captain", "warm_up", "comp_circuit", "comp_prep", "team_spirit", "practice_away",
 		"home_crowd", "club_founder", "appearance_fees", "big_cube_prep", "team_chemistry", "overnight"]
 const PERK_KEEP := 0.5
 

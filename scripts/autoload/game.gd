@@ -37,14 +37,15 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 19  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 20  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
                           ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
                           ## v12 (6.3b): auto-buyer toggles; v13 (7.0a): career moments seen; v14 (7.1a): achievements;
                           ## v15 (7.2a): stats; v16 (7.3a): Cube Collection;
                           ## v17 (7.4a): Comp Kit; v18 (7.6/7.8): Legendary pity counter, new career moments seen;
-                          ## v19 (8.3a): competitions (the running one, medals, records)
+                          ## v19 (8.3a): competitions (the running one, medals, records);
+                          ## v20 (8.3b): Competition Circuit is buyable (granted to owners of its child perks)
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -3495,6 +3496,18 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("competitions"):
 			data["competitions"] = {}
 		data["version"] = 19
+	if int(data["version"]) < 20:
+		# v20 (8.3b): Competition Circuit can be bought now, so its branch needs it. Whoever owns one of the perks
+		# under it bought them when it couldn't be: they get it for free (else loading would drop those perks).
+		var champ: Variant = data.get("championship", {})
+		if typeof(champ) == TYPE_DICTIONARY and typeof((champ as Dictionary).get("perks")) == TYPE_ARRAY:
+			var owned: Array = champ["perks"]
+			if not owned.has("comp_circuit"):
+				for id: String in ["comp_prep", "home_crowd", "appearance_fees"]:
+					if owned.has(id):
+						owned.push_front("comp_circuit")
+						break
+		data["version"] = 20
 	return data
 
 

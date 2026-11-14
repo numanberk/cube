@@ -594,7 +594,7 @@ Small tasks; any order, but 7.6 needs a save change. D18 answered (owner, 2026-1
 - [x] **8.2 Scramble Challenge:** replaced by the Solve Station (S.1–S.5). Old text: an optional 10-second burst where taps count ×10, with a result card. Never required.
       *Done when:* there are tests and a screenshot.
 
-- [ ] **8.3 Competitions (PR):** timed events like Idle Skilling's raids: Local → Regional → National → Continental → Worlds.
+- [x] **8.3 Competitions (PR):** timed events like Idle Skilling's raids: Local → Regional → National → Continental → Worlds.
       Each asks for a solves/s target held for 60 s with your current kit and puzzle. Medals (bronze/silver/gold) give
       permanent bonuses and collection drops. You can fail and come back later. Unlocked by the Competition branch (6.3).
       *Done when:* tests cover pass/fail, medal rewards and the unlock, and there's a screenshot.
@@ -610,9 +610,11 @@ Small tasks; any order, but 7.6 needs a save change. D18 answered (owner, 2026-1
         save/load and the migration, and the pacing targets still pass.
         *(Done 2026-11-14: `Content.COMPETITIONS`, GameState's competition API, save v19. See the CHANGELOG for what
         8.3b needs.)*
-  - [ ] **8.3b Screen:** the Competitions screen (register, live rounds, results sheet, medals), the hand attempt in the
+  - [x] **8.3b Screen:** the Competitions screen (register, live rounds, results sheet, medals), the hand attempt in the
         Solve Station, Welcome back's result; then the **From 6.3** and **Save safety** notes below (make
         `comp_circuit` buyable, the grant migration). *Done when:* the rest of 8.3's *Done when* (unlock test, screenshot).
+        *(Done 2026-11-14: the Goals screen's Competitions tab, the Solve Station attempt, save v20. Shots:
+        `docs/screenshots/8.3b-competitions/`.)*
       **From 6.3:** the perk `comp_circuit` (Competition branch's first node) has `"buyable": false` and a `soon` note
       until this task: remove both and check `Game.is_system_unlocked("competitions")`. Medal bonus perks go in that branch.
       **Save safety:** players can own Comp Prep / Home Crowd / Appearance Fees without `comp_circuit` today, and

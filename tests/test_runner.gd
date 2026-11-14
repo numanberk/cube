@@ -4909,6 +4909,102 @@ func test_competition_save() -> void:
 		game.free()
 
 
+## 8.3b: the Competitions tab of the Goals screen (hidden until the perk), registering, the running view with its
+## result sheet, the hand attempt through the Solve Station, the result's pop and news line, and the v20 grant.
+func test_competition_screen() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	root.get_node("Settings").persistence_enabled = false
+	game.competition_now = 1000.0
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var panel = main.goals_panel  # untyped (CLAUDE.md "Testing gotcha")
+	var view = panel.competitions
+	main.open_goals(0)
+	check(panel._pages.is_tab_hidden(3), "no Competitions tab without the perk")
+	game.perks["comp_circuit"] = true
+	game.invalidate_upgrade_cache()
+	main.open_goals(3)
+	check(not panel._pages.is_tab_hidden(3) and panel.current_tab() == 3 and view.state() == "register", "with it, the tab shows the register view")
+	check(view.selected_tier == "local" and view._tier_chips["regional"].disabled and not view._tier_chips["local"].disabled,
+			"Local is picked; Regional's chip waits for a medal")
+	check(view._event_rows["2x2"]["row"].visible and not view._event_rows["3x3"]["row"].visible, "events are the puzzles you have")
+	check(view._event_rows["2x2"]["text"].text.contains(Num.solve_time(game.get_competition_average("2x2"))), "an event row shows your average")
+	check(view.register("2x2") and view.state() == "running" and view._running.visible and not view._register.visible, "Register starts it: the running view")
+	main.news.advance(10.0)
+	check(main.news.history[0].contains("Local Open"), "...with a news line (%s)" % main.news.history[0])
+	check(view._attempt.visible and view._run_clock.text == Num.clock(900.0), "the clock and \"Take your attempt\" show")
+	# The hand attempt: the Solve Station opens on the event; the next solve counts.
+	var station: Node = main.get_node("%SolveStation")
+	view._attempt.pressed.emit()
+	check(_closed(panel) and station.visible and station.competition_attempt and station.session.puzzle_id == "2x2",
+			"\"Take your attempt\" opens the Solve Station on the event")
+	station.set_daily_mode(true)
+	check(not station.competition_attempt, "Daily mode disarms the attempt (the daily scramble can be replayed)")
+	station.close()
+	main.open_goals(3)
+	view._attempt.pressed.emit()
+	station.handle_key(KEY_SPACE)  # (ends inspection if it's on)
+	for move in station.session.model.inverse_sequence(station.session.scramble):
+		station.play_move(move)
+	check(game.competition["hand"].has("0") and not station.competition_attempt and station.competition_note.begins_with("Competition attempt"),
+			"the solve is this round's hand attempt (%s)" % [game.competition["hand"]])
+	station.close()
+	# The end: a pop, a news line, the result card; the next tier opens after a medal.
+	game.competition["rating"] = 30.0
+	game.competition_now = 1000.0 + 900.0
+	main.toast.clear()
+	game.update_competition()
+	main.toast.advance(0.0)
+	check(main.toast.get_showing().get("kind", "") == "competition" and main.toast.get_texts()[1].contains("Gold"), "the result pops: %s" % [main.toast.get_texts()])
+	for i in 6:  # (the hand solve's own lines are in the queue too)
+		main.news.advance(10.0)
+	check(main.news.history.any(func(line: String) -> bool: return line.contains("Local Open") and line.contains("Gold")),
+			"...and makes a news line (%s)" % [main.news.history])
+	main.open_goals(3)
+	check(view.state() == "result" and view._result.visible and view._result_title.text.contains("Gold!") and view._register.visible,
+			"the tab shows the result over the register view: %s" % view._result_title.text)
+	check(not view._tier_chips["regional"].disabled, "a medal opened Regional")
+	view._dismiss.pressed.emit()
+	check(view.state() == "register" and not view._result.visible, "OK dismisses the result")
+	# A running competition's sheet after a round.
+	view.select_tier("regional")
+	view.register("2x2")
+	game.competition_now += 1400.0
+	view.refresh()
+	check(view._sheet.get_child_count() == 16 + 1, "after Regional's first round: 16 rows and the cut line (%d)" % view._sheet.get_child_count())
+	check(view.result_line({"final": false, "round": "First round", "place": 11, "field": 16, "average": 12.5, "single": 11.0,
+			"medal": "", "pb_average": false, "pb_single": true, "tier": "regional", "puzzle": "2x2"})
+			== "Regional Championship  ·  2×2: out in the first round. 11th of 16, not enough to go on  ·  average 12.50  ·  best single 11.00 (a record!).",
+			"a cut result's line")
+	check(view.result_line({"final": true, "place": 5, "field": 12, "average": 12.5, "single": 11.0, "medal": "", "tier": "local", "puzzle": "2x2"})
+			== "Local Open  ·  2×2: 5th of 12. Average 12.50  ·  best single 11.00.", "a final without a medal doesn't say the placing twice")
+	check(not view.can_hand_solve("megaminx") and view.can_hand_solve("7x7"), "no hand attempt on the Megaminx (the Solve Station is cubes only)")
+	check(view.length_text(900.0) == "15 minutes" and view.length_text(7200.0) == "2 hours", "lengths read as sentences")
+	check(WelcomePanel.away_lines({"competition": "Local Open: Gold!"}) == ["Local Open: Gold!"], "Welcome back shows a competition that ended while away")
+	panel.close()
+	main.free()
+	game.reset_state()
+	game.competition_now = -1.0
+	# v19 -> v20: whoever owns a perk under Competition Circuit gets it (they couldn't buy it before).
+	var g := perk_game(100)
+	g.perks["comp_prep"] = true
+	var v19 := g.get_save_data()
+	v19["version"] = 19
+	check(not (v19["championship"]["perks"] as Array).has("comp_circuit"), "test setup: a v19 save with Comp Prep and no Circuit")
+	var old := new_game()
+	old.apply_save_data(JSON.parse_string(JSON.stringify(v19)), float(v19["saved_at"]))
+	check(old.has_perk("comp_prep") and old.has_perk("comp_circuit") and old.is_system_unlocked("competitions"),
+			"v19 → v20: Comp Prep's owner gets Competition Circuit, and Competitions")
+	v19["championship"]["perks"] = ["warm_up"]
+	var none := new_game()
+	none.apply_save_data(JSON.parse_string(JSON.stringify(v19)), float(v19["saved_at"]))
+	check(not none.has_perk("comp_circuit"), "...nobody else does")
+	for game_state: GameState in [g, old, none]:
+		game_state.free()
+
+
 ## 7.3a: what drops when (Golden Scrambles, achievements, championships), kept through championships, saved (v16).
 func test_collection_sources_and_save() -> void:
 	var g := new_game()
@@ -6834,12 +6930,13 @@ func test_each_perk() -> void:
 	g2.free()
 	g.free()
 
-	# comp_circuit: Competitions don't exist yet, so it can't be bought, and its children don't wait for it.
+	# comp_circuit (8.3b): opens Competitions; the rest of its branch needs it.
 	g = perk_game(100)
-	check(g.get_perk_status("comp_circuit") == "soon" and not g.buy_perk("comp_circuit"), "Competition Circuit arrives with Competitions (8.3)")
-	check(not g.is_system_unlocked("competitions"), "...so Competitions stay closed")
-	check(g.get_perk_status("comp_prep") == "available" and g.get_perk_status("home_crowd") == "available",
-			"...and the rest of its branch works today (owner, 2026-11-06)")
+	check(not g.is_system_unlocked("competitions") and not g.is_competition_tier_open("local"), "Competitions are closed without it")
+	check(g.get_perk_status("comp_prep") == "locked" and g.get_perk_status("comp_circuit") == "available", "its branch waits for it")
+	check(g.buy_perk("comp_circuit") and g.is_system_unlocked("competitions") and g.can_enter_competition("local", "2x2"),
+			"Competition Circuit opens Competitions: the Local Open can be entered")
+	check(g.get_perk_status("comp_prep") == "available" and g.get_perk_status("home_crowd") == "available", "...and its branch")
 	tested["comp_circuit"] = true
 
 	# comp_prep: ×1.25 trophies.
@@ -6891,26 +6988,26 @@ func test_each_perk() -> void:
 
 
 func test_perks_kept_and_saved() -> void:
-	var g := perk_game(60)
-	for id: String in ["warm_up", "practice_away", "team_captain", "team_spirit", "comp_prep"]:
+	var g := perk_game(80)
+	for id: String in ["warm_up", "practice_away", "team_captain", "team_spirit", "comp_circuit", "comp_prep"]:
 		g.buy_perk(id)
 	var spent_left := g.trophies
 	g.cheat_add_solves(GameState.solves_for_trophies(4))
 	var won := g.compete()
 	check(won == 5 and g.trophies == spent_left + 5, "a championship keeps perks and adds trophies (4 × 1.25 = 5)")
-	check(g.has_perk("team_spirit") and g.perks.size() == 5, "perks are kept through a championship")
+	check(g.has_perk("team_spirit") and g.perks.size() == 6, "perks are kept through a championship")
 	var data := g.get_save_data()
 	check(GameState.SAVE_VERSION >= 11 and int(data["version"]) == GameState.SAVE_VERSION, "saves as v11 or later")
 	var loaded := new_game()
 	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
-	check(loaded.perks.size() == 5 and loaded.has_perk("comp_prep") and loaded.trophies == g.trophies, "perks load")
+	check(loaded.perks.size() == 6 and loaded.has_perk("comp_prep") and loaded.trophies == g.trophies, "perks load")
 	check_near(loaded.get_building_mps("friend"), g.get_building_mps("friend"), "...and work after loading")
 	loaded.free()
 	# A damaged list: unknown ids, perks without their parent and not-yet-buyable ones are dropped.
 	(data["championship"] as Dictionary)["perks"] = ["banana", "overnight", "team_chemistry", "comp_circuit", "warm_up", 7]
 	var damaged := new_game()
 	damaged.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
-	check(damaged.perks.keys() == ["warm_up"], "a damaged perk list keeps only what could have been bought")
+	check(damaged.perks.keys() == ["warm_up", "comp_circuit"], "a damaged perk list keeps only what could have been bought (%s)" % [damaged.perks.keys()])
 	damaged.free()
 	(data["championship"] as Dictionary)["perks"] = "nope"
 	var broken := new_game()

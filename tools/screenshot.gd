@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|known|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--turns 1] [--drill solving|done] [--daily fmc|timed] [--banner puzzle|helper|method|champion] [--goals achievements|collection|stats|kit] [--toast career|achievement|drop|set]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|known|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--turns 1] [--drill solving|done] [--daily fmc|timed] [--banner puzzle|helper|method|champion] [--goals achievements|collection|stats|kit] [--toast career|achievement|drop|set] [--comps register|running|result]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -220,6 +220,22 @@ func _ready() -> void:
 		main.open_goals(1 if tab == 3 else maxi(0, tab))
 		if tab == 3:  # kit: the Collection tab with the Timer slot picked to fill (the other kinds dim)
 			main.goals_panel.select_slot("timer")
+		for i in 8:
+			await get_tree().process_frame
+	if args.has("comps"):  # 8.3b: the Goals screen's Competitions tab: register | running | result
+		var comp_mode := String(args["comps"])
+		Game.perks["comp_circuit"] = true
+		Game.invalidate_upgrade_cache()
+		Game.competition_now = 5000.0
+		Game.competition_medals = {"local:2x2": 3, "local:3x3": 3, "regional:3x3": 2, "national:3x3": 1}
+		Game.competition_records = {"3x3": {"single": 7.41, "average": 8.93}}
+		Game.competitions_entered = 4
+		if comp_mode != "register":
+			Game.enter_competition("continental", "3x3", RANDOM_SEED)
+			Game.competition["rating"] = 12.4
+			Game.competition_now = 5000.0 + 14400.0 * (0.45 if comp_mode == "running" else 1.0)  # round 2 of 3 under way | over
+			Game.update_competition()
+		main.open_goals(3)
 		for i in 8:
 			await get_tree().process_frame
 	if args.has("toast"):  # 7.0b/7.1b/7.3b: a small pop in the stage's corner

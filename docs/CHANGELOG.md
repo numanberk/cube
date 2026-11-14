@@ -2,6 +2,40 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-14 — Task 8.3b: the Competitions screen (save v20); owner asked for Phase 8 up to 8.7 in this session
+- **D20 answered (owner):** both challenge runs and championship venues, challenges first; venues are ROADMAP 8.4b.
+- **Competitions are playable.** The trophy perk **Competition Circuit** (10 trophies) can be bought now and opens a
+  fourth tab in the Goals screen, **Competitions** (`scripts/ui/competition_view.gd`, class `CompetitionView`,
+  `%Competitions`; hidden until the perk). Three states:
+  - **Register:** a chip per competition (locked ones say which medal opens them), what the picked one is (length,
+    entrants, rounds, medal points), and a row per puzzle you have: "Your average now: 14.59 · mid-field here: 10.64
+    · a long shot" (favourite / likely / possible / long shot / out of reach, from your rating against the tier's),
+    your best medal there, **Register**.
+  - **Running:** the competition and event, the clock, the round under way with the time to its results, your
+    team's average, **Take your attempt**, and the last finished round's result sheet (place, name, average, best
+    single; you in the bright style, a rule under the cut).
+  - **Result:** a card on top ("Continental Championship · 3×3: Silver!", placing, average and single with "(a
+    record!)", the medal's points, the item won) until **OK**; the register view is under it.
+- **Your own attempt (D19):** "Take your attempt" closes Goals and opens the Solve Station on the event
+  (`SolveStation.open_competition_attempt`); the next solve you finish is submitted as this round's hand attempt (and
+  is a normal hand solve too); the status line says what happened. Once a round, only while you're still in.
+- **Results reach you:** a pop ("COMPETITION RESULT") and a news line when one ends; one that ended while the game
+  was closed is resolved as the main screen starts and gets a line in Welcome back. The medal's collection item is
+  named there (it doesn't pop separately). Registering makes a news line.
+- **Save v20:** whoever owns Comp Prep, Home Crowd or Appearance Fees gets Competition Circuit for free (they bought
+  those when it couldn't be bought; without it loading would now drop them). The rest of that branch needs it from now on.
+- Stats' "Where your bonus comes from" has a "Competition medals" row; the Compete screen's keep list says
+  "Competition medals and records".
+- **Balance bot:** its perk plan has Competition Circuit before Comp Prep; with 50 trophies it now buys the Circuit and
+  no longer reaches Comp Prep, so more trophies stay unspent: the second run is 37:17 (was 38:54; target ≤ 45 min and
+  ≤ 50 %), the 7×7 at 25:20 into it (was 26:38). The first run is unchanged.
+- **Review fixes (diff-reviewer):** no hand attempt on the Megaminx (the Solve Station only solves cubes; the button
+  hides); Daily or Drill mode disarms the attempt (the daily scramble can be replayed); the news and Welcome back line
+  no longer say the placing twice; lengths read "15 minutes" / "2 hours". Screenshots checked by me, not by
+  `screenshot-checker` (one new tab; the three states are in the folder below).
+- `COMPS=register|running|result` screenshot option. Tests: `test_competition_screen`; the perk tests follow the new rule.
+- Screenshots: `docs/screenshots/8.3b-competitions/`.
+
 ## 2026-11-14 — Task 8.3a: Competitions, rules only (save v19)
 - **D19 answered (owner):** Competitions are the **WCA weekend** of PLAN §4.8 (2), not the 60 s hold; a competition's
   length **scales by tier** (15 min to 8 h of real time, also while the game is closed); one attempt per round may be

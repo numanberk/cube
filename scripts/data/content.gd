@@ -463,6 +463,7 @@ const CHAMPIONSHIP := {
 		"Puzzle mastery levels",
 		"Solve Station records and their bonuses",
 		"Drill and daily results",
+		"Competition medals and records",
 		"Unlocked music",
 		"Lifetime stats and settings",
 	],
@@ -528,8 +529,8 @@ const PERKS := [
 		"effect": {"type": "helper_mult", "value": 2.0}},
 
 	{"id": "comp_circuit", "branch": "competition", "icon": "competition", "name": "Competition Circuit",
-		"description": "Opens Competitions: timed events from Local to Worlds.", "cost": 10, "requires": [],
-		"effect": {"type": "unlock", "system": "competitions"}, "buyable": false, "soon": "Arrives with Competitions"},
+		"description": "Opens Competitions (in Goals): enter your team in real events, from a Local Open to the World Cup, for medals that add moves for good.",
+		"cost": 10, "requires": [], "effect": {"type": "unlock", "system": "competitions"}},
 	{"id": "comp_prep", "branch": "competition", "icon": "stackmat", "name": "Comp Prep",
 		"description": "Championships give 25 % more trophies.", "cost": 15, "requires": ["comp_circuit"],
 		"effect": {"type": "trophy_gain_mult", "value": 1.25}},

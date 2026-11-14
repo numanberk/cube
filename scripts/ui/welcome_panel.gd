@@ -58,6 +58,8 @@ static func away_lines(report: Dictionary) -> Array[String]:
 		for id: String in mastery:
 			parts.append("%s Lv %d → %d" % [Content.get_puzzle(id).get("name", id), int(mastery[id][0]), int(mastery[id][1])])
 		lines.append("Mastery: %s." % ", ".join(parts))
+	if String(report.get("competition", "")) != "":  # 8.3b: a competition ended meanwhile
+		lines.append(String(report["competition"]))
 	var reached: Array = report.get("achievements", [])
 	if not reached.is_empty():
 		var names := PackedStringArray()
