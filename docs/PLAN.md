@@ -343,7 +343,7 @@ put its quick wins and (1) on the roadmap (Phase 7b) and these four ideas in the
 4. **Championship venues:** from the second championship on, the Compete screen offers three host cities for the next
    run, each with a twist ("Melbourne: 4×4 and bigger pay ×3, the 2×2 ×0.5", "Golden City: Golden Scrambles twice
    as often"), so the many runs before the Hall of Fame play differently, with nothing to fail (that stays 8.4's
-   job). Venues as data, the active one saved; the first run is untouched (D6 holds). Open: **D20**.
+   job). Venues as data, the active one saved; the first run is untouched (D6 holds). **D20**: after challenge runs (8.4b).
 
 ## 5. Phases
 
@@ -463,9 +463,10 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
   time, also while the game is closed). One attempt per round may be the player's **own Solve Station solve: optional,
   it replaces the team's worst time if it is better** (it can only help).
 
+- **D20 Venues and challenge runs:** (owner, 2026-11-14) **both, challenge runs first** (8.4), then championship venues
+  (ROADMAP 8.4b, PLAN §4.8 (4)).
+
 ### Open
-- **D20 Venues and challenge runs** (needed before 8.4): Phase 8 with both venues (§4.8 (4)) and challenge runs, or
-  venues first?
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?
 - **D4 Price** (needed by 10.2): free, pay-what-you-want on itch, or paid on Steam?
   *Either way, only CC0/CC-BY assets, so a paid release stays possible.*

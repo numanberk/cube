@@ -13,6 +13,7 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
+| 8.3b Competitions screen, then 8.4–8.7 one after another (owner, 2026-11-14) | claude/zen-albattani-squxya | 2026-11-14 | new panels per task (competition_panel, …) | game.gd, content.gd, main.gd, main.tscn, theme, tests, tools/screenshot.* | yes (v20+) |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -620,6 +621,10 @@ Small tasks; any order, but 7.6 needs a save change. D18 answered (owner, 2026-1
 - [ ] **8.4 Challenge runs (PR):** a championship run with a rule: Beginner method only, No helpers, One-handed
       (taps ×0.5), Big cubes only, No upgrades… Finishing one gives a permanent reward. 6–9 challenges as data.
       *Done when:* tests cover each rule's restriction and its reward, and there's a screenshot.
+- [ ] **8.4b Championship venues (fun pass, 2026-11-13; D20):** from the second championship on, the Compete screen offers
+      three host cities for the next run, each with a twist as data (e.g. "4×4 and bigger pay ×3, the 2×2 ×0.5",
+      "Golden Scrambles twice as often"); the chosen one is saved and shown during the run. The first run is untouched.
+      *Done when:* tests cover each twist, the offer and the save, the pacing targets still pass, and there's a screenshot.
 - [ ] **8.5 Coach rules (PR) [D11]:** Perfect Tower-style automation without code: a list of if/then rules picked from
       menus (If <helper costs < X % of Solves / trophy gain ≥ N / a research slot is free> → <buy / Compete / start
       research>). Unlocked late in the Automation branch. Every rule shows exactly what it will do.
