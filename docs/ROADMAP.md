@@ -13,6 +13,7 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
+| 8.3a Competitions: rules | claude/zen-albattani-squxya | 2026-11-14 | (none new) | game.gd, content.gd, tests/test_runner.gd, tools/simulator.gd | yes (v19) |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -597,8 +598,19 @@ Small tasks; any order, but 7.6 needs a save change. D18 answered (owner, 2026-1
       Each asks for a solves/s target held for 60 s with your current kit and puzzle. Medals (bronze/silver/gold) give
       permanent bonuses and collection drops. You can fail and come back later. Unlocked by the Competition branch (6.3).
       *Done when:* tests cover pass/fail, medal rewards and the unlock, and there's a screenshot.
-      **Fun pass (2026-11-13):** PLAN §4.8 (2) proposes a WCA-weekend shape instead of the 60 s hold; decide **D19**
-      with the owner before starting.
+      **D19 (owner, 2026-11-14):** the WCA weekend of PLAN §4.8 (2) replaces the 60 s hold: register for a comp with an
+      event (a puzzle you own); it runs in real time, also offline (Local ~15 min … Worlds ~8 h), as rounds with
+      averages of 5 and cutoffs against named rivals; one attempt per round may be your own Solve Station solve (it
+      replaces the team's worst time if better). Split into:
+  - [ ] **8.3a Rules:** tiers, rounds and rivals as data (`Content.COMPETITIONS`); GameState: enter, the clock (real
+        time), deterministic results from a seed, the believable average from the team's strength on the event, the
+        hand attempt, medals with their permanent bonus, a drop for a medal, official records; saved (+ migration).
+        No `main.gd`/`main.tscn` changes; `comp_circuit` stays not buyable until 8.3b (no screen yet).
+        *Done when:* tests cover entering, rounds and cutoffs, pass/fail, the hand attempt, medal rewards, time away,
+        save/load and the migration, and the pacing targets still pass.
+  - [ ] **8.3b Screen:** the Competitions screen (register, live rounds, results sheet, medals), the hand attempt in the
+        Solve Station, Welcome back's result; then the **From 6.3** and **Save safety** notes below (make
+        `comp_circuit` buyable, the grant migration). *Done when:* the rest of 8.3's *Done when* (unlock test, screenshot).
       **From 6.3:** the perk `comp_circuit` (Competition branch's first node) has `"buyable": false` and a `soon` note
       until this task: remove both and check `Game.is_system_unlocked("competitions")`. Medal bonus perks go in that branch.
       **Save safety:** players can own Comp Prep / Home Crowd / Appearance Fees without `comp_circuit` today, and

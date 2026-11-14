@@ -333,7 +333,7 @@ put its quick wins and (1) on the roadmap (Phase 7b) and these four ideas in the
    ("your 3×3 average: 7.82"); a results sheet shows placings, a medal and a collection drop, and a national ranking
    of named rivals moves with each result. Optionally one of the five attempts is the player's own, in the Solve
    Station. It gives the Comp Kit a stage, can be failed and retried (PLAYER_RESEARCH: bosses), and finishes while
-   away. Open: **D19**.
+   away. **D19** (owner, 2026-11-14): yes, this shape.
 3. **Item traits + two kits:** every collection item gets one trait from real hardware besides its stars (maglev:
    the streak fills faster; ball-core: Flow lasts +25 %; stickerless: more mastery XP; UV-coated: the golden sticker
    glows 3 s longer; comp timer: a bigger daily reward; grip mat: more offline Solves), and the player keeps an
@@ -458,10 +458,12 @@ Claude sessions must **not** guess open decisions. Write the answer in place of 
 - **D18 Golden cases:** (owner, 2026-11-13) **yes**: any OLL/PLL case may appear in a Golden Scramble (solvable by
   intuition, the normal reward); a case learned in the drills pays more.
 
+- **D19 Competitions' shape:** (owner, 2026-11-14) the **WCA weekend** of §4.8 (2), not the 60 s hold. A competition's
+  length **scales by tier** (Local ~15 min, Regional ~45 min, National ~2 h, Continental ~4 h, Worlds ~8 h, in real
+  time, also while the game is closed). One attempt per round may be the player's **own Solve Station solve: optional,
+  it replaces the team's worst time if it is better** (it can only help).
+
 ### Open
-- **D19 Competitions' shape** (needed by 8.3): replace "hold a Solves/s target for 60 s" with the WCA weekend of §4.8
-  (2)? If so: how long should an event take (15 min to ~8 h suggested), and should one attempt be the player's own
-  hand solve?
 - **D20 Venues and challenge runs** (needed before 8.4): Phase 8 with both venues (§4.8 (4)) and challenge runs, or
   venues first?
 - **D2 Final name** (needed by 10.1): keep "Cube Idle" or pick another?
