@@ -6801,6 +6801,196 @@ func test_championship_save() -> void:
 
 # --- Trophy perk tree (task 6.3) -----------------------------------------------------
 
+# --- Challenge runs (task 8.4) ---------------------------------------------------------
+
+func test_challenge_data() -> void:
+	var ids := {}
+	check(Content.CHALLENGES.size() >= 6 and Content.CHALLENGES.size() <= 9, "6 to 9 challenges (%d)" % Content.CHALLENGES.size())
+	var rules := {}
+	for def: Dictionary in Content.CHALLENGES:
+		check(not ids.has(def["id"]) and Content.get_challenge(def["id"]) == def, "challenge ids are unique (%s)" % def["id"])
+		ids[def["id"]] = true
+		check(Content.CHALLENGE_RULES.has(def["rule"]["type"]), "%s has a known rule" % def["id"])
+		rules[def["rule"]["type"]] = true
+		check(Content.EFFECT_TYPES.has(def["reward"]["type"]) and float(def["reward"]["value"]) > 1.0, "%s rewards a multiplying effect" % def["id"])
+		check(int(def["goal"]) >= 1 and String(def["text"]) != "" and String(def["reward_text"]) != "" and Content.icon(def["icon"]) != null,
+				"%s has a goal, texts and an icon" % def["id"])
+	check(rules.size() == Content.CHALLENGE_RULES.size(), "every rule type is used by a challenge")
+
+
+## A game after one championship (challenges are open), with `id` picked and started by a second one.
+func challenge_game(id: String) -> GameState:
+	var g := perk_game(0)
+	check(g.set_next_challenge(id), "test setup: %s picked" % id)
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	g.compete()
+	g._load_collection({})
+	return g
+
+
+func test_challenge_rules() -> void:
+	var fresh := new_game()
+	check(not fresh.can_pick_challenge("one_handed") and not fresh.set_next_challenge("one_handed") and fresh.can_pick_challenge(""),
+			"no challenges before the first championship")
+	fresh.free()
+	var started: Array[String] = []
+	var plain := perk_game(0)
+	plain.challenge_started.connect(func(id: String) -> void: started.append(id))
+	check(not plain.set_next_challenge("banana"), "an unknown challenge can't be picked")
+	plain.set_next_challenge("one_handed")
+	check(plain.challenge == "" and is_equal_approx(plain.get_tap_moves(), GameState.BASE_TAP_MOVES), "picking doesn't change the run under way")
+	plain.cheat_add_solves(GameState.solves_for_trophies(1))
+	plain.compete()
+	check(plain.challenge == "one_handed" and plain.next_challenge == "" and started == ["one_handed"], "it starts with the next championship")
+	# One-Handed: taps × 0.5.
+	check_near(plain.get_tap_moves(), GameState.BASE_TAP_MOVES * 0.5, "One-Handed: taps make half the moves")
+	plain.abandon_challenge()
+	check(plain.challenge == "" and is_equal_approx(plain.get_tap_moves(), GameState.BASE_TAP_MOVES) and not plain.is_challenge_done("one_handed")
+			and plain.can_pick_challenge("one_handed"), "giving up lifts the rule, with no reward")
+	plain.free()
+	# Beginner's Luck: no method, bought or researched.
+	var g := challenge_game("beginner_only")
+	g.cheat_add_solves(1e9)
+	check(g.get_next_method().is_empty() and not g.is_method_available("cfop") and not g.buy_method("cfop") and g.method == "beginner",
+			"Beginner's Luck: no method can be learned")
+	check(not g.is_research_visible("method_cfop"), "...nor researched in the Lab")
+	g.free()
+	# Small Team: the first four helpers only.
+	g = challenge_game("small_team")
+	g.cheat_add_solves(1e12)
+	var fifth := String(Content.BUILDINGS[4]["id"])
+	check(g.buy_building("friend") and g.is_building_allowed(String(Content.BUILDINGS[3]["id"])), "Small Team: the first four helpers work")
+	check(not g.is_building_allowed(fifth) and not g.is_building_unlocked(fifth) and not g.buy_building(fifth) and g.buy_buildings(fifth, 5) == 0,
+			"...the fifth can't be bought or seen")
+	g.free()
+	# Pocket Cubes: nothing past the 3×3.
+	g = challenge_game("pocket_cubes")
+	g.cheat_add_solves(1e12)
+	check(g.unlock_puzzle("3x3") and g.get_next_locked_puzzle() == "" and not g.unlock_puzzle("4x4"), "Pocket Cubes: the 3×3, then nothing")
+	g.free()
+	# Stock Cubes: no upgrades.
+	g = challenge_game("stock_cubes")
+	g.cheat_add_solves(1e6)
+	check(not g.is_upgrade_available("lube") and not g.buy_upgrade("lube"), "Stock Cubes: no upgrades")
+	g.free()
+	# No Homework: the Lab is closed.
+	g = challenge_game("no_homework")
+	g.cheat_add_solves(1e9)
+	var open_projects := Content.get_lab_projects().filter(func(def: Dictionary) -> bool: return g.is_research_visible(def["id"]))
+	check(open_projects.is_empty() and not g.start_research("finger_tricks"), "No Homework: no Lab project shows or starts")
+	g.free()
+	# Charity Tour: a quarter of the Solves.
+	var normal := perk_game(0)
+	g = challenge_game("charity_tour")
+	check_near(g.get_solve_value("2x2"), normal.get_solve_value("2x2") * 0.25, "Charity Tour: solves pay a quarter")
+	normal.free()
+	g.free()
+
+
+func test_challenge_rewards_and_save() -> void:
+	# Every reward moves its multiplier by its value.
+	for def: Dictionary in Content.CHALLENGES:
+		var probe := new_game()
+		var reward: Dictionary = def["reward"]
+		var target := String((reward.get("puzzles", [""]) as Array)[0])
+		var before := probe._upgrade_mult(String(reward["type"]), target)
+		probe.challenges_done[def["id"]] = true
+		probe.invalidate_upgrade_cache()
+		check_near(probe._upgrade_mult(String(reward["type"]), target), before * float(reward["value"]), "%s's reward counts" % def["id"])
+		probe.free()
+	var g := challenge_game("one_handed")
+	var done: Array[String] = []
+	g.challenge_completed.connect(func(id: String) -> void: done.append(id))
+	g.set_next_challenge("small_team")
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	check(g.compete() >= 1 and done == ["one_handed"] and g.is_challenge_done("one_handed"), "winning a championship under the rule finishes it")
+	check(g.challenge == "small_team", "...and the next pick starts")
+	check_near(g.get_tap_moves(), GameState.BASE_TAP_MOVES * 2.0, "One-Handed's reward: taps ×2, for good")
+	check(not g.can_pick_challenge("one_handed") and not g.set_next_challenge("one_handed"), "a finished challenge can't be run again")
+	var rows := {}
+	for row: Dictionary in g.get_bonus_breakdown():
+		rows[row["id"]] = row["effects"]
+	check(is_equal_approx(float(rows["challenges"].get("tap_mult", 1.0)), 2.0), "the bonus breakdown lists challenge rewards")
+	# Save: running, next, done.
+	g.set_next_challenge("charity_tour")
+	var data := g.get_save_data()
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.challenge == "small_team" and loaded.next_challenge == "charity_tour" and loaded.is_challenge_done("one_handed")
+			and is_equal_approx(loaded.get_tap_moves(), g.get_tap_moves()), "challenges survive a round trip")
+	check(not loaded.is_building_allowed(String(Content.BUILDINGS[4]["id"])), "...with the running rule still on")
+	var bad: Dictionary = JSON.parse_string(JSON.stringify(data))
+	bad["challenges"] = {"active": "one_handed", "next": "banana", "done": ["one_handed", "nope", 3]}
+	var damaged := new_game()
+	damaged.apply_save_data(bad, float(data["saved_at"]))
+	check(damaged.challenge == "" and damaged.next_challenge == "" and damaged.challenges_done.keys() == ["one_handed"],
+			"damaged challenge data: a finished one can't be running, unknown ids are dropped")
+	var v20: Dictionary = JSON.parse_string(JSON.stringify(data))
+	v20["version"] = 20
+	v20.erase("challenges")
+	var old := new_game()
+	old.apply_save_data(v20, float(data["saved_at"]))
+	check(old.challenge == "" and old.challenges_done.is_empty() and int(old.get_save_data()["version"]) == GameState.SAVE_VERSION, "v20 → v21: no challenges")
+	g.reset_state()
+	check(g.challenge == "" and g.challenges_done.is_empty(), "a wiped save has none")
+	for game: GameState in [g, loaded, damaged, old]:
+		game.free()
+
+
+## 8.4: the Compete screen's "Next run" column and the stage badge.
+func test_challenge_screen() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var panel: CompetePanel = main.compete_panel
+	main.open_compete()
+	check(not panel._next_run.visible, "no \"Next run\" column before the first championship")
+	panel.close()
+	game.cheat_add_solves(GameState.solves_for_trophies(1))
+	game.compete()
+	main.open_compete()
+	check(panel._next_run.visible and panel._option_buttons.size() == Content.CHALLENGES.size() + 1 and panel._option_buttons[""].button_pressed,
+			"after it: a normal run and every challenge to pick from")
+	panel._option_buttons["one_handed"].pressed.emit()
+	check(game.next_challenge == "one_handed" and panel._option_buttons["one_handed"].button_pressed and not panel._option_buttons[""].button_pressed
+			and panel._option_text.text.contains("tap moves ×2"), "picking one shows its rule and reward: %s" % panel._option_text.text)
+	game.cheat_add_solves(GameState.solves_for_trophies(1))
+	game.compete()
+	main._refresh()
+	var badge: Label = main.get_node("%ChallengeBadge")
+	check(badge.visible and badge.text == "Challenge: One-Handed", "the run under a challenge shows a badge on the stage")
+	main.open_compete()
+	check(panel._give_up.visible and panel._running_label.text.contains("One-Handed"), "the Compete screen says so, with a way out")
+	panel._give_up.pressed.emit()
+	check(game.challenge == "" and not badge.visible and not panel._give_up.visible, "Give up lifts it")
+	# Small Team: no goal, card or "???" for a helper it rules out; giving up brings back what start perks promise.
+	game.perks["big_cube_prep"] = true
+	game.perks["warm_up"] = true
+	game.challenge = "pocket_cubes"
+	game.invalidate_upgrade_cache()
+	game.abandon_challenge()
+	check(game.is_puzzle_unlocked("4x4"), "giving up Pocket Cubes brings the 4×4 a start perk promises")
+	game.challenge = "small_team"
+	game.cheat_add_solves(1e15)
+	for def: Dictionary in Content.BUILDINGS.slice(0, 4):
+		game.buy_building(def["id"])
+	main._refresh()
+	var fifth := String(Content.BUILDINGS[4]["id"])
+	check(not main._helper_cards[fifth].visible, "Small Team: no \"???\" card for a helper it rules out")
+	check(game.get_goals(10).all(func(goal: Dictionary) -> bool: return goal["id"] != fifth), "...and no goal for it")
+	main.open_compete()
+	check(panel._option_buttons["small_team"].disabled, "the running challenge can't be picked again")
+	game.challenge = "no_homework"
+	check(game.get_next_method().is_empty() and not game.is_method_available("cfop"), "No Homework: no method (they're learned in the Lab)")
+	game.challenge = "stock_cubes"
+	check(game.get_goals(10).all(func(goal: Dictionary) -> bool: return goal["kind"] != "upgrade"), "Stock Cubes: no upgrade goals")
+	panel.close()
+	main.free()
+	game.reset_state()
+
+
 ## A game that has won `trophies` trophies in one championship (so perks can be bought).
 func perk_game(trophy_count: int) -> GameState:
 	var g := new_game()

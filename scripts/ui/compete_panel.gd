@@ -9,6 +9,8 @@ extends Control
 
 signal closed
 signal compete_pressed
+signal next_run_picked(id: String)  ## 8.4: a challenge for the next run ("" = a normal run)
+signal give_up_pressed              ## 8.4: give up the challenge this run is under
 
 @onready var _dim: ColorRect = %Dim
 @onready var _panel: Control = %Panel
@@ -26,8 +28,17 @@ signal compete_pressed
 @onready var _compete: Button = %CompeteButton
 @onready var _hint: Label = %CompeteHint
 
+const LIST_WIDTH := 250.0      ## the keep / starts-over columns
+const NEXT_RUN_WIDTH := 340.0  ## the "Next run" column (8.4)
+
 var compete_enabled := false  ## false = a preview (the button stays disabled); main.gd turns it on (6.2)
 var preview: Dictionary = {}  ## the last Game.get_championship_preview() shown
+var _next_run: VBoxContainer           ## 8.4: the "Next run" column, built in code beside the keep/reset lists
+var _running_label: Label
+var _give_up: Button
+var _option_flow: HFlowContainer
+var _option_buttons: Dictionary = {}   ## challenge id ("" = normal) -> Button
+var _option_text: Label
 
 
 func _ready() -> void:
@@ -39,6 +50,77 @@ func _ready() -> void:
 	_fill_list(_keep_list, Content.CHAMPIONSHIP["keeps"])
 	_fill_list(_reset_list, Content.CHAMPIONSHIP["resets"])
 	_unlocks.text = Content.CHAMPIONSHIP["unlocks"]
+	_build_next_run()
+
+
+func _build_next_run() -> void:
+	_next_run = VBoxContainer.new()
+	_next_run.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_next_run.visible = false
+	_keep_list.get_parent().get_parent().add_child(_next_run)
+	# With the third column the panel grows wider instead of squeezing the two lists into wrapped lines.
+	(_keep_list.get_parent() as Control).custom_minimum_size = Vector2(LIST_WIDTH, 0)
+	(_reset_list.get_parent() as Control).custom_minimum_size = Vector2(LIST_WIDTH, 0)
+	_next_run.custom_minimum_size = Vector2(NEXT_RUN_WIDTH, 0)
+	var title := Label.new()
+	title.theme_type_variation = &"CardTitle"
+	title.text = "Next run"
+	_next_run.add_child(title)
+	_running_label = Label.new()
+	_running_label.theme_type_variation = &"CardLine"
+	_running_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_next_run.add_child(_running_label)
+	_give_up = Button.new()
+	_give_up.theme_type_variation = &"SubtleButton"
+	_give_up.focus_mode = Control.FOCUS_NONE
+	_give_up.text = "Give up this challenge"
+	_give_up.tooltip_text = "The rule is lifted and the run goes on. No reward; you can pick it again later."
+	_give_up.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_give_up.pressed.connect(func() -> void: give_up_pressed.emit())
+	_next_run.add_child(_give_up)
+	var flow := HFlowContainer.new()
+	_next_run.add_child(flow)
+	_option_flow = flow
+	_option_text = Label.new()
+	_option_text.theme_type_variation = &"FaintLabel"
+	_option_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_option_text.custom_minimum_size = Vector2(NEXT_RUN_WIDTH, 0)
+	_next_run.add_child(_option_text)
+
+
+## 8.4: the "Next run" column. view: {open (challenges exist for this player), running: {name, text, reward} or {},
+## options: [{id, name, text, reward, done, picked}] ("" = a normal run)}.
+func set_next_run(view: Dictionary) -> void:
+	_next_run.visible = bool(view.get("open", false))
+	_unlocks.visible = not _next_run.visible  # ("After your first championship…" is old news by then, and the room is needed)
+	if not _next_run.visible:
+		return
+	var running: Dictionary = view.get("running", {})
+	_running_label.visible = not running.is_empty()
+	_give_up.visible = not running.is_empty()
+	if not running.is_empty():
+		_running_label.text = "Now: %s. Win this championship for %s." % [running["name"], running["reward"]]
+		_running_label.tooltip_text = String(running["text"])
+	var picked_text := ""
+	for option: Dictionary in view.get("options", []):
+		var id := String(option["id"])
+		var button: Button = _option_buttons.get(id)
+		if button == null:
+			button = Button.new()
+			button.theme_type_variation = &"ToggleChip"
+			button.toggle_mode = true
+			button.focus_mode = Control.FOCUS_NONE
+			button.pressed.connect(func() -> void: next_run_picked.emit(id))
+			_option_flow.add_child(button)
+			_option_buttons[id] = button
+		button.text = String(option["name"]) + ("  ✓" if option.get("done", false) else "")
+		button.disabled = bool(option.get("done", false)) or bool(option.get("running", false))
+		button.set_pressed_no_signal(bool(option.get("picked", false)))
+		button.tooltip_text = "%s Reward: %s.%s" % [option.get("text", ""), option.get("reward", ""),
+				" Done." if option.get("done", false) else ""] if id != "" else "No rule."
+		if option.get("picked", false):
+			picked_text = "" if id == "" else "%s: %s Reward: %s." % [option["name"], option.get("text", ""), option.get("reward", "")]
+	_option_text.text = picked_text
 
 
 func open(data: Dictionary) -> void:

@@ -2,6 +2,38 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-14 — Task 8.4: challenge runs (save v21)
+- **Data (`Content.CHALLENGES`, 7):** Beginner's Luck (no method beyond Beginner → +50 % mastery XP), Small Team (only
+  the first four helper kinds → +25 % helper moves), One-Handed (taps ×0.5 → tap moves ×2), Pocket Cubes (only the
+  2×2 and 3×3 → +50 % moves on them), Stock Cubes (no upgrades → +25 % Solves per solve), No Homework (the Lab is
+  closed → +10 % all moves), Charity Tour (solves pay a quarter → +25 % Solves per solve). (The roadmap's "No helpers"
+  and "Big cubes only" can't reach a trophy at all, so they became Small Team and Pocket Cubes.)
+- **How it works:** from the first championship on, the Compete screen has a **Next run** column: "Normal run" or a
+  challenge (chips; a finished one shows ✓). The pick starts **when you compete**; the run after it is under the
+  rule. **Winning that run's championship** (any trophy: `goal` 1) finishes the challenge and its reward counts for
+  good (`_upgrade_mult`, like perks). **Give up** on the Compete screen lifts the rule and keeps the run (no reward;
+  it can be picked again). A stage badge ("Challenge: Small Team", tooltip with the rule) shows during the run; a
+  news line at the start, a pop and a news line when it's won.
+- **Rules (GameState):** `challenge`, `next_challenge`, `challenges_done`; `get_challenge_rule(type)` is read where the
+  rule bites: `is_building_allowed` (in `is_building_unlocked`, `buy_building(s)`, the start-helpers perks),
+  `is_upgrade_available`, `get_next_method`, `get_next_locked_puzzle`, `is_research_visible`, `get_solve_value`,
+  `get_tap_moves`. `set_next_challenge`, `abandon_challenge`, `can_pick_challenge`; signals `challenge_started`,
+  `challenge_completed`, `challenge_changed`.
+- **Save v21:** `"challenges": {active, next, done}` (unknown ids dropped; a finished one can't be running).
+- The Compete panel is wider with the third column (the two lists no longer wrap), and "After your first
+  championship…" hides once that's behind you. Stats' bonus list has a "Challenge rewards" row; the keep list too.
+- **Not measured:** the balance bot never picks a challenge, so how long each takes is unknown (Pocket Cubes and
+  Charity Tour will be the slow ones). Goals are 1 trophy each on purpose; tune after a playtest (8.8).
+- **Review fixes (diff-reviewer):** the goal strip, the next-goal pick and the shop's "???" card skip what a
+  challenge rules out (a fifth helper under Small Team, upgrades under Stock Cubes); No Homework also blocks methods
+  (they're learned in the Lab; its text says so); giving up re-applies the run-start perks (a start puzzle the rule
+  held back); the running challenge's chip can't be picked again; the Compete panel fits 1280×720 with the longest
+  texts; a test checks every reward through the game's numbers. **Left as is:** Beginner's Luck allows algorithm
+  research (its text says so); under No Homework a drill set learned by hand still counts (it was learned, not
+  researched).
+- `CHALLENGE=pick|running` screenshot option. Tests: `test_challenge_data`, `test_challenge_rules` (every rule),
+  `test_challenge_rewards_and_save`, `test_challenge_screen`. Screenshots: `docs/screenshots/8.4-challenges/`.
+
 ## 2026-11-14 — Task 8.3b: the Competitions screen (save v20); owner asked for Phase 8 up to 8.7 in this session
 - **D20 answered (owner):** both challenge runs and championship venues, challenges first; venues are ROADMAP 8.4b.
 - **Competitions are playable.** The trophy perk **Competition Circuit** (10 trophies) can be bought now and opens a

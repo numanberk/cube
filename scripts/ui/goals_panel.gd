@@ -696,7 +696,7 @@ const STAT_ROWS := [
 ## 7.12: Game.get_bonus_breakdown()'s rows, named.
 const BONUS_ROWS := [["kit", "Comp Kit"], ["collection", "Rest of the collection"], ["sets", "Brand sets"],
 		["trophies", "Unspent trophies"], ["achievements", "Achievements"], ["perks", "Trophy perks"],
-		["medals", "Competition medals"]]
+		["medals", "Competition medals"], ["challenges", "Challenge rewards"]]
 
 
 ## A breakdown row's effects as text: "+8 % 3×3 moves, +2 % tap moves" ("—" for none).

@@ -620,9 +620,11 @@ Small tasks; any order, but 7.6 needs a save change. D18 answered (owner, 2026-1
       **Save safety:** players can own Comp Prep / Home Crowd / Appearance Fees without `comp_circuit` today, and
       `_load_perks` drops perks whose parent isn't owned. So bump the save and add a `_migrate` step that grants
       `comp_circuit` to anyone who owns one of its children (free: they never had a chance to buy it), with a test.
-- [ ] **8.4 Challenge runs (PR):** a championship run with a rule: Beginner method only, No helpers, One-handed
+- [x] **8.4 Challenge runs (PR):** a championship run with a rule: Beginner method only, No helpers, One-handed
       (taps ×0.5), Big cubes only, No upgrades… Finishing one gives a permanent reward. 6–9 challenges as data.
       *Done when:* tests cover each rule's restriction and its reward, and there's a screenshot.
+      *(Done 2026-11-14: 7 challenges, picked as the next run on the Compete screen; save v21. Shots:
+      `docs/screenshots/8.4-challenges/`.)*
 - [ ] **8.4b Championship venues (fun pass, 2026-11-13; D20):** from the second championship on, the Compete screen offers
       three host cities for the next run, each with a twist as data (e.g. "4×4 and bigger pay ×3, the 2×2 ×0.5",
       "Golden Scrambles twice as often"); the chosen one is saved and shown during the run. The first run is untouched.

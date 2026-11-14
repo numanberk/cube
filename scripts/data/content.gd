@@ -464,6 +464,7 @@ const CHAMPIONSHIP := {
 		"Solve Station records and their bonuses",
 		"Drill and daily results",
 		"Competition medals and records",
+		"Challenge rewards",
 		"Unlocked music",
 		"Lifetime stats and settings",
 	],
@@ -477,6 +478,42 @@ const CHAMPIONSHIP := {
 	],
 	"unlocks": "After your first championship, the 7×7 and Megaminx can be unlocked.",
 }
+
+## Challenge runs (task 8.4, PLAYER_RESEARCH: challenges that can be failed): a championship run with a rule. You pick
+## one on the Compete screen as your next run (from your first championship on); it starts when you compete, and
+## winning the next World Championship under its rule (`goal` trophies or more in one championship) finishes it: its
+## `reward` (an upgrade effect, multiplying) is yours for good. Giving up lifts the rule and keeps the run; a finished
+## challenge can't be run again.
+##   id, name, icon, text (the rule in words), rule {type, value}, goal, reward {type, value, ...}, reward_text
+##   rule types: "no_methods" (only the Beginner Method), "helper_limit" (only the first `value` helper kinds),
+##     "tap_mult" (taps × value), "puzzle_limit" (only the first `value` puzzles), "no_upgrades", "no_lab",
+##     "solve_value_mult" (Solves per solve × value)
+const CHALLENGE_RULES := ["no_methods", "helper_limit", "tap_mult", "puzzle_limit", "no_upgrades", "no_lab", "solve_value_mult"]
+const CHALLENGES: Array[Dictionary] = [
+	{"id": "beginner_only", "name": "Beginner's Luck", "icon": "beginner", "text": "No method beyond the Beginner Method (algorithm research is fine).",
+		"rule": {"type": "no_methods"}, "goal": 1, "reward": {"type": "mastery_xp_mult", "value": 1.5}, "reward_text": "+50 % mastery XP"},
+	{"id": "small_team", "name": "Small Team", "icon": "friend", "text": "Only your first four kinds of helper.",
+		"rule": {"type": "helper_limit", "value": 4}, "goal": 1, "reward": {"type": "helper_mult", "value": 1.25}, "reward_text": "+25 % helper moves"},
+	{"id": "one_handed", "name": "One-Handed", "icon": "speed_practice", "text": "Your taps make half the moves.",
+		"rule": {"type": "tap_mult", "value": 0.5}, "goal": 1, "reward": {"type": "tap_mult", "value": 2.0}, "reward_text": "tap moves ×2"},
+	{"id": "pocket_cubes", "name": "Pocket Cubes", "icon": "small_cubes", "text": "Only the 2×2 and the 3×3.",
+		"rule": {"type": "puzzle_limit", "value": 2}, "goal": 1,
+		"reward": {"type": "puzzle_mult", "puzzles": ["2x2", "3x3"], "value": 1.5}, "reward_text": "+50 % moves on the 2×2 and 3×3"},
+	{"id": "stock_cubes", "name": "Stock Cubes", "icon": "magnets", "text": "No upgrades.",
+		"rule": {"type": "no_upgrades"}, "goal": 1, "reward": {"type": "solve_value_mult", "value": 1.25}, "reward_text": "+25 % Solves per solve"},
+	{"id": "no_homework", "name": "No Homework", "icon": "lab", "text": "The Lab is closed (so no method beyond Beginner either).",
+		"rule": {"type": "no_lab"}, "goal": 1, "reward": {"type": "global_mult", "value": 1.1}, "reward_text": "+10 % all moves"},
+	{"id": "charity_tour", "name": "Charity Tour", "icon": "prize_money", "text": "Every solve pays a quarter of its Solves.",
+		"rule": {"type": "solve_value_mult", "value": 0.25}, "goal": 1, "reward": {"type": "solve_value_mult", "value": 1.25}, "reward_text": "+25 % Solves per solve"},
+]
+
+
+static func get_challenge(id: String) -> Dictionary:
+	for def: Dictionary in CHALLENGES:
+		if def["id"] == id:
+			return def
+	return {}
+
 
 ## Trophy perk tree (task 6.3, PLAN §4.4): permanent perks bought with trophies, kept through every championship.
 ## Spending is a trade (owner, 2026-11-06): only UNSPENT trophies give +2 % moves each, so a perk costs that bonus.

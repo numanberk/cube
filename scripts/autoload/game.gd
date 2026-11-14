@@ -27,6 +27,9 @@ signal research_finished(project_id: String)  ## a project's effect counts from 
 signal career_moment(moment_id: String)  ## a Content.CAREER story beat happened, once per player (7.0a)
 signal achievement_earned(achievement_id: String)  ## a Content achievement was earned, once per player (7.1a)
 signal collection_drop(item_id: String, stars: int, source: String)  ## a Cube Collection item dropped (7.3a); stars after it
+signal challenge_started(challenge_id: String)    ## 8.4: a run with a rule began (with a championship)
+signal challenge_completed(challenge_id: String)  ## ...and was won: its reward counts from now
+signal challenge_changed                          ## the next run's pick changed, or the running one was given up
 signal competition_started(tier: String, puzzle_id: String)  ## 8.3a
 signal competition_finished(result: Dictionary)  ## a competition ended: get_competition_result()'s dictionary
 signal kit_changed  ## the Comp Kit changed (7.4a): an equip, a slot back on auto, or an auto slot that found a better item
@@ -37,7 +40,7 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 20  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 21  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
                           ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
@@ -45,7 +48,8 @@ const SAVE_VERSION := 20  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (
                           ## v15 (7.2a): stats; v16 (7.3a): Cube Collection;
                           ## v17 (7.4a): Comp Kit; v18 (7.6/7.8): Legendary pity counter, new career moments seen;
                           ## v19 (8.3a): competitions (the running one, medals, records);
-                          ## v20 (8.3b): Competition Circuit is buyable (granted to owners of its child perks)
+                          ## v20 (8.3b): Competition Circuit is buyable (granted to owners of its child perks);
+                          ## v21 (8.4): challenge runs (running, next, done)
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -99,6 +103,10 @@ var _collection_stars := 0           ## the stars in `collection`, kept up to da
 var collection_pity: Dictionary = {}  ## misses in a row per drop source, and "rarity": drops in a row below the pity rarity
 var collection_rng := RandomNumberGenerator.new()  ## drops (seeded by tests and the balance bot)
 var kit: Dictionary = {}         ## Comp Kit (7.4a, saved; kept through championships): slot id -> item id (empty slots absent)
+## Challenge runs (8.4, saved): the one this run is under ("" = none), the pick for the next run, and the finished ones.
+var challenge := ""
+var next_challenge := ""
+var challenges_done: Dictionary = {}  ## challenge id -> true (their rewards count; kept for good)
 ## Competitions (8.3a, saved; kept through championships). competition: the one running ({} if none): {tier, puzzle,
 ## started_at (unix), seed, rating (the team's on the event when it registered), hand: {round index as text: seconds}}.
 var competition: Dictionary = {}
@@ -304,7 +312,8 @@ func get_moves_floor(puzzle_id: String = "") -> float:
 func get_solve_value(puzzle_id: String = "") -> float:
 	var id := _or_focused(puzzle_id)
 	var def := Content.get_puzzle(id)
-	return float(def.get("solve_value", 1.0)) * _upgrade_mult("solve_value_mult") * _mastery_mult(id, "solve_value")
+	return float(def.get("solve_value", 1.0)) * _upgrade_mult("solve_value_mult") * _mastery_mult(id, "solve_value") \
+			* float(get_challenge_rule("solve_value_mult").get("value", 1.0))
 
 
 ## Moves made toward the next solve on a puzzle (the focused one by default).
@@ -317,7 +326,8 @@ func get_move_progress(puzzle_id: String = "") -> float:
 ## The streak multiplies only the helpers' share, so it matters once there's a team and leaves the first minutes'
 ## pacing (where the flat part is everything) as it was.
 func get_tap_moves() -> float:
-	return get_tap_moves_flat() + get_tap_moves_from_helpers() * get_streak_mult()
+	return (get_tap_moves_flat() + get_tap_moves_from_helpers() * get_streak_mult()) \
+			* float(get_challenge_rule("tap_mult").get("value", 1.0))
 
 
 func get_tap_moves_flat() -> float:
@@ -426,7 +436,7 @@ func get_max_affordable(id: String) -> int:
 func buy_buildings(id: String, count: int) -> int:
 	if count == BUY_MAX:
 		count = get_max_affordable(id)
-	if count <= 0:
+	if count <= 0 or not is_building_allowed(id):
 		return 0
 	var cost := get_building_cost_for(id, count)
 	if solves < cost:
@@ -444,12 +454,24 @@ func get_building_unlock_at(id: String) -> float:
 
 
 func is_building_unlocked(id: String) -> bool:
+	if not is_building_allowed(id):
+		return false
 	return int(buildings.get(id, 0)) > 0 or run_solves >= get_building_unlock_at(id)
+
+
+## False for a helper the running challenge rules out ("helper_limit", 8.4).
+func is_building_allowed(id: String) -> bool:
+	if get_challenge_rule("helper_limit").is_empty():
+		return true
+	for i in Content.BUILDINGS.size():
+		if Content.BUILDINGS[i]["id"] == id:
+			return i < int(get_challenge_rule("helper_limit").get("value", 0))
+	return false
 
 
 func buy_building(id: String) -> bool:
 	var cost := get_building_cost(id)
-	if solves < cost:
+	if solves < cost or not is_building_allowed(id):
 		return false
 	solves -= cost
 	buildings[id] = int(buildings.get(id, 0)) + 1
@@ -458,7 +480,7 @@ func buy_building(id: String) -> bool:
 
 
 func is_upgrade_available(id: String) -> bool:
-	if upgrades.has(id):
+	if upgrades.has(id) or not get_challenge_rule("no_upgrades").is_empty():
 		return false
 	var def := Content.get_upgrade(id)
 	if def.is_empty() or run_solves < float(def["cost"]) * 0.5 or is_upgrade_locked_out(id):
@@ -521,6 +543,8 @@ func get_method() -> Dictionary:
 
 ## The next method in the chain, or {} once God's Number is learned.
 func get_next_method() -> Dictionary:
+	if not get_challenge_rule("no_methods").is_empty() or not get_challenge_rule("no_lab").is_empty():
+		return {}  # a challenge (8.4): the Beginner Method only (methods are learned in the Lab)
 	var index := Content.get_method_index(method) + 1
 	return Content.METHODS[index] if index < Content.METHODS.size() else {}
 
@@ -740,6 +764,12 @@ func compete() -> int:
 	if not can_compete():
 		return 0
 	var gain := get_pending_trophies()
+	var finished := ""
+	if challenge != "" and gain >= int(Content.get_challenge(challenge).get("goal", 1)):
+		finished = challenge
+		challenges_done[challenge] = true
+	challenge = next_challenge if can_pick_challenge(next_challenge) else ""  # the new run's rule, before it's set up
+	next_challenge = ""
 	trophies += gain
 	championships += 1
 	stats["trophies_won"] = float(stats["trophies_won"]) + gain
@@ -776,6 +806,10 @@ func compete() -> int:
 	check_helper_times(false)
 	roll_collection_drop("championship")  # before the signal, so the screen rebuilt after it shows the new item
 	championship_won.emit(gain)
+	if finished != "":
+		challenge_completed.emit(finished)
+	if challenge != "":
+		challenge_started.emit(challenge)
 	if persistence_enabled:
 		save_game()
 	return gain
@@ -1252,6 +1286,65 @@ func get_collection_stars_total() -> int:
 func get_item_mult(id: String) -> float:
 	var share := 1.0 if is_equipped(id) else float(Content.COMP_KIT["owned_share"])
 	return 1.0 + Content.get_item_per_star(Content.get_collection_item(id)) * get_collection_stars(id) * share
+
+
+# --- Challenge runs (task 8.4) ---------------------------------------------------------------
+
+## The running challenge's rule if it is of this type, else {} (so `.get("value", default)` reads a rule's number).
+func get_challenge_rule(type: String) -> Dictionary:
+	if challenge == "":
+		return {}
+	var rule: Dictionary = Content.get_challenge(challenge).get("rule", {})
+	return rule if rule.get("type", "") == type else {}
+
+
+## Challenges open with the first World Championship. A finished one can't be picked again; "" (a normal run) always can.
+func can_pick_challenge(id: String) -> bool:
+	return id == "" or (has_won_championship() and not Content.get_challenge(id).is_empty() and not challenges_done.has(id)
+			and id != challenge)  # (the one running is finished by the championship that would start it again)
+
+
+## Picks the next run's challenge ("" = a normal run): it starts with the next championship.
+func set_next_challenge(id: String) -> bool:
+	if not can_pick_challenge(id):
+		return false
+	next_challenge = id
+	challenge_changed.emit()
+	return true
+
+
+## Gives up the running challenge: its rule is lifted, the run goes on, there's no reward (it can be picked again).
+func abandon_challenge() -> void:
+	if challenge == "":
+		return
+	challenge = ""
+	invalidate_upgrade_cache()
+	_apply_run_start_perks(true)  # what the rule held back (a start puzzle, start helpers) comes now
+	challenge_changed.emit()
+
+
+func is_challenge_done(id: String) -> bool:
+	return challenges_done.has(id)
+
+
+func _load_challenges(saved: Variant) -> void:
+	challenge = ""
+	next_challenge = ""
+	challenges_done.clear()
+	if typeof(saved) != TYPE_DICTIONARY:
+		return
+	var done: Variant = (saved as Dictionary).get("done", [])
+	if typeof(done) == TYPE_ARRAY:
+		for id: Variant in done:
+			if not Content.get_challenge(str(id)).is_empty():
+				challenges_done[str(id)] = true
+	for key: String in ["active", "next"]:
+		var id := str((saved as Dictionary).get(key, ""))
+		if id != "" and not Content.get_challenge(id).is_empty() and not challenges_done.has(id) and championships > 0:
+			if key == "active":
+				challenge = id
+			else:
+				next_challenge = id
 
 
 # --- Competitions (task 8.3a, D19) -------------------------------------------------------
@@ -1784,7 +1877,24 @@ func get_bonus_breakdown() -> Array[Dictionary]:
 		{"id": "achievements", "effects": {"trophy_gain_mult": get_achievement_mult()} if get_achievement_mult() > 1.0 else {}},
 		{"id": "perks", "effects": _perk_mult_effects()},
 		{"id": "medals", "effects": {"global_mult": get_medal_mult()} if get_medal_points() > 0 else {}},
+		{"id": "challenges", "effects": _challenge_reward_effects()},
 	]
+
+
+## Finished challenges' rewards (8.4), each effect key the product of its rewards.
+func _challenge_reward_effects() -> Dictionary:
+	var out := {}
+	for id: String in challenges_done:
+		var reward: Dictionary = Content.get_challenge(id).get("reward", {})
+		var keys: Array[String] = []
+		if reward.get("type", "") == "puzzle_mult":
+			for puzzle: Variant in reward.get("puzzles", []):
+				keys.append("puzzle_mult:%s" % puzzle)
+		elif reward.has("type"):
+			keys.append(String(reward["type"]))
+		for key in keys:
+			out[key] = float(out.get(key, 1.0)) * float(reward.get("value", 1.0))
+	return out
 
 
 ## The trophy perks' multiplying effects (types ending in "_mult"), each the product of the perks owned.
@@ -1887,7 +1997,8 @@ func _apply_run_start_perks(emit: bool) -> void:
 		focused_puzzle = unlocked_puzzles.back()
 	for perk_id: String in perks:
 		var effect: Dictionary = Content.get_perk(perk_id).get("effect", {})
-		if effect.get("type", "") == "start_helpers" and buildings.has(effect.get("target", "")):
+		if effect.get("type", "") == "start_helpers" and buildings.has(effect.get("target", "")) \
+				and is_building_allowed(String(effect.get("target", ""))):
 			buildings[effect["target"]] = maxi(int(buildings[effect["target"]]), int(effect.get("value", 0)))
 	if emit and not added.is_empty():
 		focus_changed.emit(focused_puzzle)
@@ -1940,10 +2051,12 @@ func _store_cached(key: String, value: float) -> void:
 
 ## The next puzzle on the ladder that isn't unlocked yet and can be reached now ("" if none).
 func get_next_locked_puzzle() -> String:
-	for def: Dictionary in Content.PUZZLES:
+	var limit := int(get_challenge_rule("puzzle_limit").get("value", Content.PUZZLES.size()))  # a challenge (8.4)
+	for i in Content.PUZZLES.size():
+		var def: Dictionary = Content.PUZZLES[i]
 		if unlocked_puzzles.has(def["id"]):
 			continue
-		if def["requires_prestige"] and not has_won_championship():
+		if (def["requires_prestige"] and not has_won_championship()) or i >= limit:
 			return ""
 		return def["id"]
 	return ""
@@ -2192,10 +2305,11 @@ func get_track_for_puzzle(puzzle_id: String) -> String:
 func get_next_goal() -> Dictionary:
 	var candidates: Array[Dictionary] = []
 	for def: Dictionary in Content.BUILDINGS:
-		if int(buildings.get(def["id"], 0)) == 0:
+		if int(buildings.get(def["id"], 0)) == 0 and is_building_allowed(def["id"]):
 			candidates.append({"kind": "helper", "id": def["id"], "name": def["name"], "cost": get_building_cost(def["id"]), "more": false})
 	for def: Dictionary in Content.get_upgrades():
-		if upgrades.has(def["id"]) or not _upgrade_requirements_met(def) or is_upgrade_locked_out(def["id"]):
+		if upgrades.has(def["id"]) or not _upgrade_requirements_met(def) or is_upgrade_locked_out(def["id"]) \
+				or not get_challenge_rule("no_upgrades").is_empty():
 			continue
 		candidates.append({"kind": "upgrade", "id": def["id"], "name": _goal_name(def), "cost": float(def["cost"]), "more": false})
 	var next_method := get_next_method()
@@ -2208,7 +2322,8 @@ func get_next_goal() -> Dictionary:
 				"cost": get_puzzle_unlock_cost(next_puzzle), "more": false})
 	if candidates.is_empty():
 		for def: Dictionary in Content.BUILDINGS:
-			candidates.append({"kind": "helper", "id": def["id"], "name": def["name"], "cost": get_building_cost(def["id"]), "more": true})
+			if is_building_allowed(def["id"]):
+				candidates.append({"kind": "helper", "id": def["id"], "name": def["name"], "cost": get_building_cost(def["id"]), "more": true})
 	if candidates.is_empty():
 		return {}
 	var best: Dictionary = candidates[0]
@@ -2658,14 +2773,16 @@ func get_goals(limit: int = 3) -> Array[Dictionary]:
 				"progress": 1.0 if cost <= 0.0 else clampf(solves / cost, 0.0, 1.0)}
 	var all_owned := true
 	for def: Dictionary in Content.BUILDINGS:
-		if int(buildings.get(def["id"], 0)) == 0:
+		if int(buildings.get(def["id"], 0)) == 0 and is_building_allowed(def["id"]):  # (a challenge may rule some out, 8.4)
 			all_owned = false
 			add.call(cost_goal.call("helper", def["id"], def["name"], get_building_cost(def["id"]), false))
 	if all_owned:
 		for def: Dictionary in Content.BUILDINGS:
-			add.call(cost_goal.call("helper", def["id"], def["name"], get_building_cost(def["id"]), true))
+			if is_building_allowed(def["id"]):
+				add.call(cost_goal.call("helper", def["id"], def["name"], get_building_cost(def["id"]), true))
 	for def: Dictionary in Content.get_upgrades():
-		if not upgrades.has(def["id"]) and _upgrade_requirements_met(def) and not is_upgrade_locked_out(def["id"]):
+		if not upgrades.has(def["id"]) and _upgrade_requirements_met(def) and not is_upgrade_locked_out(def["id"]) \
+				and get_challenge_rule("no_upgrades").is_empty():
 			add.call(cost_goal.call("upgrade", def["id"], _goal_name(def), float(def["cost"]), false))
 	var next_method := get_next_method()
 	if not next_method.is_empty() and String(research.get("id", "")) != "method_" + String(next_method["id"]):
@@ -2818,6 +2935,8 @@ func is_research_visible(id: String) -> bool:
 	var def := Content.get_lab_project(id)
 	if def.is_empty() or is_research_done(id) or String(research.get("id", "")) == id:
 		return false
+	if not get_challenge_rule("no_lab").is_empty() or (def.get("kind", "") == "method" and not get_challenge_rule("no_methods").is_empty()):
+		return false  # a challenge (8.4)
 	return _lab_requirements_done(def) and run_solves >= float(def["cost"]) * 0.5
 
 
@@ -2929,6 +3048,10 @@ func _upgrade_mult(effect_type: String, target: String = "") -> float:
 		if item_effect.get("type", "") != effect_type or not _effect_matches(item_effect, target):
 			continue
 		mult *= get_item_mult(id)
+	for id: String in challenges_done:  # challenge rewards (8.4)
+		var reward: Dictionary = Content.get_challenge(id).get("reward", {})
+		if reward.get("type", "") == effect_type and _effect_matches(reward, target):
+			mult *= float(reward["value"])
 	for set_def: Dictionary in get_active_kit_sets():  # Comp Kit brand sets (7.4a)
 		var set_effect: Dictionary = set_def["effect"]
 		if set_effect["type"] == effect_type and _effect_matches(set_effect, target):
@@ -3003,6 +3126,7 @@ func reset_state() -> void:
 	kit.clear()
 	kit_manual.clear()
 	_load_competitions({})
+	_load_challenges({})
 	automation = {"compete_at": int(Content.AUTOMATION["compete_at_default"])}
 	_automation_timer = 0.0
 	championships = 0
@@ -3061,6 +3185,7 @@ func get_save_data() -> Dictionary:
 		"stats": stats.duplicate(true),
 		"collection": {"items": collection.duplicate(), "pity": collection_pity.duplicate()},
 		"kit": {"slots": kit.duplicate(), "manual": kit_manual.keys()},
+		"challenges": {"active": challenge, "next": next_challenge, "done": challenges_done.keys()},
 		"competitions": {"active": competition.duplicate(true), "medals": competition_medals.duplicate(),
 				"records": competition_records.duplicate(true), "last": competition_result.duplicate(true),
 				"entered": competitions_entered},
@@ -3187,6 +3312,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 			roll_collection_drop("championship")  # nobody listens to the signal yet: the screen just shows them
 		collection_rng.randomize()
 	_load_kit(data.get("kit", {}))  # after the collection (and its backfill): only owned items fit
+	_load_challenges(data.get("challenges", {}))
 	_load_competitions(data.get("competitions", {}))  # a running one ends at the first update after loading (signalled)
 	var saved_auto: Variant = data.get("automation", {})
 	if typeof(saved_auto) == TYPE_DICTIONARY:
@@ -3508,6 +3634,11 @@ func _migrate(data: Dictionary) -> Dictionary:
 						owned.push_front("comp_circuit")
 						break
 		data["version"] = 20
+	if int(data["version"]) < 21:
+		# v21 adds challenge runs (8.4): none running, none done.
+		if not data.has("challenges"):
+			data["challenges"] = {}
+		data["version"] = 21
 	return data
 
 

@@ -246,6 +246,7 @@ AUTO=1 bash tools/screenshot.sh /tmp/shots endgame               # the shop's Au
 GOALS=achievements bash tools/screenshot.sh /tmp/shots endgame   # the Goals screen: achievements|collection|stats|kit -> endgame_goalsachievements.png
 TOAST=career bash tools/screenshot.sh /tmp/shots mid              # a small pop: career|achievement|drop|set -> mid_toastcareer.png
 COMPS=running bash tools/screenshot.sh /tmp/shots endgame        # Goals' Competitions tab: register|running|result (8.3b) -> endgame_compsrunning.png
+CHALLENGE=pick bash tools/screenshot.sh /tmp/shots endgame       # the Compete screen's "Next run" column: pick|running (8.4) -> endgame_challengepick.png
 TURNS=1 bash tools/screenshot.sh /tmp/shots mid                   # your own key turns on the main cube + streak (S.7) -> mid_turns.png
 GALLERY=all bash tools/screenshot.sh /tmp/shots                   # the style gallery (V.0): kit | parts | all -> gallery_kit.png
 GALLERY=kit FONT=/path/Rubik.ttf bash tools/screenshot.sh /tmp/shots  # ...with a candidate display font -> gallery_kit_Rubik.png

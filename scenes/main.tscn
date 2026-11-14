@@ -324,6 +324,15 @@ size_flags_vertical = 0
 theme_type_variation = &"StageBadge"
 text = "Team best"
 
+[node name="ChallengeBadge" type="Label" parent="Margin/Rows/Columns/Stage/StageArea/StageTop/BadgeRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 0
+mouse_filter = 1
+theme_type_variation = &"StageBadge"
+text = "Challenge"
+
 [node name="StageTopSpacer" type="Control" parent="Margin/Rows/Columns/Stage/StageArea/StageTop/BadgeRow"]
 layout_mode = 2
 size_flags_horizontal = 3

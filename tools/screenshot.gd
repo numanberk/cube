@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|known|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--turns 1] [--drill solving|done] [--daily fmc|timed] [--banner puzzle|helper|method|champion] [--goals achievements|collection|stats|kit] [--toast career|achievement|drop|set] [--comps register|running|result]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|known|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--turns 1] [--drill solving|done] [--daily fmc|timed] [--banner puzzle|helper|method|champion] [--goals achievements|collection|stats|kit] [--toast career|achievement|drop|set] [--comps register|running|result] [--challenge pick|running]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -134,6 +134,17 @@ func _ready() -> void:
 			main._show_news()
 		else:
 			main.open_compete()
+	if args.has("challenge"):  # 8.4: the Compete screen's "Next run" column: pick (one picked, one done) | running
+		Game.championships = maxi(1, Game.championships)
+		Game.challenges_done["stock_cubes"] = true
+		if String(args["challenge"]) == "running":  # (the longest texts: Pocket Cubes running, Charity Tour picked)
+			Game.challenge = "pocket_cubes"
+			Game.set_next_challenge("charity_tour")
+		else:
+			Game.set_next_challenge("one_handed")
+		Game.invalidate_upgrade_cache()
+		main._refresh()
+		main.open_compete()
 	if args.has("perks"):  # 6.3: the trophy perk tree open: three perks owned, 34 trophies left (some affordable, one not)
 		Game.trophies = 34
 		for id: String in ["warm_up", "practice_away", "team_captain"]:

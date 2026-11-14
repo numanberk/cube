@@ -52,6 +52,7 @@ var _lamp_center := Vector2(-1.0, -1.0)  ## last lamp_center sent to the backgro
 @onready var progress_label: Label = %ProgressLabel
 @onready var solves_box: Control = %SolvesBox
 @onready var team_best: Label = %TeamBest
+@onready var challenge_badge: Label = %ChallengeBadge
 @onready var goal_card: Control = %GoalCard
 @onready var stage_top: Control = %StageTop
 @onready var stage_overlay: Control = %StageOverlay
@@ -129,6 +130,11 @@ func _ready() -> void:
 	Game.collection_drop.connect(_on_collection_drop)
 	Game.career_moment.connect(_on_career_moment)
 	Game.kit_changed.connect(_on_kit_changed)
+	compete_panel.next_run_picked.connect(func(id: String) -> void: Game.set_next_challenge(id))
+	compete_panel.give_up_pressed.connect(func() -> void: Game.abandon_challenge())
+	Game.challenge_changed.connect(_refresh)
+	Game.challenge_started.connect(_on_challenge_started)
+	Game.challenge_completed.connect(_on_challenge_completed)
 	Game.competition_started.connect(_on_competition_started)
 	Game.competition_finished.connect(_on_competition_finished)
 	goals_panel.competitions.attempt_requested.connect(open_competition_attempt)
@@ -403,7 +409,7 @@ func _refresh_helper_cards() -> void:
 			})
 			if Game.solves >= Game.get_building_cost(id):  # the bubble counts single buys, whatever ×1/×10/Max says
 				affordable_count += 1
-		elif not shown_locked:
+		elif not shown_locked and Game.is_building_allowed(id):  # (a helper a challenge rules out has no "???" card, 8.4)
 			shown_locked = true
 			var unlock_at := Game.get_building_unlock_at(id)
 			card.visible = true
@@ -1278,6 +1284,7 @@ func _on_purchased(kind: String, _id: String) -> void:
 ## Opens the Compete screen with what competing would give now, and plays "Finals" while it's open.
 func open_compete() -> void:
 	compete_panel.open(Game.get_championship_preview())
+	compete_panel.set_next_run(next_run_view())
 	Audio.set_music_override("finals")
 
 
@@ -1290,6 +1297,13 @@ func _refresh_compete() -> void:
 		Num.format(float(gain)), "trophy" if gain == 1 else "trophies"])
 	if compete_panel.visible:
 		compete_panel.set_preview(Game.get_championship_preview())
+		compete_panel.set_next_run(next_run_view())
+	var running := Content.get_challenge(Game.challenge)
+	challenge_badge.visible = not running.is_empty()
+	if not running.is_empty():
+		challenge_badge.text = "Challenge: %s" % running["name"]
+		challenge_badge.tooltip_text = "%s\nWin this run's championship to finish it: %s, for good. (Give up on the Compete screen.)" % [
+				running["text"], running["reward_text"]]
 	perks_button.visible = Game.trophies > 0 or not Game.perks.is_empty()
 	perks_button.text = Num.format(float(Game.trophies))  # the trophy icon says what it is; the tooltip says the rest
 	perks_button.tooltip_text = "Trophy perks (click to open): %s unspent %s, +%s %% moves." % [Num.format(float(Game.trophies)),
@@ -1381,6 +1395,32 @@ func drop_toast(item_id: String, stars: int) -> Dictionary:
 			"text": "%s %s  ·  %s" % [rarity, item.get("kind", ""), GoalsPanel.item_effect_text(item_id)],  # the stars: pips
 			"icon": Content.icon(String(item.get("icon", "small_cubes"))), "stars": [stars, int(Content.COLLECTION["max_stars"])],
 			"category": GoalsPanel.RARITY_CATEGORY.get(item.get("rarity", ""), &"station")}
+
+
+# --- Challenge runs (task 8.4) ----------------------------------------------------------------
+
+## The Compete screen's "Next run" column (CompetePanel.set_next_run): the running challenge, and the options.
+func next_run_view() -> Dictionary:
+	var running := Content.get_challenge(Game.challenge)
+	var options: Array[Dictionary] = [{"id": "", "name": "Normal run", "picked": Game.next_challenge == ""}]
+	for def: Dictionary in Content.CHALLENGES:
+		options.append({"id": def["id"], "name": def["name"], "text": def["text"], "reward": def["reward_text"],
+				"done": Game.is_challenge_done(String(def["id"])), "picked": Game.next_challenge == def["id"],
+				"running": Game.challenge == def["id"]})
+	return {"open": Game.has_won_championship(), "options": options,
+			"running": {} if running.is_empty() else {"name": running["name"], "text": running["text"], "reward": running["reward_text"]}}
+
+
+func _on_challenge_started(id: String) -> void:
+	var def := Content.get_challenge(id)
+	news.push("challenge", "Challenge run: %s. %s" % [def["name"], def["text"]])
+
+
+func _on_challenge_completed(id: String) -> void:
+	var def := Content.get_challenge(id)
+	news.push("challenge_done", "Challenge won: %s! %s, for good." % [def["name"], def["reward_text"]])
+	toast.push({"kind": "challenge", "caption": "CHALLENGE WON", "title": String(def["name"]),
+			"text": "%s, for good." % def["reward_text"], "icon": Content.icon(String(def["icon"])), "category": &"trophies"})
 
 
 # --- Competitions (task 8.3b) ----------------------------------------------------------------
