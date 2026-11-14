@@ -2,6 +2,52 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-14 — Task 8.3a: Competitions, rules only (save v19)
+- **D19 answered (owner):** Competitions are the **WCA weekend** of PLAN §4.8 (2), not the 60 s hold; a competition's
+  length **scales by tier** (15 min to 8 h of real time, also while the game is closed); one attempt per round may be
+  the player's **own Solve Station solve, which replaces the team's worst time if it's better**. 8.3 is split into
+  8.3a (this) and 8.3b (the screen).
+- **Data (`Content.COMPETITIONS`):** five tiers (Local Open 15 min / 12 entrants / final only; Regional 45 min / 16 →
+  8; National 2 h / 24 → 12; Continental 4 h / 32 → 16 → 8; World Cup 8 h / 48 → 24 → 12), each with a `rating` and a
+  `weight`; an event per puzzle with `start` and `floor` times. **Your average:** rating = log10(1 + the event
+  puzzle's moves/s) (helpers' share, kit, mastery, trophies are all in it), average = floor + (start − floor) ×
+  e^(−rating / 5): on the 3×3, rating 3 → ~35 s, 8.5 → ~14.6 s, 13 → ~8.6 s, never under 4.5 s. Rivals' ratings are
+  the tier's ± 1 (normal), so at the tier's rating you're mid-field and need about +2 for a sure medal.
+- **Rules (GameState):** `enter_competition(tier, puzzle)` (system unlocked, one at a time, a puzzle you have, the tier
+  open: Local at once, each next one after any medal in the one before); the team's rating is **taken when you
+  register**. Rounds split the time evenly; every entrant does five attempts (average × e^(normal × 0.07)), the WCA
+  average (best and worst dropped) ranks them, the top `advance` go on. Everything comes from the competition's seed
+  (`competition_entrants`, `_competition_rounds`), so it's the same however often it's worked out and whenever the
+  game is opened. `update_competition()` (once a second, the real clock) ends it when its time is up, or **as soon as
+  the round that cut you is over** (you can come back sooner). `submit_competition_attempt(seconds)`: once per round
+  while you're still in. `get_competition_view()` for the screen (time left, the round, finished rounds' result
+  sheets, `out`, `can_attempt`, your average), `get_competition_average(puzzle)` for the register screen.
+- **Rewards:** a medal for 1st/2nd/3rd in the final (gold 3 / silver 2 / bronze 1 points), kept **per tier and event**
+  (the best one); points × the tier's weight, each point **+0.2 % all moves** for good (`get_medal_mult()`, in
+  `get_puzzle_moves_mult`; every medal gold = +54 %). A medal also drops a collection item (source "competition",
+  listed in the odds only once the system is unlocked). Official records per puzzle (best single and average).
+  `competition_finished(result)`; the result stays in `get_competition_result()` (saved) until
+  `clear_competition_result()`. Kept through championships (a running one keeps running).
+- **Save v19:** `"competitions": {active, medals, records, last, entered}`, each validated on load (unknown tiers and
+  events dropped, points clamped, a malformed result dropped). A start time in the future (a PC clock that was ahead)
+  is pulled back to now, so a competition never waits longer than its length.
+- **Not reachable by players yet, on purpose:** the perk `comp_circuit` stays `buyable: false` until 8.3b (there is no
+  screen). Tests open the system by setting the perk. `get_bonus_breakdown()` already has a "medals" row.
+- **Balance:** unchanged (the bot can't reach the system).
+- **For 8.3b:** the screen (register with your expected average vs the tier, live rounds, result sheets, medals grid),
+  the hand attempt from the Solve Station (`can_submit_competition_attempt`), Welcome back's result, a "Competition
+  medals" row on the Stats tab (`GoalsPanel.BONUS_ROWS`) and "Competition medals and records" in
+  `Content.CHAMPIONSHIP["keeps"]`; then make `comp_circuit` buyable with the grant migration (ROADMAP 8.3's notes).
+  `get_competition_view()` works the rounds out twice (~0.9 ms at the World Cup): call it on a timer, not every
+  frame. **Tuning to watch:** the tier ratings (3 / 6 / 8.5 / 11 / 13) are a first guess against moves/s on one
+  puzzle; and a real keyboard solve will rarely beat the team's worst time past the Local Open (the team averages
+  ~20 s on the 3×3 at Regional), so the hand attempt mostly matters early. Both are data.
+- **Review fixes (diff-reviewer):** the collection drop test now opens the system for the new source; the clock
+  clamp; the saved result is rebuilt key by key; the Stats row and the Compete "keeps" line wait for 8.3b; no work
+  in `update_competition` before the first round ends.
+- Tests: `test_competition_data`, `test_competition_entering_and_rounds`, `test_competition_medals_and_rewards`,
+  `test_competition_hand_attempt`, `test_competition_save`.
+
 ## 2026-11-13 — Tasks 7.5–7.13: Goals polish (Phase 7b, fun pass), save v18
 - **D18 answered (owner):** any OLL/PLL case may appear in a Golden Scramble; a case learned in the drills pays more.
 - **7.5 Drop odds on screen:** `Game.get_drop_odds()` (per source chance, pity, misses so far, "from your first

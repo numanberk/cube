@@ -27,6 +27,8 @@ signal research_finished(project_id: String)  ## a project's effect counts from 
 signal career_moment(moment_id: String)  ## a Content.CAREER story beat happened, once per player (7.0a)
 signal achievement_earned(achievement_id: String)  ## a Content achievement was earned, once per player (7.1a)
 signal collection_drop(item_id: String, stars: int, source: String)  ## a Cube Collection item dropped (7.3a); stars after it
+signal competition_started(tier: String, puzzle_id: String)  ## 8.3a
+signal competition_finished(result: Dictionary)  ## a competition ended: get_competition_result()'s dictionary
 signal kit_changed  ## the Comp Kit changed (7.4a): an equip, a slot back on auto, or an auto slot that found a better item
 signal championship_won(trophies_won: int)  ## a World Championship reset the run (6.2); the UI rebuilds after it
 ## Buying a trophy perk (6.3) emits purchased("perk", id).
@@ -35,13 +37,14 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 18  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 19  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
                           ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
                           ## v12 (6.3b): auto-buyer toggles; v13 (7.0a): career moments seen; v14 (7.1a): achievements;
                           ## v15 (7.2a): stats; v16 (7.3a): Cube Collection;
-                          ## v17 (7.4a): Comp Kit; v18 (7.6/7.8): Legendary pity counter, new career moments seen
+                          ## v17 (7.4a): Comp Kit; v18 (7.6/7.8): Legendary pity counter, new career moments seen;
+                          ## v19 (8.3a): competitions (the running one, medals, records)
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -95,6 +98,15 @@ var _collection_stars := 0           ## the stars in `collection`, kept up to da
 var collection_pity: Dictionary = {}  ## misses in a row per drop source, and "rarity": drops in a row below the pity rarity
 var collection_rng := RandomNumberGenerator.new()  ## drops (seeded by tests and the balance bot)
 var kit: Dictionary = {}         ## Comp Kit (7.4a, saved; kept through championships): slot id -> item id (empty slots absent)
+## Competitions (8.3a, saved; kept through championships). competition: the one running ({} if none): {tier, puzzle,
+## started_at (unix), seed, rating (the team's on the event when it registered), hand: {round index as text: seconds}}.
+var competition: Dictionary = {}
+var competition_medals: Dictionary = {}   ## "tier:puzzle" -> medal points (1 bronze, 2 silver, 3 gold), the best so far
+var competition_records: Dictionary = {}  ## puzzle id -> {"single", "average"}: the team's official bests
+var competition_result: Dictionary = {}   ## the last finished one, until the screen dismisses it (clear_competition_result)
+var competitions_entered := 0
+var competition_now := -1.0               ## tests: the unix time "now" for competitions (-1 = the real clock)
+var _competition_timer := 0.0
 var kit_manual: Dictionary = {}  ## slots the player filled (or emptied) by hand: auto-fill leaves them alone
 var stats: Dictionary = {}  ## the Stats screen's counters (7.2a, saved; see _new_stats() for each one and what a championship keeps)
 var _applying_save := false  ## true inside apply_save_data: no career moment is signalled (no UI listens yet)
@@ -164,6 +176,10 @@ func _process(delta: float) -> void:
 		check_career()
 		stats["best_solves_per_second"] = maxf(float(stats["best_solves_per_second"]), get_solves_per_second())
 		check_achievements()  # achievements only here (7.1a): a toast a second late is fine, and nothing else waits on them
+	_competition_timer += delta
+	if _competition_timer >= 1.0:
+		_competition_timer = 0.0
+		update_competition()
 	_automation_timer += delta
 	if _automation_timer >= float(Content.AUTOMATION["interval"]):
 		_automation_timer = 0.0
@@ -1151,7 +1167,8 @@ func _load_stats(saved: Variant) -> void:
 ## streak), then any item of it that can still grow; it gains a star (new: 1). Returns the item id, "" if nothing dropped.
 func roll_collection_drop(source: String) -> String:
 	var def: Dictionary = (Content.COLLECTION["sources"] as Dictionary).get(source, {})
-	if def.is_empty() or (def.get("after_first_championship", false) and not has_won_championship()):
+	if def.is_empty() or (def.get("after_first_championship", false) and not has_won_championship()) \
+			or (def.has("system") and not is_system_unlocked(String(def["system"]))):
 		return ""  # no try: the pity doesn't move either
 	var misses := int(collection_pity.get(source, 0))
 	if misses + 1 < int(def["pity"]) and collection_rng.randf() >= float(def["chance"]):
@@ -1234,6 +1251,369 @@ func get_collection_stars_total() -> int:
 func get_item_mult(id: String) -> float:
 	var share := 1.0 if is_equipped(id) else float(Content.COMP_KIT["owned_share"])
 	return 1.0 + Content.get_item_per_star(Content.get_collection_item(id)) * get_collection_stars(id) * share
+
+
+# --- Competitions (task 8.3a, D19) -------------------------------------------------------
+
+func _competition_clock() -> float:
+	return competition_now if competition_now >= 0.0 else Time.get_unix_time_from_system()
+
+
+## The team's rating on an event now: log10(1 + the puzzle's moves/s) (helpers' share, kit, mastery, trophies).
+func get_competition_rating(puzzle_id: String) -> float:
+	return log(1.0 + maxf(0.0, get_puzzle_moves_per_second(puzzle_id))) / log(10.0)
+
+
+## "Your 3×3 average" if you registered now (seconds).
+func get_competition_average(puzzle_id: String) -> float:
+	return Content.competition_average(puzzle_id, get_competition_rating(puzzle_id))
+
+
+## A tier is open once the one before it gave any medal (the first is open with the system).
+func is_competition_tier_open(tier: String) -> bool:
+	var index := Content.get_competition_tier_index(tier)
+	if index < 0 or not is_system_unlocked("competitions"):
+		return false
+	if index == 0:
+		return true
+	var before := String(Content.COMPETITIONS["tiers"][index - 1]["id"])
+	for key: String in competition_medals:
+		if key.get_slice(":", 0) == before and int(competition_medals[key]) > 0:
+			return true
+	return false
+
+
+func can_enter_competition(tier: String, puzzle_id: String) -> bool:
+	return competition.is_empty() and is_competition_tier_open(tier) and is_puzzle_unlocked(puzzle_id) \
+			and (Content.COMPETITIONS["events"] as Dictionary).has(puzzle_id)
+
+
+## Registers: the competition starts now and runs for the tier's `seconds` of real time. `seed` -1 = a random one.
+func enter_competition(tier: String, puzzle_id: String, seed_value: int = -1) -> bool:
+	if not can_enter_competition(tier, puzzle_id):
+		return false
+	competition = {"tier": tier, "puzzle": puzzle_id, "started_at": _competition_clock(),
+			"seed": seed_value if seed_value >= 0 else int(randi() % 1000000000),
+			"rating": get_competition_rating(puzzle_id), "hand": {}}
+	competition_result = {}
+	competitions_entered += 1
+	competition_started.emit(tier, puzzle_id)
+	return true
+
+
+## The round being played now (0-based), or the number of rounds once the time is up; -1 with no competition.
+func get_competition_round() -> int:
+	if competition.is_empty():
+		return -1
+	var tier := Content.get_competition_tier(String(competition["tier"]))
+	var rounds := (tier["rounds"] as Array).size()
+	var elapsed := _competition_clock() - float(competition["started_at"])
+	return clampi(floori(elapsed / (float(tier["seconds"]) / rounds)), 0, rounds)
+
+
+## Your own Solve Station solve as one attempt of the round being played (once a round; D19: it replaces the team's
+## worst time if it's better, so it can only help). False if there's no round to take it (none running, you're out,
+## or this round already has one).
+func submit_competition_attempt(seconds: float) -> bool:
+	if not can_submit_competition_attempt() or seconds <= 0.0 or is_inf(seconds) or is_nan(seconds):
+		return false
+	(competition["hand"] as Dictionary)[str(get_competition_round())] = seconds
+	return true
+
+
+func can_submit_competition_attempt() -> bool:
+	if competition.is_empty():
+		return false
+	var index := get_competition_round()
+	var tier := Content.get_competition_tier(String(competition["tier"]))
+	if index >= (tier["rounds"] as Array).size() or (competition["hand"] as Dictionary).has(str(index)):
+		return false
+	var played := _competition_rounds(competition, index)  # the rounds before this one: still in?
+	return played.is_empty() or bool(played.back()["you_advance"])
+
+
+## A WCA average: the mean without the best and the worst attempt.
+static func competition_mean(times: Array) -> float:
+	var sorted := times.duplicate()
+	sorted.sort()
+	if sorted.size() <= 2:
+		return float(sorted[0]) if not sorted.is_empty() else INF
+	var total := 0.0
+	for i in range(1, sorted.size() - 1):
+		total += float(sorted[i])
+	return total / (sorted.size() - 2)
+
+
+## The entrants of a competition, from its seed: [{name, rating, you}], you first. Rival names are unique.
+static func competition_entrants(comp: Dictionary) -> Array[Dictionary]:
+	var tier := Content.get_competition_tier(String(comp["tier"]))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(comp["seed"])
+	var people: Array = Content.NEWS["people"]
+	var out: Array[Dictionary] = [{"name": "You", "rating": float(comp["rating"]), "you": true}]
+	var used := {}
+	while out.size() < int(tier["field"]):
+		var name := "%s %s." % [people[rng.randi_range(0, people.size() - 1)], char(65 + rng.randi_range(0, 25))]
+		if used.has(name):
+			continue
+		used[name] = true
+		out.append({"name": name, "you": false,
+				"rating": maxf(0.0, float(tier["rating"]) + rng.randfn(0.0, float(Content.COMPETITIONS["rival_spread"])))})
+	return out
+
+
+## (Results read Content's tiers, events and name pool live: editing those changes a competition already running.)
+## The first `count` rounds of a competition, worked out from its seed (the same every time): each
+## {name, advance (0 = the final), results: [{name, you, times, average, single, place, hand}] best first, you_in,
+## you_place, you_advance}. Only entrants still in play a round; a round you're out of has you_in false.
+func _competition_rounds(comp: Dictionary, count: int) -> Array[Dictionary]:
+	var tier := Content.get_competition_tier(String(comp["tier"]))
+	var cuts: Array = tier["rounds"]
+	var entrants := competition_entrants(comp)
+	var alive: Array[int] = []
+	for i in entrants.size():
+		alive.append(i)
+	var names: Array = Content.COMPETITIONS["round_names"]
+	var out: Array[Dictionary] = []
+	for r in mini(count, cuts.size()):
+		var rng := RandomNumberGenerator.new()
+		rng.seed = int(comp["seed"]) * 31 + r + 1
+		var all_times: Array = []  # every entrant draws, in or out, so a round's times never depend on who advanced
+		for i in entrants.size():
+			var average := Content.competition_average(String(comp["puzzle"]), float(entrants[i]["rating"]))
+			var times: Array[float] = []
+			for a in int(Content.COMPETITIONS["attempts"]):
+				times.append(average * exp(rng.randfn(0.0, float(Content.COMPETITIONS["attempt_noise"]))))
+			all_times.append(times)
+		var results: Array[Dictionary] = []
+		for i in alive:
+			var times: Array = (all_times[i] as Array).duplicate()
+			var hand := false
+			if entrants[i]["you"] and (comp.get("hand", {}) as Dictionary).has(str(r)):
+				var worst := 0
+				for a in times.size():
+					if float(times[a]) > float(times[worst]):
+						worst = a
+				if float(comp["hand"][str(r)]) < float(times[worst]):
+					times[worst] = float(comp["hand"][str(r)])
+					hand = true
+			results.append({"index": i, "name": entrants[i]["name"], "you": entrants[i]["you"], "times": times,
+					"average": competition_mean(times), "single": float(times.min()), "hand": hand})
+		results.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			if a["average"] != b["average"]:
+				return float(a["average"]) < float(b["average"])
+			if a["single"] != b["single"]:
+				return float(a["single"]) < float(b["single"])
+			return int(a["index"]) < int(b["index"]))
+		var advance := int(cuts[r])
+		var you_place := 0
+		alive = []
+		for place in results.size():
+			results[place]["place"] = place + 1
+			if results[place]["you"]:
+				you_place = place + 1
+			if place < advance:
+				alive.append(int(results[place]["index"]))
+		# "Final" last; with three rounds or more the one before it is the "Semi-final"; else "First round", "Second round"
+		var name := String(names[r]) if r < 2 else "Round %d" % (r + 1)
+		if r == cuts.size() - 1:
+			name = String(names[3])
+		elif r == cuts.size() - 2 and cuts.size() >= 3:
+			name = String(names[2])
+		out.append({"name": name, "advance": advance, "results": results, "you_in": you_place > 0, "you_place": you_place,
+				"you_advance": you_place > 0 and you_place <= advance})
+	return out
+
+
+## Everything the Competitions screen shows about the one running ({} if none): {tier, puzzle, seconds, left,
+## round (being played; = rounds.size() of the tier once over), round_left, rounds (the finished ones, see
+## _competition_rounds), out (you were cut), can_attempt, average (your expected average), field}.
+func get_competition_view() -> Dictionary:
+	if competition.is_empty():
+		return {}
+	var tier := Content.get_competition_tier(String(competition["tier"]))
+	var total := (tier["rounds"] as Array).size()
+	var elapsed := _competition_clock() - float(competition["started_at"])
+	var index := get_competition_round()
+	var done := _competition_rounds(competition, index)
+	var per_round := float(tier["seconds"]) / total
+	return {"tier": competition["tier"], "puzzle": competition["puzzle"], "seconds": float(tier["seconds"]),
+			"left": maxf(0.0, float(tier["seconds"]) - elapsed), "round": index,
+			"round_left": maxf(0.0, per_round * (index + 1) - elapsed) if index < total else 0.0, "rounds": done,
+			"out": not done.is_empty() and not bool(done.back()["you_in"] and (done.back()["you_advance"] or done.size() == total)),
+			"can_attempt": can_submit_competition_attempt(), "field": int(tier["field"]),
+			"average": Content.competition_average(String(competition["puzzle"]), float(competition["rating"]))}
+
+
+## Ends the running competition once its time is up, or once the round that cut you is over (so you can come back
+## sooner). From _process once a second (the real clock: time away counts in full); tests call it.
+func update_competition() -> void:
+	if competition.is_empty():
+		return
+	var tier := Content.get_competition_tier(String(competition["tier"]))
+	if tier.is_empty():
+		competition = {}
+		return
+	if float(competition["started_at"]) > _competition_clock():
+		competition["started_at"] = _competition_clock()  # the PC's clock went back: it never waits longer than its length
+	var total := (tier["rounds"] as Array).size()
+	var rounds_over := get_competition_round()
+	if rounds_over == 0:
+		return  # no round over yet: nothing to work out
+	var done := _competition_rounds(competition, rounds_over)
+	var last: Dictionary = done.back()
+	var cut := false
+	for played: Dictionary in done:
+		if played["you_in"] and not played["you_advance"] and int(played["advance"]) > 0:
+			last = played
+			cut = true
+			break
+	if cut or done.size() == total:
+		_finish_competition(last, done.find(last) + 1)
+
+
+## Medal, bonus, records, a drop; stores the result and signals it.
+func _finish_competition(last: Dictionary, rounds_played: int) -> void:
+	var puzzle := String(competition["puzzle"])
+	var tier := String(competition["tier"])
+	var mine: Dictionary = {}
+	for row: Dictionary in last["results"]:
+		if row["you"]:
+			mine = row
+	var is_final := int(last["advance"]) == 0
+	var place := int(last["you_place"])
+	var medals: Array = Content.COMPETITIONS["medals"]
+	var points := maxi(0, medals.size() + 1 - place) if is_final else 0  # 1st 3, 2nd 2, 3rd 1
+	var key := "%s:%s" % [tier, puzzle]
+	var improved := points > int(competition_medals.get(key, 0))
+	if improved:
+		competition_medals[key] = points
+		invalidate_upgrade_cache()
+	# Official records: the best single and average of every round played.
+	var record: Dictionary = competition_records.get(puzzle, {})
+	var best_single := INF
+	var best_average := INF
+	for played: Dictionary in _competition_rounds(competition, rounds_played):
+		for row: Dictionary in played["results"]:
+			if row["you"]:
+				best_single = minf(best_single, float(row["single"]))
+				best_average = minf(best_average, float(row["average"]))
+	var pb_single := best_single < float(record.get("single", INF))
+	var pb_average := best_average < float(record.get("average", INF))
+	competition_records[puzzle] = {"single": minf(best_single, float(record.get("single", INF))),
+			"average": minf(best_average, float(record.get("average", INF)))}
+	competition_result = {"tier": tier, "puzzle": puzzle, "place": place, "field": int(Content.get_competition_tier(tier)["field"]),
+			"final": is_final, "round": String(last["name"]), "medal": String(medals[points - 1]) if points > 0 else "",
+			"points": points, "improved": improved, "average": float(mine.get("average", INF)),
+			"single": float(mine.get("single", INF)), "pb_single": pb_single, "pb_average": pb_average, "drop": ""}
+	competition = {}
+	if points > 0:
+		competition_result["drop"] = roll_collection_drop("competition")
+	competition_finished.emit(competition_result)
+
+
+## The last finished competition ({} if none, or once dismissed).
+func get_competition_result() -> Dictionary:
+	return competition_result
+
+
+func clear_competition_result() -> void:
+	competition_result = {}
+
+
+## Medal points: every tier-and-event's best medal (bronze 1, silver 2, gold 3) × its tier's weight.
+func get_medal_points() -> int:
+	var points := 0
+	for key: String in competition_medals:
+		points += int(competition_medals[key]) * int(Content.get_competition_tier(key.get_slice(":", 0)).get("weight", 0))
+	return points
+
+
+## All moves × this, for good: 1 + bonus_per_point × medal points.
+func get_medal_mult() -> float:
+	return 1.0 + float(Content.COMPETITIONS["bonus_per_point"]) * get_medal_points()
+
+
+## The best medal at a tier and event: "" | "bronze" | "silver" | "gold".
+func get_competition_medal(tier: String, puzzle_id: String) -> String:
+	var points := int(competition_medals.get("%s:%s" % [tier, puzzle_id], 0))
+	return String(Content.COMPETITIONS["medals"][points - 1]) if points > 0 else ""
+
+
+func _load_competitions(saved: Variant) -> void:
+	competition = {}
+	competition_medals.clear()
+	competition_records.clear()
+	competition_result = {}
+	competitions_entered = 0
+	if typeof(saved) != TYPE_DICTIONARY:
+		return
+	var data: Dictionary = saved
+	var events: Dictionary = Content.COMPETITIONS["events"]
+	var medals: Variant = data.get("medals", {})
+	if typeof(medals) == TYPE_DICTIONARY:
+		for key: Variant in medals:
+			var parts := str(key).split(":")
+			if parts.size() == 2 and not Content.get_competition_tier(parts[0]).is_empty() and events.has(parts[1]) \
+					and typeof(medals[key]) in [TYPE_INT, TYPE_FLOAT]:
+				var points := clampi(int(medals[key]), 0, (Content.COMPETITIONS["medals"] as Array).size())
+				if points > 0:
+					competition_medals[str(key)] = points
+	var records: Variant = data.get("records", {})
+	if typeof(records) == TYPE_DICTIONARY:
+		for id: Variant in records:
+			var entry: Variant = records[id]
+			if events.has(str(id)) and typeof(entry) == TYPE_DICTIONARY:
+				var single: Variant = (entry as Dictionary).get("single")
+				var average: Variant = (entry as Dictionary).get("average")
+				if typeof(single) in [TYPE_INT, TYPE_FLOAT] and typeof(average) in [TYPE_INT, TYPE_FLOAT] \
+						and float(single) > 0.0 and float(average) > 0.0:
+					competition_records[str(id)] = {"single": float(single), "average": float(average)}
+	if typeof(data.get("entered")) in [TYPE_INT, TYPE_FLOAT]:
+		competitions_entered = maxi(0, int(data["entered"]))
+	var active: Variant = data.get("active", {})
+	if typeof(active) == TYPE_DICTIONARY and not Content.get_competition_tier(str((active as Dictionary).get("tier", ""))).is_empty() \
+			and events.has(str((active as Dictionary).get("puzzle", ""))) \
+			and typeof((active as Dictionary).get("started_at")) in [TYPE_INT, TYPE_FLOAT] \
+			and typeof((active as Dictionary).get("seed")) in [TYPE_INT, TYPE_FLOAT] \
+			and typeof((active as Dictionary).get("rating")) in [TYPE_INT, TYPE_FLOAT]:
+		var hand := {}
+		var saved_hand: Variant = (active as Dictionary).get("hand", {})
+		if typeof(saved_hand) == TYPE_DICTIONARY:
+			for r: Variant in saved_hand:
+				if str(r).is_valid_int() and typeof(saved_hand[r]) in [TYPE_INT, TYPE_FLOAT] and float(saved_hand[r]) > 0.0:
+					hand[str(r)] = float(saved_hand[r])
+		competition = {"tier": str(active["tier"]), "puzzle": str(active["puzzle"]), "started_at": float(active["started_at"]),
+				"seed": int(active["seed"]), "rating": maxf(0.0, float(active["rating"])), "hand": hand}
+	competition_result = _clean_competition_result(data.get("last", {}))
+
+
+## A saved result, rebuilt key by key with the right types; {} unless every key is there and makes sense.
+func _clean_competition_result(saved: Variant) -> Dictionary:
+	if typeof(saved) != TYPE_DICTIONARY:
+		return {}
+	var last: Dictionary = saved
+	var numbers := [TYPE_INT, TYPE_FLOAT]
+	for key: String in ["place", "field", "points", "average", "single"]:
+		if not typeof(last.get(key)) in numbers:
+			return {}
+	for key: String in ["final", "improved", "pb_single", "pb_average"]:
+		if typeof(last.get(key)) != TYPE_BOOL:
+			return {}
+	for key: String in ["tier", "puzzle", "round", "medal", "drop"]:
+		if typeof(last.get(key)) != TYPE_STRING:
+			return {}
+	var medals: Array = Content.COMPETITIONS["medals"]
+	var points := clampi(int(last["points"]), 0, medals.size())
+	if Content.get_competition_tier(String(last["tier"])).is_empty() \
+			or not (Content.COMPETITIONS["events"] as Dictionary).has(String(last["puzzle"])) or int(last["place"]) < 1:
+		return {}
+	var drop := String(last["drop"])
+	return {"tier": String(last["tier"]), "puzzle": String(last["puzzle"]), "place": int(last["place"]),
+			"field": maxi(1, int(last["field"])), "final": bool(last["final"]), "round": String(last["round"]),
+			"medal": String(medals[points - 1]) if points > 0 else "", "points": points, "improved": bool(last["improved"]),
+			"average": float(last["average"]), "single": float(last["single"]), "pb_single": bool(last["pb_single"]),
+			"pb_average": bool(last["pb_average"]), "drop": drop if not Content.get_collection_item(drop).is_empty() else ""}
 
 
 # --- Comp Kit (task 7.4a) --------------------------------------------------------------
@@ -1402,6 +1782,7 @@ func get_bonus_breakdown() -> Array[Dictionary]:
 		{"id": "trophies", "effects": {"global_mult": get_trophy_mult()} if trophies > 0 else {}},
 		{"id": "achievements", "effects": {"trophy_gain_mult": get_achievement_mult()} if get_achievement_mult() > 1.0 else {}},
 		{"id": "perks", "effects": _perk_mult_effects()},
+		{"id": "medals", "effects": {"global_mult": get_medal_mult()} if get_medal_points() > 0 else {}},
 	]
 
 
@@ -1438,6 +1819,8 @@ func get_drop_odds() -> Dictionary:
 	var sources := {}
 	for source: String in Content.COLLECTION["sources"]:
 		var def: Dictionary = Content.COLLECTION["sources"][source]
+		if def.has("system") and not is_system_unlocked(String(def["system"])):
+			continue  # a source of a system the player doesn't have yet isn't listed
 		sources[source] = {"chance": float(def["chance"]), "pity": int(def["pity"]),
 				"misses": int(collection_pity.get(source, 0)),
 				"after_first_championship": bool(def.get("after_first_championship", false)),
@@ -1730,7 +2113,7 @@ func get_puzzle_moves_mult(puzzle_id: String) -> float:
 	for id: String in _mastery_levels:
 		everywhere *= _milestone_mult(id, "all_moves")
 	return per_level * _milestone_mult(puzzle_id, "moves") * everywhere * get_hand_tier_mult(puzzle_id) \
-			* _upgrade_mult("puzzle_mult", puzzle_id) * get_trophy_mult()
+			* _upgrade_mult("puzzle_mult", puzzle_id) * get_trophy_mult() * get_medal_mult()
 
 
 func _mastery_mult(puzzle_id: String, effect_type: String) -> float:
@@ -2618,6 +3001,7 @@ func reset_state() -> void:
 	collection_rng.randomize()
 	kit.clear()
 	kit_manual.clear()
+	_load_competitions({})
 	automation = {"compete_at": int(Content.AUTOMATION["compete_at_default"])}
 	_automation_timer = 0.0
 	championships = 0
@@ -2676,6 +3060,9 @@ func get_save_data() -> Dictionary:
 		"stats": stats.duplicate(true),
 		"collection": {"items": collection.duplicate(), "pity": collection_pity.duplicate()},
 		"kit": {"slots": kit.duplicate(), "manual": kit_manual.keys()},
+		"competitions": {"active": competition.duplicate(true), "medals": competition_medals.duplicate(),
+				"records": competition_records.duplicate(true), "last": competition_result.duplicate(true),
+				"entered": competitions_entered},
 	}
 
 
@@ -2799,6 +3186,7 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 			roll_collection_drop("championship")  # nobody listens to the signal yet: the screen just shows them
 		collection_rng.randomize()
 	_load_kit(data.get("kit", {}))  # after the collection (and its backfill): only owned items fit
+	_load_competitions(data.get("competitions", {}))  # a running one ends at the first update after loading (signalled)
 	var saved_auto: Variant = data.get("automation", {})
 	if typeof(saved_auto) == TYPE_DICTIONARY:
 		for kind: String in Content.AUTOMATION["kinds"]:
@@ -3102,6 +3490,11 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if typeof(data.get("career")) == TYPE_ARRAY:
 			data["career_backfill"] = Content.CAREER_V18.duplicate()
 		data["version"] = 18
+	if int(data["version"]) < 19:
+		# v19 adds competitions (8.3a): nobody has entered one yet.
+		if not data.has("competitions"):
+			data["competitions"] = {}
+		data["version"] = 19
 	return data
 
 

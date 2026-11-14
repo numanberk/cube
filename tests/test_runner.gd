@@ -4467,6 +4467,8 @@ func test_collection_drops_and_pity() -> void:
 	g.collection_rng.seed = 12345
 	var heard: Array = []
 	g.collection_drop.connect(func(id: String, stars: int, source: String) -> void: heard.append([id, stars, source]))
+	check(g.roll_collection_drop("competition") == "", "a source of a system the player doesn't have drops nothing (8.3a)")
+	g.perks["comp_circuit"] = true  # the Competitions system (its perk isn't buyable until 8.3b)
 	for source: String in Content.COLLECTION["sources"]:
 		var pity := int(Content.COLLECTION["sources"][source]["pity"])
 		var streak := 0
@@ -4676,6 +4678,235 @@ func test_comp_kit_save() -> void:
 	check(old.kit_manual.is_empty() and old.get_kit().has("main") and old.get_kit().has("timer"), "v16 → v17: every slot on auto, filled (%s)" % old.get_kit())
 	old.free()
 	g.free()
+
+
+# --- Competitions (task 8.3a) -----------------------------------------------------------
+
+## A game with the Competitions system open (its perk isn't buyable until 8.3b) and a fake clock at t = 1000.
+func competition_game() -> GameState:
+	var g := new_game()
+	g.perks["comp_circuit"] = true
+	g.invalidate_upgrade_cache()
+	g.competition_now = 1000.0
+	return g
+
+
+func test_competition_data() -> void:
+	var tiers: Array = Content.COMPETITIONS["tiers"]
+	check(tiers.size() == 5, "five tiers, Local to the World Cup")
+	for i in tiers.size():
+		var tier: Dictionary = tiers[i]
+		var rounds: Array = tier["rounds"]
+		check(int(rounds.back()) == 0 and int(tier["field"]) >= 8, "%s ends in a final" % tier["id"])
+		var before := int(tier["field"])
+		for cut: int in rounds.slice(0, rounds.size() - 1):
+			check(cut >= 3 and cut < before, "%s: each round cuts the field (%d of %d)" % [tier["id"], cut, before])
+			before = cut
+		check(Content.get_competition_tier(tier["id"]) == tier and Content.get_competition_tier_index(tier["id"]) == i, "lookups find %s" % tier["id"])
+		if i > 0:
+			check(float(tier["seconds"]) > float(tiers[i - 1]["seconds"]) and float(tier["rating"]) > float(tiers[i - 1]["rating"])
+					and int(tier["weight"]) > int(tiers[i - 1]["weight"]), "%s is longer, harder and worth more than the one before" % tier["id"])
+	check(is_equal_approx(float(tiers[0]["seconds"]), 900.0) and is_equal_approx(float(tiers[4]["seconds"]), 8.0 * 3600.0), "D19: 15 minutes to 8 hours")
+	for puzzle: Dictionary in Content.PUZZLES:
+		var event: Dictionary = Content.COMPETITIONS["events"].get(puzzle["id"], {})
+		check(not event.is_empty() and float(event["start"]) > float(event["floor"]) and float(event["floor"]) > 0.0, "%s is an event" % puzzle["id"])
+		check(is_equal_approx(Content.competition_average(puzzle["id"], 0.0), float(event["start"])), "...rating 0 averages its start time")
+		var last := INF
+		for rating: float in [1.0, 3.0, 6.0, 10.0, 15.0, 30.0]:
+			var average := Content.competition_average(puzzle["id"], rating)
+			check(average < last and average > float(event["floor"]), "...a higher rating is faster, never under the floor (%s at %.0f)" % [puzzle["id"], rating])
+			last = average
+	check(is_inf(Content.competition_average("banana", 5.0)), "an unknown event has no average")
+	check(is_equal_approx(GameState.competition_mean([5.0, 1.0, 3.0, 9.0, 4.0]), 4.0), "a WCA average drops the best and the worst")
+	check(Content.COLLECTION["sources"].has("competition"), "a medal is a drop source")
+
+
+func test_competition_entering_and_rounds() -> void:
+	var plain := new_game()
+	check(not plain.can_enter_competition("local", "2x2") and not plain.enter_competition("local", "2x2"), "no competitions without the system")
+	check(not plain.get_drop_odds()["sources"].has("competition"), "...and its drop source isn't listed yet")
+	plain.free()
+	var g := competition_game()
+	check(g.get_drop_odds()["sources"].has("competition"), "with the system its drop source is listed")
+	check(g.is_competition_tier_open("local") and not g.is_competition_tier_open("regional"), "Local is open, Regional waits for a medal")
+	check(not g.can_enter_competition("local", "3x3"), "the event must be a puzzle you have")
+	check(not g.can_enter_competition("banana", "2x2"), "an unknown tier can't be entered")
+	var started: Array = []
+	g.competition_started.connect(func(tier: String, puzzle: String) -> void: started.append([tier, puzzle]))
+	check(g.enter_competition("local", "2x2", 42) and started == [["local", "2x2"]] and g.competitions_entered == 1, "registering starts it")
+	check(not g.can_enter_competition("local", "2x2"), "one competition at a time")
+	check(is_equal_approx(float(g.competition["rating"]), g.get_competition_rating("2x2")), "the team's rating is taken when registering")
+	var view := g.get_competition_view()
+	check(view["round"] == 0 and is_equal_approx(float(view["left"]), 900.0) and (view["rounds"] as Array).is_empty() and view["can_attempt"],
+			"just started: round 1 running, 15 minutes left")
+	check(is_equal_approx(float(view["average"]), Content.competition_average("2x2", float(g.competition["rating"]))), "the view has your expected average")
+	g.competition_now = 1000.0 + 899.0
+	g.update_competition()
+	check(not g.competition.is_empty() and g.get_competition_result().is_empty(), "it isn't over before its time")
+	# The rounds are the same every time for a seed, sorted, cut to the advancing count.
+	var comp := {"tier": "worlds", "puzzle": "3x3", "seed": 7, "rating": 13.0, "hand": {}}
+	var entrants := GameState.competition_entrants(comp)
+	var names := {}
+	for entrant: Dictionary in entrants:
+		names[entrant["name"]] = true
+	check(entrants.size() == 48 and names.size() == 48 and entrants[0]["you"], "48 entrants with different names, you among them")
+	var rounds := g._competition_rounds(comp, 3)
+	var again := g._competition_rounds(comp, 3)
+	check(rounds.size() == 3 and str(rounds) == str(again), "the same seed gives the same competition")
+	check(rounds.map(func(r: Dictionary) -> String: return r["name"]) == ["First round", "Semi-final", "Final"], "round names (%s)"
+			% [rounds.map(func(r: Dictionary) -> String: return r["name"])])
+	var sizes: Array = rounds.map(func(r: Dictionary) -> int: return (r["results"] as Array).size())
+	check(sizes[0] == 48 and sizes[1] == 24 and sizes[2] == 12, "48, then the best 24, then 12 in the final (%s)" % [sizes])
+	for played: Dictionary in rounds:
+		var results: Array = played["results"]
+		for i in range(1, results.size()):
+			check(float(results[i]["average"]) >= float(results[i - 1]["average"]), "results are best first")
+		check(results.filter(func(row: Dictionary) -> bool: return row["you"]).size() == (1 if played["you_in"] else 0), "you're in a round once, or out")
+		check((results[0]["times"] as Array).size() == 5 and is_equal_approx(float(results[0]["average"]), GameState.competition_mean(results[0]["times"])), "five attempts, a WCA average")
+	check(str(g._competition_rounds(comp, 1)[0]) == str(rounds[0]), "a round's times don't depend on how far it's worked out")
+	g.free()
+
+
+func test_competition_medals_and_rewards() -> void:
+	var g := competition_game()
+	var finished: Array = []
+	g.competition_finished.connect(func(result: Dictionary) -> void: finished.append(result))
+	var moves_before := g.get_puzzle_moves_mult("2x2")
+	g.enter_competition("local", "2x2", 42)
+	g.competition["rating"] = 30.0  # far above the field: gold
+	g.competition_now = 1000.0 + 900.0
+	g.update_competition()
+	var result := g.get_competition_result()
+	check(finished.size() == 1 and finished[0] == result and g.competition.is_empty(), "at the end it finishes, once, and signals")
+	check(result["place"] == 1 and result["medal"] == "gold" and result["points"] == 3 and result["final"] and result["improved"],
+			"the strongest team wins gold (%s)" % [result])
+	check(g.get_competition_medal("local", "2x2") == "gold" and g.get_medal_points() == 3, "the medal is kept: 3 points × Local's weight 1")
+	check_near(g.get_medal_mult(), 1.0 + 3.0 * float(Content.COMPETITIONS["bonus_per_point"]), "medal points raise all moves")
+	check_near(g.get_puzzle_moves_mult("2x2") / moves_before, g.get_medal_mult(), "...on every puzzle's moves")
+	check(String(result["drop"]) != "" and g.get_collection_stars(String(result["drop"])) == 1, "a medal drops a collection item")
+	check(result["pb_single"] and result["pb_average"] and is_equal_approx(float(g.competition_records["2x2"]["average"]), float(result["average"])),
+			"the first result is the official record")
+	check(g.is_competition_tier_open("regional") and not g.is_competition_tier_open("national"), "a Local medal opens Regional")
+	g.update_competition()
+	check(finished.size() == 1, "nothing more happens after it's over")
+	# A weaker showing later doesn't lower the medal; the result says it wasn't an improvement.
+	check(g.can_enter_competition("local", "2x2"), "you can enter again")
+	g.enter_competition("local", "2x2", 43)
+	g.competition["rating"] = 0.0  # far below: last places
+	g.competition_now += 900.0
+	g.update_competition()
+	result = g.get_competition_result()
+	check(result["medal"] == "" and result["points"] == 0 and not result["improved"] and result["drop"] == "" and int(result["place"]) > 3,
+			"the weakest team gets no medal and no drop (%s)" % [result])
+	check(g.get_competition_medal("local", "2x2") == "gold" and not result["pb_average"], "...and the gold and the record stay")
+	g.clear_competition_result()
+	check(g.get_competition_result().is_empty(), "the result can be dismissed")
+	# Cut in the first round of a longer competition: it ends when that round does, so you can come back sooner.
+	g.enter_competition("regional", "2x2", 44)
+	g.competition["rating"] = 0.0
+	var start := g.competition_now
+	g.competition_now = start + 1349.0
+	g.update_competition()
+	check(not g.competition.is_empty() and g.get_competition_round() == 0, "Regional's first round takes half its 45 minutes")
+	g.competition_now = start + 1351.0
+	var view := g.get_competition_view()
+	check(view["out"] and not view["can_attempt"] and (view["rounds"] as Array).size() == 1, "after it, the view says you're out")
+	g.update_competition()
+	result = g.get_competition_result()
+	check(g.competition.is_empty() and not result["final"] and result["round"] == "First round" and int(result["place"]) > 8 and result["medal"] == "",
+			"cut in the first round: over at once, no medal (%s)" % [result])
+	# A championship keeps medals and a running competition.
+	g.enter_competition("local", "2x2", 45)
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	check(g.compete() > 0 and g.get_competition_medal("local", "2x2") == "gold" and not g.competition.is_empty(), "a championship keeps medals and the competition running")
+	g.free()
+
+
+func test_competition_hand_attempt() -> void:
+	var g := competition_game()
+	check(not g.can_submit_competition_attempt() and not g.submit_competition_attempt(5.0), "no competition, no attempt")
+	g.enter_competition("local", "2x2", 42)
+	var without: Dictionary = g._competition_rounds(g.competition, 1)[0]
+	var mine_before: Dictionary = without["results"].filter(func(row: Dictionary) -> bool: return row["you"])[0]
+	check(not g.submit_competition_attempt(0.0) and not g.submit_competition_attempt(INF), "a bad time isn't an attempt")
+	check(g.submit_competition_attempt(9999.0) and not g.can_submit_competition_attempt() and not g.submit_competition_attempt(1.0), "one hand attempt a round")
+	var slow: Dictionary = g._competition_rounds(g.competition, 1)[0]["results"].filter(func(row: Dictionary) -> bool: return row["you"])[0]
+	check(str(slow["times"]) == str(mine_before["times"]) and not slow["hand"], "a slower hand solve changes nothing (D19: it can only help)")
+	g.competition["hand"] = {"0": 0.5}
+	var fast: Dictionary = g._competition_rounds(g.competition, 1)[0]["results"].filter(func(row: Dictionary) -> bool: return row["you"])[0]
+	var worst: float = (mine_before["times"] as Array).max()
+	check(fast["hand"] and (fast["times"] as Array).has(0.5) and not (fast["times"] as Array).has(worst) and float(fast["average"]) < float(mine_before["average"])
+			and is_equal_approx(float(fast["single"]), 0.5), "a faster one replaces the team's worst time")
+	var others := func(round: Dictionary) -> String:
+		return str(round["results"].filter(func(row: Dictionary) -> bool: return not row["you"]).map(func(row: Dictionary) -> Array: return row["times"]))
+	check(others.call(g._competition_rounds(g.competition, 1)[0]) == others.call(without), "...and nobody else's times")
+	g.competition_now = 1000.0 + 900.0
+	check(not g.can_submit_competition_attempt(), "no attempt once the time is up")
+	g.free()
+
+
+func test_competition_save() -> void:
+	var g := competition_game()
+	g.enter_competition("local", "2x2", 42)
+	g.competition["rating"] = 30.0
+	g.submit_competition_attempt(3.21)
+	g.competition_medals["local:2x2"] = 1
+	g.competition_records["2x2"] = {"single": 4.0, "average": 5.0}
+	var data := g.get_save_data()
+	check(int(data["version"]) == GameState.SAVE_VERSION and GameState.SAVE_VERSION >= 19, "saves as v19 or later")
+	var loaded := new_game()
+	loaded.competition_now = 1000.0 + 5.0
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), 1005.0)
+	check(str(loaded.competition) == str(g.competition) and loaded.competition_medals == {"local:2x2": 1}
+			and loaded.competition_records == g.competition_records and loaded.competitions_entered == 1, "a running competition, medals and records survive a round trip (%s)" % [loaded.competition])
+	# Time away: it finishes at the first update after loading, with its signal (so the screen can show it).
+	var away := new_game()
+	var heard: Array = []
+	away.competition_finished.connect(func(result: Dictionary) -> void: heard.append(result))
+	away.competition_now = 1000.0 + 3.0 * 3600.0
+	away.apply_save_data(JSON.parse_string(JSON.stringify(data)), 1000.0 + 3.0 * 3600.0)
+	check(heard.is_empty() and not away.competition.is_empty(), "nothing is signalled during the load")
+	away._process(1.01)
+	check(heard.size() == 1 and heard[0]["medal"] == "gold" and away.competition.is_empty() and away.get_competition_medal("local", "2x2") == "gold",
+			"3 hours away: the competition finished meanwhile (%s)" % [heard])
+	var after: Dictionary = away.get_save_data()
+	var reloaded := new_game()
+	reloaded.apply_save_data(JSON.parse_string(JSON.stringify(after)), float(after["saved_at"]))
+	check(reloaded.get_competition_result().get("medal", "") == "gold", "an undismissed result is saved too")
+	# Damaged data is dropped.
+	var bad: Dictionary = JSON.parse_string(JSON.stringify(data))
+	bad["competitions"] = {"active": {"tier": "banana", "puzzle": "2x2", "started_at": 5, "seed": 1, "rating": 2},
+			"medals": {"local:2x2": 9, "banana:2x2": 2, "local": 1, "worlds:3x3": "gold"}, "records": {"2x2": {"single": -1, "average": 5}, "9x9": {}},
+			"entered": -4, "last": {"tier": "local"}}
+	var damaged := new_game()
+	damaged.apply_save_data(bad, float(data["saved_at"]))
+	check(damaged.competition.is_empty() and damaged.competition_medals == {"local:2x2": 3} and damaged.competition_records.is_empty()
+			and damaged.competitions_entered == 0 and damaged.get_competition_result().is_empty(), "damaged competition data is dropped or clamped (%s)" % [damaged.competition_medals])
+	# A clock that was ahead when registering (then put right) can't lock competitions: it never waits longer than its length.
+	var ahead: Dictionary = JSON.parse_string(JSON.stringify(data))
+	ahead["competitions"]["active"]["started_at"] = 1000.0 + 1e7
+	var fixed := new_game()
+	fixed.competition_now = 2000.0
+	fixed.apply_save_data(ahead, 2000.0)
+	fixed.update_competition()
+	check(is_equal_approx(float(fixed.competition["started_at"]), 2000.0) and float(fixed.get_competition_view()["left"]) <= 900.0,
+			"a start time in the future is pulled back to now")
+	fixed.competition_now = 2000.0 + 900.0
+	fixed.update_competition()
+	check(fixed.competition.is_empty(), "...and it ends after its normal length")
+	fixed.free()
+	# v18 -> v19: no competitions yet.
+	var v18: Dictionary = JSON.parse_string(JSON.stringify(data))
+	v18["version"] = 18
+	v18.erase("competitions")
+	var old := new_game()
+	old.apply_save_data(v18, float(data["saved_at"]))
+	check(old.competition.is_empty() and old.competition_medals.is_empty() and is_equal_approx(old.get_medal_mult(), 1.0)
+			and int(old.get_save_data()["version"]) == GameState.SAVE_VERSION, "v18 → v19: no competitions, no bonus")
+	g.reset_state()
+	check(g.competition.is_empty() and g.competition_medals.is_empty(), "a wiped save has no competitions")
+	for game: GameState in [g, loaded, away, reloaded, damaged, old]:
+		game.free()
 
 
 ## 7.3a: what drops when (Golden Scrambles, achievements, championships), kept through championships, saved (v16).

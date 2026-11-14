@@ -13,7 +13,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| 8.3a Competitions: rules | claude/zen-albattani-squxya | 2026-11-14 | (none new) | game.gd, content.gd, tests/test_runner.gd, tools/simulator.gd | yes (v19) |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -602,12 +601,14 @@ Small tasks; any order, but 7.6 needs a save change. D18 answered (owner, 2026-1
       event (a puzzle you own); it runs in real time, also offline (Local ~15 min … Worlds ~8 h), as rounds with
       averages of 5 and cutoffs against named rivals; one attempt per round may be your own Solve Station solve (it
       replaces the team's worst time if better). Split into:
-  - [ ] **8.3a Rules:** tiers, rounds and rivals as data (`Content.COMPETITIONS`); GameState: enter, the clock (real
+  - [x] **8.3a Rules:** tiers, rounds and rivals as data (`Content.COMPETITIONS`); GameState: enter, the clock (real
         time), deterministic results from a seed, the believable average from the team's strength on the event, the
         hand attempt, medals with their permanent bonus, a drop for a medal, official records; saved (+ migration).
         No `main.gd`/`main.tscn` changes; `comp_circuit` stays not buyable until 8.3b (no screen yet).
         *Done when:* tests cover entering, rounds and cutoffs, pass/fail, the hand attempt, medal rewards, time away,
         save/load and the migration, and the pacing targets still pass.
+        *(Done 2026-11-14: `Content.COMPETITIONS`, GameState's competition API, save v19. See the CHANGELOG for what
+        8.3b needs.)*
   - [ ] **8.3b Screen:** the Competitions screen (register, live rounds, results sheet, medals), the hand attempt in the
         Solve Station, Welcome back's result; then the **From 6.3** and **Save safety** notes below (make
         `comp_circuit` buyable, the grant migration). *Done when:* the rest of 8.3's *Done when* (unlock test, screenshot).

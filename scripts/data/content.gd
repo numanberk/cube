@@ -1052,7 +1052,8 @@ const COLLECTION := {
 	"sources": {
 		"golden": {"chance": 0.5, "pity": 3},        ## a Golden Scramble solved in time
 		"achievement": {"chance": 0.15, "pity": 10, "after_first_championship": true},  ## an achievement earned
-		"championship": {"chance": 1.0, "pity": 1},   ## a World Championship won (until 8.3's Competitions)
+		"championship": {"chance": 1.0, "pity": 1},   ## a World Championship won
+		"competition": {"chance": 1.0, "pity": 1, "system": "competitions"},  ## a medal at a competition (8.3); `system`: only once that system is unlocked
 	},
 	"items": [
 		{"id": "pocket_mini", "name": "Pocket Mini", "brand": "pocket", "kind": "cube", "rarity": "common", "icon": "small_cubes",
@@ -1203,6 +1204,70 @@ static func get_kit_slot(id: String) -> Dictionary:
 		if def["id"] == id:
 			return def
 	return {}
+
+
+## Competitions (task 8.3, D19: a WCA weekend, PLAN §4.8 (2)): you register for a competition of a tier with one event
+## (a puzzle you own). It runs in real time, also while the game is closed, as rounds: every entrant does five attempts,
+## the average (best and worst dropped) ranks them, and the top `advance` go on; the last round is the final. Your
+## times come from your team's strength on the event when you register: rating = log10(1 + the puzzle's moves/s)
+## (helpers, kit, mastery and trophies are all in it), and a rating gives an average: floor + (start − floor) ×
+## e^(−rating / rating_scale), so more moves/s always helps but never beats the puzzle's `floor`. Rivals' ratings are the
+## tier's `rating` ± `rival_spread` (a normal spread): at the tier's rating you're mid-field. One attempt per round may
+## be your own Solve Station solve; it replaces the team's worst time if it's better (D19).
+## A medal in the final is kept per tier and event (the best one): each gives `medal_points` × the tier's `weight`
+## points, and every point is +`bonus_per_point` all moves, for good. A medal also drops a collection item, and a tier
+## opens once the one before it gave you any medal. Everything is kept through championships.
+##   tiers: id, name, seconds (real time), field (entrants, you included), rounds ([advance, ..., 0]: who goes on after
+##     each round; the final has 0), rating, weight
+##   events: puzzle id -> {start, floor}: the average (seconds) at rating 0 and the best a team can ever average
+const COMPETITIONS := {
+	"tiers": [
+		{"id": "local", "name": "Local Open", "seconds": 900.0, "field": 12, "rounds": [0], "rating": 3.0, "weight": 1},
+		{"id": "regional", "name": "Regional Championship", "seconds": 2700.0, "field": 16, "rounds": [8, 0], "rating": 6.0, "weight": 2},
+		{"id": "national", "name": "National Championship", "seconds": 7200.0, "field": 24, "rounds": [12, 0], "rating": 8.5, "weight": 3},
+		{"id": "continental", "name": "Continental Championship", "seconds": 14400.0, "field": 32, "rounds": [16, 8, 0], "rating": 11.0, "weight": 4},
+		{"id": "worlds", "name": "World Cup", "seconds": 28800.0, "field": 48, "rounds": [24, 12, 0], "rating": 13.0, "weight": 5},
+	],
+	"events": {
+		"2x2": {"start": 15.0, "floor": 1.2},
+		"3x3": {"start": 60.0, "floor": 4.5},
+		"4x4": {"start": 240.0, "floor": 22.0},
+		"5x5": {"start": 480.0, "floor": 42.0},
+		"7x7": {"start": 1200.0, "floor": 110.0},
+		"megaminx": {"start": 600.0, "floor": 32.0},
+	},
+	"rating_scale": 5.0,
+	"rival_spread": 1.0,     ## the standard deviation of the rivals' ratings around the tier's
+	"attempt_noise": 0.07,   ## an attempt is the average × e^(normal × this)
+	"attempts": 5,
+	"medals": ["bronze", "silver", "gold"],  ## index + 1 = `medal_points` (3rd, 2nd, 1st place in the final)
+	"bonus_per_point": 0.002,
+	"round_names": ["First round", "Second round", "Semi-final", "Final"],
+}
+
+
+static func get_competition_tier(id: String) -> Dictionary:
+	for def: Dictionary in COMPETITIONS["tiers"]:
+		if def["id"] == id:
+			return def
+	return {}
+
+
+static func get_competition_tier_index(id: String) -> int:
+	var tiers: Array = COMPETITIONS["tiers"]
+	for i in tiers.size():
+		if tiers[i]["id"] == id:
+			return i
+	return -1
+
+
+## The average (seconds) a team of this rating does on an event; INF for an unknown event.
+static func competition_average(puzzle_id: String, rating: float) -> float:
+	var event: Dictionary = (COMPETITIONS["events"] as Dictionary).get(puzzle_id, {})
+	if event.is_empty():
+		return INF
+	return float(event["floor"]) + (float(event["start"]) - float(event["floor"])) \
+			* exp(-maxf(0.0, rating) / float(COMPETITIONS["rating_scale"]))
 
 
 ## Hand-solve rewards (task S.3, D13: an active player earns ~2–3× an idle one). Per-puzzle time targets for the Solve
