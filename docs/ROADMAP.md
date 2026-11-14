@@ -625,10 +625,12 @@ Small tasks; any order, but 7.6 needs a save change. D18 answered (owner, 2026-1
       *Done when:* tests cover each rule's restriction and its reward, and there's a screenshot.
       *(Done 2026-11-14: 7 challenges, picked as the next run on the Compete screen; save v21. Shots:
       `docs/screenshots/8.4-challenges/`.)*
-- [ ] **8.4b Championship venues (fun pass, 2026-11-13; D20):** from the second championship on, the Compete screen offers
+- [x] **8.4b Championship venues (fun pass, 2026-11-13; D20):** after a championship, the Compete screen offers
       three host cities for the next run, each with a twist as data (e.g. "4×4 and bigger pay ×3, the 2×2 ×0.5",
       "Golden Scrambles twice as often"); the chosen one is saved and shown during the run. The first run is untouched.
       *Done when:* tests cover each twist, the offer and the save, the pacing targets still pass, and there's a screenshot.
+      *(Done 2026-11-14: 6 cities, 3 on offer per championship, in the Compete screen's Next run column; save v22.
+      Shots: `docs/screenshots/8.4b-venues/`.)*
 - [ ] **8.5 Coach rules (PR) [D11]:** Perfect Tower-style automation without code: a list of if/then rules picked from
       menus (If <helper costs < X % of Solves / trophy gain ≥ N / a research slot is free> → <buy / Compete / start
       research>). Unlocked late in the Automation branch. Every rule shows exactly what it will do.

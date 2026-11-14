@@ -11,6 +11,7 @@ signal closed
 signal compete_pressed
 signal next_run_picked(id: String)  ## 8.4: a challenge for the next run ("" = a normal run)
 signal give_up_pressed              ## 8.4: give up the challenge this run is under
+signal venue_picked(id: String)     ## 8.4b: the next run's host city ("" = none)
 
 @onready var _dim: ColorRect = %Dim
 @onready var _panel: Control = %Panel
@@ -27,9 +28,10 @@ signal give_up_pressed              ## 8.4: give up the challenge this run is un
 @onready var _not_yet: Button = %NotYetButton
 @onready var _compete: Button = %CompeteButton
 @onready var _hint: Label = %CompeteHint
+@onready var _intro: Label = %Intro
 
-const LIST_WIDTH := 250.0      ## the keep / starts-over columns
-const NEXT_RUN_WIDTH := 340.0  ## the "Next run" column (8.4)
+const LIST_WIDTH := 235.0      ## the keep / starts-over columns
+const NEXT_RUN_WIDTH := 440.0  ## the "Next run" column (8.4)
 
 var compete_enabled := false  ## false = a preview (the button stays disabled); main.gd turns it on (6.2)
 var preview: Dictionary = {}  ## the last Game.get_championship_preview() shown
@@ -39,6 +41,10 @@ var _give_up: Button
 var _option_flow: HFlowContainer
 var _option_buttons: Dictionary = {}   ## challenge id ("" = normal) -> Button
 var _option_text: Label
+var _venue_title: Label                ## 8.4b: "Host city" chips under the challenges
+var _venue_flow: HFlowContainer
+var _venue_buttons: Dictionary = {}    ## venue id -> Button
+var _venue_text: Label
 
 
 func _ready() -> void:
@@ -86,6 +92,17 @@ func _build_next_run() -> void:
 	_option_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_option_text.custom_minimum_size = Vector2(NEXT_RUN_WIDTH, 0)
 	_next_run.add_child(_option_text)
+	_venue_title = Label.new()
+	_venue_title.theme_type_variation = &"CardTitle"
+	_venue_title.text = "Host city"
+	_next_run.add_child(_venue_title)
+	_venue_flow = HFlowContainer.new()
+	_next_run.add_child(_venue_flow)
+	_venue_text = Label.new()
+	_venue_text.theme_type_variation = &"FaintLabel"
+	_venue_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_venue_text.custom_minimum_size = Vector2(NEXT_RUN_WIDTH, 0)
+	_next_run.add_child(_venue_text)
 
 
 ## 8.4: the "Next run" column. view: {open (challenges exist for this player), running: {name, text, reward} or {},
@@ -93,6 +110,7 @@ func _build_next_run() -> void:
 func set_next_run(view: Dictionary) -> void:
 	_next_run.visible = bool(view.get("open", false))
 	_unlocks.visible = not _next_run.visible  # ("After your first championship…" is old news by then, and the room is needed)
+	_intro.visible = not _next_run.visible    # (the player has competed before: the room goes to the next run)
 	if not _next_run.visible:
 		return
 	var running: Dictionary = view.get("running", {})
@@ -119,8 +137,38 @@ func set_next_run(view: Dictionary) -> void:
 		button.tooltip_text = "%s Reward: %s.%s" % [option.get("text", ""), option.get("reward", ""),
 				" Done." if option.get("done", false) else ""] if id != "" else "No rule."
 		if option.get("picked", false):
-			picked_text = "" if id == "" else "%s: %s Reward: %s." % [option["name"], option.get("text", ""), option.get("reward", "")]
+			picked_text = "" if id == "" else "%s Reward: %s." % [option.get("text", ""), option.get("reward", "")]
 	_option_text.text = picked_text
+	# 8.4b: the host cities on offer (the same until the next championship); a click picks one, another click un-picks.
+	var venues: Array = view.get("venues", [])
+	for id: String in _venue_buttons.keys():
+		if not venues.any(func(v: Dictionary) -> bool: return v["id"] == id):
+			_venue_buttons[id].queue_free()
+			_venue_buttons.erase(id)
+	var venue_text := "No host city picked: no twist." if not venues.is_empty() else ""
+	for venue: Dictionary in venues:
+		var id := String(venue["id"])
+		var button: Button = _venue_buttons.get(id)
+		if button == null:
+			button = Button.new()
+			button.theme_type_variation = &"ToggleChip"
+			button.toggle_mode = true
+			button.focus_mode = Control.FOCUS_NONE
+			button.pressed.connect(func() -> void: venue_picked.emit("" if bool(_venue_buttons[id].get_meta(&"picked", false)) else id))
+			_venue_flow.add_child(button)
+			_venue_buttons[id] = button
+		button.text = String(venue["name"])
+		button.tooltip_text = String(venue["text"])
+		button.set_meta(&"picked", bool(venue.get("picked", false)))
+		button.set_pressed_no_signal(bool(venue.get("picked", false)))
+		if venue.get("picked", false):
+			venue_text = String(venue["text"])
+	if String(view.get("venue_now", "")) != "":  # (the chips show which is next: the line stays one or two short lines)
+		_venue_title.text = "Host city  ·  now %s" % view["venue_now"]
+	else:
+		_venue_title.text = "Host city"
+	_venue_title.visible = not venues.is_empty()
+	_venue_text.text = venue_text
 
 
 func open(data: Dictionary) -> void:

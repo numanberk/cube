@@ -132,6 +132,7 @@ func _ready() -> void:
 	Game.kit_changed.connect(_on_kit_changed)
 	compete_panel.next_run_picked.connect(func(id: String) -> void: Game.set_next_challenge(id))
 	compete_panel.give_up_pressed.connect(func() -> void: Game.abandon_challenge())
+	compete_panel.venue_picked.connect(func(id: String) -> void: Game.set_next_venue(id))
 	Game.challenge_changed.connect(_refresh)
 	Game.challenge_started.connect(_on_challenge_started)
 	Game.challenge_completed.connect(_on_challenge_completed)
@@ -1299,11 +1300,19 @@ func _refresh_compete() -> void:
 		compete_panel.set_preview(Game.get_championship_preview())
 		compete_panel.set_next_run(next_run_view())
 	var running := Content.get_challenge(Game.challenge)
-	challenge_badge.visible = not running.is_empty()
+	var here := Content.get_venue(Game.venue)
+	challenge_badge.visible = not running.is_empty() or not here.is_empty()
+	var parts := PackedStringArray()
+	var tips := PackedStringArray()
+	if not here.is_empty():  # 8.4b: this run's host city
+		parts.append(String(here["name"]))
+		tips.append("Host city: %s. %s" % [here["name"], here["text"]])
 	if not running.is_empty():
-		challenge_badge.text = "Challenge: %s" % running["name"]
-		challenge_badge.tooltip_text = "%s\nWin this run's championship to finish it: %s, for good. (Give up on the Compete screen.)" % [
-				running["text"], running["reward_text"]]
+		parts.append("Challenge: %s" % running["name"])
+		tips.append("%s\nWin this run's championship to finish it: %s, for good. (Give up on the Compete screen.)" % [
+				running["text"], running["reward_text"]])
+	challenge_badge.text = "  ·  ".join(parts)
+	challenge_badge.tooltip_text = "\n".join(tips)
 	perks_button.visible = Game.trophies > 0 or not Game.perks.is_empty()
 	perks_button.text = Num.format(float(Game.trophies))  # the trophy icon says what it is; the tooltip says the rest
 	perks_button.tooltip_text = "Trophy perks (click to open): %s unspent %s, +%s %% moves." % [Num.format(float(Game.trophies)),
@@ -1407,7 +1416,13 @@ func next_run_view() -> Dictionary:
 		options.append({"id": def["id"], "name": def["name"], "text": def["text"], "reward": def["reward_text"],
 				"done": Game.is_challenge_done(String(def["id"])), "picked": Game.next_challenge == def["id"],
 				"running": Game.challenge == def["id"]})
-	return {"open": Game.has_won_championship(), "options": options,
+	var venues: Array[Dictionary] = []
+	for id: String in Game.get_venue_offer():
+		var def := Content.get_venue(id)
+		venues.append({"id": id, "name": def["name"], "text": def["text"], "picked": Game.next_venue == id})
+	var here := Content.get_venue(Game.venue)
+	return {"open": Game.has_won_championship(), "options": options, "venues": venues,
+			"venue_now": "" if here.is_empty() else String(here["name"]),
 			"running": {} if running.is_empty() else {"name": running["name"], "text": running["text"], "reward": running["reward_text"]}}
 
 

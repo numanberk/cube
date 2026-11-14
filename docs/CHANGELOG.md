@@ -2,6 +2,27 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-14 — Task 8.4b: championship venues
+- **Data (`Content.VENUES`):** six host cities, each a twist (something better, something worse): Melbourne (4×4 and
+  bigger ×3, the 2×2 ×0.5), Tokyo (taps ×3, helpers ×0.8), Las Vegas (Golden Scrambles twice as often, Solves per
+  solve ×0.9), Paris (mastery XP ×2, all moves ×0.9), São Paulo (Solves per solve ×1.5, taps ×0.5), Toronto
+  (helpers ×1.3, taps ×0.5). Effects are upgrade effects counted in `_upgrade_mult` while the run is there, plus a
+  venue-only `golden_rate` (divides the golden sticker's wait) and `venue_tap_mult` (the whole tap, helper share
+  included, like One-Handed's rule; a plain `tap_mult` only scales the flat part and would be nearly worthless late).
+- **Rules:** from the first championship on, `get_venue_offer()` gives three cities (seeded by the championship count:
+  the same each time you look, new after each championship). `set_next_venue(id)` (or "" for none) picks one; it
+  becomes `venue` when you compete and lasts that run (a new city re-rolls the first golden wait). No pick = no city.
+  **Save v22:** `challenges.venue` / `challenges.next_venue` (unknown or off-offer ones dropped); v21 → v22: none.
+- **Screen:** a **Host city** row under the challenges in the Compete screen's Next run column (three chips; a second
+  click un-picks), its twist under it, "Now: Melbourne" when the run has one; the stage badge shows the city (and the
+  challenge, if any). The Compete panel hides its intro sentence once you've competed and is wider, so everything fits
+  1280×720 with the longest texts. Stats' bonus list has "This run's host city".
+- **Not measured:** the bot never picks a city. The twists are a first guess; tune in a playtest (8.8).
+- Tests: `test_venues` (data, offer, every effect, the whole tap, Las Vegas' goldens, pick → next run, save, damaged,
+  v21 → v22), host-city chips and the badge in `test_challenge_screen`. Screenshots: `docs/screenshots/8.4b-venues/`.
+- **Review fixes (diff-reviewer):** the whole-tap effect above; v22 instead of reusing v21; the golden re-roll; the
+  "now" city moved into the row's title so the longest twist fits; real screenshots.
+
 ## 2026-11-14 — Task 8.4: challenge runs (save v21)
 - **Data (`Content.CHALLENGES`, 7):** Beginner's Luck (no method beyond Beginner → +50 % mastery XP), Small Team (only
   the first four helper kinds → +25 % helper moves), One-Handed (taps ×0.5 → tap moves ×2), Pocket Cubes (only the

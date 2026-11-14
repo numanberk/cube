@@ -40,7 +40,7 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 21  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 22  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
                           ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
@@ -49,7 +49,7 @@ const SAVE_VERSION := 21  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (
                           ## v17 (7.4a): Comp Kit; v18 (7.6/7.8): Legendary pity counter, new career moments seen;
                           ## v19 (8.3a): competitions (the running one, medals, records);
                           ## v20 (8.3b): Competition Circuit is buyable (granted to owners of its child perks);
-                          ## v21 (8.4): challenge runs (running, next, done)
+                          ## v21 (8.4): challenge runs (running, next, done); v22 (8.4b): host cities (venue, next_venue)
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -107,6 +107,8 @@ var kit: Dictionary = {}         ## Comp Kit (7.4a, saved; kept through champion
 var challenge := ""
 var next_challenge := ""
 var challenges_done: Dictionary = {}  ## challenge id -> true (their rewards count; kept for good)
+var venue := ""        ## 8.4b: this run's host city ("" = none), saved
+var next_venue := ""   ## the one picked for the next run
 ## Competitions (8.3a, saved; kept through championships). competition: the one running ({} if none): {tier, puzzle,
 ## started_at (unix), seed, rating (the team's on the event when it registered), hand: {round index as text: seconds}}.
 var competition: Dictionary = {}
@@ -327,7 +329,7 @@ func get_move_progress(puzzle_id: String = "") -> float:
 ## pacing (where the flat part is everything) as it was.
 func get_tap_moves() -> float:
 	return (get_tap_moves_flat() + get_tap_moves_from_helpers() * get_streak_mult()) \
-			* float(get_challenge_rule("tap_mult").get("value", 1.0))
+			* float(get_challenge_rule("tap_mult").get("value", 1.0)) * _upgrade_mult("venue_tap_mult")
 
 
 func get_tap_moves_flat() -> float:
@@ -770,6 +772,9 @@ func compete() -> int:
 		challenges_done[challenge] = true
 	challenge = next_challenge if can_pick_challenge(next_challenge) else ""  # the new run's rule, before it's set up
 	next_challenge = ""
+	var old_venue := venue
+	venue = next_venue if get_venue_offer().has(next_venue) else ""  # the new run's host city (8.4b)
+	next_venue = ""
 	trophies += gain
 	championships += 1
 	stats["trophies_won"] = float(stats["trophies_won"]) + gain
@@ -804,6 +809,8 @@ func compete() -> int:
 	check_time_tiers(false)  # the new run's slow team doesn't pop "Sub-30" again... until it's really faster
 	_helper_best.clear()
 	check_helper_times(false)
+	if venue != old_venue and golden_glow_left <= 0.0:
+		golden_next = _roll_golden_wait()  # a new city's golden rate counts from the run's first sticker (8.4b)
 	roll_collection_drop("championship")  # before the signal, so the screen rebuilt after it shows the new item
 	championship_won.emit(gain)
 	if finished != "":
@@ -1288,6 +1295,33 @@ func get_item_mult(id: String) -> float:
 	return 1.0 + Content.get_item_per_star(Content.get_collection_item(id)) * get_collection_stars(id) * share
 
 
+# --- Championship venues (task 8.4b) ---------------------------------------------------------
+
+## The host cities offered for the next run: Content.VENUES["offer"] of them, from the championship count (the same
+## every time you look until the next championship). None before the first championship.
+func get_venue_offer() -> Array[String]:
+	var out: Array[String] = []
+	if not has_won_championship():
+		return out
+	var ids: Array = (Content.VENUES["cities"] as Array).map(func(def: Dictionary) -> String: return String(def["id"]))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7919 * championships + 11
+	while out.size() < mini(int(Content.VENUES["offer"]), ids.size()):
+		var id: String = ids[rng.randi_range(0, ids.size() - 1)]
+		if not out.has(id):
+			out.append(id)
+	return out
+
+
+## Picks the next run's host city ("" = none); it must be on offer.
+func set_next_venue(id: String) -> bool:
+	if id != "" and not get_venue_offer().has(id):
+		return false
+	next_venue = id
+	challenge_changed.emit()
+	return true
+
+
 # --- Challenge runs (task 8.4) ---------------------------------------------------------------
 
 ## The running challenge's rule if it is of this type, else {} (so `.get("value", default)` reads a rule's number).
@@ -1331,6 +1365,8 @@ func _load_challenges(saved: Variant) -> void:
 	challenge = ""
 	next_challenge = ""
 	challenges_done.clear()
+	venue = ""
+	next_venue = ""
 	if typeof(saved) != TYPE_DICTIONARY:
 		return
 	var done: Variant = (saved as Dictionary).get("done", [])
@@ -1338,6 +1374,13 @@ func _load_challenges(saved: Variant) -> void:
 		for id: Variant in done:
 			if not Content.get_challenge(str(id)).is_empty():
 				challenges_done[str(id)] = true
+	var saved_venue := str((saved as Dictionary).get("venue", ""))
+	if not Content.get_venue(saved_venue).is_empty():
+		venue = saved_venue
+	var saved_next := str((saved as Dictionary).get("next_venue", ""))
+	if get_venue_offer().has(saved_next):
+		next_venue = saved_next
+	invalidate_upgrade_cache()  # the venue's effects count in _upgrade_mult (this also drops the leftover lines above)
 	for key: String in ["active", "next"]:
 		var id := str((saved as Dictionary).get(key, ""))
 		if id != "" and not Content.get_challenge(id).is_empty() and not challenges_done.has(id) and championships > 0:
@@ -1878,7 +1921,23 @@ func get_bonus_breakdown() -> Array[Dictionary]:
 		{"id": "perks", "effects": _perk_mult_effects()},
 		{"id": "medals", "effects": {"global_mult": get_medal_mult()} if get_medal_points() > 0 else {}},
 		{"id": "challenges", "effects": _challenge_reward_effects()},
+		{"id": "venue", "effects": _venue_effects()},
 	]
+
+
+## This run's host city's effects (8.4b).
+func _venue_effects() -> Dictionary:
+	var out := {}
+	for effect: Dictionary in Content.get_venue(venue).get("effects", []):
+		var keys: Array[String] = []
+		if effect["type"] == "puzzle_mult":
+			for puzzle: Variant in effect.get("puzzles", []):
+				keys.append("puzzle_mult:%s" % puzzle)
+		else:
+			keys.append(String(effect["type"]))
+		for key in keys:
+			out[key] = float(out.get(key, 1.0)) * float(effect["value"])
+	return out
 
 
 ## Finished challenges' rewards (8.4), each effect key the product of its rewards.
@@ -2723,7 +2782,7 @@ func _golden_buff_def(id: String) -> Dictionary:
 
 
 func _roll_golden_wait() -> float:
-	return golden_rng.randf_range(float(Content.GOLDEN["spawn_min"]), float(Content.GOLDEN["spawn_max"]))
+	return golden_rng.randf_range(float(Content.GOLDEN["spawn_min"]), float(Content.GOLDEN["spawn_max"])) / _upgrade_mult("golden_rate")
 
 
 ## Emits helper_best_time for each helper kind whose solve time on the focused puzzle is new (its first copy) or at least
@@ -3048,6 +3107,9 @@ func _upgrade_mult(effect_type: String, target: String = "") -> float:
 		if item_effect.get("type", "") != effect_type or not _effect_matches(item_effect, target):
 			continue
 		mult *= get_item_mult(id)
+	for effect: Dictionary in Content.get_venue(venue).get("effects", []):  # this run's host city (8.4b)
+		if effect["type"] == effect_type and _effect_matches(effect, target):
+			mult *= float(effect["value"])
 	for id: String in challenges_done:  # challenge rewards (8.4)
 		var reward: Dictionary = Content.get_challenge(id).get("reward", {})
 		if reward.get("type", "") == effect_type and _effect_matches(reward, target):
@@ -3185,7 +3247,8 @@ func get_save_data() -> Dictionary:
 		"stats": stats.duplicate(true),
 		"collection": {"items": collection.duplicate(), "pity": collection_pity.duplicate()},
 		"kit": {"slots": kit.duplicate(), "manual": kit_manual.keys()},
-		"challenges": {"active": challenge, "next": next_challenge, "done": challenges_done.keys()},
+		"challenges": {"active": challenge, "next": next_challenge, "done": challenges_done.keys(), "venue": venue,
+				"next_venue": next_venue},
 		"competitions": {"active": competition.duplicate(true), "medals": competition_medals.duplicate(),
 				"records": competition_records.duplicate(true), "last": competition_result.duplicate(true),
 				"entered": competitions_entered},
@@ -3639,6 +3702,13 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("challenges"):
 			data["challenges"] = {}
 		data["version"] = 21
+	if int(data["version"]) < 22:
+		# v22 (8.4b) adds host cities inside "challenges": none yet.
+		var saved_challenges: Variant = data.get("challenges", {})
+		if typeof(saved_challenges) == TYPE_DICTIONARY:
+			(saved_challenges as Dictionary).erase("venue")
+			(saved_challenges as Dictionary).erase("next_venue")
+		data["version"] = 22
 	return data
 
 

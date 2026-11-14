@@ -696,7 +696,7 @@ const STAT_ROWS := [
 ## 7.12: Game.get_bonus_breakdown()'s rows, named.
 const BONUS_ROWS := [["kit", "Comp Kit"], ["collection", "Rest of the collection"], ["sets", "Brand sets"],
 		["trophies", "Unspent trophies"], ["achievements", "Achievements"], ["perks", "Trophy perks"],
-		["medals", "Competition medals"], ["challenges", "Challenge rewards"]]
+		["medals", "Competition medals"], ["challenges", "Challenge rewards"], ["venue", "This run's host city"]]
 
 
 ## A breakdown row's effects as text: "+8 % 3×3 moves, +2 % tap moves" ("—" for none).
@@ -709,8 +709,9 @@ static func bonus_text(effects: Dictionary) -> String:
 			effect["puzzles"] = [key.get_slice(":", 1)]
 		elif type == "building_mult":
 			effect["target"] = key.get_slice(":", 1)
-		var noun := "trophies per championship" if type == "trophy_gain_mult" else effect_noun(effect)
-		parts.append("+%s %% %s" % [_percent(float(effects[key]) - 1.0), noun])
+		var noun := "trophies per championship" if type == "trophy_gain_mult" else ("golden stickers" if type == "golden_rate" else ("taps" if type == "venue_tap_mult" else effect_noun(effect)))
+		var change := float(effects[key]) - 1.0
+		parts.append("%s%s %% %s" % ["+" if change >= 0.0 else "−", _percent(absf(change)), noun])
 	return ", ".join(parts) if not parts.is_empty() else "—"
 
 

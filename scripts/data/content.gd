@@ -508,6 +508,39 @@ const CHALLENGES: Array[Dictionary] = [
 ]
 
 
+## Championship venues (task 8.4b, D20, PLAN §4.8 (4)): from the first championship on, the Compete screen offers
+## `offer` host cities for the next run (picked by the championship count, so the same each time you look); the one
+## you pick shapes that run with a twist: `effects` are upgrade effects (multiplying; below 1 is a cost) that count
+## while the run is there, plus two venue-only ones: "golden_rate" (golden stickers come this many times as often) and
+## "venue_tap_mult" (the whole tap, flat part and helper share alike, like a challenge's "tap_mult"). No pick = no venue.
+##   id, name, icon, text, effects [{type, value, puzzles|target}]
+const VENUES := {
+	"offer": 3,
+	"cities": [
+		{"id": "melbourne", "name": "Melbourne", "icon": "big_cubes", "text": "Big-cube crowd: the 4×4 and bigger ×3 moves, the 2×2 ×0.5.",
+			"effects": [{"type": "puzzle_mult", "puzzles": ["4x4", "5x5", "7x7", "megaminx"], "value": 3.0},
+				{"type": "puzzle_mult", "puzzles": ["2x2"], "value": 0.5}]},
+		{"id": "tokyo", "name": "Tokyo", "icon": "speed_practice", "text": "Speed city: taps ×3, helpers ×0.8.",
+			"effects": [{"type": "venue_tap_mult", "value": 3.0}, {"type": "helper_mult", "value": 0.8}]},
+		{"id": "las_vegas", "name": "Las Vegas", "icon": "stat_golden", "text": "Golden Scrambles twice as often, Solves per solve ×0.9.",
+			"effects": [{"type": "golden_rate", "value": 2.0}, {"type": "solve_value_mult", "value": 0.9}]},
+		{"id": "paris", "name": "Paris", "icon": "mastery_focus", "text": "Masterclasses: mastery XP ×2, all moves ×0.9.",
+			"effects": [{"type": "mastery_xp_mult", "value": 2.0}, {"type": "global_mult", "value": 0.9}]},
+		{"id": "sao_paulo", "name": "São Paulo", "icon": "prize_money", "text": "Big prizes: Solves per solve ×1.5, taps ×0.5.",
+			"effects": [{"type": "solve_value_mult", "value": 1.5}, {"type": "venue_tap_mult", "value": 0.5}]},
+		{"id": "toronto", "name": "Toronto", "icon": "club", "text": "Club scene: helpers ×1.3, taps ×0.5.",
+			"effects": [{"type": "helper_mult", "value": 1.3}, {"type": "venue_tap_mult", "value": 0.5}]},
+	],
+}
+
+
+static func get_venue(id: String) -> Dictionary:
+	for def: Dictionary in VENUES["cities"]:
+		if def["id"] == id:
+			return def
+	return {}
+
+
 static func get_challenge(id: String) -> Dictionary:
 	for def: Dictionary in CHALLENGES:
 		if def["id"] == id:

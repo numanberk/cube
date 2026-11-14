@@ -97,6 +97,7 @@ layout_mode = 2
 theme_type_variation = &"TitleRule"
 
 [node name="Intro" type="Label" parent="Center/Panel/Box"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
 theme_type_variation = &"DimLabel"

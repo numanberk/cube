@@ -140,6 +140,9 @@ func _ready() -> void:
 		if String(args["challenge"]) == "running":  # (the longest texts: Pocket Cubes running, Charity Tour picked)
 			Game.challenge = "pocket_cubes"
 			Game.set_next_challenge("charity_tour")
+			Game.venue = "sao_paulo"  # 8.4b: this run's host city, and the longest twist picked for the next
+			var offer: Array[String] = Game.get_venue_offer()
+			Game.set_next_venue("melbourne" if offer.has("melbourne") else offer[0])
 		else:
 			Game.set_next_challenge("one_handed")
 		Game.invalidate_upgrade_cache()

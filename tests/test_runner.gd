@@ -6937,6 +6937,98 @@ func test_challenge_rewards_and_save() -> void:
 		game.free()
 
 
+## 8.4b: host cities: an offer of three after a championship (the same until the next one), the pick applies to the
+## next run, every effect moves its number, saved.
+func test_venues() -> void:
+	var ids := {}
+	for def: Dictionary in Content.VENUES["cities"]:
+		check(not ids.has(def["id"]) and Content.get_venue(def["id"]) == def and Content.icon(def["icon"]) != null, "venue %s is unique, with an icon" % def["id"])
+		ids[def["id"]] = true
+		var good := false
+		var bad := false
+		for effect: Dictionary in def["effects"]:
+			check(Content.EFFECT_TYPES.has(effect["type"]) or effect["type"] in ["golden_rate", "venue_tap_mult"], "%s: a known effect (%s)" % [def["id"], effect["type"]])
+			good = good or float(effect["value"]) > 1.0
+			bad = bad or float(effect["value"]) < 1.0
+		check(good and bad, "%s is a twist: something better and something worse" % def["id"])
+	var fresh := new_game()
+	check(fresh.get_venue_offer().is_empty() and not fresh.set_next_venue("tokyo"), "no venues before the first championship")
+	fresh.free()
+	var g := perk_game(0)
+	var offer := g.get_venue_offer()
+	check(offer.size() == 3 and offer == g.get_venue_offer(), "three cities on offer, the same each time you look (%s)" % [offer])
+	var missing := ""
+	for def: Dictionary in Content.VENUES["cities"]:
+		if not offer.has(def["id"]):
+			missing = def["id"]
+	check(not g.set_next_venue(missing), "a city not on offer can't be picked")
+	# Every effect moves its number by its value, from the next run on.
+	for def: Dictionary in Content.VENUES["cities"]:
+		var probe := new_game()
+		for effect: Dictionary in def["effects"]:
+			var target := String((effect.get("puzzles", [""]) as Array)[0])
+			var before := probe._upgrade_mult(String(effect["type"]), target)
+			probe.venue = def["id"]
+			probe.invalidate_upgrade_cache()
+			check_near(probe._upgrade_mult(String(effect["type"]), target), before * float(effect["value"]), "%s: %s" % [def["id"], effect["type"]])
+			probe.venue = ""
+			probe.invalidate_upgrade_cache()
+		probe.free()
+	g.upgrades["metronome"] = true  # a tap share: the whole tap (its helper share too) is what a city multiplies
+	g.buildings["friend"] = 20
+	g.invalidate_upgrade_cache()
+	var flat := g.get_tap_moves_flat()
+	var share := g.get_tap_moves_from_helpers() * g.get_streak_mult()
+	check(share > 0.0, "test setup: taps have a helper share")
+	g.venue = "tokyo"
+	g.invalidate_upgrade_cache()
+	check_near(g.get_tap_moves(), (flat + share * 0.8) * 3.0, "Tokyo: the whole tap ×3 (its helper share follows helpers ×0.8)")
+	g.upgrades.erase("metronome")
+	g.buildings["friend"] = 0
+	g.venue = "las_vegas"
+	g.invalidate_upgrade_cache()
+	g.golden_rng.seed = 1
+	var waits := 0.0
+	for i in 50:
+		waits += g._roll_golden_wait()
+	check(waits / 50.0 < (float(Content.GOLDEN["spawn_min"]) + float(Content.GOLDEN["spawn_max"])) / 2.0 / 1.5, "Las Vegas: golden stickers come about twice as often")
+	g.venue = ""
+	g.invalidate_upgrade_cache()
+	check(g.set_next_venue(offer[0]) and g.next_venue == offer[0] and g.venue == "", "a pick waits for the next run")
+	var data := g.get_save_data()
+	var loaded := new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.next_venue == offer[0], "the pick is saved")
+	loaded.free()
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	g.compete()
+	check(g.venue == offer[0] and g.next_venue == "" and g.get_venue_offer() != offer, "it applies with the championship; a new offer comes")
+	data = g.get_save_data()
+	loaded = new_game()
+	loaded.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]))
+	check(loaded.venue == offer[0] and is_equal_approx(loaded.get_tap_moves(), g.get_tap_moves()), "this run's city is saved, with its effects")
+	loaded.free()
+	g.cheat_add_solves(GameState.solves_for_trophies(1))
+	g.compete()
+	check(g.venue == "", "no pick: the next run has no city")
+	# Damaged and old saves.
+	var bad := g.get_save_data()
+	bad["challenges"]["venue"] = "atlantis"
+	bad["challenges"]["next_venue"] = "nowhere"
+	var damaged := new_game()
+	damaged.apply_save_data(JSON.parse_string(JSON.stringify(bad)), float(bad["saved_at"]))
+	check(damaged.venue == "" and damaged.next_venue == "", "unknown cities are dropped")
+	var v21: Dictionary = JSON.parse_string(JSON.stringify(g.get_save_data()))
+	v21["version"] = 21
+	v21["challenges"]["venue"] = "tokyo"
+	var old := new_game()
+	old.apply_save_data(v21, float(v21["saved_at"]))
+	check(old.venue == "" and int(old.get_save_data()["version"]) == GameState.SAVE_VERSION, "v21 → v22: no city")
+	damaged.free()
+	old.free()
+	g.free()
+
+
 ## 8.4: the Compete screen's "Next run" column and the stage badge.
 func test_challenge_screen() -> void:
 	var game: GameState = root.get_node("Game")
@@ -6956,6 +7048,7 @@ func test_challenge_screen() -> void:
 	panel._option_buttons["one_handed"].pressed.emit()
 	check(game.next_challenge == "one_handed" and panel._option_buttons["one_handed"].button_pressed and not panel._option_buttons[""].button_pressed
 			and panel._option_text.text.contains("tap moves ×2"), "picking one shows its rule and reward: %s" % panel._option_text.text)
+	check(not panel._intro.visible, "the intro gives its room to the next run")
 	game.cheat_add_solves(GameState.solves_for_trophies(1))
 	game.compete()
 	main._refresh()
@@ -6965,6 +7058,19 @@ func test_challenge_screen() -> void:
 	check(panel._give_up.visible and panel._running_label.text.contains("One-Handed"), "the Compete screen says so, with a way out")
 	panel._give_up.pressed.emit()
 	check(game.challenge == "" and not badge.visible and not panel._give_up.visible, "Give up lifts it")
+	# 8.4b: the host city chips.
+	var offer: Array[String] = game.get_venue_offer()
+	check(panel._venue_buttons.size() == 3 and panel._venue_title.visible, "three host cities to pick from")
+	panel._venue_buttons[offer[1]].pressed.emit()
+	check(game.next_venue == offer[1] and panel._venue_text.text == Content.get_venue(offer[1])["text"], "picking one shows its twist")
+	panel._venue_buttons[offer[1]].pressed.emit()
+	check(game.next_venue == "", "a second click un-picks it")
+	game.venue = offer[0]
+	game.invalidate_upgrade_cache()
+	main._refresh()
+	check(badge.visible and badge.text == String(Content.get_venue(offer[0])["name"]), "a run with a host city shows it on the stage (%s)" % badge.text)
+	game.venue = ""
+	game.invalidate_upgrade_cache()
 	# Small Team: no goal, card or "???" for a helper it rules out; giving up brings back what start perks promise.
 	game.perks["big_cube_prep"] = true
 	game.perks["warm_up"] = true
