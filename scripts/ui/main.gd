@@ -103,6 +103,8 @@ var _key_session := SolveSession.new()
 var news := NewsFeed.new()          ## the news feed (task R.4): GameState events in, a line every ~1.2 s out
 var unseen_goals := 0              ## achievements and drops since the Goals screen was last opened (its button's bubble)
 var _goals_bubble: Label
+var _kit_sets: Dictionary = {}     ## brand -> pieces of its active set tier (7.7: a brand whose tier goes up pops)
+var _top_goal: Dictionary = {}     ## the goal card's main goal, from _refresh (its bar follows it every frame)
 
 
 func _ready() -> void:
@@ -126,6 +128,8 @@ func _ready() -> void:
 	Game.achievement_earned.connect(_on_achievement_earned)
 	Game.collection_drop.connect(_on_collection_drop)
 	Game.career_moment.connect(_on_career_moment)
+	Game.kit_changed.connect(_on_kit_changed)
+	_kit_sets = _active_kit_set_keys()  # sets already active at start don't pop
 	perk_panel.perk_pressed.connect(func(id: String) -> void: Game.buy_perk(id))
 	solve_button.pressed.connect(func() -> void: solve_station.open(Game.get_focused_puzzle_id()))
 	Settings.changed.connect(_on_setting_changed)
@@ -176,9 +180,8 @@ func _process(delta: float) -> void:
 	toast.corner_rect = Rect2(stage.position, Vector2(stage.size.x, stage_overlay.global_position.y - stage.position.y))
 	Game.automation_paused = welcome_panel.visible  # auto-buyers (6.3b) wait until "Welcome back" is collected
 	Game.auto_compete_held = solve_station.visible or compete_panel.visible  # never reset the run under the player
-	if _goal_bar_mode():
-		var goals := Game.get_goals(1)
-		solve_progress.value = float(goals[0]["progress"]) if not goals.is_empty() else 1.0
+	if _goal_bar_mode():  # the goal the label names (from the last _refresh's get_goals(3), 7.10)
+		solve_progress.value = float(_top_goal.get("progress", 1.0))
 	else:
 		solve_progress.value = Game.get_move_progress() / Game.get_moves_per_solve()
 	if _showcase != null:
@@ -318,6 +321,7 @@ func _refresh() -> void:
 	var tap_moves := Game.get_tap_moves()
 	var how_to := "Click the cube, Space or solve keys: +%s %s  ·  drag to look around" % [
 		Num.format(tap_moves), "move" if is_equal_approx(tap_moves, 1.0) else "moves"]
+	_top_goal = goals[0] if not goals.is_empty() else {}
 	if _goal_bar_mode() and not goals.is_empty():
 		# Too many solves a second to follow the moves bar: it tracks the top goal instead.
 		progress_label.text = "Next goal: %s" % _goal_text(goals[0])
@@ -600,6 +604,9 @@ func _pop_solves(delta: float) -> void:
 ## "Research CFOP · 0:32" (Lab research) or, with `long`, "Learn ZZ · 46.00M more Solves · about 1m 14s".
 func _goal_text(goal: Dictionary, long: bool = false) -> String:
 	var name: String = ("another " if goal["more"] else "") + String(goal["name"])
+	if goal["unit"] == "progress":  # 7.10: an achievement nearly done
+		var text := "%s  ·  %d %%" % [name, floori(float(goal["progress"]) * 100.0)]
+		return text + ("  ·  " + Content.describe_achievement(Content.get_achievement(String(goal["id"]))) if long else "")
 	if goal["unit"] == "time":  # Lab research (5.6): paid already, only its time left
 		return "%s  ·  %s%s" % [name, Num.clock(float(goal["seconds"])), " left in the Lab" if long else ""]
 	if float(goal["missing"]) <= 0.0:
@@ -1085,7 +1092,10 @@ func open_golden() -> void:
 	if _is_up(solve_station) or not Game.claim_golden():
 		return
 	_on_golden_gone()
-	solve_station.open_golden(Game.get_focused_puzzle_id(), Game.roll_golden_case_moves())
+	if String(Game.golden_case.get("kind", "scramble")) == "scramble":
+		solve_station.open_golden(Game.get_focused_puzzle_id(), int(Game.golden_case.get("moves", Game.roll_golden_case_moves())))
+	else:  # 7.13: a real OLL/PLL case on the 3×3
+		solve_station.open_golden_case(Game.golden_case)
 
 
 func _on_golden_finished(success: bool, buff: Dictionary) -> void:
@@ -1202,6 +1212,7 @@ func _on_state_reset() -> void:
 	toast.clear()
 	unseen_goals = 0
 	_refresh_goals_bubble()
+	_kit_sets = _active_kit_set_keys()
 	news = NewsFeed.new()
 	_show_news()
 	_rebuild_after_reset()
@@ -1354,10 +1365,33 @@ func drop_toast(item_id: String, stars: int) -> Dictionary:
 	var rarity := String(Content.get_rarity(String(item.get("rarity", ""))).get("name", ""))
 	return {"kind": "drop", "caption": "NEW IN YOUR COLLECTION" if stars <= 1 else "COLLECTION: ONE MORE STAR",
 			"title": String(item.get("name", item_id)),
-			"text": "%s %s  ·  %d/%d stars  ·  %s" % [rarity, item.get("kind", ""), stars, int(Content.COLLECTION["max_stars"]),
-					GoalsPanel.item_effect_text(item_id)],
-			"icon": Content.icon(String(item.get("icon", "small_cubes"))),
+			"text": "%s %s  ·  %s" % [rarity, item.get("kind", ""), GoalsPanel.item_effect_text(item_id)],  # the stars: pips
+			"icon": Content.icon(String(item.get("icon", "small_cubes"))), "stars": [stars, int(Content.COLLECTION["max_stars"])],
 			"category": GoalsPanel.RARITY_CATEGORY.get(item.get("rarity", ""), &"station")}
+
+
+## 7.7: a brand set tier the kit just reached pops and makes a news line (once until it's lost and regained).
+func _on_kit_changed() -> void:
+	var now := _active_kit_set_keys()
+	for def: Dictionary in Game.get_active_kit_sets():
+		var brand := String(def["brand"])
+		if int(def["pieces"]) > int(_kit_sets.get(brand, 0)):  # a higher tier (not a lower one after losing a piece)
+			var bonus := GoalsPanel.effect_text(def["effect"])
+			toast.push({"kind": "set", "caption": "BRAND SET COMPLETE", "title": "%s (%d pieces)" % [def["name"], int(def["pieces"])],
+					"text": "%s while it's in your kit." % bonus, "icon": Content.icon("magnets"), "category": &"trophies",
+					"name": String(def["name"])})
+			news.push("set:" + brand, "%s complete: %s." % [def["name"], bonus])
+	_kit_sets = now
+	if goals_panel.visible:
+		goals_panel.refresh()
+
+
+## brand -> pieces of its active set tier (the biggest reached), for the sets active now.
+func _active_kit_set_keys() -> Dictionary:
+	var out := {}
+	for def: Dictionary in Game.get_active_kit_sets():
+		out[String(def["brand"])] = maxi(int(out.get(String(def["brand"]), 0)), int(def["pieces"]))
+	return out
 
 
 ## One more thing to see on the Goals screen (not while it's up: it's seen there).

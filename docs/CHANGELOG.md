@@ -2,6 +2,58 @@
 
 Newest first. Every session adds an entry: what changed, what's unfinished, notes for the next session.
 
+## 2026-11-13 — Tasks 7.5–7.13: Goals polish (Phase 7b, fun pass), save v18
+- **D18 answered (owner):** any OLL/PLL case may appear in a Golden Scramble; a case learned in the drills pays more.
+- **7.5 Drop odds on screen:** `Game.get_drop_odds()` (per source chance, pity, misses so far, "from your first
+  championship"; per rarity pity its count). The Collection tab shows two lines under its summary ("Drops: Golden
+  Scramble 50 % (sure by try 3, 0 missed) · …", "Never unlucky for long: Epic+ by drop 11 (3 so far) · Legendary by
+  drop 51 (12 so far)"); a "???" card's tooltip has them too, plus its rarity's
+  share of drops.
+- **7.6 Legendary pity:** `Content.COLLECTION["rarity_pity"]` is a list (`key`, `rarity`, `after`): Epic or better after
+  10 dry drops (counter "rarity", as before), **Legendary after 50** (counter "legendary"); the rarest due pity sets
+  the floor; every drop updates both counters. `GameState.rarity_pity_keys()`.
+- **7.8 Late-game career moments:** first Gold hand single (new trigger `hand_tier`), Cube Museum, 3rd title, AI
+  Solver, first Legendary item (new trigger `item_rarity`), Orbital, 10th title, Quantum. `Content.CAREER_V18` lists
+  them.
+- **Save v18:** the Legendary counter needs nothing (missing = 0); `_migrate` marks a v13–v17 save's career with
+  `career_backfill` = the new ids, and applying it marks the ones already true as seen, silently.
+- **7.13 Golden Scrambles as real cases:** `Content.GOLDEN["kinds"]` (scramble 2 : PLL 1 : OLL 1; cases only once the
+  player has a 3×3), `case_seconds` 20, `known_bonus` 1.5. `claim_golden()` rolls `Game.golden_case`
+  (`roll_golden_case()`); a case opens in the Solve Station set up like a drill (yellow on top,
+  `SolveStation.open_golden_case`): "Golden case: a PLL case. Solve it any way you like" or "T perm (PLL) · You know
+  this one! ×1.5 reward". A known case's reward is ×1.5 (Frenzy lasts 45 s, Lucky gives 22 minutes' worth) and says
+  "You knew this one!". Not saved (like the attempt clock). `GOLDEN=known` screenshot option.
+- **7.7 Brand set complete:** main.gd keeps the active set tiers; a `kit_changed` that reaches a new one pops "BRAND SET
+  COMPLETE · Budget Kit (3 pieces) · +15 % tap moves while it's in your kit." and makes a news line; lost and
+  regained, it pops again. Sets active at start (or after a reset) don't pop. `TOAST=set`.
+- **7.9 Welcome back lists more:** `offline_report` gets "mastery" (puzzle -> [level before, now]) and "achievements"
+  (ids reached while away; they're earned, with their pops, at the first check after loading). The panel adds
+  "Mastery: 3×3 Lv 1 → 37." and "Achievements: Solver V, Solver VI, Turning Point II and 4 more."
+- **7.10 Achievements in the goal strip:** `Game.get_near_achievement_goal()`: the unearned achievement closest to done
+  at ≥ 80 % (counted ones only: not unlocks, tiers or mastery levels), unit "progress". In `get_goals` it's placed by
+  its ETA when the game knows the rate (Solves, moves, play time), else it takes the last slot of a 3-goal strip
+  unless that one is ready now. The card shows "Pace Setter II · 85 %" (tooltip: its text).
+- **7.11 Star-up feel:** a drop pop shows the item's star pips; the new one pops (`UiFx.pop`; not with Reduce motion).
+  The "2/5 stars" text left the line (the pips say it).
+- **7.12 Where your bonus comes from:** `Game.get_bonus_breakdown()`: rows kit, collection, sets, trophies,
+  achievements, each {effect key: multiplier} (cubes per puzzle); the Stats tab lists them ("+10.2 % 3×3 moves, +2 %
+  Solves per solve, …").
+- Tests: `test_golden_cases`, `test_achievement_goal`, `test_welcome_away_lines`, `test_goals_polish`; the career and
+  collection tests cover the new triggers, both pities, v17 → v18 and the counter's round trip;
+  `test_golden_scramble_on_screen` now picks a scramble (with a 3×3 a sticker may open a case) and solves a known case.
+- Screenshots: `docs/screenshots/7.5-7.13-goals-polish/`.
+- **Review fixes (diff-reviewer, screenshot-checker):** losing a piece (5 → 3-piece tier) no longer pops "complete"
+  (main.gd compares each brand's tier); the goal card's bar follows the same goal as its label (the bar reads the
+  last `_refresh`'s top goal instead of its own `get_goals(1)` every frame) and `get_goals` only looks for an
+  achievement goal from 3 goals up (it cost ~0.7 ms); a rarity pity stops counting while nothing of that rarity or
+  better can still grow (all Legendaries maxed made every later drop an Epic); a known Lucky says "22.5 minutes'
+  worth"; a perks row joined the breakdown (multiplying perk effects); percentages from 1,000 up use `Num.format`;
+  the odds lines are shorter; the golden case's name shows once (heading), not twice.
+- **For the owner (D18 side effect):** with a 3×3, half the golden stickers are now OLL/PLL cases with 20 s and no
+  inspection. An unlearned OLL by intuition in 20 s is hard, so expect fewer Golden Scrambles solved (and fewer of
+  their drops) until the drills are learned; `Content.GOLDEN["kinds"]` weights and `case_seconds` tune it.
+- Parallel sessions: none running; `main` hadn't moved since the claim.
+
 ## 2026-11-13 — Task R.6b: big cubes in the solver (6×6 and 7×7)
 - **The 7×7 plays the showcase solve** (it kept scramble + rewind until now): Centres · Edges · (Parity) · the method's
   stages. About 760 moves (Centres ~470 of them), so about a minute at the showcase's 12 turns/s, as the owner chose

@@ -15,6 +15,7 @@ const WIDTH := 330.0
 const TEXT_WIDTH := 250.0    ## WIDTH less the accent, the sticker, the gaps and the card's margins
 const MARGIN := Vector2(14, 14)  ## from the corner of `corner_rect`
 const SLIDE := Vector2(40, 0)
+const PIP_SIZE := Vector2(9, 9)
 const StickerScene := preload("res://scenes/icon_sticker.tscn")
 
 var corner_rect := Rect2()   ## the area whose bottom-right corner the toast sits in (global; main.gd: the stage)
@@ -30,6 +31,8 @@ var _icon: IconSticker
 var _caption: Label
 var _title: Label
 var _text: Label
+var _pips: HBoxContainer
+var star_tween: Tween          ## 7.11: the new star's pop (null with Reduce motion or no stars); tests read it
 
 
 func _ready() -> void:
@@ -64,10 +67,15 @@ func _ready() -> void:
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.custom_minimum_size = Vector2(TEXT_WIDTH, 0)  # a known width, so the card knows its height before layout
 	text.add_child(_text)
+	_pips = HBoxContainer.new()  # 7.11: a drop's stars, the new one popping in
+	_pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pips.visible = false
+	text.add_child(_pips)
 
 
-## Queues a toast: {kind (career|achievement|drop), caption ("ACHIEVEMENT"), title, text, icon: Texture2D, category,
-## name (a merged toast's "and 2 more: <name>", default the title)}. Returns false if it merged into one waiting.
+## Queues a toast: {kind (career|achievement|drop|set), caption ("ACHIEVEMENT"), title, text, icon: Texture2D, category,
+## name (a merged toast's "and 2 more: <name>", default the title), stars: [have, max] (a drop: pips, the last one
+## popping in, 7.11)}. Returns false if it merged into one waiting.
 func push(view: Dictionary) -> bool:
 	var kind := String(view.get("kind", ""))
 	for waiting: Dictionary in _queue:
@@ -132,6 +140,7 @@ func _show(view: Dictionary) -> void:
 		text = "and %d more, latest: %s" % [int(view["more"]), view.get("latest", "")]
 	_text.text = text
 	_text.visible = text != ""
+	_show_stars(view.get("stars", []) if int(view.get("more", 0)) == 0 else [])
 	_icon.texture = view.get("icon")
 	_icon.category = StringName(view.get("category", &"trophies"))
 	_accent.color = IconSticker.colour_of(self, _icon.category)
@@ -140,6 +149,40 @@ func _show(view: Dictionary) -> void:
 	_card.reset_size()
 	_place()
 	UiFx.slide_in(_card, SLIDE)
+
+
+## Star pips [have, max]; the newest (have - 1) pops in (7.11). [] hides them.
+func _show_stars(stars: Array) -> void:
+	star_tween = null
+	_pips.visible = stars.size() == 2
+	if not _pips.visible:
+		return
+	var have := int(stars[0])
+	var total := int(stars[1])
+	while _pips.get_child_count() < total:
+		var pip := Panel.new()
+		pip.custom_minimum_size = PIP_SIZE
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_pips.add_child(pip)
+	for i in _pips.get_child_count():
+		var pip: Panel = _pips.get_child(i)
+		pip.visible = i < total
+		pip.theme_type_variation = &"PipOn" if i < have else &"Pip"
+		pip.scale = Vector2.ONE
+	if have >= 1 and have <= total:
+		var newest: Panel = _pips.get_child(have - 1)
+		newest.pivot_offset = PIP_SIZE * 0.5
+		star_tween = UiFx.pop(newest, 1.8)
+
+
+## The star pips shown, as their variations (PipOn / Pip); [] if none (tests).
+func get_star_pips() -> Array[String]:
+	var out: Array[String] = []
+	if _pips.visible:
+		for pip: Panel in _pips.get_children():
+			if pip.visible:
+				out.append(String(pip.theme_type_variation))
+	return out
 
 
 func _hide() -> void:

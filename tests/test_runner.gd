@@ -1779,6 +1779,31 @@ func test_buy_amount_toggle() -> void:
 
 # --- Welcome back panel (task 3.6) ---------------------------------------------------
 
+## 7.9: Welcome back also says which mastery levels were gained and which achievements were reached while away.
+func test_welcome_away_lines() -> void:
+	var g := new_game()
+	g.cheat_add_solves(5000.0)
+	for id: String in ["friend", "club"]:
+		for i in 10:
+			g.buildings[id] = int(g.buildings.get(id, 0)) + 1
+	g.invalidate_upgrade_cache()
+	g.check_achievements(false)
+	var data := g.get_save_data()
+	var back := new_game()
+	back.apply_save_data(JSON.parse_string(JSON.stringify(data)), float(data["saved_at"]) + 4.0 * 3600.0)
+	var report := back.offline_report
+	check(report.has("mastery") and (report["mastery"] as Dictionary).has("2x2")
+			and int(report["mastery"]["2x2"][1]) > int(report["mastery"]["2x2"][0]), "mastery gained while away is reported (%s)" % [report.get("mastery")])
+	check(report.has("achievements") and (report["achievements"] as Array).has("solves_5"), "...and achievements reached (%s)" % [report.get("achievements")])
+	check(not back.is_achievement_earned("solves_5"), "...which are earned at the first check (with their pop), not during the load")
+	var lines := WelcomePanel.away_lines(report)
+	check(lines.size() == 2 and lines[0].begins_with("Mastery: 2×2 Lv") and lines[1].begins_with("Achievements: "), "the panel's lines: %s" % [lines])
+	var many := WelcomePanel.away_lines({"achievements": ["solves_1", "solves_2", "solves_3", "solves_4", "solves_5"]})
+	check(many[0] == "Achievements: Solver I, Solver II, Solver III and 2 more.", "a long list is cut: %s" % many[0])
+	back.free()
+	g.free()
+
+
 func test_welcome_panel() -> void:
 	var game: GameState = root.get_node("Game")
 	game.persistence_enabled = false
@@ -1804,7 +1829,8 @@ func test_welcome_panel() -> void:
 	check((panel.get_node("%Away") as Label).text == "You were away for 2h 15m.", "it says how long you were away")
 	check((panel.get_node("%Earned") as Label).text == "+%s Solves" % Num.format(earned), "it shows what you earned")
 	check(not (panel.get_node("%Notice") as Label).visible, "no damaged-save notice")
-	check((panel.get_node("%Detail") as Label).text == "Your helpers kept solving while you were gone.", "it says the helpers kept solving")
+	check((panel.get_node("%Detail") as Label).text.begins_with("Your helpers kept solving while you were gone."), "it says the helpers kept solving")
+	check((panel.get_node("%Detail") as Label).text.contains("Mastery: "), "...and what else happened (7.9): %s" % (panel.get_node("%Detail") as Label).text)
 	var lab_only: Control = load("res://scenes/welcome_panel.tscn").instantiate()
 	root.add_child(lab_only)
 	lab_only.show_report({"seconds": 600.0, "solves": 0.0, "research": "CFOP"}, "")
@@ -3644,6 +3670,40 @@ func test_goals() -> void:
 	g.free()
 
 
+## 7.10: an achievement at 80 % or more joins the goals; it gives way to something ready now, and leaves once earned.
+func test_achievement_goal() -> void:
+	var g := new_game()
+	for id: String in ["solves_1", "solves_2", "solves_3", "solves_4"]:
+		g.achievements[id] = true
+	g.total_solves = 5000.0  # Solver V (10K) half way: not yet
+	check(g.get_near_achievement_goal().is_empty(), "at 50 %: no achievement goal")
+	g.total_solves = 8700.0
+	var near := g.get_near_achievement_goal()
+	check(near.get("id", "") == "solves_5" and is_equal_approx(float(near["progress"]), 0.87) and near["unit"] == "progress",
+			"at 87 %%: Solver V is a goal (%s)" % [near])
+	var kinds: Array = g.get_goals(3).map(func(goal: Dictionary) -> String: return goal["kind"])
+	check(kinds.size() == 3 and kinds[2] == "achievement", "with no rate to time it, it takes the last slot (%s)" % [kinds])
+	g.solves = 1e9  # everything else is ready now: it gives way
+	kinds = g.get_goals(3).map(func(goal: Dictionary) -> String: return goal["kind"])
+	check(not kinds.has("achievement"), "...but gives way to goals that are ready now (%s)" % [kinds])
+	g.solves = 0.0
+	g.cheat_add_solves(1000.0)
+	g.buy_building("friend")
+	g.solves = 0.0
+	g.total_solves = 9990.0  # 99.9 %, a few seconds away at the Friend's rate: placed by time, first
+	var goals := g.get_goals(3)
+	var at := goals.map(func(goal: Dictionary) -> String: return goal["kind"]).find("achievement")
+	var sorted := true
+	for i in range(1, goals.size()):
+		sorted = sorted and float(goals[i]["seconds"]) >= float(goals[i - 1]["seconds"])
+	check(at >= 0 and at < 2 and not is_inf(float(goals[at]["seconds"])) and sorted, "with a rate it's placed by its ETA (%s)"
+			% [goals.map(func(goal: Dictionary) -> String: return goal["kind"])])
+	check(g.get_goals(1).all(func(goal: Dictionary) -> bool: return goal["kind"] != "achievement"), "a 1-goal call never computes it")
+	g.achievements["solves_5"] = true
+	check(g.get_near_achievement_goal().get("id", "") != "solves_5", "once earned it's gone")
+	g.free()
+
+
 func test_goal_bar_on_main_screen() -> void:
 	var game: GameState = root.get_node("Game")
 	game.persistence_enabled = false
@@ -3802,6 +3862,11 @@ func test_career_data() -> void:
 				check(Content.get_method_index(target) > 0, "%s: method %s exists" % [id, target])
 			"lifetime_solves", "championships":
 				check(float(trigger["value"]) > 0.0, "%s has a threshold" % id)
+			"hand_tier":
+				check(int(trigger["value"]) >= 0 and int(trigger["value"]) < (Content.SOLVE_REWARDS["tiers"] as Array).size(),
+						"%s: a real tier" % id)
+			"item_rarity":
+				check(Content.get_rarity_index(target) >= 0, "%s: rarity %s exists" % [id, target])
 			_:
 				check(false, "%s has a known trigger type (%s)" % [id, trigger["type"]])
 
@@ -3828,6 +3893,14 @@ func test_career_moments_fire_once() -> void:
 				g.method = target
 			"championships":
 				g.championships = int(trigger["value"])
+			"hand_tier":  # a single under the tier's target on the 2×2
+				var target_time: float = Content.SOLVE_REWARDS["targets"]["2x2"][int(trigger["value"])]
+				g.record_hand_solve("2x2", target_time - 1.0, "", 20)
+			"item_rarity":
+				for item: Dictionary in Content.COLLECTION["items"]:
+					if item["rarity"] == target:
+						g.collection[item["id"]] = 1
+						break
 		var fired := g.check_career()
 		check(Array(fired) == [def["id"]], "%s fires at its trigger (fired: %s)" % [def["id"], fired])
 		check(g.check_career().is_empty(), "...once")
@@ -3910,6 +3983,27 @@ func test_career_save() -> void:
 	check(Array(old.check_career()) == ["first_robot"], "...then fire")
 	check(int(old.get_save_data()["version"]) == GameState.SAVE_VERSION, "...and it saves as the current version")
 	old.free()
+	# v17 -> v18 (7.6/7.8): the new moments an older save already lived are seen silently; the Legendary pity starts at 0.
+	var v17 := g.get_save_data()
+	v17["version"] = 17
+	v17["buildings"]["museum"] = 2
+	v17["championship"]["count"] = 4
+	v17["collection"] = {"items": {"kestrel_lube": 1}, "pity": {"rarity": 3}}
+	var mid := new_game()
+	var mid_heard: Array[String] = []
+	mid.career_moment.connect(func(id: String) -> void: mid_heard.append(id))
+	mid.apply_save_data(JSON.parse_string(JSON.stringify(v17)), float(v17["saved_at"]))
+	check(mid_heard.is_empty() and mid.career_seen.has("first_museum") and mid.career_seen.has("third_title")
+			and mid.career_seen.has("first_legendary"), "v17 → v18: new moments already lived are seen, silently (%s)" % [mid.career_seen.keys()])
+	check(not mid.career_seen.has("tenth_title") and not mid.career_seen.has("first_orbital"), "...the rest wait for their trigger")
+	check(int(mid.collection_pity.get("rarity", -1)) == 3 and int(mid.collection_pity.get("legendary", 0)) == 0,
+			"...the Epic pity is kept and the Legendary one starts at 0")
+	mid.collection_pity["legendary"] = 7
+	var round_trip := new_game()
+	round_trip.apply_save_data(JSON.parse_string(JSON.stringify(mid.get_save_data())), float(v17["saved_at"]))
+	check(int(round_trip.collection_pity.get("legendary", 0)) == 7, "the Legendary pity counter is saved")
+	round_trip.free()
+	mid.free()
 	g.reset_state()
 	check(g.career_seen.is_empty(), "a wiped save starts the story over")
 	g.free()
@@ -4360,7 +4454,9 @@ func test_collection_data() -> void:
 	for source: String in Content.COLLECTION["sources"]:
 		var def: Dictionary = Content.COLLECTION["sources"][source]
 		check(float(def["chance"]) > 0.0 and float(def["chance"]) <= 1.0 and int(def["pity"]) >= 1, "source %s: a chance and a pity" % source)
-	check(Content.get_rarity_index(Content.COLLECTION["rarity_pity"]["rarity"]) > 0, "the rarity pity names a rare-or-better rarity")
+	for pity: Dictionary in Content.COLLECTION["rarity_pity"]:
+		check(Content.get_rarity_index(pity["rarity"]) > 0 and int(pity["after"]) > 0, "a rarity pity names a rare-or-better rarity (%s)" % pity["key"])
+	check(GameState.rarity_pity_keys() == ["rarity", "legendary"], "7.6: Epic and Legendary pities")
 
 
 ## 7.3a: drops: every source's pity caps a dry streak, the rarity pity caps a streak of low rarities, duplicates add a
@@ -4388,19 +4484,38 @@ func test_collection_drops_and_pity() -> void:
 		check(longest <= pity - 1, "%s: never more than %d misses in a row (%d)" % [source, pity - 1, longest])
 		check(drops > 0, "%s drops something" % source)
 	check(g.roll_collection_drop("banana") == "", "an unknown source drops nothing")
-	# The rarity pity: never more than `after` drops in a row below its rarity.
-	var floor_index := Content.get_rarity_index(Content.COLLECTION["rarity_pity"]["rarity"])
-	var after := int(Content.COLLECTION["rarity_pity"]["after"])
+	# The rarity pities (Epic after 10, 7.6: Legendary after 50): never more than `after` drops in a row below each.
 	g._load_collection({})
-	var low := 0
-	var longest_low := 0
-	for i in 400:
+	var lows := {}
+	var longest := {}
+	for i in 1500:
 		if g.get_collection_stars_total() >= 180:
-			g._load_collection({"pity": {"rarity": g.collection_pity.get("rarity", 0)}})
+			g._load_collection({"pity": g.collection_pity.duplicate()})
 		var id := g.roll_collection_drop("championship")
-		low = low + 1 if Content.get_rarity_index(Content.get_collection_item(id)["rarity"]) < floor_index else 0
-		longest_low = maxi(longest_low, low)
-	check(longest_low <= after, "never more than %d drops in a row below %s (%d)" % [after, Content.COLLECTION["rarity_pity"]["rarity"], longest_low])
+		var got := Content.get_rarity_index(Content.get_collection_item(id)["rarity"])
+		for pity: Dictionary in Content.COLLECTION["rarity_pity"]:
+			var key := String(pity["key"])
+			lows[key] = int(lows.get(key, 0)) + 1 if got < Content.get_rarity_index(pity["rarity"]) else 0
+			longest[key] = maxi(int(longest.get(key, 0)), int(lows[key]))
+	for pity: Dictionary in Content.COLLECTION["rarity_pity"]:
+		check(int(longest.get(pity["key"], 0)) <= int(pity["after"]), "never more than %d drops in a row below %s (%d)"
+				% [int(pity["after"]), pity["rarity"], int(longest.get(pity["key"], 0))])
+	check(int(longest.get("legendary", 0)) > 20, "test setup: long Legendary droughts happened, so the pity was tested (%d)" % int(longest.get("legendary", 0)))
+	# A due Legendary pity beats the Epic one: the next drop is Legendary.
+	var due := new_game()
+	due.collection_rng.seed = 5
+	due._load_collection({"pity": {"rarity": 10, "legendary": 50}})
+	var forced := due.roll_collection_drop("championship")
+	check(Content.get_collection_item(forced)["rarity"] == "legendary" and int(due.collection_pity["legendary"]) == 0
+			and int(due.collection_pity["rarity"]) == 0, "a due Legendary pity gives a Legendary and resets both counters")
+	check(due.get_drop_odds()["rarities"][1] == {"rarity": "legendary", "after": 50, "count": 0}, "get_drop_odds lists the pities")
+	for item: Dictionary in Content.COLLECTION["items"]:  # every Legendary maxed: its pity has nothing to give, it stays at 0
+		if item["rarity"] == "legendary":
+			due.collection[item["id"]] = int(Content.COLLECTION["max_stars"])
+	for i in 60:
+		due.roll_collection_drop("championship")
+	check(int(due.collection_pity["legendary"]) == 0, "with every Legendary maxed the Legendary pity doesn't build up (%d)" % int(due.collection_pity["legendary"]))
+	due.free()
 	# Merging: a duplicate is the next star; the signal says so.
 	var fresh := new_game()
 	fresh.collection_rng.seed = 99
@@ -4880,6 +4995,101 @@ func test_goals_pops_on_main_screen() -> void:
 	game.reset_state()
 
 
+## 7.5, 7.7, 7.11, 7.12: drop odds on screen, the brand-set pop, the star pop in a drop toast, the bonus breakdown.
+func test_goals_polish() -> void:
+	var game: GameState = root.get_node("Game")
+	game.persistence_enabled = false
+	game.reset_state()
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	var panel = main.goals_panel  # untyped (CLAUDE.md "Testing gotcha")
+	# 7.5: the odds, from the data.
+	var lines: Array[String] = panel.odds_lines(game.get_drop_odds())
+	check(lines.size() == 2 and lines[0].contains("Golden Scramble 50 % (sure by try 3, 0 missed)")
+			and lines[0].contains("Achievement 15 % (sure by try 10, 0 missed) from your 1st title")
+			and lines[0].contains("Championship 100 %"), "the sources' odds: %s" % lines[0])
+	check(lines[1].contains("Epic+ by drop 11 (0 so far)") and lines[1].contains("Legendary by drop 51 (0 so far)"),
+			"the rarity pities: %s" % lines[1])
+	check(panel.item_tooltip("swift_duo").contains("Golden Scramble 50 %") and panel.item_tooltip("swift_duo").contains("10 % of drops"),
+			"a \"???\" card's tooltip has the odds: %s" % panel.item_tooltip("swift_duo"))
+	# 7.7: three Pocket pieces in the kit: Budget Kit pops once.
+	main.toast.clear()
+	for id: String in ["pocket_mini", "pocket_classic", "pocket_timer"]:
+		game.collection[id] = 1
+	game.auto_fill_kit()
+	var set_pop: Dictionary = main.toast.get_showing() if main.toast.is_showing() else {}
+	main.toast.advance(0.0)
+	set_pop = main.toast.get_showing()
+	check(set_pop.get("kind", "") == "set" and String(set_pop.get("title", "")).begins_with("Budget Kit"), "a set reached pops: %s" % [set_pop])
+	main.news.advance(10.0)
+	check(main.news.history[0].begins_with("Budget Kit complete: +15 % tap moves"), "...and makes a news line (%s)" % main.news.history[0])
+	main.toast.clear()
+	game.equip("main", "pocket_classic")
+	main.toast.advance(0.0)
+	check(not main.toast.is_showing(), "a kit change that keeps the set doesn't pop again")
+	game.equip("timer", "")
+	game.equip("timer", "pocket_timer")
+	main.toast.advance(0.0)
+	check(main.toast.get_showing().get("kind", "") == "set", "lost and regained: it pops again")
+	for id: String in ["pocket_mat", "pocket_lube"]:  # all five: the 5-piece tier pops
+		game.collection[id] = 1
+	main.toast.clear()
+	game.auto_fill_kit()
+	main.toast.advance(0.0)
+	check(String(main.toast.get_showing().get("title", "")).contains("5 pieces"), "five Pocket pieces: the bigger tier pops")
+	main.toast.clear()
+	game.equip("lube", "")
+	main.toast.advance(0.0)
+	check(not main.toast.is_showing(), "losing a piece (5 -> 3-piece tier) doesn't pop \"complete\"")
+	# 7.11: a drop pop shows the stars, the new one popping (not with Reduce motion).
+	var was := UiFx.reduce_motion
+	UiFx.reduce_motion = false
+	main.toast.clear()
+	main.toast.push(main.drop_toast("torque_3m", 2))
+	main.toast.advance(0.0)
+	check(main.toast.get_star_pips() == ["PipOn", "PipOn", "Pip", "Pip", "Pip"] and main.toast.star_tween != null,
+			"a drop pop: 2 of 5 stars, the second popping in (%s)" % [main.toast.get_star_pips()])
+	UiFx.reduce_motion = true
+	main.toast.clear()
+	main.toast.push(main.drop_toast("torque_3m", 3))
+	main.toast.advance(0.0)
+	check(main.toast.get_star_pips().count("PipOn") == 3 and main.toast.star_tween == null, "Reduce motion: the stars, no pop")
+	UiFx.reduce_motion = was
+	# 7.12: the breakdown matches the real multipliers.
+	game.collection["torque_3m"] = 2
+	game.collection["kestrel_air"] = 1
+	game.auto_fill_kit()
+	var product := 1.0
+	for id: String in game.collection:
+		var effect: Dictionary = Content.get_collection_item(id)["effect"]
+		if effect["type"] == "puzzle_mult" and (effect["puzzles"] as Array).has("3x3"):
+			product *= game.get_item_mult(id)
+	var from_rows := 1.0
+	var rows := {}
+	for row: Dictionary in game.get_bonus_breakdown():
+		rows[row["id"]] = row["effects"]
+		from_rows *= float((row["effects"] as Dictionary).get("puzzle_mult:3x3", 1.0))
+	check(is_equal_approx(from_rows, product) and from_rows > 1.0, "the 3×3 bonus from kit and collection rows = the items' (%f vs %f)" % [from_rows, product])
+	check(rows["sets"].has("tap_mult"), "the Budget Kit's taps bonus is a row")
+	game.perks["team_spirit"] = true
+	game.invalidate_upgrade_cache()
+	var perk_rows: Dictionary = {}
+	for row: Dictionary in game.get_bonus_breakdown():
+		if row["id"] == "perks":
+			perk_rows = row["effects"]
+	var perk_effect: Dictionary = Content.get_perk("team_spirit")["effect"]
+	check(perk_rows.size() == 1 and is_equal_approx(float(perk_rows.values()[0]), float(perk_effect["value"])),
+			"owned perks' multipliers are a row (%s)" % [perk_rows])
+	game.perks.erase("team_spirit")
+	game.invalidate_upgrade_cache()
+	main.open_goals(2)
+	check(panel._bonus_rows["kit"].text.contains("3×3 moves") and panel._bonus_rows["sets"].text.ends_with("tap moves")
+			and panel._bonus_rows["trophies"].text == "—", "the Stats tab shows them: %s / %s" % [panel._bonus_rows["kit"].text, panel._bonus_rows["sets"].text])
+	panel.close()
+	main.free()
+	game.reset_state()
+
+
 ## 7.1b, 7.2b, 7.3b, 7.4b: the Goals screen: achievement rows (x/y, "???" for helpers not met, bars), the collection
 ## and the kit (click a card, click a slot then a card, drag onto a slot, Auto), and the stats.
 func test_goals_panel() -> void:
@@ -5066,6 +5276,61 @@ func test_golden_buffs() -> void:
 	migrated.free()
 
 
+## 7.13 (D18): a golden sticker may open a real OLL/PLL case on the 3×3 (any case), with a longer clock; a case learned
+## in the drills pays known_bonus × the reward.
+func test_golden_cases() -> void:
+	var g := new_game()
+	g.golden_rng.seed = 77
+	var kinds := {}
+	for i in 60:
+		kinds[g.roll_golden_case()["kind"]] = true
+	check(kinds.keys() == ["scramble"], "no 3×3 yet: only scrambles (%s)" % [kinds.keys()])
+	g.cheat_add_solves(1e3)
+	g.unlock_puzzle("3x3")
+	kinds.clear()
+	var learned_seen := false
+	for i in 400:
+		var golden := g.roll_golden_case()
+		kinds[golden["kind"]] = int(kinds.get(golden["kind"], 0)) + 1
+		if golden["kind"] != "scramble":
+			var found := Content.get_drill_cases(String(golden["kind"])).filter(func(alg: Dictionary) -> bool: return alg["id"] == golden["case_id"])
+			check(found.size() == 1 and found[0]["alg"] == golden["alg"] and not golden["known"], "a real %s case, not learned yet (%s)" % [golden["kind"], golden["case_id"]])
+	check(kinds.has("scramble") and kinds.has("pll") and kinds.has("oll"), "with a 3×3: scrambles, PLLs and OLLs (%s)" % [kinds])
+	for i in int(Content.DRILLS["clean_needed"]):
+		g.record_drill("pll", "pll_t", 5.0)
+	check(g.is_case_learned("pll_t"), "test setup: T perm learned")
+	for i in 2000:
+		var golden := g.roll_golden_case()
+		if golden.get("case_id", "") == "pll_t":
+			learned_seen = golden["known"]
+			break
+	check(learned_seen, "a learned case is known")
+	# The clock: a case gets case_seconds, a scramble solve_seconds.
+	var state := g.golden_rng.state
+	while g.roll_golden_case()["kind"] == "scramble":
+		state = g.golden_rng.state
+	g.golden_rng.state = state
+	g.golden_glow_left = 5.0
+	check(g.claim_golden() and g.golden_case["kind"] != "scramble" and is_equal_approx(g.golden_attempt_left, float(Content.GOLDEN["case_seconds"])),
+			"a case gets %ds" % int(Content.GOLDEN["case_seconds"]))
+	# The reward: known ×1.5, unknown as before.
+	var frenzy: Dictionary = Content.GOLDEN["buffs"][0]
+	var plain := g._apply_golden_buff(frenzy)
+	var bonus := g._apply_golden_buff(frenzy, float(Content.GOLDEN["known_bonus"]))
+	var lucky_bonus := g._apply_golden_buff(Content.GOLDEN["buffs"][1], float(Content.GOLDEN["known_bonus"]))
+	check(String(lucky_bonus["text"]).contains("(22.5 minutes' worth)"), "a known Lucky says its real minutes: %s" % lucky_bonus["text"])
+	check(is_equal_approx(float(bonus["seconds"]), float(plain["seconds"]) * float(Content.GOLDEN["known_bonus"])), "a known case's Frenzy lasts ×1.5")
+	g.golden_case = {"kind": "pll", "case_id": "pll_t", "alg": "R U R' U'", "name": "T perm", "known": true}
+	var result := g.finish_golden(true)
+	check(result.get("known", false) and String(result["text"]).begins_with("You knew this one!") and g.golden_case.is_empty(),
+			"solving a known case says so: %s" % result.get("text", ""))
+	g.golden_glow_left = 5.0
+	g.claim_golden()
+	g.golden_case["known"] = false
+	check(not g.finish_golden(true).get("known", false), "an unknown case pays the normal reward")
+	g.free()
+
+
 func test_golden_scramble_on_screen() -> void:
 	var game: GameState = root.get_node("Game")
 	game.persistence_enabled = false
@@ -5083,6 +5348,10 @@ func test_golden_scramble_on_screen() -> void:
 	game.golden_next = 0.0
 	game.update_golden(0.01)
 	main._refresh_golden()
+	var rng_state := game.golden_rng.state  # 7.13: with a 3×3 a sticker may open an OLL/PLL case: this one is a scramble
+	while game.roll_golden_case()["kind"] != "scramble":
+		rng_state = game.golden_rng.state
+	game.golden_rng.state = rng_state
 	check(view.is_golden_shown() and button.visible, "a golden sticker glows on the cube and the button shows")
 	# Clicking the golden sticker opens the case (a click elsewhere on the cube would just tap).
 	var at := view.screen_position(view.golden_point())
@@ -5111,6 +5380,21 @@ func test_golden_scramble_on_screen() -> void:
 	game.golden_finished.connect(func(success: bool, _buff: Dictionary) -> void: missed.append(success), CONNECT_ONE_SHOT)
 	station.handle_key(KEY_ESCAPE)
 	check(missed == [false] and _closed(station), "Esc walks away from the case: a miss")
+	# 7.13: a known PLL case in the station: named, "You know this one!", solved like any case.
+	for i in int(Content.DRILLS["clean_needed"]):
+		game.record_drill("pll", "pll_t", 5.0)
+	game.update_golden(game.golden_next + 0.01)
+	check(game.claim_golden(), "test setup: a new sticker claimed")
+	game.golden_case = {"kind": "pll", "case_id": "pll_t", "alg": String(Content.get_algorithm("pll_t")["alg"]),
+			"name": "T perm", "known": true}
+	station.open_golden_case(game.golden_case)
+	station._process(0.0)
+	check(station.golden_mode and station.session.puzzle_id == "3x3" and not station.session.model.is_solved()
+			and station._scramble_label.text.contains("You know this one!") and station._scramble_label.text.contains("T perm"),
+			"a known case shows its name and the tag: %s" % station._scramble_label.text)
+	for move in station.session.model.inverse_sequence(station.session.scramble):
+		station.play_move(move)
+	check(station.golden_result.begins_with("You knew this one!"), "solving it pays the known bonus: %s" % station.golden_result)
 	main.free()
 	game.reset_state()
 

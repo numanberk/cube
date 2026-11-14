@@ -45,6 +45,7 @@ var last_info: Dictionary = {}       ## what Game.record_hand_solve() said about
 var _hint_labels: Dictionary = {}    ## face index -> Label (key hints on the cube)
 var golden_mode := false             ## a Golden Scramble case (S.6): short scramble, 10 s clock, not a record
 var golden_result := ""              ## what the case gave ("" while it runs)
+var golden_case: Dictionary = {}     ## 7.13: a real OLL/PLL golden case ({} for a short scramble)
 const GOLDEN_CLOSE_DELAY := 2.2      ## seconds the result shows before the station closes by itself
 var _golden_close_left := 0.0
 var drill_mode := false              ## algorithm drills (S.4): the picker shows drill sets, each attempt is one case
@@ -116,6 +117,7 @@ func open_golden(puzzle_id: String, moves: int) -> void:
 	set_drill_mode(false, false)
 	set_daily_mode(false, false)
 	golden_mode = true
+	golden_case = {}
 	golden_result = ""
 	_golden_close_left = 0.0
 	_puzzle_picker.visible = false
@@ -126,6 +128,37 @@ func open_golden(puzzle_id: String, moves: int) -> void:
 	_scramble_label.text = "Golden Scramble:  %s" % session.scramble_text()
 	_build_hints()
 	_refresh()
+
+
+## Opens a Golden Scramble that is a real OLL/PLL case on the 3×3 (7.13): `golden` is Game.golden_case
+## {kind, case_id, alg, name, known}. Set up like a drill (yellow on top), solved against the golden clock.
+func open_golden_case(golden: Dictionary) -> void:
+	open("3x3")
+	set_drill_mode(false, false)
+	set_daily_mode(false, false)
+	golden_mode = true
+	golden_case = golden.duplicate()
+	golden_result = ""
+	_golden_close_left = 0.0
+	_puzzle_picker.visible = false
+	if _view.puzzle_id != "3x3":
+		_view.set_puzzle("3x3")
+	session.inspection = false
+	session.start_drill(String(golden["alg"]), _now(), drill_rng)
+	last_info = {}
+	_view.show_state(session.scramble)
+	_scramble_label.text = "Golden case:  %s" % golden_case_title(golden_case)
+	_build_hints()
+	_refresh()
+
+
+## "T perm · You know this one! ×1.5 reward" for a case learned in the drills, else "a PLL case".
+static func golden_case_title(golden: Dictionary) -> String:
+	var set_name := String(golden.get("kind", "")).to_upper()
+	if golden.get("known", false):
+		return "%s (%s)  ·  You know this one! ×%s reward" % [golden.get("name", ""), set_name,
+				Num.format(float(Content.GOLDEN["known_bonus"]))]
+	return "a %s case. Solve it any way you like" % set_name
 
 
 func _on_golden_finished(success: bool, buff: Dictionary) -> void:
@@ -641,7 +674,8 @@ func _refresh_clock() -> void:
 		else:
 			_timer_label.text = "%.1f" % maxf(0.0, Game.golden_attempt_left)
 			_timer_label.theme_type_variation = &"TimerGolden"
-			_status_label.text = "Golden Scramble: %d moves from solved. Solve it before the clock runs out!" % session.scramble.size()
+			_status_label.text = ("Solve the case before the clock runs out!" if not golden_case.is_empty()
+					else "Golden Scramble: %d moves from solved. Solve it before the clock runs out!" % session.scramble.size())
 		return
 	match session.state:
 		"inspecting":

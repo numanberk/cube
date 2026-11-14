@@ -779,6 +779,8 @@ const NEWS := {
 ##     "puzzle" id               that puzzle reached in any run (Game.puzzles_reached)
 ##     "method" id               that method learned (or a later one)
 ##     "championships" value     World Championships won ≥ value
+##     "hand_tier" value         a Solve Station PB single on any puzzle reached this S.3 tier (0 = Bronze, 2 = Gold)
+##     "item_rarity" id          a Cube Collection item of this rarity owned (7.8)
 const CAREER: Array[Dictionary] = [
 	{"id": "first_solve", "text": "Your first solve! The little 2×2 in your pocket is a real puzzle after all.",
 		"trigger": {"type": "lifetime_solves", "value": 1.0}},
@@ -814,7 +816,28 @@ const CAREER: Array[Dictionary] = [
 		"trigger": {"type": "puzzle", "id": "7x7"}},
 	{"id": "first_megaminx", "text": "Your first Megaminx. Twelve faces. You count them twice.",
 		"trigger": {"type": "puzzle", "id": "megaminx"}},
+	# 7.8 (fun pass, 2026-11-13): the story goes on past the Federation. Old saves see these silently (save v18).
+	{"id": "first_gold", "text": "A Gold single, by your own hands. You film the replay three times.",
+		"trigger": {"type": "hand_tier", "value": 2}},
+	{"id": "first_museum", "text": "A museum asks for your first cube. You lend it. You visit it on weekends.",
+		"trigger": {"type": "helper", "id": "museum"}},
+	{"id": "third_title", "text": "Three world titles. The commentators have run out of nicknames for you.",
+		"trigger": {"type": "championships", "value": 3}},
+	{"id": "first_ai", "text": "Your lab's AI solves a cube before you've finished picking it up. You call it a draw.",
+		"trigger": {"type": "helper", "id": "ai_solver"}},
+	{"id": "first_legendary", "text": "A record-holder's cube, in your own hands. You check the stickers for fingerprints.",
+		"trigger": {"type": "item_rarity", "id": "legendary"}},
+	{"id": "first_orbital", "text": "A cube in orbit. In zero gravity, every face is the top face.",
+		"trigger": {"type": "helper", "id": "orbital"}},
+	{"id": "tenth_title", "text": "Ten world titles. Kids at comps ask for your autograph on their 2×2s.",
+		"trigger": {"type": "championships", "value": 10}},
+	{"id": "first_quantum", "text": "A quantum array tries every solution at once. It still checks the cross first.",
+		"trigger": {"type": "helper", "id": "quantum"}},
 ]
+
+## The moments added in save v18 (7.8): an older save that already lived through them sees them silently.
+const CAREER_V18 := ["first_gold", "first_museum", "third_title", "first_ai", "first_legendary", "first_orbital",
+		"tenth_title", "first_quantum"]
 
 
 static func get_career_moment(id: String) -> Dictionary:
@@ -1010,7 +1033,9 @@ static func _short_number(value: float) -> String:
 ##   sources: what can drop an item: chance per try and pity (the Nth try in a row is a sure drop); a source with
 ##   after_first_championship tries nothing before the first World Championship (owner, 2026-11-12: drops from
 ##   achievements made the first run ~3 min faster and pushed the 5×5 out of its window)
-##   rarity_pity: after this many drops in a row below `rarity`, the next one is that rarity or better
+##   rarity_pity: a list; each: after `after` drops in a row below `rarity`, the next one is that rarity or better.
+##   `key` is its counter in the save's pity (Game.collection_pity). Legendary's (7.6, fun pass 2026-11-13) stops a
+##   Legendary being a pure RNG wall
 ##   items: id, name, brand, kind (cube|timer|mat|lube), rarity, icon, effect {type, puzzles|target}, per_star (optional)
 const COLLECTION := {
 	"max_stars": 5,
@@ -1020,7 +1045,10 @@ const COLLECTION := {
 		{"id": "epic", "name": "Epic", "weight": 10.0, "per_star": 0.03},
 		{"id": "legendary", "name": "Legendary", "weight": 2.0, "per_star": 0.05},
 	],
-	"rarity_pity": {"rarity": "epic", "after": 10},
+	"rarity_pity": [
+		{"key": "rarity", "rarity": "epic", "after": 10},
+		{"key": "legendary", "rarity": "legendary", "after": 50},
+	],
 	"sources": {
 		"golden": {"chance": 0.5, "pity": 3},        ## a Golden Scramble solved in time
 		"achievement": {"chance": 0.15, "pity": 10, "after_first_championship": true},  ## an achievement earned
@@ -1260,6 +1288,17 @@ const DAILY := {"reward_minutes": 30.0, "min_solves_value": 50.0}
 const GOLDEN := {
 	"spawn_min": 120.0, "spawn_max": 300.0, "glow": 12.0, "solve_seconds": 10.0,
 	"case_moves_min": 2, "case_moves_max": 5,
+	## 7.13 (fun pass, 2026-11-13; D18: any case may appear): what a golden sticker opens, by weight. "scramble" is the
+	## short random scramble on the focused puzzle; "oll"/"pll" a real case of that Content.DRILLS set on the 3×3 (only
+	## once the player has a 3×3), with `case_seconds` to solve it. A case the player learned in the drills pays
+	## `known_bonus` × the reward (Frenzy lasts longer, Lucky gives more minutes' worth).
+	"kinds": [
+		{"id": "scramble", "weight": 2.0},
+		{"id": "pll", "weight": 1.0, "set": "pll"},
+		{"id": "oll", "weight": 1.0, "set": "oll"},
+	],
+	"case_seconds": 20.0,
+	"known_bonus": 1.5,
 	"buffs": [
 		{"id": "frenzy", "name": "Frenzy", "weight": 1.0, "mult": 7.0, "seconds": 30.0},
 		{"id": "lucky", "name": "Lucky solve", "weight": 1.0, "minutes": 15.0, "min_solves_value": 10.0},

@@ -1,7 +1,7 @@
 extends Node
 ## Takes one screenshot of the main scene in a preset game state, then quits.
 ## Run through tools/screenshot.sh, which passes:
-##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--turns 1] [--drill solving|done] [--daily fmc|timed] [--banner puzzle|helper|method|champion] [--goals achievements|collection|stats|kit] [--toast career|achievement|drop]
+##   -- --preset <name> --out <file.png> [--puzzle 5x5] [--pose turn|solved] [--graphics high|low] [--tab 1] [--juice 1] [--buy 10|-1] [--settings 1] [--solve inspecting|solving|done] [--showcase <moves>] [--method beginner|cfop|...] [--keys cstimer|simple] [--news 1] [--golden glow|case|known|buff] [--flow 1] [--scroll 1] [--lab 1] [--pick <upgrade id>] [--compete 1|won] [--perks 1] [--auto 1] [--turns 1] [--drill solving|done] [--daily fmc|timed] [--banner puzzle|helper|method|champion] [--goals achievements|collection|stats|kit] [--toast career|achievement|drop|set]
 ## Presets "bench" and "bench_row" are special: the row5 state (all cubes, late-game helpers) with the economy running
 ## (speed mode, solves every frame), BENCH_FRAMES frames at each graphics quality, logging the average and worst frame
 ## time. "bench" runs only the 7×7 (one 3D view); "bench_row" runs all five cubes (the big 7×7 + four small views).
@@ -166,6 +166,14 @@ func _ready() -> void:
 			if mode == "case":
 				main.open_golden()
 				Game.golden_attempt_left = 7.4
+			elif mode == "known":  # 7.13: a real PLL case the player learned in the drills
+				for i in int(Content.DRILLS["clean_needed"]):
+					Game.record_drill("pll", "pll_t", 5.0)
+				Game.claim_golden()
+				Game.golden_case = {"kind": "pll", "case_id": "pll_t", "alg": String(Content.get_algorithm("pll_t")["alg"]),
+						"name": "T perm", "known": true}
+				Game.golden_attempt_left = 14.2
+				main.solve_station.open_golden_case(Game.golden_case)
 		main._refresh_golden()
 	if args.has("showcase"):  # the showcase solve held N moves in
 		main.pose_showcase(int(args["showcase"]))
@@ -222,6 +230,8 @@ func _ready() -> void:
 					"text": Content.describe_achievement(Content.get_achievement("solves_5")), "icon": Content.icon("stat_solves"),
 					"category": &"trophies"},
 			"drop": main.drop_toast("torque_3m", 2),
+			"set": {"kind": "set", "caption": "BRAND SET COMPLETE", "title": "Budget Kit (3 pieces)",
+					"text": "+15 % tap moves while it's in your kit.", "icon": Content.icon("magnets"), "category": &"trophies"},
 		}
 		main.toast.push(views.get(kind, views["career"]))
 		main.toast.advance(0.0)

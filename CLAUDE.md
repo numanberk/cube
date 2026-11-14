@@ -229,7 +229,7 @@ SHOWCASE=20 bash tools/screenshot.sh /tmp/shots mid               # main cube's 
 METHOD=beginner SHOWCASE=40 bash tools/screenshot.sh /tmp/shots mid  # ...with another method -> mid_showcase40_beginner.png
 KEYS=simple SOLVE=solving bash tools/screenshot.sh /tmp/shots mid    # Solve Station with simple keys -> mid_solvesolving_keyssimple.png
 NEWS=1 bash tools/screenshot.sh /tmp/shots mid                    # a few news feed lines -> mid_news.png
-GOLDEN=glow bash tools/screenshot.sh /tmp/shots mid               # Golden Scramble: glow | case | buff -> mid_goldenglow.png
+GOLDEN=glow bash tools/screenshot.sh /tmp/shots mid               # Golden Scramble: glow | case | known (a learned PLL case, 7.13) | buff -> mid_goldenglow.png
 FLOW=1 bash tools/screenshot.sh /tmp/shots mid                    # Flow running after a Gold hand solve -> mid_flow.png
 DRILL=done bash tools/screenshot.sh /tmp/shots mid                # a PLL drill: solving | done -> mid_drilldone.png
 DAILY=fmc bash tools/screenshot.sh /tmp/shots mid                 # the daily scramble: fmc | timed -> mid_dailyfmc.png
@@ -241,7 +241,7 @@ COMPETE=won bash tools/screenshot.sh /tmp/shots endgame          # just after a 
 PERKS=1 bash tools/screenshot.sh /tmp/shots endgame              # the trophy perk tree open (6.3) -> endgame_perks.png
 AUTO=1 bash tools/screenshot.sh /tmp/shots endgame               # the shop's Auto tab (6.3b) -> endgame_auto.png
 GOALS=achievements bash tools/screenshot.sh /tmp/shots endgame   # the Goals screen: achievements|collection|stats|kit -> endgame_goalsachievements.png
-TOAST=career bash tools/screenshot.sh /tmp/shots mid              # a small pop: career|achievement|drop -> mid_toastcareer.png
+TOAST=career bash tools/screenshot.sh /tmp/shots mid              # a small pop: career|achievement|drop|set -> mid_toastcareer.png
 TURNS=1 bash tools/screenshot.sh /tmp/shots mid                   # your own key turns on the main cube + streak (S.7) -> mid_turns.png
 GALLERY=all bash tools/screenshot.sh /tmp/shots                   # the style gallery (V.0): kit | parts | all -> gallery_kit.png
 GALLERY=kit FONT=/path/Rubik.ttf bash tools/screenshot.sh /tmp/shots  # ...with a candidate display font -> gallery_kit_Rubik.png

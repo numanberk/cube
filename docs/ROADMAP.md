@@ -13,7 +13,6 @@ Claim a task here *before* writing code and push the claim to `main`; remove the
 
 | Task | Branch | Since | Own files | Shared files touched | Save |
 |---|---|---|---|---|---|
-| 7.5–7.13 Goals polish (Phase 7b) | claude/zen-albattani-squxya | 2026-11-13 | goals_panel.gd, toast.gd, welcome_panel.gd | game.gd, content.gd, main.gd, main.tscn, tests/test_runner.gd, tools/screenshot.* | yes (v18: Legendary pity, career backfill) |
 
 *(2026-11-12, owner: the R.6a row (claimed 2026-11-07) and the earlier V.4 row (2026-11-11, session not reachable)
 were removed as stale: neither had pushed any work. R.6a is free again; V.4 was finished the same day.)*
@@ -549,34 +548,43 @@ claim it in **In progress** (a save bump means **Save: yes**). No `main.gd`/`mai
 ## Phase 7b — Goals polish (fun pass, 2026-11-13)
 The owner picked these from the fun pass after Phase 7 (the quick wins and idea #1; ideas #2, #3, #5 are in PLAN §4.8).
 Small tasks; any order, but 7.6 needs a save change. D18 answered (owner, 2026-11-13: any case may appear).
-- [ ] **7.5 Drop odds on screen (fun pass, 2026-11-13):** the Collection tab and the "???" tooltips show every source's
+- [x] **7.5 Drop odds on screen (fun pass, 2026-11-13):** the Collection tab and the "???" tooltips show every source's
       chance and pity ("Golden Scramble: 50 % · sure by your 3rd try", "Achievements: 15 % · sure by the 10th, from
       your first championship on") and the rarity pity, with the tries left on each counter (PLAN §4.6: every system
       explains its numbers). *Done when:* a test checks the texts against `Content.COLLECTION`, and there's a screenshot.
-- [ ] **7.6 Legendary pity (fun pass, 2026-11-13):** a Legendary is sure after ~50 drops without one, alongside today's
+      *(Done 2026-11-13: two lines on the Collection tab + the "???" tooltips, from `Game.get_drop_odds()`.)*
+- [x] **7.6 Legendary pity (fun pass, 2026-11-13):** a Legendary is sure after ~50 drops without one, alongside today's
       "Epic or better after 10" (`rarity_pity` becomes a list). Save change (a second counter + migration).
       *Done when:* tests cover both pities together and the migration, and the pacing targets still pass.
-- [ ] **7.7 Brand set completed (fun pass, 2026-11-13):** when a kit change reaches a set tier, a pop and a news line
+      *(Done 2026-11-13: `rarity_pity` is a list; save v18.)*
+- [x] **7.7 Brand set completed (fun pass, 2026-11-13):** when a kit change reaches a set tier, a pop and a news line
       ("Speed Kit complete: +8 % all moves"); not again for the same tier until it was lost and regained.
       *Done when:* a test covers it, and there's a screenshot.
-- [ ] **7.8 Late-game career moments (fun pass, 2026-11-13):** new `Content.CAREER` beats for the Cube Museum, AI Solver,
+      *(Done 2026-11-13: main.gd watches the active set tiers on `kit_changed`.)*
+- [x] **7.8 Late-game career moments (fun pass, 2026-11-13):** new `Content.CAREER` beats for the Cube Museum, AI Solver,
       Orbital, Quantum, the 3rd and 10th championship and the first Legendary (a new trigger type `item_rarity`), and
       one for the first Gold hand solve (`hand_tier`). Mostly data; new trigger types go in GameState's check.
       *Done when:* each fires once at its trigger (test) and old saves get them silently (as 7.0a's backfill).
-- [ ] **7.9 Welcome back lists more (fun pass, 2026-11-13):** besides Solves and the Lab, the mastery levels and
+      *(Done 2026-11-13: 8 moments, triggers `hand_tier` and `item_rarity`; v18 `career_backfill`.)*
+- [x] **7.9 Welcome back lists more (fun pass, 2026-11-13):** besides Solves and the Lab, the mastery levels and
       achievements earned while away. *Done when:* a test covers the report, and there's a `welcome` screenshot.
-- [ ] **7.10 Achievements in the goal strip (fun pass, 2026-11-13):** an achievement at ≥ 80 % can be one of the goal
+      *(Done 2026-11-13: `offline_report` "mastery"/"achievements", `WelcomePanel.away_lines`.)*
+- [x] **7.10 Achievements in the goal strip (fun pass, 2026-11-13):** an achievement at ≥ 80 % can be one of the goal
       card's goals (`Game.get_goals`). *Done when:* a test covers when it shows and when it gives way, and there's a screenshot.
-- [ ] **7.11 Star-up feel (fun pass, 2026-11-13):** in a drop pop the new star pip pops in (`UiFx.pop`; not with Reduce
+      *(Done 2026-11-13: `Game.get_near_achievement_goal()`; "Pace Setter II · 85 %".)*
+- [x] **7.11 Star-up feel (fun pass, 2026-11-13):** in a drop pop the new star pip pops in (`UiFx.pop`; not with Reduce
       motion). *Done when:* a test checks the pip and Reduce motion, and there's a `TOAST=drop` screenshot.
-- [ ] **7.12 Where your bonus comes from (fun pass, 2026-11-13):** a line (or small table) on the Stats tab: Collection
+      *(Done 2026-11-13: the drop pop's star pips.)*
+- [x] **7.12 Where your bonus comes from (fun pass, 2026-11-13):** a line (or small table) on the Stats tab: Collection
       +X %, Kit +Y %, brand sets, achievements' trophy bonus, trophies, perks. *Done when:* a test compares it with the
       real multipliers, and there's a screenshot.
-- [ ] **7.13 Golden Scrambles as real cases (fun pass, 2026-11-13) [D18]:** sometimes the golden sticker opens a real
+      *(Done 2026-11-13: `Game.get_bonus_breakdown()` on the Stats tab.)*
+- [x] **7.13 Golden Scrambles as real cases (fun pass, 2026-11-13) [D18]:** sometimes the golden sticker opens a real
       OLL or PLL case on the 3×3 (from `Content.ALGORITHMS`) instead of a short random scramble; a case the player has
       learned in the drills shows "You know this one!" and pays more (or gets a longer window). Kinds and weights as
       data in `Content.GOLDEN`. Design: PLAN §4.8 (1). *Done when:* tests cover picking a case, the learned bonus and
       the timing; there's a `GOLDEN=case` screenshot of a known case; the pacing targets still pass.
+      *(Done 2026-11-13: `Content.GOLDEN` kinds, 20 s for a case, ×1.5 when learned; `GOLDEN=known` shot.)*
 
 ## Phase 8 — Active play and Hall of Fame (D12: before 1.0)
 - [x] **8.1 Golden Scramble:** moved to **S.6** (now a quick solve). Old text: a small golden 3D cube flies across the stage every 2–5 min for 12 s. Clicking it gives a random buff

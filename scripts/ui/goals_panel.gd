@@ -49,6 +49,8 @@ var _item_cards: Dictionary = {}   ## item id -> {card, icon, name, pips, badge,
 var _slot_views: Dictionary = {}   ## slot id -> {card, icon, item, passive, auto, frame}
 var _set_lines: Dictionary = {}    ## brand -> Label
 var _collection_summary: Label
+var _odds_label: Label             ## 7.5: every drop source's chance and pity, and the rarity pities
+var _bonus_rows: Dictionary = {}   ## 7.12: breakdown row id -> Label
 var _stat_values: Dictionary = {}  ## stat key -> Label
 var _puzzle_rows: Dictionary = {}  ## puzzle id -> {name, value, bar}
 
@@ -292,6 +294,9 @@ func _build_collection() -> void:
 	page.add_child(right)
 	_collection_summary = _label(&"CardLine")
 	right.add_child(_collection_summary)
+	_odds_label = _label(&"FaintLabel")
+	_odds_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	right.add_child(_odds_label)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -415,6 +420,7 @@ func _refresh_collection() -> void:
 			% [progress["owned"], progress["total"], progress["stars"], progress["max_stars"],
 			roundi(float(Content.COMP_KIT["owned_share"]) * 100.0)]
 	_collection_summary.tooltip_text = "Items drop from Golden Scrambles solved in time, World Championships and, after your first championship, achievements. A second copy adds a star."
+	_odds_label.text = "\n".join(odds_lines(Game.get_drop_odds()))
 	var kit: Dictionary = Game.get_kit()
 	var selected_kind := String(Content.get_kit_slot(selected_slot).get("kind", ""))
 	for id: String in _item_cards:
@@ -586,9 +592,41 @@ static func item_tooltip(id: String) -> String:
 	var item := Content.get_collection_item(id)
 	var rarity := String(Content.get_rarity(String(item["rarity"])).get("name", ""))
 	if Game.get_collection_stars(id) <= 0:
-		return "??? (a %s %s)\nNot found yet. Golden Scrambles, championships and (after your first championship) achievements drop items." % [rarity, item["kind"]]
+		return "??? (a %s %s, %s %% of drops are %s)\nNot found yet.\n%s" % [rarity, item["kind"], _percent(rarity_share(String(item["rarity"]))),
+				rarity, "\n".join(odds_lines(Game.get_drop_odds()))]
 	return "%s\n%s · %s · %s\n%d / %d stars: %s" % [item["name"], String(item["brand"]).capitalize(), rarity, item["kind"],
 			Game.get_collection_stars(id), int(Content.COLLECTION["max_stars"]), item_effect_text(id, true)]
+
+
+## 7.5: how drops work, with the numbers: one line for the sources ("Golden Scramble 50 % · sure by your 3rd try
+## (1 miss so far)"), one for the rarity pities ("Epic or better by your 10th drop (3 so far)"). `odds` is
+## Game.get_drop_odds().
+static func odds_lines(odds: Dictionary) -> Array[String]:
+	var names := {"golden": "Golden Scramble", "achievement": "Achievement", "championship": "Championship"}
+	var parts := PackedStringArray()
+	var sources: Dictionary = odds.get("sources", {})
+	for source: String in sources:
+		var def: Dictionary = sources[source]
+		var text := "%s %s %%" % [names.get(source, source.capitalize()), _percent(float(def["chance"]))]
+		if int(def["pity"]) > 1:
+			text += " (sure by try %d, %d missed)" % [int(def["pity"]), int(def["misses"])]
+		if def.get("after_first_championship", false):
+			text += " after your 1st title" if def.get("open", false) else " from your 1st title"
+		parts.append(text)
+	var rarities := PackedStringArray()
+	for pity: Dictionary in odds.get("rarities", []):
+		var name := String(Content.get_rarity(String(pity["rarity"])).get("name", pity["rarity"]))
+		rarities.append("%s%s by drop %d (%d so far)" % [name, "+" if Content.get_rarity_index(
+				String(pity["rarity"])) < (Content.COLLECTION["rarities"] as Array).size() - 1 else "", int(pity["after"]) + 1, int(pity["count"])])
+	return ["Drops: " + "  ·  ".join(parts), "Never unlucky for long: " + "  ·  ".join(rarities)]
+
+
+## The share of drops of a rarity (its weight among all), 0..1.
+static func rarity_share(rarity: String) -> float:
+	var total := 0.0
+	for def: Dictionary in Content.COLLECTION["rarities"]:
+		total += float(def["weight"])
+	return float(Content.get_rarity(rarity).get("weight", 0.0)) / maxf(total, 1e-9)
 
 
 ## "+4 % 3×3 moves" (in the kit), or "+1 % 3×3 moves (+4 % in the kit)".
@@ -620,6 +658,8 @@ static func effect_noun(effect: Dictionary) -> String:
 
 static func _percent(fraction: float) -> String:
 	var percent := fraction * 100.0
+	if percent >= 1000.0:
+		return Num.format(percent)
 	return str(roundi(percent)) if absf(percent - roundf(percent)) < 0.05 else "%.1f" % percent
 
 
@@ -636,6 +676,26 @@ const STAT_ROWS := [
 	["golden_solved", "Golden Scrambles solved", "count"], ["dailies", "Daily rewards", "count"],
 	["achievements", "Achievements", "ratio"], ["collection", "Collection items", "ratio"],
 ]
+
+
+## 7.12: Game.get_bonus_breakdown()'s rows, named.
+const BONUS_ROWS := [["kit", "Comp Kit"], ["collection", "Rest of the collection"], ["sets", "Brand sets"],
+		["trophies", "Unspent trophies"], ["achievements", "Achievements"], ["perks", "Trophy perks"]]
+
+
+## A breakdown row's effects as text: "+8 % 3×3 moves, +2 % tap moves" ("—" for none).
+static func bonus_text(effects: Dictionary) -> String:
+	var parts := PackedStringArray()
+	for key: String in effects:
+		var type := key.get_slice(":", 0)
+		var effect := {"type": type}
+		if type == "puzzle_mult":
+			effect["puzzles"] = [key.get_slice(":", 1)]
+		elif type == "building_mult":
+			effect["target"] = key.get_slice(":", 1)
+		var noun := "trophies per championship" if type == "trophy_gain_mult" else effect_noun(effect)
+		parts.append("+%s %% %s" % [_percent(float(effects[key]) - 1.0), noun])
+	return ", ".join(parts) if not parts.is_empty() else "—"
 
 
 func _build_stats() -> void:
@@ -661,6 +721,20 @@ func _build_stats() -> void:
 		box.add_child(value)
 		grid.add_child(card)
 		_stat_values[row[0]] = value
+	page.add_child(_label(&"CardTitle", "Where your bonus comes from"))  # 7.12
+	var bonus := GridContainer.new()
+	bonus.theme_type_variation = &"UpgradeGrid"
+	bonus.columns = 2
+	page.add_child(bonus)
+	for row: Array in BONUS_ROWS:
+		var name := _label(&"CardLine", String(row[1]))
+		name.custom_minimum_size = Vector2(200, 0)
+		bonus.add_child(name)
+		var value := _label(&"FaintLabel")
+		value.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bonus.add_child(value)
+		_bonus_rows[row[0]] = value
 	page.add_child(_label(&"CardTitle", "Solves per puzzle"))
 	var puzzles := GridContainer.new()
 	puzzles.theme_type_variation = &"UpgradeGrid"
@@ -697,6 +771,9 @@ func _refresh_stats() -> void:
 						else [items["owned"], items["total"]])
 			_:
 				label.text = Num.format(float(stats.get(row[0], 0.0)))
+	for row: Dictionary in Game.get_bonus_breakdown():
+		if _bonus_rows.has(row["id"]):
+			(_bonus_rows[row["id"]] as Label).text = bonus_text(row["effects"])
 	var per_puzzle: Dictionary = stats.get("puzzle_solves", {})
 	var most := 0.0
 	for id: String in per_puzzle:

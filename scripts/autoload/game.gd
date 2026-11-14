@@ -35,13 +35,13 @@ signal golden_expired
 signal golden_finished(success: bool, buff: Dictionary)  ## a hand solve was recorded, edited or deleted (Solve Station)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 17  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
+const SAVE_VERSION := 18  ## v2 (4.2): parallel puzzles; v3 (4.6): mastery; v4 (5.1): methods; v5 (S.2): solve records;
                           ## v6 (S.6): Golden Scramble timer + active buff; v7 (S.4): algorithm drill records;
                           ## v8 (S.5): daily scramble results + reward; v9 (5.6): Algorithm Lab research;
                           ## v10 (6.2): World Championships (trophies, run Solves, puzzles reached); v11 (6.3): trophy perks;
                           ## v12 (6.3b): auto-buyer toggles; v13 (7.0a): career moments seen; v14 (7.1a): achievements;
                           ## v15 (7.2a): stats; v16 (7.3a): Cube Collection;
-                          ## v17 (7.4a): Comp Kit
+                          ## v17 (7.4a): Comp Kit; v18 (7.6/7.8): Legendary pity counter, new career moments seen
 const AUTOSAVE_INTERVAL := 10.0
 const MAX_OFFLINE_SECONDS := 8.0 * 3600.0  ## the base offline cap; "offline_hours" perks add to it (get_offline_cap_seconds)
 const MIN_OFFLINE_SECONDS := 10.0
@@ -101,7 +101,8 @@ var _applying_save := false  ## true inside apply_save_data: no career moment is
 var championships := 0          ## World Championships won (6.2); the first one opens the 7×7, the Megaminx and "Finals"
 var puzzles_reached: Dictionary = {}  ## puzzle id -> true for every puzzle ever unlocked (kept through prestige: its music stays)
 var method := "beginner"        ## id of the newest method learned (Content.METHODS); every earlier one is learned too
-var offline_report: Dictionary = {}  ## {"seconds", "solves"} after loading, if anything was earned
+var offline_report: Dictionary = {}  ## {"seconds", "solves"} after loading, if anything was earned; plus "research" (a topic),
+                                     ## "mastery" (puzzle -> [before, now]) and "achievements" (ids reached) when they happened
 var load_notice := ""  ## Set when the save was damaged and a backup (or nothing) was loaded; the UI shows it once.
 
 var _autosave_timer := 0.0
@@ -113,6 +114,9 @@ var golden_glow_left := 0.0                ## > 0 while a golden sticker glows a
 var golden_attempt_left := 0.0             ## > 0 while a claimed Golden Scramble case is being solved
 var buff: Dictionary = {}                  ## the active buff: {id, mult, left} (saved; paused while closed), or {}
 var golden_rng := RandomNumberGenerator.new()
+## The Golden Scramble being solved now (7.13; not saved, like the attempt's clock): {kind: "scramble", moves} or
+## {kind: "oll"|"pll", case_id, alg, name, known}. {} when none.
+var golden_case: Dictionary = {}
 var flow: Dictionary = {}                  ## Flow from hand solves (S.3): {mult, left, tier}; not saved (ends on quit)
 var streak := 0.0                          ## the TPS streak meter (S.7), 0..1 (Content.TAPS); not saved
 var _tap_clock := 0.0                      ## seconds counted by update_streak (for the shown TPS)
@@ -984,6 +988,13 @@ func is_career_trigger_met(def: Dictionary) -> bool:
 			return Content.get_method_index(method) >= Content.get_method_index(id) and Content.get_method_index(id) >= 0
 		"championships":
 			return championships >= int(trigger.get("value", 1))
+		"hand_tier":
+			return get_achievement_value({"type": "hand_tier"}) >= float(trigger.get("value", INF))
+		"item_rarity":
+			for item_id: String in collection:
+				if String(Content.get_collection_item(item_id).get("rarity", "")) == id:
+					return true
+			return false
 	return false
 
 
@@ -1150,9 +1161,14 @@ func roll_collection_drop(source: String) -> String:
 	if id == "":
 		return ""  # everything is maxed: nothing to give
 	collection_pity[source] = 0
-	var pity_rarity := Content.get_rarity_index(String(Content.COLLECTION["rarity_pity"]["rarity"]))
-	var dry := int(collection_pity.get("rarity", 0))
-	collection_pity["rarity"] = 0 if Content.get_rarity_index(Content.get_collection_item(id)["rarity"]) >= pity_rarity else dry + 1
+	var got := Content.get_rarity_index(Content.get_collection_item(id)["rarity"])
+	for pity: Dictionary in Content.COLLECTION["rarity_pity"]:
+		var key := String(pity["key"])
+		var floor_index := Content.get_rarity_index(String(pity["rarity"]))
+		if got >= floor_index or not _can_grow_from(floor_index):  # nothing left up there: the pity has nothing to give
+			collection_pity[key] = 0
+		else:
+			collection_pity[key] = int(collection_pity.get(key, 0)) + 1
 	collection[id] = get_collection_stars(id) + 1
 	_collection_stars += 1
 	invalidate_upgrade_cache()
@@ -1161,13 +1177,23 @@ func roll_collection_drop(source: String) -> String:
 	return id
 
 
+## Can an item of this rarity index or a rarer one still gain a star?
+func _can_grow_from(rarity_index: int) -> bool:
+	for item: Dictionary in Content.COLLECTION["items"]:
+		if Content.get_rarity_index(String(item["rarity"])) >= rarity_index \
+				and get_collection_stars(String(item["id"])) < int(Content.COLLECTION["max_stars"]):
+			return true
+	return false
+
+
 ## The item a drop gives: a rarity by weight (after a dry streak only the pity rarity or better can come), then a random
 ## item of it below max stars; if none of that rarity can grow, the nearest rarity that can (rarer first). "" if none.
 func _pick_collection_item() -> String:
 	var rarities: Array = Content.COLLECTION["rarities"]
 	var floor_index := 0
-	if int(collection_pity.get("rarity", 0)) >= int(Content.COLLECTION["rarity_pity"]["after"]):
-		floor_index = Content.get_rarity_index(String(Content.COLLECTION["rarity_pity"]["rarity"]))
+	for pity: Dictionary in Content.COLLECTION["rarity_pity"]:  # the rarest pity that is due sets the floor
+		if int(collection_pity.get(String(pity["key"]), 0)) >= int(pity["after"]):
+			floor_index = maxi(floor_index, Content.get_rarity_index(String(pity["rarity"])))
 	var total := 0.0
 	for i in range(floor_index, rarities.size()):
 		total += float(rarities[i]["weight"])
@@ -1346,11 +1372,81 @@ func _load_kit(saved: Variant) -> void:
 	invalidate_upgrade_cache()
 
 
+## Where the bonuses from the Goals systems come from (7.12), one row per source, each {id, effects: {key: mult}}:
+## "kit" (items in the Comp Kit, full), "collection" (the rest, their share), "sets" (brand sets active), "trophies"
+## (unspent trophies: all moves), "achievements" (trophies per championship). An effect key is the effect type, or
+## "puzzle_mult:<puzzle>" for a cube. A row's mult for a key is the product of its parts, as GameState applies them.
+func get_bonus_breakdown() -> Array[Dictionary]:
+	var kit_effects := {}
+	var rest_effects := {}
+	for id: String in collection:
+		var item := Content.get_collection_item(id)
+		var effect: Dictionary = item.get("effect", {})
+		var keys: Array[String] = []
+		if effect.get("type", "") == "puzzle_mult":
+			for puzzle: Variant in effect.get("puzzles", []):
+				keys.append("puzzle_mult:%s" % puzzle)
+		else:
+			keys.append(String(effect.get("type", "")))
+		var target: Dictionary = kit_effects if is_equipped(id) else rest_effects
+		for key in keys:
+			target[key] = float(target.get(key, 1.0)) * get_item_mult(id)
+	var set_effects := {}
+	for def: Dictionary in get_active_kit_sets():
+		var key := String(def["effect"]["type"])
+		set_effects[key] = float(set_effects.get(key, 1.0)) * float(def["effect"]["value"])
+	return [
+		{"id": "kit", "effects": kit_effects},
+		{"id": "collection", "effects": rest_effects},
+		{"id": "sets", "effects": set_effects},
+		{"id": "trophies", "effects": {"global_mult": get_trophy_mult()} if trophies > 0 else {}},
+		{"id": "achievements", "effects": {"trophy_gain_mult": get_achievement_mult()} if get_achievement_mult() > 1.0 else {}},
+		{"id": "perks", "effects": _perk_mult_effects()},
+	]
+
+
+## The trophy perks' multiplying effects (types ending in "_mult"), each the product of the perks owned.
+func _perk_mult_effects() -> Dictionary:
+	var out := {}
+	for id: String in perks:
+		var effect: Dictionary = Content.get_perk(id).get("effect", {})
+		var type := String(effect.get("type", ""))
+		if type.ends_with("_mult"):
+			var key := type if type != "building_mult" else "building_mult:%s" % effect.get("target", "")
+			out[key] = float(out.get(key, 1.0)) * float(effect.get("value", 1.0))
+	return out
+
+
 ## {owned, total, stars, max_stars}: the Collection screen's counts.
 func get_collection_progress() -> Dictionary:
 	var items: Array = Content.COLLECTION["items"]
 	return {"owned": collection.size(), "total": items.size(), "stars": get_collection_stars_total(),
 			"max_stars": items.size() * int(Content.COLLECTION["max_stars"])}
+
+
+## The pity counters' keys for rarities (Content.COLLECTION["rarity_pity"]): "rarity" (Epic), "legendary".
+static func rarity_pity_keys() -> Array[String]:
+	var keys: Array[String] = []
+	for pity: Dictionary in Content.COLLECTION["rarity_pity"]:
+		keys.append(String(pity["key"]))
+	return keys
+
+
+## Drop odds for the screen (7.5): per source {chance, pity, misses, after_first_championship, open}, and per rarity
+## pity {rarity, after, count}: everything the Collection tab says about how drops work.
+func get_drop_odds() -> Dictionary:
+	var sources := {}
+	for source: String in Content.COLLECTION["sources"]:
+		var def: Dictionary = Content.COLLECTION["sources"][source]
+		sources[source] = {"chance": float(def["chance"]), "pity": int(def["pity"]),
+				"misses": int(collection_pity.get(source, 0)),
+				"after_first_championship": bool(def.get("after_first_championship", false)),
+				"open": not def.get("after_first_championship", false) or has_won_championship()}
+	var rarities: Array[Dictionary] = []
+	for pity: Dictionary in Content.COLLECTION["rarity_pity"]:
+		rarities.append({"rarity": String(pity["rarity"]), "after": int(pity["after"]),
+				"count": int(collection_pity.get(String(pity["key"]), 0))})
+	return {"sources": sources, "rarities": rarities}
 
 
 func _load_collection(saved: Variant) -> void:
@@ -1371,7 +1467,7 @@ func _load_collection(saved: Variant) -> void:
 	var pity: Variant = (saved as Dictionary).get("pity", {})
 	if typeof(pity) == TYPE_DICTIONARY:
 		for key: Variant in pity:
-			if (str(key) == "rarity" or (Content.COLLECTION["sources"] as Dictionary).has(str(key))) \
+			if (rarity_pity_keys().has(str(key)) or (Content.COLLECTION["sources"] as Dictionary).has(str(key))) \
 					and typeof(pity[key]) in [TYPE_INT, TYPE_FLOAT]:
 				collection_pity[str(key)] = maxi(0, int(pity[key]))
 	_prune_kit()
@@ -2000,6 +2096,7 @@ func update_golden(delta: float) -> void:
 		golden_attempt_left -= delta
 		if golden_attempt_left <= 0.0:
 			golden_attempt_left = 0.0
+			golden_case = {}
 			golden_finished.emit(false, {})
 		return  # no new sticker while a case is being solved
 	if golden_glow_left > 0.0:
@@ -2021,8 +2118,34 @@ func claim_golden() -> bool:
 	if golden_glow_left <= 0.0 or golden_attempt_left > 0.0:
 		return false
 	golden_glow_left = 0.0
-	golden_attempt_left = float(Content.GOLDEN["solve_seconds"])
+	golden_case = roll_golden_case()
+	golden_attempt_left = float(Content.GOLDEN["case_seconds"] if golden_case["kind"] != "scramble" else Content.GOLDEN["solve_seconds"])
 	return true
+
+
+## What the next golden sticker opens (Content.GOLDEN["kinds"], 7.13): a short scramble, or a real OLL/PLL case on the
+## 3×3 (any case, D18), once the player has a 3×3. A case learned in the drills is `known` (it pays more).
+func roll_golden_case() -> Dictionary:
+	var kinds: Array = []
+	var total := 0.0
+	for def: Dictionary in Content.GOLDEN["kinds"]:
+		if def["id"] != "scramble" and not is_puzzle_unlocked("3x3"):
+			continue
+		kinds.append(def)
+		total += float(def["weight"])
+	var pick := golden_rng.randf() * total
+	var chosen: Dictionary = kinds.back()
+	for def: Dictionary in kinds:
+		pick -= float(def["weight"])
+		if pick <= 0.0:
+			chosen = def
+			break
+	if chosen["id"] == "scramble":
+		return {"kind": "scramble", "moves": roll_golden_case_moves()}
+	var cases := Content.get_drill_cases(String(chosen["set"]))
+	var alg: Dictionary = cases[golden_rng.randi_range(0, cases.size() - 1)]
+	return {"kind": String(chosen["id"]), "case_id": String(alg["id"]), "alg": String(alg["alg"]),
+			"name": String(alg.get("name", alg["id"])), "known": is_case_learned(String(alg["id"]))}
 
 
 ## How many moves from solved the next golden case is (Content.GOLDEN case_moves_min..max).
@@ -2037,10 +2160,15 @@ func finish_golden(success: bool) -> Dictionary:
 		return {}
 	golden_attempt_left = 0.0
 	golden_next = _roll_golden_wait()
+	var known := bool(golden_case.get("known", false))
+	golden_case = {}
 	if not success:
 		golden_finished.emit(false, {})
 		return {}
-	var result := _apply_golden_buff(_roll_golden_buff())
+	var result := _apply_golden_buff(_roll_golden_buff(), float(Content.GOLDEN["known_bonus"]) if known else 1.0)
+	if known:
+		result["known"] = true
+		result["text"] = "You knew this one! " + String(result["text"])
 	stats["golden_solved"] = float(stats["golden_solved"]) + 1.0
 	golden_finished.emit(true, result)
 	roll_collection_drop("golden")
@@ -2055,20 +2183,23 @@ func get_buff_mult() -> float:
 
 
 ## Applies a buff from Content.GOLDEN["buffs"] (tests call it with a chosen one).
-func _apply_golden_buff(def: Dictionary) -> Dictionary:
+## `scale` (7.13: a known golden case) makes it longer (Frenzy) or bigger (Lucky).
+func _apply_golden_buff(def: Dictionary, scale: float = 1.0) -> Dictionary:
 	match String(def.get("id", "")):
 		"frenzy":
-			buff = {"id": "frenzy", "mult": float(def["mult"]), "left": float(def["seconds"])}
-			return {"id": "frenzy", "name": def["name"], "mult": float(def["mult"]), "seconds": float(def["seconds"]),
-					"text": "%s: ×%s moves for %ds" % [def["name"], Num.format(float(def["mult"])), int(def["seconds"])]}
+			var seconds := float(def["seconds"]) * scale
+			buff = {"id": "frenzy", "mult": float(def["mult"]), "left": seconds}
+			return {"id": "frenzy", "name": def["name"], "mult": float(def["mult"]), "seconds": seconds,
+					"text": "%s: ×%s moves for %ds" % [def["name"], Num.format(float(def["mult"])), int(seconds)]}
 		"lucky":
-			var amount := maxf(get_solves_per_second() * float(def["minutes"]) * 60.0,
-					float(def["min_solves_value"]) * get_solve_value(focused_puzzle))
+			var minutes := float(def["minutes"]) * scale
+			var amount := maxf(get_solves_per_second() * minutes * 60.0,
+					float(def["min_solves_value"]) * get_solve_value(focused_puzzle) * scale)
 			solves += amount
 			total_solves += amount
 			run_solves += amount
 			return {"id": "lucky", "name": def["name"], "solves": amount,
-					"text": "%s: +%s Solves (%d minutes' worth)" % [def["name"], Num.format(amount), int(def["minutes"])]}
+					"text": "%s: +%s Solves (%s minutes' worth)" % [def["name"], Num.format(amount), str(snappedf(minutes, 0.1))]}
 	return {}
 
 
@@ -2179,7 +2310,51 @@ func get_goals(limit: int = 3) -> Array[Dictionary]:
 	for kind: String in by_kind:
 		goals.append(by_kind[kind])
 	goals.sort_custom(_goal_before)
-	return goals.slice(0, limit)
+	goals = goals.slice(0, limit)
+	# 7.10: an achievement at ACHIEVEMENT_GOAL_AT or more joins: in its place by time when that can be told, else in the
+	# last slot (from a 3-goal strip on), unless that slot holds something ready now (it gives way to that).
+	var near := get_near_achievement_goal() if limit >= 3 else {}
+	if not near.is_empty():
+		if not is_inf(float(near["seconds"])):
+			goals.append(near)
+			goals.sort_custom(_goal_before)
+			goals = goals.slice(0, limit)
+		elif goals.size() < limit:
+			goals.append(near)
+		elif float(goals[limit - 1]["seconds"]) > 0.0:
+			goals[limit - 1] = near
+	return goals
+
+
+const ACHIEVEMENT_GOAL_AT := 0.8  ## an achievement this far along can be a goal (7.10)
+
+## The unearned achievement closest to done, as a goal ({} if none is at ACHIEVEMENT_GOAL_AT yet). Only ones with a
+## count (not "unlock the 4×4"); unit "progress", `progress` 0..1; seconds from the rate where the game knows it.
+func get_near_achievement_goal() -> Dictionary:
+	var best: Dictionary = {}
+	var best_fraction := ACHIEVEMENT_GOAL_AT
+	for def: Dictionary in Content.get_achievements():
+		var target := float(def["value"])
+		if achievements.has(def["id"]) or target <= 1.0 or String(def["type"]) in ["hand_tier", "mastery"]:
+			continue  # done-or-not ones (and tiers/levels: their bar would mislead) never show here
+		var fraction := get_achievement_value(def) / target
+		if fraction >= best_fraction and fraction < 1.0:
+			best = def
+			best_fraction = fraction
+	if best.is_empty():
+		return {}
+	var missing := float(best["value"]) - get_achievement_value(best)
+	var rate := INF
+	match String(best["type"]):
+		"lifetime_solves":
+			rate = get_solves_per_second()
+		"lifetime_moves":
+			rate = get_moves_per_second()
+		"time_played":
+			rate = 1.0
+	var seconds := missing / rate if rate > 0.0 and not is_inf(rate) else INF
+	return {"kind": "achievement", "id": best["id"], "name": String(best["name"]), "more": false, "unit": "progress",
+			"missing": missing, "seconds": seconds, "progress": best_fraction}
 
 
 ## An upgrade's name in the goal strip; an open choice (5.7b) names both sides, so the strip doesn't pick for you.
@@ -2458,6 +2633,7 @@ func reset_state() -> void:
 	buff = {}
 	golden_glow_left = 0.0
 	golden_attempt_left = 0.0
+	golden_case = {}
 	golden_rng.randomize()
 	golden_next = _roll_golden_wait()
 	flow = {}
@@ -2702,6 +2878,11 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	check_helper_times(false)
 	if typeof(data.get("career")) == TYPE_STRING and String(data["career"]) == "backfill":
 		check_career(false)  # a pre-v13 save: what already happened doesn't pop again (time away below still can)
+	if typeof(data.get("career_backfill")) == TYPE_ARRAY:  # a v13-v17 save: v18's new moments it already lived (7.8)
+		for id: Variant in data["career_backfill"]:
+			var moment := Content.get_career_moment(str(id))
+			if not moment.is_empty() and is_career_trigger_met(moment):
+				career_seen[str(id)] = true
 	if typeof(data.get("achievements")) == TYPE_STRING and String(data["achievements"]) == "backfill":
 		check_achievements(false)  # a pre-v14 save: what it already reached is earned (with its bonus), silently
 	_next_solves_milestone = _milestone_above(total_solves)
@@ -2709,16 +2890,31 @@ func apply_save_data(data: Dictionary, now: float) -> void:
 	var elapsed := clampf(now - saved_at, 0.0, get_offline_cap_seconds())
 	if elapsed >= MIN_OFFLINE_SECONDS:
 		var before := total_solves
+		var levels_before := _mastery_levels.duplicate()
 		stats["run_time"] = float(stats["run_time"]) + elapsed  # the run went on (time played doesn't: nobody played)
 		_offline_catch_up = true  # a buff pauses while the game is closed
 		add_helper_moves(elapsed)
 		_offline_catch_up = false
 		var running := String(research.get("id", ""))
 		update_research(elapsed)  # the Lab kept working too (capped like the rest)
-		if total_solves > before or (running != "" and research.is_empty()):
+		# 7.9: what else happened: mastery levels gained, achievements reached (earned, with their pops, at the first
+		# check after loading)
+		var mastery := {}
+		for id: String in _mastery_levels:
+			if int(_mastery_levels[id]) > int(levels_before.get(id, 1)):
+				mastery[id] = [int(levels_before.get(id, 1)), int(_mastery_levels[id])]
+		var reached: Array[String] = []
+		for def: Dictionary in Content.get_achievements():
+			if not achievements.has(def["id"]) and get_achievement_value(def) >= float(def["value"]):
+				reached.append(String(def["id"]))
+		if total_solves > before or (running != "" and research.is_empty()) or not mastery.is_empty() or not reached.is_empty():
 			offline_report = {"seconds": elapsed, "solves": total_solves - before}
 			if running != "" and research.is_empty():
 				offline_report["research"] = Content.get_lab_project(running).get("topic", "")
+			if not mastery.is_empty():
+				offline_report["mastery"] = mastery  # puzzle id -> [level before, level now]
+			if not reached.is_empty():
+				offline_report["achievements"] = reached
 	_applying_save = false
 
 
@@ -2900,6 +3096,12 @@ func _migrate(data: Dictionary) -> Dictionary:
 		if not data.has("kit"):
 			data["kit"] = {"slots": {}, "manual": []}
 		data["version"] = 17
+	if int(data["version"]) < 18:
+		# v18: the Legendary pity counter (7.6) starts at 0 (missing = 0, nothing to add), and new career moments (7.8):
+		# the ones an older save already lived through are marked seen when it's applied, silently.
+		if typeof(data.get("career")) == TYPE_ARRAY:
+			data["career_backfill"] = Content.CAREER_V18.duplicate()
+		data["version"] = 18
 	return data
 
 
